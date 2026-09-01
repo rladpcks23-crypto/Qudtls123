@@ -57,7 +57,16 @@ echo "== decode original.apk =="
 apktool d -f -o "$DECODED" "$ORIGINAL_APK" >/dev/null
 
 echo "== rename package -> $NEW_PACKAGE, label -> $NEW_LABEL =="
+ORIGINAL_PACKAGE="$(sed -n 's/.*package="\([^"]*\)".*/\1/p' "$DECODED/AndroidManifest.xml" | head -1)"
 sed -i "s/package=\"[^\"]*\"/package=\"$NEW_PACKAGE\"/" "$DECODED/AndroidManifest.xml"
+# Activity/service/receiver names use manifest-relative shorthand (".MainActivity"),
+# which Android resolves against the (now-changed) manifest package -- but the
+# compiled class still lives under the ORIGINAL package inside classes.dex (renaming
+# the manifest's package= doesn't rename Java packages in the dex). Left as-is, the
+# app installs fine but crashes/fails to open (class not found) the moment it's
+# launched. Rewrite the shorthand to a fully-qualified name pointing at the real
+# class location so it still resolves correctly under the new applicationId.
+sed -i "s/android:name=\"\.\([A-Za-z][A-Za-z0-9_]*\)\"/android:name=\"$ORIGINAL_PACKAGE.\1\"/g" "$DECODED/AndroidManifest.xml"
 # app_name is whatever string res/values/strings.xml currently maps android:label to.
 python3 - "$DECODED/res/values/strings.xml" "$NEW_LABEL" <<'PY'
 import re, sys
