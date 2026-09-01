@@ -44,6 +44,12 @@ PY
 echo "== patch payload =="
 cp "$SRC_HTML" "$DECODED/assets/index.html"
 
+echo "== patch app icon =="
+for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+  cp "app/icons/mipmap-${density}-v4/ic_launcher.png" "$DECODED/res/mipmap-${density}-v4/ic_launcher.png"
+  cp "app/icons/mipmap-${density}-v4/ic_launcher_fg.png" "$DECODED/res/mipmap-${density}-v4/ic_launcher_fg.png"
+done
+
 echo "== rebuild =="
 apktool b "$DECODED" -o "$UNSIGNED" >/dev/null
 
