@@ -125,6 +125,7 @@ body{
   border-bottom:1px dashed var(--accent-dim);padding-bottom:1px;cursor:text;outline:none;
 }
 .goal-val:focus{border-bottom-style:solid;background:var(--accent-wash)}
+.goal-val:empty::before{content:attr(data-placeholder);color:var(--faint);font-weight:400}
 .strip-right{display:flex;gap:18px;align-items:center;color:var(--muted)}
 .dot{width:5px;height:5px;border-radius:50%;background:var(--accent);display:inline-block;vertical-align:middle;margin-right:6px}
 @media (prefers-reduced-motion: no-preference){ .dot{animation:pulse 2s ease-in-out infinite} }
@@ -577,7 +578,7 @@ footer p{margin:0;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-
       <input class="whonew" id="whonew" placeholder="이름 입력 후 Enter" maxlength="12" hidden>
       <span class="sep">|</span>
       <span class="goal-tag">Target</span>
-      <span class="goal-val" id="goal" contenteditable="true" spellcheck="false">기계공학자</span>
+      <span class="goal-val" id="goal" contenteditable="true" spellcheck="false" data-placeholder="목표를 입력하세요"></span>
     </div>
     <div class="strip-right">
       <span id="today"></span>
@@ -1956,12 +1957,11 @@ renderTodo();
 /* ============ 목표 문구 ============ */
 var goal = $("goal");
 var saved = pstore("goal");
-if(saved === "수소 내연기관 하이퍼카 엔지니어"){ saved = null; pstore("goal", "기계공학자"); }  // 진로 정정
 if(saved) goal.textContent = saved;
 goal.addEventListener("blur", function(){
   var t = goal.textContent.trim().slice(0,60);
-  if(!t){ t = "기계공학자"; goal.textContent = t; }
-  pstore("goal", t);
+  goal.textContent = t;
+  if(t) pstore("goal", t); else pstore("goal", "");
 });
 goal.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); goal.blur(); } });
 
@@ -1969,7 +1969,7 @@ goal.addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDe
 (function theme(){
   var root = document.documentElement;
   var pref = store("rl.theme");
-  if(pref === "light" || pref === "dark") root.setAttribute("data-theme", pref);
+  root.setAttribute("data-theme", (pref === "light" || pref === "dark") ? pref : "light");
   $("themeBtn").addEventListener("click", function(){
     var cur = root.getAttribute("data-theme");
     if(!cur) cur = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
