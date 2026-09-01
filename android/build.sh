@@ -20,6 +20,14 @@ SIGNED="$WORK/signed.apk"
 
 OUT_DIR="android/dist"
 OUT_APK="$OUT_DIR/app-release.apk"
+# IMPORTANT: this keystore is committed to the repo on purpose. Android
+# refuses to install an APK over an existing install of the same
+# applicationId unless the signing certificate matches, so every rebuild
+# MUST reuse the same key or updates will fail with an "app not installed"
+# conflict. This is a throwaway self-signed key for a personal sideloaded
+# app (never published to a store), so committing it is fine -- do NOT
+# delete/regenerate it unless you intend to force everyone to uninstall
+# the old copy first.
 KEYSTORE="${KEYSTORE:-android/.release.keystore}"
 KEY_ALIAS="${KEY_ALIAS:-tangbu}"
 KEY_STOREPASS="${KEY_STOREPASS:-changeit123}"
