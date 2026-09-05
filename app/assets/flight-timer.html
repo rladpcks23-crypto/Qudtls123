@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Flight Timer</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root {
+    --bg: #faf9f7;
+    --card: #ffffff;
+    --line: rgba(0,0,0,0.12);
+    --text: #1a1a19;
+    --muted: #6b6a66;
+    --accent: #2a78d6;
+    --ok-bg: #eaf3de;
+    --ok-tx: #3b6d11;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161614; --card: #22211f; --line: rgba(255,255,255,0.14);
+      --text: #f0efec; --muted: #a9a79f; --accent: #3987e5;
+      --ok-bg: #27500a; --ok-tx: #c0dd97;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 16px 40px; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif;
+    display: flex; justify-content: center;
+  }
+  .app { width: 100%; max-width: 420px; }
+
+  header { margin-bottom: 18px; }
+  header h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 16px; margin-bottom: 14px;
+  }
+
+  .route-row { display: flex; align-items: center; gap: 8px; }
+  .field { flex: 1; min-width: 0; }
+  .field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .field input {
+    width: 100%; padding: 10px 10px; border-radius: 10px; border: 1px solid var(--line);
+    background: transparent; color: var(--text); font-size: 14px; font-family: inherit;
+  }
+  .swap-btn {
+    flex: none; width: 36px; height: 36px; margin-top: 16px; border-radius: 50%;
+    border: 1px solid var(--line); background: transparent; color: var(--text);
+    font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .swap-btn:active { background: var(--line); }
+
+  .route-info {
+    display: flex; justify-content: space-between; gap: 12px; margin-top: 14px;
+    font-size: 12.5px; color: var(--muted); flex-wrap: wrap;
+  }
+  .route-info b { color: var(--text); font-weight: 600; }
+
+  #map {
+    height: 220px; border-radius: 14px; overflow: hidden; margin-top: 14px;
+    border: 1px solid var(--line);
+  }
+
+  .duration-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+  .duration-row label { font-size: 12.5px; color: var(--muted); flex: none; }
+  .duration-row input[type=number] {
+    width: 70px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line);
+    background: transparent; color: var(--text); font-size: 14px; font-family: inherit;
+  }
+  .presets { display: flex; gap: 6px; margin-left: auto; }
+  .preset-btn {
+    padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line);
+    background: transparent; color: var(--muted); font-size: 12px; cursor: pointer;
+  }
+  .preset-btn.active { border-color: var(--accent); color: var(--accent); }
+
+  .badge {
+    display: inline-block; padding: 4px 10px; border-radius: 999px;
+    background: var(--ok-bg); color: var(--ok-tx); font-size: 12px; font-weight: 600;
+  }
+  .badge.idle { background: var(--line); color: var(--muted); }
+
+  .timer-card { text-align: center; }
+  .timer-clock {
+    font-size: 52px; font-weight: 700; letter-spacing: 0.02em; font-variant-numeric: tabular-nums;
+    margin: 10px 0 4px;
+  }
+  .timer-sub { font-size: 12.5px; color: var(--muted); margin-bottom: 14px; }
+
+  .progress-track {
+    height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; margin-bottom: 16px;
+  }
+  .progress-fill {
+    height: 100%; width: 0%; background: var(--accent); border-radius: 999px;
+    transition: width 0.2s linear;
+  }
+
+  .controls { display: flex; gap: 8px; justify-content: center; }
+  .btn {
+    flex: 1; padding: 12px 0; border-radius: 12px; border: 1px solid var(--line);
+    background: transparent; color: var(--text); font-size: 14px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+
+  .plane-icon { transform-origin: 50% 50%; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.35)); }
+  .leaflet-control-attribution { font-size: 10px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Flight Timer</h1>
+    <p>실제 지도 항로를 따라 비행기가 이동하는 집중 타이머</p>
+  </header>
+
+  <div class="card">
+    <div class="route-row">
+      <div class="field">
+        <label for="from">출발</label>
+        <input id="from" list="city-list" placeholder="예: Seoul" autocomplete="off">
+      </div>
+      <button class="swap-btn" id="swap" title="출발/도착 바꾸기">⇄</button>
+      <div class="field">
+        <label for="to">도착</label>
+        <input id="to" list="city-list" placeholder="예: Tokyo" autocomplete="off">
+      </div>
+    </div>
+    <datalist id="city-list"></datalist>
+
+    <div class="route-info">
+      <span>직선거리 <b id="distText">–</b></span>
+      <span>평균 순항속도 850km/h 기준 <b id="flightTimeText">–</b></span>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="duration-row">
+      <label for="minutes">세션 시간(분)</label>
+      <input id="minutes" type="number" min="1" max="600" value="25">
+      <div class="presets">
+        <button class="preset-btn" data-min="25">25</button>
+        <button class="preset-btn" data-min="45">45</button>
+        <button class="preset-btn" data-min="60">60</button>
+        <button class="preset-btn" data-min="realistic">실제</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card timer-card">
+    <span class="badge idle" id="statusBadge">대기 중</span>
+    <div class="timer-clock" id="clock">25:00</div>
+    <div class="timer-sub" id="progressText">출발지와 도착지를 선택하세요</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="controls">
+      <button class="btn" id="resetBtn">리셋</button>
+      <button class="btn primary" id="startBtn">시작</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---- city data (name, IATA code, lat, lng) ----
+  var CITIES = [
+    ["Seoul","ICN",37.4602,126.4407],["Busan","PUS",35.1795,129.0756],
+    ["Tokyo","NRT",35.7647,140.3864],["Osaka","KIX",34.4273,135.2440],
+    ["Beijing","PEK",40.0801,116.5846],["Shanghai","PVG",31.1443,121.8083],
+    ["Hong Kong","HKG",22.3080,113.9185],["Taipei","TPE",25.0797,121.2342],
+    ["Singapore","SIN",1.3644,103.9915],["Bangkok","BKK",13.6900,100.7501],
+    ["Hanoi","HAN",21.2212,105.8072],["Ho Chi Minh City","SGN",10.8188,106.6520],
+    ["Manila","MNL",14.5086,121.0194],["Jakarta","CGK",-6.1256,106.6559],
+    ["Kuala Lumpur","KUL",2.7456,101.7099],["Delhi","DEL",28.5562,77.1000],
+    ["Mumbai","BOM",19.0896,72.8656],["Dubai","DXB",25.2532,55.3657],
+    ["Doha","DOH",25.2731,51.6081],["Istanbul","IST",41.2753,28.7519],
+    ["Moscow","SVO",55.9726,37.4146],["London","LHR",51.4700,-0.4543],
+    ["Paris","CDG",49.0097,2.5479],["Frankfurt","FRA",50.0379,8.5622],
+    ["Amsterdam","AMS",52.3105,4.7683],["Rome","FCO",41.8003,12.2389],
+    ["Madrid","MAD",40.4936,-3.5668],["Zurich","ZRH",47.4647,8.5492],
+    ["Vienna","VIE",48.1103,16.5697],["Stockholm","ARN",59.6519,17.9186],
+    ["Helsinki","HEL",60.3172,24.9633],["New York","JFK",40.6413,-73.7781],
+    ["Los Angeles","LAX",33.9416,-118.4085],["San Francisco","SFO",37.6213,-122.3790],
+    ["Chicago","ORD",41.9742,-87.9073],["Seattle","SEA",47.4502,-122.3088],
+    ["Toronto","YYZ",43.6777,-79.6248],["Vancouver","YVR",49.1967,-123.1815],
+    ["Honolulu","HNL",21.3187,-157.9224],["Sao Paulo","GRU",-23.4356,-46.4731],
+    ["Buenos Aires","EZE",-34.8222,-58.5358],["Sydney","SYD",-33.9399,151.1753],
+    ["Melbourne","MEL",-37.6690,144.8410],["Auckland","AKL",-37.0082,174.7850],
+    ["Cairo","CAI",30.1219,31.4056],["Johannesburg","JNB",-26.1392,28.2460],
+    ["Nairobi","NBO",-1.3192,36.9278],["Guam","GUM",13.4834,144.7960]
+  ].map(function (c) { return { name: c[0], code: c[1], lat: c[2], lng: c[3] }; });
+
+  var CRUISE_SPEED_KMH = 850;
+  var GROUND_OPS_MIN = 20; // taxi/climb/descent buffer
+
+  var listEl = document.getElementById("city-list");
+  CITIES.forEach(function (c) {
+    var opt = document.createElement("option");
+    opt.value = c.name + " (" + c.code + ")";
+    listEl.appendChild(opt);
+  });
+
+  function findCity(query) {
+    if (!query) return null;
+    var q = query.trim().toLowerCase();
+    for (var i = 0; i < CITIES.length; i++) {
+      var c = CITIES[i];
+      var display = (c.name + " (" + c.code + ")").toLowerCase();
+      if (display === q || c.code.toLowerCase() === q || c.name.toLowerCase() === q) return c;
+    }
+    for (var j = 0; j < CITIES.length; j++) {
+      if (CITIES[j].name.toLowerCase().indexOf(q) === 0) return CITIES[j];
+    }
+    return null;
+  }
+
+  function toRad(d) { return (d * Math.PI) / 180; }
+  function toDeg(r) { return (r * 180) / Math.PI; }
+
+  function haversineKm(a, b) {
+    var R = 6371;
+    var dLat = toRad(b.lat - a.lat);
+    var dLng = toRad(b.lng - a.lng);
+    var s = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    return R * 2 * Math.atan2(Math.sqrt(s), Math.sqrt(1 - s));
+  }
+
+  function bearingDeg(a, b) {
+    var y = Math.sin(toRad(b.lng - a.lng)) * Math.cos(toRad(b.lat));
+    var x = Math.cos(toRad(a.lat)) * Math.sin(toRad(b.lat)) -
+      Math.sin(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.cos(toRad(b.lng - a.lng));
+    return (toDeg(Math.atan2(y, x)) + 360) % 360;
+  }
+
+  // Great-circle interpolation (slerp) between two lat/lng points.
+  function greatCirclePoints(a, b, n) {
+    var lat1 = toRad(a.lat), lng1 = toRad(a.lng);
+    var lat2 = toRad(b.lat), lng2 = toRad(b.lng);
+    var x1 = Math.cos(lat1) * Math.cos(lng1), y1 = Math.cos(lat1) * Math.sin(lng1), z1 = Math.sin(lat1);
+    var x2 = Math.cos(lat2) * Math.cos(lng2), y2 = Math.cos(lat2) * Math.sin(lng2), z2 = Math.sin(lat2);
+    var d = Math.acos(Math.max(-1, Math.min(1, x1 * x2 + y1 * y2 + z1 * z2)));
+    var pts = [];
+    if (d < 1e-9) { pts.push({ lat: a.lat, lng: a.lng }); return pts; }
+    var prevLng = a.lng;
+    for (var i = 0; i <= n; i++) {
+      var t = i / n;
+      var A = Math.sin((1 - t) * d) / Math.sin(d);
+      var B = Math.sin(t * d) / Math.sin(d);
+      var x = A * x1 + B * x2, y = A * y1 + B * y2, z = A * z1 + B * z2;
+      var lat = toDeg(Math.atan2(z, Math.sqrt(x * x + y * y)));
+      var lng = toDeg(Math.atan2(y, x));
+      // keep longitude continuous across the antimeridian so the polyline
+      // doesn't jump across the whole map
+      while (lng - prevLng > 180) lng -= 360;
+      while (lng - prevLng < -180) lng += 360;
+      prevLng = lng;
+      pts.push({ lat: lat, lng: lng });
+    }
+    return pts;
+  }
+
+  // ---- map setup ----
+  var map = L.map("map", { zoomControl: false, attributionControl: true }).setView([20, 0], 2);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  var routeLine = null, fromMarker = null, toMarker = null, planeMarker = null;
+  var routePoints = [];
+
+  function planeIconHtml(rotation) {
+    return '<svg class="plane-icon" width="26" height="26" viewBox="0 0 24 24" ' +
+      'style="transform:rotate(' + rotation + 'deg)">' +
+      '<path fill="' + getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() +
+      '" d="M22 12l-7-3V4.5c0-.83-.67-1.5-1.5-1.5S12 3.67 12 4.5V9l-7 3v2l7-2.1V17l-2 1.5V20l3-1 3 1v-1.5L14 17v-5.1l7 2.1v-2z"/>' +
+      '</svg>';
+  }
+
+  function clearRoute() {
+    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+    if (fromMarker) { map.removeLayer(fromMarker); fromMarker = null; }
+    if (toMarker) { map.removeLayer(toMarker); toMarker = null; }
+    if (planeMarker) { map.removeLayer(planeMarker); planeMarker = null; }
+    routePoints = [];
+  }
+
+  function drawRoute(from, to) {
+    clearRoute();
+    routePoints = greatCirclePoints(from, to, 128);
+    var latlngs = routePoints.map(function (p) { return [p.lat, p.lng]; });
+    routeLine = L.polyline(latlngs, { color: getAccent(), weight: 3, opacity: 0.85 }).addTo(map);
+    fromMarker = L.circleMarker([from.lat, from.lng], { radius: 5, color: getAccent(), fillColor: getAccent(), fillOpacity: 1 })
+      .addTo(map).bindTooltip(from.name + " (" + from.code + ")", { permanent: false });
+    toMarker = L.circleMarker([to.lat, to.lng], { radius: 5, color: getAccent(), fillColor: getAccent(), fillOpacity: 1 })
+      .addTo(map).bindTooltip(to.name + " (" + to.code + ")", { permanent: false });
+    var startBearing = bearingDeg(from, routePoints[1] || to);
+    planeMarker = L.marker([from.lat, from.lng], {
+      icon: L.divIcon({ className: "", html: planeIconHtml(startBearing - 90), iconSize: [26, 26], iconAnchor: [13, 13] })
+    }).addTo(map);
+    map.fitBounds(routeLine.getBounds(), { padding: [24, 24] });
+  }
+
+  function getAccent() {
+    return getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+  }
+
+  function movePlane(progress) {
+    if (!routePoints.length || !planeMarker) return;
+    progress = Math.max(0, Math.min(1, progress));
+    var idx = Math.min(routePoints.length - 1, Math.round(progress * (routePoints.length - 1)));
+    var p = routePoints[idx];
+    var next = routePoints[Math.min(routePoints.length - 1, idx + 1)];
+    var brg = bearingDeg(p, next);
+    planeMarker.setLatLng([p.lat, p.lng]);
+    planeMarker.setIcon(L.divIcon({ className: "", html: planeIconHtml(brg - 90), iconSize: [26, 26], iconAnchor: [13, 13] }));
+  }
+
+  // ---- route state / info ----
+  var fromInput = document.getElementById("from");
+  var toInput = document.getElementById("to");
+  var distText = document.getElementById("distText");
+  var flightTimeText = document.getElementById("flightTimeText");
+  var minutesInput = document.getElementById("minutes");
+  var currentFrom = null, currentTo = null, realisticMinutes = null;
+
+  function fmtHm(totalMin) {
+    var h = Math.floor(totalMin / 60), m = Math.round(totalMin % 60);
+    return h > 0 ? h + "시간 " + m + "분" : m + "분";
+  }
+
+  function updateRoute() {
+    var from = findCity(fromInput.value);
+    var to = findCity(toInput.value);
+    if (from && to && (from.code !== to.code)) {
+      currentFrom = from; currentTo = to;
+      var km = haversineKm(from, to);
+      var flightMin = (km / CRUISE_SPEED_KMH) * 60 + GROUND_OPS_MIN;
+      realisticMinutes = Math.max(15, Math.round(flightMin));
+      distText.textContent = Math.round(km).toLocaleString() + "km";
+      flightTimeText.textContent = "약 " + fmtHm(flightMin);
+      drawRoute(from, to);
+      document.getElementById("progressText").textContent = from.code + " → " + to.code + " · 준비 완료";
+    } else {
+      currentFrom = null; currentTo = null; realisticMinutes = null;
+      distText.textContent = "–"; flightTimeText.textContent = "–";
+      clearRoute();
+      document.getElementById("progressText").textContent = "출발지와 도착지를 선택하세요";
+    }
+    resetTimer();
+  }
+
+  fromInput.addEventListener("change", updateRoute);
+  toInput.addEventListener("change", updateRoute);
+  document.getElementById("swap").addEventListener("click", function () {
+    var tmp = fromInput.value; fromInput.value = toInput.value; toInput.value = tmp;
+    updateRoute();
+  });
+
+  document.querySelectorAll(".preset-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".preset-btn").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      if (btn.dataset.min === "realistic") {
+        minutesInput.value = realisticMinutes || 25;
+      } else {
+        minutesInput.value = btn.dataset.min;
+      }
+      resetTimer();
+    });
+  });
+  minutesInput.addEventListener("input", function () {
+    document.querySelectorAll(".preset-btn").forEach(function (b) { b.classList.remove("active"); });
+    resetTimer();
+  });
+
+  // ---- timer ----
+  var clockEl = document.getElementById("clock");
+  var progressText = document.getElementById("progressText");
+  var progressFill = document.getElementById("progressFill");
+  var statusBadge = document.getElementById("statusBadge");
+  var startBtn = document.getElementById("startBtn");
+  var resetBtn = document.getElementById("resetBtn");
+
+  var running = false, rafId = null, startTs = null, elapsedAtPause = 0;
+
+  function totalSeconds() {
+    return Math.max(1, parseInt(minutesInput.value, 10) || 25) * 60;
+  }
+
+  function fmtClock(sec) {
+    sec = Math.max(0, Math.ceil(sec));
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return (m < 10 ? "0" + m : m) + ":" + (s < 10 ? "0" + s : s);
+  }
+
+  function updateUI(elapsed) {
+    var total = totalSeconds();
+    var remaining = Math.max(0, total - elapsed);
+    var progress = elapsed / total;
+    clockEl.textContent = fmtClock(remaining);
+    progressFill.style.width = (Math.min(1, progress) * 100) + "%";
+    movePlane(progress);
+    if (currentFrom && currentTo) {
+      progressText.textContent = currentFrom.code + " → " + currentTo.code +
+        " · " + Math.round(Math.min(1, progress) * 100) + "% 비행 중";
+    }
+  }
+
+  function tick() {
+    if (!running) return;
+    var elapsed = (performance.now() - startTs) / 1000;
+    var total = totalSeconds();
+    if (elapsed >= total) {
+      updateUI(total);
+      onArrive();
+      return;
+    }
+    updateUI(elapsed);
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function onArrive() {
+    running = false;
+    elapsedAtPause = totalSeconds();
+    statusBadge.textContent = "도착 완료";
+    statusBadge.classList.remove("idle");
+    startBtn.textContent = "시작";
+    if (navigator.vibrate) { try { navigator.vibrate([120, 60, 120]); } catch (e) {} }
+    if (currentFrom && currentTo) {
+      progressText.textContent = currentFrom.code + " → " + currentTo.code + " 도착했습니다 🎉";
+    }
+  }
+
+  function startTimer() {
+    if (!currentFrom || !currentTo) { alert("출발지와 도착지를 먼저 선택하세요."); return; }
+    if (running) return;
+    if (elapsedAtPause >= totalSeconds()) elapsedAtPause = 0;
+    running = true;
+    startTs = performance.now() - elapsedAtPause * 1000;
+    statusBadge.textContent = "비행 중";
+    statusBadge.classList.remove("idle");
+    startBtn.textContent = "일시정지";
+    tick();
+  }
+
+  function pauseTimer() {
+    if (!running) return;
+    running = false;
+    cancelAnimationFrame(rafId);
+    elapsedAtPause = (performance.now() - startTs) / 1000;
+    statusBadge.textContent = "일시정지";
+    statusBadge.classList.add("idle");
+    startBtn.textContent = "재개";
+  }
+
+  function resetTimer() {
+    running = false;
+    cancelAnimationFrame(rafId);
+    elapsedAtPause = 0;
+    statusBadge.textContent = "대기 중";
+    statusBadge.classList.add("idle");
+    startBtn.textContent = "시작";
+    updateUI(0);
+    if (!currentFrom || !currentTo) progressText.textContent = "출발지와 도착지를 선택하세요";
+    else progressText.textContent = currentFrom.code + " → " + currentTo.code + " · 준비 완료";
+  }
+
+  startBtn.addEventListener("click", function () {
+    if (running) pauseTimer(); else startTimer();
+  });
+  resetBtn.addEventListener("click", resetTimer);
+
+  // default example route
+  fromInput.value = "Seoul (ICN)";
+  toInput.value = "Tokyo (NRT)";
+  updateRoute();
+})();
+</script>
+</body>
+</html>
