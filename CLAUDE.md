@@ -18,6 +18,7 @@
 | [`specific-stiffness-structures.md`](docs/research/specific-stiffness-structures.md) | 경량화, 강성, 격자/인필 구조, 재료 선택 | Ashby 재료 지수, 형상 계수, Gibson-Ashby 스케일링, 판 격자 vs 트러스, FDM 인필 실험 |
 | [`human-hand-anatomy.md`](docs/research/human-hand-anatomy.md) | 사람 손, 해부학, 파지, 생체역학 | 골격/자유도, 외재근·내재근, 활차 A1~A5, 신전건막, Santello 시너지, Feix 파지 분류 |
 | [`robot-arm-and-hand.md`](docs/research/robot-arm-and-hand.md) | 로봇 팔, 로봇 손, 매니퓰레이터, 조작 학습 | 7 DOF 여유자유도, SEA/QDD 구동, 손 하드웨어 비교(Shadow·LEAP·RUKA·SoftHand), Dactyl 이후 RL |
+| [`robot-arm-applications.md`](docs/research/robot-arm-applications.md) | 로봇 팔 **활용**, 산업/물류/수술/농업/보조/실험실/우주/건설, VLA | 협동로봇 안전규격(ISO 10218·TS 15066), 도메인별 실제 성공률과 사이클 타임, Open X-Embodiment·OpenVLA |
 
 네 문서는 서로 링크되어 있다. 로봇 손 설계 얘기는 해부학 노트가 근거이고,
 링크 경량화는 비강성 노트가, CAD 작업은 Fusion 360 노트가 근거다.

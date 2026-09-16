@@ -2,6 +2,7 @@
 
 > 작성일: 2026-09-16
 > 짝 문서: [사람 손의 해부학·생체역학](./human-hand-anatomy.md) — 이 문서의 설계 근거가 그쪽에 있다
+> 짝 문서: [로봇 팔의 활용](./robot-arm-applications.md) — 어디에 어떻게 쓰이는지, 도메인별 실제 성능
 > 관련: [같은 무게에서 더 큰 강성을 내는 구조](./specific-stiffness-structures.md) (링크 경량화),
 > [Fusion 360 / 3D 모델링 논문](./fusion360-3d-modeling-papers.md) (CAD 설계)
 
