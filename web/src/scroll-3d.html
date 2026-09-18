@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>스크롤 3D 예시</title>
+<meta name="description" content="스크롤에 따라 3D 도형이 분해·재배열되는 예시. 도형 자리에 .glb 모델을 넣을 수 있다.">
+<meta name="color-scheme" content="dark">
+<style>
+:root{
+  --ground:#0A0908; --surface:#15110D; --line:#2E2620; --line-soft:#1D1812;
+  --text:#F4F0EA; --muted:#948A7E; --faint:#5E574F;
+  --accent:#FFA51F; --critical:#FF4438;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--ground); color:var(--text);
+  font:16px/1.7 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  word-break:keep-all; overflow-wrap:break-word; overflow-x:hidden;
+}
+h1,h2,p{margin:0}
+code{font:13px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  background:var(--surface); border:1px solid var(--line); border-radius:5px; padding:2px 6px}
+
+/* ---------- 3D 무대: 화면에 고정, 글은 그 위로 지나간다 ---------- */
+#stage{position:fixed; inset:0; width:100%; height:100%; z-index:0; display:block}
+#stage[hidden]{display:none}
+
+/* 글 뒤쪽을 살짝 어둡게 깔아 도형 위에서도 읽히게 */
+.scrim{position:fixed; inset:0; z-index:1; pointer-events:none;
+  background:linear-gradient(90deg,rgba(10,9,8,.86) 0%,rgba(10,9,8,.5) 42%,rgba(10,9,8,0) 68%)}
+@media (max-width:760px){
+  .scrim{background:linear-gradient(180deg,rgba(10,9,8,.2) 0%,rgba(10,9,8,.35) 38%,rgba(10,9,8,.93) 72%)}
+}
+
+main{position:relative; z-index:2}
+section{
+  min-height:100svh; display:flex; align-items:center;
+  padding:12vh clamp(20px,6vw,80px);
+}
+@media (max-width:760px){
+  section{align-items:flex-end; padding-bottom:14vh}
+}
+.box{max-width:30rem}
+.kicker{font:700 11px/1 inherit; letter-spacing:.14em; color:var(--accent); margin-bottom:16px}
+h1{font-size:clamp(34px,6.4vw,62px); font-weight:800; letter-spacing:-.03em; line-height:1.1}
+h2{font-size:clamp(26px,4.2vw,40px); font-weight:800; letter-spacing:-.03em; line-height:1.18}
+.lede{margin-top:18px; color:var(--muted); font-size:clamp(15px,1.7vw,17px)}
+.note{margin-top:22px; padding:16px 18px; border:1px solid var(--line);
+  border-radius:12px; background:rgba(21,17,13,.72); color:var(--muted); font-size:14px}
+.note b{color:var(--text)}
+.note ol{margin:10px 0 0; padding-left:18px}
+.note li{margin:6px 0}
+
+/* 진행 막대 */
+.progress{position:fixed; inset:0 0 auto 0; height:3px; z-index:5;
+  background:linear-gradient(90deg,var(--accent),var(--critical));
+  transform:scaleX(var(--g,0)); transform-origin:0 50%}
+
+/* 스크롤 유도 / 조작 안내 */
+.hint{position:fixed; left:50%; bottom:22px; translate:-50% 0; z-index:5;
+  color:var(--faint); font:600 11px/1.6 inherit; letter-spacing:.14em; text-align:center;
+  transition:opacity .4s}
+.hint b{display:block; width:1px; height:28px; margin:8px auto 0; background:currentColor;
+  transform-origin:top; animation:cue 1.8s ease-in-out infinite}
+@keyframes cue{0%,100%{transform:scaleY(.25);opacity:.3}50%{transform:scaleY(1);opacity:1}}
+.hint.gone{opacity:0}
+
+/* 3D를 못 그리는 환경 */
+.fallback{position:fixed; right:16px; top:16px; z-index:5; display:none;
+  border:1px solid var(--line); border-radius:10px; padding:10px 13px;
+  background:var(--surface); color:var(--muted); font-size:13px}
+body.no3d .fallback{display:block}
+body.no3d .scrim{background:none}
+body.no3d .hint{display:none}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .hint b{animation:none}
+}
+</style>
+
+<div class="progress" aria-hidden="true"></div>
+<canvas id="stage" aria-hidden="true"></canvas>
+<div class="scrim" aria-hidden="true"></div>
+<p class="fallback">이 브라우저에서는 3D를 표시할 수 없어 글만 보입니다.</p>
+<p class="hint" id="hint">SCROLL<b></b></p>
+
+<main>
+  <section>
+    <div class="box">
+      <p class="kicker">00 — 스크롤 3D 예시</p>
+      <h1>스크롤하면<br>도형이 움직입니다.</h1>
+      <p class="lede">
+        화면을 내리는 만큼 3D 물체가 돌고, 흩어지고, 다시 모입니다.
+        영상이 아니라 실시간으로 그리는 것이라, 마우스로 잡고 돌려볼 수도 있습니다.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="box">
+      <p class="kicker">01 — 분해</p>
+      <h2>27조각으로<br>흩어집니다.</h2>
+      <p class="lede">
+        정육면체 하나가 아니라 작은 정육면체 27개입니다.
+        스크롤 위치에 따라 각 조각이 바깥으로 밀려납니다. 제품 페이지에서 기기를
+        분해해 보여주는 장면이 이 방식입니다.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="box">
+      <p class="kicker">02 — 재배열</p>
+      <h2>다른 모양으로<br>모입니다.</h2>
+      <p class="lede">
+        흩어진 조각이 이번에는 구(球) 표면으로 모입니다.
+        조각마다 "어디에 있어야 하는지"를 단계별로 정해두고, 스크롤 값으로 그 사이를
+        이어 주는 것이 전부입니다.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="box">
+      <p class="kicker">03 — 조립</p>
+      <h2>처음 자리로<br>돌아옵니다.</h2>
+      <p class="lede">
+        위로 올리면 반대로 되감깁니다. 스크롤 막대가 곧 재생 헤드라서,
+        보는 사람이 속도를 직접 쥐게 됩니다.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="box">
+      <p class="kicker">04 — 바꿔 쓰는 법</p>
+      <h2>도형 자리에<br>모델을 넣습니다.</h2>
+      <p class="lede">
+        발표 주제에 맞는 3D 모델(.glb)이 있으면 도형 대신 그것을 띄울 수 있습니다.
+        글과 색은 이 파일 위쪽에서 바로 고치면 됩니다.
+      </p>
+      <div class="note">
+        <b>모델로 바꿀 때</b>
+        <ol>
+          <li>모델을 <code>web/models/</code> 에 둡니다</li>
+          <li>이 파일 아래쪽 <code>▼ 여기를 .glb 로</code> 주석 블록을 폅니다</li>
+          <li><b>로컬 서버로 열어야 합니다</b> — 폴더에서 <code>python3 -m http.server</code> 실행 후 브라우저에서 <code>localhost:8000</code></li>
+        </ol>
+        도형만 쓰는 지금 상태는 파일을 두 번 눌러 바로 열어도 됩니다.
+      </div>
+    </div>
+  </section>
+</main>
+
+<script type="module">
+/*__THREE__*/
+
+/* ============================================================
+   설정 — 여기만 만져도 분위기가 꽤 달라집니다
+   ============================================================ */
+const CFG = {
+  grid: 3,            // 한 변의 조각 수 (3 → 27조각)
+  size: 0.58,         // 조각 한 변 크기
+  gap: 0.70,          // 조각 사이 간격
+  burst: 2.2,         // 분해될 때 밀려나는 거리
+  ball: 1.85,         // 구로 모일 때 반지름
+  base:  0xE9E3D9,    // 기본 조각 색
+  warm:  0xFFA51F,    // 강조 조각 색
+  hot:   0xFF4438,    // 가운데 한 조각
+};
+
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const canvas = document.getElementById('stage');
+const clamp = (n, a = 0, b = 1) => n < a ? a : n > b ? b : n;
+/** a~b 구간을 0~1로, 양 끝을 부드럽게 */
+const ease = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+} catch (e) {
+  document.body.classList.add('no3d');
+  canvas.hidden = true;
+}
+
+if (renderer) {
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+  const group = new THREE.Group();
+  scene.add(group);
+
+  /* ---------- 빛 ---------- */
+  scene.add(new THREE.HemisphereLight(0xFFF1DC, 0x181209, 1.0));
+  const key  = new THREE.DirectionalLight(0xFFFFFF, 2.6); key.position.set(5, 7, 6);   scene.add(key);
+  const rim  = new THREE.DirectionalLight(0xFFA51F, 1.6); rim.position.set(-6, -1, -5); scene.add(rim);
+  const fill = new THREE.DirectionalLight(0x9FB6D8, 0.7); fill.position.set(-4, 4, -6); scene.add(fill);
+
+  /* ============================================================
+     조각 만들기 — 각 조각이 "세 자리"를 기억한다
+       home   : 정육면체로 모였을 때
+       burst  : 바깥으로 흩어졌을 때
+       ball   : 구 표면에 붙었을 때
+     ============================================================ */
+  const N = CFG.grid, total = N * N * N, half = (N - 1) / 2;
+  const geo = new THREE.BoxGeometry(CFG.size, CFG.size, CFG.size);
+  const mat = c => new THREE.MeshStandardMaterial({ color: c, metalness: 0.05, roughness: 0.5 });
+  const mBase = mat(CFG.base), mWarm = mat(CFG.warm), mHot = mat(CFG.hot);
+
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  const pieces = [];
+  let i = 0;
+  for (let x = 0; x < N; x++) for (let y = 0; y < N; y++) for (let z = 0; z < N; z++) {
+    const home = new THREE.Vector3((x - half) * CFG.gap, (y - half) * CFG.gap, (z - half) * CFG.gap);
+
+    // 흩어질 방향 = 가운데에서 바깥으로. 정중앙 조각은 위로 뺀다.
+    const dir = home.lengthSq() < 1e-6 ? new THREE.Vector3(0, 1, 0) : home.clone().normalize();
+    const burst = home.clone().addScaledVector(dir, CFG.burst);
+
+    // 구 표면에 고르게 뿌리기(피보나치 배치)
+    const t = total === 1 ? 0 : i / (total - 1);
+    const sy = 1 - t * 2, sr = Math.sqrt(Math.max(0, 1 - sy * sy)), sa = golden * i;
+    const ball = new THREE.Vector3(Math.cos(sa) * sr, sy, Math.sin(sa) * sr).multiplyScalar(CFG.ball);
+
+    const isCenter = x === 1 && y === 1 && z === 1;
+    const mesh = new THREE.Mesh(geo, isCenter ? mHot : (i % 7 === 3 ? mWarm : mBase));
+    mesh.position.copy(home);
+    group.add(mesh);
+
+    pieces.push({ mesh, home, burst, ball, spin: new THREE.Vector3(
+      (Math.random() - .5) * 2.6, (Math.random() - .5) * 2.6, (Math.random() - .5) * 2.6) });
+    i++;
+  }
+
+  /* ============================================================
+     ▼ 여기를 .glb 로 — 도형 대신 3D 모델을 띄우고 싶을 때
+     ------------------------------------------------------------
+     위 반복문(조각 만들기)을 지우고 아래 주석을 풀면 됩니다.
+     파일을 두 번 눌러 여는 방식(file://)으로는 모델을 못 읽으니,
+     폴더에서 python3 -m http.server 를 켜고 localhost 로 여세요.
+
+     import { GLTFLoader } from './vendor/loaders/GLTFLoader.js';
+     const pieces = [];
+     new GLTFLoader().load('./models/내모델.glb', (gltf) => {
+       const model = gltf.scene;
+       // 크기를 화면에 맞게 맞추고 가운데로 옮긴다
+       const bb = new THREE.Box3().setFromObject(model);
+       const size = bb.getSize(new THREE.Vector3()).length();
+       model.scale.setScalar(3 / size);
+       model.position.sub(bb.getCenter(new THREE.Vector3()).multiplyScalar(3 / size));
+       group.add(model);
+     });
+     ============================================================ */
+
+  /* ---------- 마우스로 돌리기 ---------- */
+  const drag = { on: false, x: 0, y: 0, rx: 0, ry: 0 };
+  canvas.style.touchAction = 'pan-y';          // 세로 스크롤은 그대로 살린다
+  canvas.addEventListener('pointerdown', e => {
+    drag.on = true; drag.x = e.clientX; drag.y = e.clientY;
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!drag.on) return;
+    drag.ry += (e.clientX - drag.x) * 0.006;
+    drag.rx += (e.clientY - drag.y) * 0.006;
+    drag.rx = clamp(drag.rx, -0.9, 0.9);
+    drag.x = e.clientX; drag.y = e.clientY;
+  });
+  const drop = () => { drag.on = false; };
+  canvas.addEventListener('pointerup', drop);
+  canvas.addEventListener('pointercancel', drop);
+
+  /* ---------- 화면 크기 ---------- */
+  let wide = true, baseZ = 6;
+  const resize = () => {
+    const w = innerWidth, h = innerHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    wide = w / h > 1.25;
+
+    // 넓은 화면에서는 오른쪽으로 비켜 세워 왼쪽 글자리를 비우고,
+    // 좁은 화면에서는 위쪽에 둔다 (글이 아래로 내려가므로)
+    group.position.set(wide ? 1.3 : 0, wide ? 0 : 1.6, 0);
+
+    // 세로로 긴 화면에서는 가로가 먼저 모자란다. 좁은 쪽 시야각을 기준으로
+    // 물체가 통째로 들어오는 거리를 구해 둔다 — 안 그러면 휴대폰에서 잘린다.
+    const vFov = camera.fov * Math.PI / 180;
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+    baseZ = (wide ? 2.15 : 2.0) / Math.sin(Math.min(vFov, hFov) / 2);
+  };
+  addEventListener('resize', resize);
+  resize();
+
+  /* ---------- 스크롤 진행도 ---------- */
+  let p = 0;
+  const readScroll = () => {
+    const max = document.documentElement.scrollHeight - innerHeight;
+    p = max > 0 ? clamp(scrollY / max) : 0;
+    document.documentElement.style.setProperty('--g', p.toFixed(4));
+    hint.classList.toggle('gone', p > 0.02);
+  };
+  addEventListener('scroll', readScroll, { passive: true });
+  readScroll();
+
+  /* ---------- 매 프레임 ---------- */
+  const tmp = new THREE.Vector3();
+  let t0 = performance.now();
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    if (document.hidden) return;
+    const dt = Math.min((now - t0) / 1000, 0.05); t0 = now;
+
+    // 구간별로 목표 자리를 정하고 그 사이를 잇는다
+    const out  = ease(0.06, 0.34, p);   // home  → burst
+    const ball = ease(0.34, 0.60, p);   // burst → ball
+    const back = ease(0.64, 0.92, p);   // ball  → home
+
+    for (const q of pieces) {
+      tmp.copy(q.home).lerp(q.burst, out).lerp(q.ball, ball).lerp(q.home, back);
+      q.mesh.position.copy(tmp);
+
+      // 흩어져 있는 동안만 조각이 스스로 돈다
+      const loose = Math.max(0, out - back);
+      q.mesh.rotation.x = q.spin.x * loose;
+      q.mesh.rotation.y = q.spin.y * loose;
+      q.mesh.rotation.z = q.spin.z * loose;
+    }
+
+    // 전체 회전: 스크롤 + 손 + (천천히) 시간
+    group.rotation.y = 0.62 + p * Math.PI * 1.9 + drag.ry + (reduce ? 0 : now * 0.00006);
+    group.rotation.x = 0.26 + Math.sin(p * Math.PI) * 0.2 + drag.rx;
+
+    // 처음에 살짝 커지며 등장
+    group.scale.setScalar(0.8 + ease(0, 0.07, p) * 0.2);
+    // 조각이 흩어진 동안만 카메라를 뒤로 빼 화면을 덜 잡아먹게
+    const spread = Math.max(0, out - back);
+    camera.position.z = baseZ * (1 + spread * 0.36 + ease(0.62, 1, p) * 0.08);
+    camera.lookAt(0, 0, 0);
+
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(frame);
+}
+</script>
