@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HOLO-LAB — 손으로 조작하는 홀로그램</title>
+<meta name="description" content="웹캠으로 손을 인식해 3D 홀로그램을 잡고 돌리고 분해한다.">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='6' fill='%2335E8FF'/%3E%3Ccircle cx='16' cy='16' r='12' fill='none' stroke='%2335E8FF' stroke-width='2'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#03070C; --panel:rgba(8,20,30,.62); --line:rgba(53,232,255,.28);
+  --cy:#35E8FF; --cy-dim:#1B7F92; --am:#FFC24A; --hot:#FF5A4A;
+  --text:#DDF6FF; --muted:#6E93A3;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text); overflow:hidden;
+  font:14px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR",system-ui,sans-serif;
+  word-break:keep-all; -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  letter-spacing:.06em; font-variant-numeric:tabular-nums}
+
+#stage{position:fixed; inset:0; width:100%; height:100%; display:block; z-index:0}
+
+/* 스캔라인 — 홀로그램 느낌만 얹는 장식 */
+.scan{position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.5;
+  background:repeating-linear-gradient(180deg,rgba(53,232,255,.045) 0 1px,transparent 1px 3px)}
+.vig{position:fixed; inset:0; z-index:1; pointer-events:none;
+  background:radial-gradient(120% 90% at 50% 45%,transparent 40%,rgba(0,0,0,.72) 100%)}
+
+/* 모서리 괄호 */
+.bracket{position:fixed; width:26px; height:26px; z-index:2; pointer-events:none;
+  border:2px solid var(--cy); opacity:.55}
+.bracket.tl{top:14px; left:14px; border-right:0; border-bottom:0}
+.bracket.tr{top:14px; right:14px; border-left:0; border-bottom:0}
+.bracket.bl{bottom:14px; left:14px; border-right:0; border-top:0}
+.bracket.br{bottom:14px; right:14px; border-left:0; border-top:0}
+
+/* 상단 제목 */
+.title{position:fixed; top:20px; left:56px; z-index:3}
+.title h1{margin:0; font:800 17px/1.2 inherit; letter-spacing:.2em; color:var(--cy)}
+.title p{margin:5px 0 0; color:var(--muted); font-size:12px; letter-spacing:.04em}
+
+/* 좌측 계기판 */
+.hud{position:fixed; left:56px; top:96px; z-index:3; width:236px;
+  border:1px solid var(--line); border-radius:10px; background:var(--panel);
+  backdrop-filter:blur(6px); padding:14px 15px}
+.hud h2{margin:0 0 10px; font:700 10px/1 inherit; letter-spacing:.22em; color:var(--cy-dim)}
+.row{display:flex; justify-content:space-between; gap:10px; padding:5px 0;
+  border-top:1px solid rgba(53,232,255,.12); font-size:12px}
+.row:first-of-type{border-top:0}
+.row span{color:var(--muted)}
+.row b{font-weight:700; color:var(--text)}
+.row b.on{color:var(--cy)} .row b.hot{color:var(--am)}
+
+/* 조작 안내 */
+.keys{position:fixed; left:56px; bottom:40px; z-index:3; width:288px;
+  border:1px solid var(--line); border-radius:10px; background:var(--panel);
+  backdrop-filter:blur(6px); padding:14px 15px}
+.keys h2{margin:0 0 10px; font:700 10px/1 inherit; letter-spacing:.22em; color:var(--cy-dim)}
+.keys dl{margin:0; display:grid; grid-template-columns:auto 1fr; gap:7px 12px; font-size:12.5px}
+.keys dt{color:var(--cy); font-weight:700; white-space:nowrap}
+.keys dd{margin:0; color:var(--muted)}
+
+/* 카메라 미리보기 */
+.cam{position:fixed; right:40px; bottom:40px; z-index:3; width:212px;
+  border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#000}
+.cam .wrap{position:relative; aspect-ratio:4/3}
+.cam video,.cam canvas{position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+  transform:scaleX(-1)}            /* 거울처럼 — 손을 오른쪽으로 옮기면 오른쪽으로 */
+.cam .tag{padding:6px 9px; font:700 9.5px/1 inherit; letter-spacing:.18em; color:var(--cy-dim);
+  border-top:1px solid rgba(53,232,255,.14)}
+
+/* 가운데 알림 */
+.toast{position:fixed; left:50%; bottom:30px; translate:-50% 0; z-index:4; max-width:min(620px,86vw);
+  border:1px solid var(--line); border-radius:10px; background:rgba(8,20,30,.92);
+  backdrop-filter:blur(8px); padding:14px 18px; text-align:center; font-size:13.5px; color:var(--text)}
+.toast b{color:var(--am)}
+.toast code{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12.5px;
+  background:rgba(53,232,255,.1); border:1px solid var(--line); border-radius:4px; padding:1px 6px}
+.toast[hidden]{display:none}
+
+@media (max-width:900px){
+  .title{left:20px} .hud{left:20px; width:200px} .keys{display:none}
+  .cam{right:16px; bottom:16px; width:140px}
+}
+</style>
+
+<canvas id="stage"></canvas>
+<div class="scan"></div><div class="vig"></div>
+<i class="bracket tl"></i><i class="bracket tr"></i><i class="bracket bl"></i><i class="bracket br"></i>
+
+<div class="title">
+  <h1 class="mono">HOLO-LAB</h1>
+  <p>손으로 잡고 돌리는 홀로그램</p>
+</div>
+
+<div class="hud">
+  <h2 class="mono">STATUS</h2>
+  <div class="row"><span>카메라</span><b id="s-cam">준비 중</b></div>
+  <div class="row"><span>인식된 손</span><b id="s-hands" class="mono">0</b></div>
+  <div class="row"><span>동작</span><b id="s-ges">-</b></div>
+  <div class="row"><span>크기</span><b id="s-scale" class="mono">1.00</b></div>
+  <div class="row"><span>상태</span><b id="s-mode">조립</b></div>
+  <div class="row"><span>FPS</span><b id="s-fps" class="mono">-</b></div>
+  <div class="row"><span>인식 1회</span><b id="s-ms" class="mono">-</b></div>
+</div>
+
+<div class="keys">
+  <h2 class="mono">CONTROL</h2>
+  <dl>
+    <dt>집기</dt><dd>엄지와 검지를 붙인 채 손을 움직이면 <b>회전</b></dd>
+    <dt>양손 집기</dt><dd>두 손을 벌리거나 좁히면 <b>크기</b></dd>
+    <dt>주먹</dt><dd>쥐었다 펴면 <b>분해 / 조립</b></dd>
+    <dt>손 치우기</dt><dd>혼자 천천히 돕니다</dd>
+  </dl>
+</div>
+
+<div class="cam">
+  <div class="wrap">
+    <video id="cam" playsinline muted></video>
+    <canvas id="skel"></canvas>
+  </div>
+  <div class="tag mono">CAMERA / HAND TRACK</div>
+</div>
+
+<p class="toast" id="toast" hidden></p>
+
+<script type="module">
+import * as THREE from './vendor/three.module.min.js';
+import { FilesetResolver, HandLandmarker } from './vendor/mediapipe/vision_bundle.mjs';
+
+const $ = id => document.getElementById(id);
+const clamp = (n, a, b) => n < a ? a : n > b ? b : n;
+const toast = (html) => { $('toast').innerHTML = html; $('toast').hidden = false; };
+
+/* ============================================================
+   1. 홀로그램 — 아크 리액터 모양으로 조립한 부품들
+   부품마다 제자리(home)와 흩어질 방향(dir)을 들고 있다.
+   ============================================================ */
+const CY = 0x35E8FF, AM = 0xFFC24A, HOT = 0xFF5A4A;
+
+const canvas = $('stage');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.25;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x03070C, 0.055);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 120);
+camera.position.set(0, 0, 7.2);
+
+const rig = new THREE.Group();            // 손이 돌리는 축
+scene.add(rig);
+
+scene.add(new THREE.AmbientLight(0x2A5A6E, 1.4));
+const l1 = new THREE.PointLight(CY, 140, 40); l1.position.set(3, 4, 6); scene.add(l1);
+const l2 = new THREE.PointLight(AM, 70, 40);  l2.position.set(-5, -2, 3); scene.add(l2);
+
+const parts = [];
+/**
+ * 부품 하나를 rig 에 붙인다.
+ * 분해할 때 가운데 부품(핵·고리)은 밀려나면 한쪽으로 쏠려 보이므로,
+ * 밖으로 나가는 대신 제자리에서 벌어지게(grow) 한다.
+ */
+function add(mesh, x, y, z, spin = 0, grow = 0) {
+  mesh.position.set(x, y, z);
+  const dir = new THREE.Vector3(x, y, z);
+  const push = dir.lengthSq() > 1e-6;          // 가운데 부품은 밀지 않는다
+  if (push) dir.normalize(); else dir.set(0, 0, 0);
+  rig.add(mesh);
+  parts.push({ mesh, home: mesh.position.clone(), rot: mesh.rotation.clone(), dir, spin, grow });
+  return mesh;
+}
+const glow = (c, e = 1.6) => new THREE.MeshStandardMaterial({
+  color: c, emissive: c, emissiveIntensity: e, metalness: .3, roughness: .35 });
+
+// 가운데 핵
+add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.46, 2), glow(0xEAFDFF, 2.6)), 0, 0, 0, 1.4, -0.3);
+// 고리 세 겹
+const ring = (r, tube, c, e) => new THREE.Mesh(new THREE.TorusGeometry(r, tube, 16, 96), glow(c, e));
+const r1 = add(ring(0.84, 0.05, CY, 1.9), 0, 0, 0, .6, 0.30);
+const r2 = add(ring(1.28, 0.04, CY, 1.3), 0, 0, 0, -.45, 0.24); r2.rotation.set(0.30, 0.22, 0);
+const r3 = add(ring(1.92, 0.07, AM, 1.1), 0, 0, 0, .25, 0.18); r3.rotation.set(-0.22, -0.26, 0);
+// 코일 8개
+const coil = new THREE.BoxGeometry(0.2, 0.34, 0.2);
+for (let i = 0; i < 8; i++) {
+  const a = (i / 8) * Math.PI * 2;
+  const m = new THREE.Mesh(coil, glow(i % 4 === 0 ? AM : CY, 1.5));
+  m.rotation.z = -a;
+  add(m, Math.cos(a) * 1.05, Math.sin(a) * 1.05, 0);
+}
+// 바깥 톱니 16개
+const tooth = new THREE.BoxGeometry(0.1, 0.22, 0.1);
+for (let i = 0; i < 16; i++) {
+  const a = (i / 16) * Math.PI * 2 + 0.2;
+  const m = new THREE.Mesh(tooth, glow(CY, .9));
+  m.rotation.z = -a;
+  add(m, Math.cos(a) * 2.24, Math.sin(a) * 2.24, i % 2 ? 0.14 : -0.14);
+}
+// 뒤쪽 격자 — 깊이를 준다
+const grid = new THREE.GridHelper(26, 26, CY, 0x0C3742);
+grid.material.transparent = true; grid.material.opacity = 0.16;
+grid.position.y = -3.2; scene.add(grid);
+
+/* ============================================================
+   2. 조작 상태 — 손과 마우스가 똑같이 여기에 쓴다
+   ============================================================ */
+const ctl = { yaw: 0, pitch: 0, scale: 1, exploded: 0, wantExplode: false, gesture: '-' };
+let spinIdle = 0;
+
+/* ---------- 마우스 (카메라가 없거나 꺼졌을 때) ---------- */
+let mDown = false, mx = 0, my = 0;
+addEventListener('pointerdown', e => { if (e.target === canvas) { mDown = true; mx = e.clientX; my = e.clientY; } });
+addEventListener('pointermove', e => {
+  if (!mDown) return;
+  ctl.yaw += (e.clientX - mx) * 0.007;
+  ctl.pitch = clamp(ctl.pitch + (e.clientY - my) * 0.006, -1.1, 1.1);
+  mx = e.clientX; my = e.clientY;
+});
+addEventListener('pointerup', () => { mDown = false; });
+addEventListener('wheel', e => { ctl.scale = clamp(ctl.scale * (e.deltaY > 0 ? 0.94 : 1.06), 0.45, 2.1); }, { passive: true });
+addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); ctl.wantExplode = !ctl.wantExplode; } });
+canvas.addEventListener('click', () => { if (!handsLive) ctl.wantExplode = !ctl.wantExplode; });
+
+/* ============================================================
+   3. 손 인식
+   ============================================================ */
+const video = $('cam'), skel = $('skel'), sctx = skel.getContext('2d');
+const BONES = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],
+               [9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+let landmarker = null, handsLive = false;
+const d2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const palmOf = h => {
+  let x = 0, y = 0;
+  for (const i of [0, 5, 9, 13, 17]) { x += h[i].x; y += h[i].y; }
+  return { x: 1 - x / 5, y: y / 5 };        // 거울 보정
+};
+const spanOf = h => Math.max(1e-4, d2(h[0], h[9]));
+const isPinch = h => d2(h[4], h[8]) / spanOf(h) < 0.62;
+const isFist = h => [[8,6],[12,10],[16,14],[20,18]]
+  .filter(([t, p]) => d2(h[t], h[0]) < d2(h[p], h[0])).length >= 3;
+
+async function startCamera() {
+  if (!isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+    $('s-cam').textContent = '사용 불가';
+    document.querySelector('.cam').style.display = 'none';
+    toast(location.protocol === 'file:'
+      ? '<b>이 페이지는 서버로 열어야 카메라가 켜집니다.</b><br>폴더에서 <code>./serve.sh</code> 를 실행하고 <code>http://localhost:8000/holo.html</code> 로 들어오세요. — 지금은 마우스로 조작할 수 있습니다 (드래그=회전, 휠=크기, 클릭=분해)'
+      : '<b>이 브라우저에서는 카메라를 쓸 수 없습니다.</b><br>마우스로 조작하세요 — 드래그=회전, 휠=크기, 클릭=분해');
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+    $('s-cam').textContent = '연결됨';
+    $('s-cam').className = 'on';
+  } catch (err) {
+    $('s-cam').textContent = '거부됨';
+    document.querySelector('.cam').style.display = 'none';
+    toast('<b>카메라를 쓸 수 없습니다.</b> (' + (err.name || 'error') + ')<br>마우스로 조작하세요 — 드래그=회전, 휠=크기, 클릭=분해');
+    throw err;
+  }
+
+  const fileset = await FilesetResolver.forVisionTasks('./vendor/mediapipe/wasm');
+  const opts = d => ({
+    baseOptions: { modelAssetPath: './vendor/mediapipe/hand_landmarker.task', delegate: d },
+    runningMode: 'VIDEO', numHands: 2,
+    minHandDetectionConfidence: 0.4, minTrackingConfidence: 0.4,
+  });
+  try { landmarker = await HandLandmarker.createFromOptions(fileset, opts('GPU')); }
+  catch { landmarker = await HandLandmarker.createFromOptions(fileset, opts('CPU')); }
+
+  $('toast').hidden = true;
+  toast('손을 카메라에 보여주세요. 엄지와 검지를 붙이면 <b>잡힙니다</b>.');
+  setTimeout(() => { $('toast').hidden = true; }, 6000);
+}
+
+/* ---------- 프레임마다 손을 읽고 조작값으로 옮긴다 ---------- */
+let lastTs = -1, grabbing = null, twoHand = null, fistArmed = true;
+
+let nextDetect = 0, lastVideoTime = -1, detectMs = 0;
+function readHands(now) {
+  if (!landmarker || video.readyState < 2) return;
+  if (now < nextDetect || video.currentTime === lastVideoTime) return;   // 같은 화면은 두 번 안 본다
+  lastVideoTime = video.currentTime;
+  const ts = Math.max(lastTs + 1, Math.round(now));
+  lastTs = ts;
+
+  let res;
+  const t = performance.now();
+  try { res = landmarker.detectForVideo(video, ts); } catch { return; }
+  // 인식 한 번이 오래 걸리는 기기에서는 간격을 그만큼 벌린다.
+  // 그래야 남는 시간에 화면이 그려져서, 느려도 멎지는 않는다.
+  const cost = performance.now() - t;
+  detectMs += (cost - detectMs) * 0.25;
+  nextDetect = performance.now() + Math.max(45, detectMs * 1.1);
+  const hands = res?.landmarks ?? [];
+  handsLive = hands.length > 0;
+  $('s-hands').textContent = hands.length;
+
+  drawSkeleton(hands);
+
+  // --- 주먹: 쥐었다 펴면 분해/조립이 뒤집힌다 ---
+  const anyFist = hands.some(isFist);
+  if (anyFist && fistArmed) { ctl.wantExplode = !ctl.wantExplode; fistArmed = false; }
+  if (!anyFist) fistArmed = true;
+
+  const pinched = hands.filter(isPinch).map(palmOf);
+
+  if (pinched.length >= 2) {
+    // --- 양손: 사이 간격으로 크기 ---
+    const gap = Math.hypot(pinched[0].x - pinched[1].x, pinched[0].y - pinched[1].y);
+    if (!twoHand) twoHand = { gap0: gap, s0: ctl.scale };
+    ctl.scale = clamp(twoHand.s0 * (gap / Math.max(twoHand.gap0, 1e-3)), 0.45, 2.1);
+    ctl.gesture = '양손 — 크기';
+    grabbing = null;
+  } else if (pinched.length === 1) {
+    // --- 한 손: 움직인 만큼 돌린다 ---
+    const p = pinched[0];
+    if (!grabbing) grabbing = { x: p.x, y: p.y };
+    ctl.yaw += (p.x - grabbing.x) * 7.5;
+    ctl.pitch = clamp(ctl.pitch + (p.y - grabbing.y) * 6.0, -1.1, 1.1);
+    grabbing.x = p.x; grabbing.y = p.y;
+    ctl.gesture = '집기 — 회전';
+    twoHand = null;
+  } else {
+    grabbing = null; twoHand = null;
+    ctl.gesture = anyFist ? '주먹' : (hands.length ? '손 인식됨' : '-');
+  }
+}
+
+function drawSkeleton(hands) {
+  const w = skel.width = skel.clientWidth, h = skel.height = skel.clientHeight;
+  sctx.clearRect(0, 0, w, h);
+  for (const hand of hands) {
+    const pinch = isPinch(hand), fist = isFist(hand);
+    sctx.strokeStyle = fist ? '#FF5A4A' : (pinch ? '#FFC24A' : '#35E8FF');
+    sctx.lineWidth = 1.6;
+    for (const [a, b] of BONES) {
+      sctx.beginPath();
+      sctx.moveTo(hand[a].x * w, hand[a].y * h);
+      sctx.lineTo(hand[b].x * w, hand[b].y * h);
+      sctx.stroke();
+    }
+    sctx.fillStyle = sctx.strokeStyle;
+    for (const p of hand) { sctx.beginPath(); sctx.arc(p.x * w, p.y * h, 2.2, 0, 7); sctx.fill(); }
+  }
+}
+
+/* ============================================================
+   4. 매 프레임 그리기
+   ============================================================ */
+let baseZ = 7.2;
+const resize = () => {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  // 좁은 쪽 시야각을 기준으로 물체가 통째로 들어오는 거리
+  const vFov = camera.fov * Math.PI / 180;
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+  baseZ = 2.9 / Math.sin(Math.min(vFov, hFov) / 2);
+};
+addEventListener('resize', resize); resize();
+
+const tmp = new THREE.Vector3();
+let fpsT = performance.now(), fpsN = 0, t0 = performance.now();
+
+function frame(now) {
+  requestAnimationFrame(frame);
+  const dt = Math.min((now - t0) / 1000, 0.05); t0 = now;
+
+  readHands(now);
+
+  // 분해 정도를 목표값 쪽으로 서서히 민다
+  ctl.exploded += ((ctl.wantExplode ? 1 : 0) - ctl.exploded) * Math.min(1, dt * 3.4);
+
+  if (!handsLive && !mDown) spinIdle += dt * 0.22;     // 손이 없으면 혼자 돈다
+  rig.rotation.y = ctl.yaw + spinIdle;
+  rig.rotation.x = ctl.pitch;
+  rig.scale.setScalar(rig.scale.x + (ctl.scale - rig.scale.x) * Math.min(1, dt * 7));
+
+  const e = ctl.exploded;
+  for (const q of parts) {
+    tmp.copy(q.home).addScaledVector(q.dir, e * 1.55);
+    q.mesh.position.copy(tmp);
+    if (q.grow) q.mesh.scale.setScalar(1 + q.grow * e);
+    if (q.spin) q.mesh.rotation.z = q.rot.z + now * 0.0004 * q.spin;
+  }
+
+  // 흩어진 동안에는 카메라를 뒤로 빼야 조각이 화면 밖으로 안 나간다
+  camera.position.z = baseZ * (1 + 0.34 * e);
+  renderer.render(scene, camera);
+
+  $('s-scale').textContent = ctl.scale.toFixed(2);
+  $('s-ges').textContent = ctl.gesture;
+  $('s-ges').className = ctl.gesture === '-' ? '' : 'on';
+  $('s-mode').textContent = ctl.wantExplode ? '분해' : '조립';
+  $('s-mode').className = ctl.wantExplode ? 'hot' : '';
+  $('s-ms').textContent = detectMs ? Math.round(detectMs) + 'ms' : '-';
+  if (++fpsN >= 20) { $('s-fps').textContent = Math.round(fpsN * 1000 / (now - fpsT)); fpsT = now; fpsN = 0; }
+}
+requestAnimationFrame(frame);
+
+startCamera().catch(() => {});
+</script>
