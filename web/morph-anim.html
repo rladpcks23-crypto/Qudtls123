@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>탕부하나님 레드라인 — 모션</title>
+<meta name="color-scheme" content="dark">
+<style>
+:root{
+  --ink:#0C0A08; --surf:#1B1611; --line:#3A3129;
+  --text:#F4F0EA; --muted:#9C9186; --faint:#6A6058;
+  --amber:#FFA51F; --red:#FF4438;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0; background:var(--ink); overflow:hidden; display:grid; place-items:center;
+  font:16px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR",system-ui,sans-serif;
+  color:var(--text); word-break:keep-all; -webkit-font-smoothing:antialiased}
+
+/* 1920x1080 짜리 무대를 화면에 맞게 통째로 축소한다.
+   안쪽 좌표는 전부 픽셀이라, 어떤 화면에서도 똑같은 그림이 나온다. */
+#stage{position:relative; width:1920px; height:1080px; background:var(--ink);
+  transform-origin:50% 50%; overflow:hidden; flex:none}
+#stage>*{position:absolute}
+
+#mark{background:var(--red); left:0; top:0; will-change:transform}
+.card{background:var(--surf); border:1px solid var(--line); border-radius:22px;
+  padding:40px 46px; left:0; top:0; will-change:transform,opacity;
+  display:flex; flex-direction:column; justify-content:center}
+.card h3{margin:0; font-size:38px; font-weight:800; letter-spacing:-.02em}
+.card p{margin:14px 0 0; font-size:26px; color:var(--muted)}
+
+.t{left:0; top:0; will-change:transform,opacity; white-space:pre-line}
+.kick{font-size:26px; font-weight:800; color:var(--amber); letter-spacing:.06em}
+.h1{font-size:122px; font-weight:800; letter-spacing:-.04em; line-height:1.06}
+.h2{font-size:72px; font-weight:800; letter-spacing:-.03em; line-height:1.15}
+.h3{font-size:46px; font-weight:800; letter-spacing:-.02em}
+.sub{font-size:30px; color:var(--muted)}
+.tiny{font-size:26px; color:var(--muted)}
+.num{font-size:230px; font-weight:800; color:var(--amber); letter-spacing:-.05em;
+  font-variant-numeric:tabular-nums; line-height:1}
+.cap{font-size:34px; color:var(--muted)}
+</style>
+
+<div id="stage">
+  <div id="mark"></div>
+
+  <div class="card" id="c1" style="width:520px;height:310px">
+    <h3>오늘의 한 장</h3><p>날짜에 맞춰 묵상 한 편이 열립니다.</p></div>
+  <div class="card" id="c3" style="width:520px;height:310px">
+    <h3>백업 코드</h3><p>기기를 바꿔도 코드 한 줄이면 그대로.</p></div>
+  <div class="card" id="c2" style="width:520px;height:310px">
+    <div id="c2small"><h3>365일</h3><p>하루 한 편, 1년치가 들어 있습니다.</p></div>
+    <div id="c2big" style="position:absolute;inset:0;display:grid;place-content:center;text-align:center">
+      <div class="num" id="num">0</div>
+      <div class="cap" id="cap" style="margin-top:18px">하루 한 편, 1년치 묵상</div>
+    </div>
+  </div>
+
+  <div class="t tiny" id="tA">레드라인</div>
+  <div class="t kick" id="kB">수험생을 위한 매일 묵상</div>
+  <div class="t h1"   id="tB">탕부하나님
+레드라인</div>
+  <div class="t h2"   id="tC">읽은 자리에 줄이 남는다.</div>
+  <div class="t sub"  id="sC">하루를 놓쳐도 이미 읽은 자리는 그대로 남습니다.</div>
+  <div class="t h3"   id="tD">앱이 하는 일</div>
+  <div class="t h3"   id="tE">숫자로</div>
+  <div class="t h1"   id="tF">하루 한 장.</div>
+  <div class="t sub"  id="sF">내일의 종이 아니라, 오늘을 사는 아들로.</div>
+</div>
+
+<script>
+const S = (a, b, t) => Math.max(0, Math.min(1, (t - a) / (b - a)));
+const E = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;   // 가속했다 감속
+const seg = (t, a, b) => E(S(a, b, t));
+const mix = (u, v, k) => u + (v - u) * k;
+const $ = id => document.getElementById(id);
+
+/* ── 빨간 표시 한 덩어리가 영상 내내 모양만 바꾼다 ───────────
+   [시각, 중심x, 중심y, 폭, 높이] — 사이는 부드럽게 이어 준다.        */
+const MARK = [
+  [0.0,  960, 470,   26,   26],
+  [2.2,  960, 470,   26,   26],
+  [4.2, 1380, 540,  330,  330],
+  [5.0, 1380, 540,  330,  330],
+  [7.0,  700, 606, 1100,   22],
+  [8.2,  700, 606, 1100,   22],
+  [10.0, 612, 992,  960,   12],
+  [12.4, 612, 992,  960,   12],
+  [14.0, 842, 992, 1420,   12],
+  [16.2, 842, 992, 1420,   12],
+  [18.4,1430, 700,  300,  300],
+  [24.0,1430, 700,  300,  300],
+];
+function markAt(t) {
+  let i = 0;
+  while (i < MARK.length - 2 && t > MARK[i + 1][0]) i++;
+  const a = MARK[i], b = MARK[i + 1];
+  const k = seg(t, a[0], b[0]);
+  return [1, 2, 3, 4].map(j => mix(a[j], b[j], k));
+}
+
+/** 글 한 덩어리: 나타났다 사라지고, 살짝 떠오른다 */
+function text(el, t, x, y, inT, outT, rise = 26) {
+  const i = S(inT, inT + 0.55, t), o = 1 - S(outT, outT + 0.4, t);
+  el.style.opacity = Math.min(E(i), o);
+  el.style.transform = `translate(${x}px, ${y + (1 - E(i)) * rise}px)`;
+}
+/** 카드 한 장 */
+function card(el, t, cx, cy, w, h, inT, outT) {
+  const i = E(S(inT, inT + 0.6, t)), o = 1 - S(outT, outT + 0.45, t);
+  el.style.opacity = Math.min(i, o);
+  el.style.width = w + 'px'; el.style.height = h + 'px';
+  el.style.transform = `translate(${cx - w / 2}px, ${cy - h / 2 + (1 - i) * 34}px)`;
+}
+
+const DUR = 23.5;
+
+function render(t) {
+  const [mx, my, mw, mh] = markAt(t);
+  const m = $('mark');
+  m.style.width = mw + 'px'; m.style.height = mh + 'px';
+  m.style.borderRadius = Math.min(mw, mh) / 2 + 'px';
+  m.style.transform = `translate(${mx - mw / 2}px, ${my - mh / 2}px)`;
+
+  text($('tA'), t,  860, 512,  0.3,  2.3);
+  text($('kB'), t,  150, 350,  2.6,  4.9);
+  text($('tB'), t,  150, 410,  2.8,  4.9);
+  text($('tC'), t,  150, 500,  5.3,  7.7);
+  text($('sC'), t,  152, 672,  5.7,  7.7);
+  text($('tD'), t,  150, 150,  8.4, 12.2);
+  text($('tE'), t,  150, 150, 12.6, 16.4);
+  text($('tF'), t,  150, 420, 17.2, 22.6);
+  text($('sF'), t,  154, 640, 17.7, 22.6);
+
+  // 카드 셋 → 가운데 하나만 남아 화면을 채운다
+  card($('c1'), t,  400, 600, 520, 310,  8.6, 12.0);
+  card($('c3'), t, 1520, 600, 520, 310,  8.9, 12.0);
+  const grow = seg(t, 12.2, 13.8);
+  card($('c2'), t,
+    960, mix(600, 600, grow),
+    mix(520, 1620, grow), mix(310, 560, grow), 8.75, 16.2);
+
+  // 큰 카드로 바뀌는 동안 안쪽 내용도 바뀐다
+  $('c2small').style.opacity = 1 - S(12.2, 12.9, t);
+  $('c2big').style.opacity = E(S(12.9, 13.6, t));
+  $('num').textContent = Math.round(365 * E(S(13.2, 15.0, t)));
+
+  return t;
+}
+
+/* 화면 크기에 맞춰 무대를 통째로 줄인다 */
+const fit = () => {
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  $('stage').style.transform = `scale(${s})`;
+};
+addEventListener('resize', fit); fit();
+
+/* 저장용으로 프레임을 한 장씩 뽑을 때 쓴다 (render-anim.js) */
+window.__seek = t => render(t);
+window.__dur = DUR;
+
+if (!location.search.includes('manual')) {
+  let t0 = null;
+  const loop = now => {
+    if (t0 === null) t0 = now;
+    render(((now - t0) / 1000) % DUR);           // 끝나면 처음부터 다시
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+} else {
+  render(0);
+}
+</script>
