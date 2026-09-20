@@ -3,3 +3,5 @@ android/dist/app-unsigned.apk
 
 # 발표자료 렌더 결과물 (QA용)
 deck/slide-*.jpg
+deck/m-*.jpg
+deck/morph-demo.pdf
