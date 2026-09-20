@@ -128,8 +128,12 @@ body{
 
 <p class="toast" id="toast" hidden></p>
 
+<script type="importmap">
+{"imports":{"three":"./vendor/three.module.min.js"}}
+</script>
+
 <script type="module">
-import * as THREE from './vendor/three.module.min.js';
+import * as THREE from 'three';
 import { FilesetResolver, HandLandmarker } from './vendor/mediapipe/vision_bundle.mjs';
 
 const $ = id => document.getElementById(id);

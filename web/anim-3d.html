@@ -39,8 +39,12 @@ body{margin:0; background:var(--ink); overflow:hidden; display:grid; place-items
   <div class="t sub"  id="s5">영상이라 어떤 파워포인트에서도 그대로 재생됩니다.</div>
 </div>
 
+<script type="importmap">
+{"imports":{"three":"./vendor/three.module.min.js"}}
+</script>
+
 <script type="module">
-import * as THREE from './vendor/three.module.min.js';
+import * as THREE from 'three';
 
 const $ = id => document.getElementById(id);
 const clamp = (n, a = 0, b = 1) => n < a ? a : n > b ? b : n;

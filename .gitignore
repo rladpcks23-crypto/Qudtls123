@@ -5,3 +5,6 @@ android/dist/app-unsigned.apk
 deck/slide-*.jpg
 deck/m-*.jpg
 deck/morph-demo.pdf
+web/models/*.glb
+web/models/*.stl
+deck/anim-parts.mp4

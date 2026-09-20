@@ -245,6 +245,10 @@ if (renderer) {
      파일을 두 번 눌러 여는 방식(file://)으로는 모델을 못 읽으니,
      폴더에서 python3 -m http.server 를 켜고 localhost 로 여세요.
 
+     주의: 이 파일은 three.js 를 통째로 품고 있어서 GLTFLoader 를 그냥 얹으면
+     three 가 두 벌이 된다. 모델을 쓸 때는 vendor 폴더를 그대로 불러오는
+     anim-parts.html 쪽 구조(import map + ./vendor/three.module.min.js)를 따르는 게 안전하다.
+
      import { GLTFLoader } from './vendor/loaders/GLTFLoader.js';
      const pieces = [];
      new GLTFLoader().load('./models/내모델.glb', (gltf) => {
