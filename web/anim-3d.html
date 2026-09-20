@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3D 모션 — 발표자료용</title>
+<meta name="color-scheme" content="dark">
+<style>
+:root{ --ink:#0A0908; --text:#F4F0EA; --muted:#9C9186; --amber:#FFA51F; --red:#FF4438; }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0; background:var(--ink); overflow:hidden; display:grid; place-items:center;
+  font:16px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR",system-ui,sans-serif;
+  color:var(--text); word-break:keep-all; -webkit-font-smoothing:antialiased}
+
+/* 1920x1080 무대를 통째로 줄여 맞춘다 — 어떤 화면에서도 같은 그림 */
+#stage{position:relative; width:1920px; height:1080px; flex:none; overflow:hidden;
+  background:var(--ink); transform-origin:50% 50%}
+#gl{position:absolute; inset:0; width:1920px; height:1080px; display:block}
+#scrim{position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(90deg,rgba(10,9,8,.92) 0%,rgba(10,9,8,.72) 34%,rgba(10,9,8,0) 62%)}
+.t{position:absolute; left:0; top:0; white-space:pre-line; will-change:transform,opacity}
+.kick{font-size:26px; font-weight:800; color:var(--amber); letter-spacing:.06em}
+.h1{font-size:108px; font-weight:800; letter-spacing:-.04em; line-height:1.07}
+.h2{font-size:62px; font-weight:800; letter-spacing:-.03em; line-height:1.15}
+.sub{font-size:30px; color:var(--muted)}
+</style>
+
+<div id="stage">
+  <canvas id="gl" width="1920" height="1080"></canvas>
+  <div id="scrim"></div>
+  <div class="t kick" id="k1">발표자료에 넣는 3D</div>
+  <div class="t h1"   id="t1">모델이
+움직입니다.</div>
+  <div class="t h2"   id="t2">27조각으로 흩어지고</div>
+  <div class="t h2"   id="t3">다른 모양으로 모입니다.</div>
+  <div class="t h2"   id="t4">그리고 제자리로.</div>
+  <div class="t h2"   id="t5">여기에 원하는
+3D 모델을 넣으면 됩니다.</div>
+  <div class="t sub"  id="s5">영상이라 어떤 파워포인트에서도 그대로 재생됩니다.</div>
+</div>
+
+<script type="module">
+import * as THREE from './vendor/three.module.min.js';
+
+const $ = id => document.getElementById(id);
+const clamp = (n, a = 0, b = 1) => n < a ? a : n > b ? b : n;
+const E = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const seg = (t, a, b) => E(clamp((t - a) / (b - a)));
+const DUR = 18;
+
+/* ── 무대 ─────────────────────────────────────────────── */
+const canvas = $('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+renderer.setPixelRatio(1);
+renderer.setSize(1920, 1080, false);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0A0908);
+const camera = new THREE.PerspectiveCamera(42, 1920 / 1080, 0.1, 100);
+const group = new THREE.Group();
+scene.add(group);
+
+scene.add(new THREE.HemisphereLight(0xFFF1DC, 0x181209, 1.0));
+const key  = new THREE.DirectionalLight(0xFFFFFF, 2.6); key.position.set(5, 7, 6);   scene.add(key);
+const rim  = new THREE.DirectionalLight(0xFFA51F, 1.6); rim.position.set(-6, -1, -5); scene.add(rim);
+const fill = new THREE.DirectionalLight(0x9FB6D8, 0.7); fill.position.set(-4, 4, -6); scene.add(fill);
+
+/* ── 조각 27개. 각자 세 자리를 기억한다 ────────────────── */
+const N = 3, SIZE = 0.58, GAP = 0.70, BURST = 2.2, BALL = 1.85;
+const half = (N - 1) / 2, total = N * N * N;
+const geo = new THREE.BoxGeometry(SIZE, SIZE, SIZE);
+const mat = c => new THREE.MeshStandardMaterial({ color: c, metalness: 0.05, roughness: 0.5 });
+const mBase = mat(0xE9E3D9), mWarm = mat(0xFFA51F), mHot = mat(0xFF4438);
+
+const golden = Math.PI * (3 - Math.sqrt(5));
+const pieces = [];
+let i = 0;
+for (let x = 0; x < N; x++) for (let y = 0; y < N; y++) for (let z = 0; z < N; z++) {
+  const home = new THREE.Vector3((x - half) * GAP, (y - half) * GAP, (z - half) * GAP);
+  const dir = home.lengthSq() < 1e-6 ? new THREE.Vector3(0, 1, 0) : home.clone().normalize();
+  const burst = home.clone().addScaledVector(dir, BURST);
+  const k = total === 1 ? 0 : i / (total - 1);
+  const sy = 1 - k * 2, sr = Math.sqrt(Math.max(0, 1 - sy * sy)), sa = golden * i;
+  const ball = new THREE.Vector3(Math.cos(sa) * sr, sy, Math.sin(sa) * sr).multiplyScalar(BALL);
+
+  const centre = x === 1 && y === 1 && z === 1;
+  const mesh = new THREE.Mesh(geo, centre ? mHot : (i % 7 === 3 ? mWarm : mBase));
+  group.add(mesh);
+  pieces.push({ mesh, home, burst, ball, spin: new THREE.Vector3(
+    (Math.random() - .5) * 2.6, (Math.random() - .5) * 2.6, (Math.random() - .5) * 2.6) });
+  i++;
+}
+
+/* ============================================================
+   ▼ 여기를 .glb 로 — 도형 대신 진짜 모델을 띄울 때
+   위 반복문을 지우고 아래를 살리면 된다. 이 페이지는 서버로 열리므로
+   (render-anim.js 가 띄워 준다) 모델 파일을 그대로 읽을 수 있다.
+
+   import { GLTFLoader } from './vendor/loaders/GLTFLoader.js';
+   const gltf = await new GLTFLoader().loadAsync('./models/내모델.glb');
+   const model = gltf.scene;
+   const bb = new THREE.Box3().setFromObject(model);
+   const s = 3 / bb.getSize(new THREE.Vector3()).length();
+   model.scale.setScalar(s);
+   model.position.sub(bb.getCenter(new THREE.Vector3()).multiplyScalar(s));
+   group.add(model);
+   ============================================================ */
+
+/* ── 글 ───────────────────────────────────────────────── */
+function text(el, t, x, y, inT, outT, rise = 26) {
+  const a = E(clamp((t - inT) / 0.55)), b = 1 - clamp((t - outT) / 0.4);
+  el.style.opacity = Math.min(a, b);
+  el.style.transform = `translate(${x}px, ${y + (1 - a) * rise}px)`;
+}
+
+/* ── 시간 t 하나로 모든 것이 정해진다 ──────────────────── */
+const tmp = new THREE.Vector3();
+function render(t) {
+  const out  = seg(t, 3.0, 6.2);    // 제자리 → 흩어짐
+  const ball = seg(t, 6.6,  9.8);   // 흩어짐 → 구
+  const back = seg(t, 10.4, 13.6);  // 구 → 제자리
+  const spread = Math.max(0, out - back);
+
+  for (const q of pieces) {
+    tmp.copy(q.home).lerp(q.burst, out).lerp(q.ball, ball).lerp(q.home, back);
+    q.mesh.position.copy(tmp);
+    q.mesh.rotation.set(q.spin.x * spread, q.spin.y * spread, q.spin.z * spread);
+  }
+
+  group.rotation.y = 0.62 + t * 0.30;
+  group.rotation.x = 0.26 + Math.sin(t * 0.22) * 0.16;
+  group.scale.setScalar(0.72 + seg(t, 0, 1.4) * 0.28);
+  group.position.x = 1.35;                       // 왼쪽 글자리를 비운다
+
+  const vFov = camera.fov * Math.PI / 180;
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+  const baseZ = 2.15 / Math.sin(Math.min(vFov, hFov) / 2);
+  camera.position.set(0, 0, baseZ * (1 + spread * 0.34 + seg(t, 14.0, 18) * 0.12));
+  camera.lookAt(0, 0, 0);
+
+  text($('k1'), t, 150, 380,  0.5,  3.2);
+  text($('t1'), t, 150, 440,  0.8,  3.2);
+  text($('t2'), t, 150, 480,  3.6,  6.3);
+  text($('t3'), t, 150, 480,  6.8,  9.8);
+  text($('t4'), t, 150, 480, 10.5, 13.9);
+  text($('t5'), t, 150, 430, 14.5, 17.7);
+  text($('s5'), t, 154, 610, 15.0, 17.7);
+
+  renderer.render(scene, camera);
+}
+
+/* 화면에 맞춰 무대를 줄인다 */
+const fit = () => {
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  $('stage').style.transform = `scale(${s})`;
+};
+addEventListener('resize', fit); fit();
+
+window.__seek = t => render(t);
+window.__dur = DUR;
+
+if (!location.search.includes('manual')) {
+  let t0 = null;
+  const loop = now => {
+    if (t0 === null) t0 = now;
+    render(((now - t0) / 1000) % DUR);
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+} else {
+  render(0);
+}
+</script>
