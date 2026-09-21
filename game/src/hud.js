@@ -10,7 +10,7 @@ export class HUD {
       hud: $('hud'), hp: $('hp').firstElementChild, ar: $('ar').firstElementChild,
       hpv: $('hpv'), arv: $('arv'), money: $('money'), stars: [...document.querySelectorAll('.star')],
       wname: $('wname'), wammo: $('wammo'), speedo: $('speedo'), kmh: $('kmh'), gear: $('gear'),
-      mission: $('mission'), mtitle: $('mtitle'), mtext: $('mtext'), mtimer: $('mtimer'),
+      duty: $('duty'), mission: $('mission'), mtitle: $('mtitle'), mtext: $('mtext'), mtimer: $('mtimer'),
       toast: $('toast'), prompt: $('prompt'), cross: $('crosshair'), hit: $('hitmark'),
       dmg: $('damage'), flash: $('flashwhite'),
     };
@@ -71,6 +71,14 @@ export class HUD {
     if (Math.abs(g.money - this.shownMoney) < 1) this.shownMoney = g.money;
     this.el.money.textContent = fmtMoney(this.shownMoney);
 
+    const t = g.taxi;
+    this.el.duty.classList.toggle('on', t.onDuty);
+    if (t.onDuty) {
+      this.el.duty.textContent = t.stage === 'pickup'
+        ? '영업 중 · 승객 픽업'
+        : '운행 중 · $' + t.fare.toLocaleString('en-US');
+    }
+
     const wl = g.wantedLevel;
     this.el.stars.forEach((s, i) => {
       s.classList.toggle('on', i < Math.ceil(wl));
@@ -111,7 +119,7 @@ export class HUD {
     c.fillStyle = '#0a1420'; c.fillRect(0, 0, W, H);
 
     c.translate(W / 2, H / 2);
-    c.rotate(-yaw);
+    c.rotate(yaw + Math.PI);          // world forward -> screen up, world right -> screen right
     c.translate(-p.x * sc, -p.z * sc);
 
     // land
@@ -146,7 +154,9 @@ export class HUD {
       if (v.dead) continue;
       const d = Math.hypot(v.pos.x - p.x, v.pos.y - p.z);
       if (d > view * .8) continue;
-      c.fillStyle = v.mode === 'police' ? '#2f7bff' : v === g.player.vehicle ? '#38e0ff' : '#7d8899';
+      c.fillStyle = v.mode === 'police' ? '#2f7bff'
+        : v === g.player.vehicle ? '#38e0ff'
+        : v.owned ? '#3ce08a' : '#7d8899';
       c.beginPath(); c.arc(v.pos.x * sc, v.pos.y * sc, v.mode === 'police' ? 5 : 3.5, 0, 7); c.fill();
     }
     for (const ped of g.peds) {
@@ -155,6 +165,16 @@ export class HUD {
       if (d > view * .8) continue;
       c.fillStyle = '#2f7bff';
       c.beginPath(); c.arc(ped.pos.x * sc, ped.pos.z * sc, 3, 0, 7); c.fill();
+    }
+
+    // shops are always on the map, like a GTA blip
+    for (const sh of g.city.shops) {
+      const hex = '#' + sh.color.toString(16).padStart(6, '0');
+      c.fillStyle = hex;
+      c.beginPath();
+      c.roundRect(sh.x * sc - 6, sh.z * sc - 6, 12, 12, 3);
+      c.fill();
+      c.strokeStyle = 'rgba(0,0,0,.55)'; c.lineWidth = 2; c.stroke();
     }
 
     // objective
@@ -182,8 +202,8 @@ export class HUD {
       if (dist > view / 2) {
         const a = Math.atan2(dx, dz) - yaw;
         const r = W / 2 - 16;
-        const x = W / 2 + Math.sin(a) * r, y = H / 2 - Math.cos(a) * r;
-        c.save(); c.translate(x, y); c.rotate(a);
+        const x = W / 2 - Math.sin(a) * r, y = H / 2 - Math.cos(a) * r;
+        c.save(); c.translate(x, y); c.rotate(-a);
         c.fillStyle = '#ffc63f';
         c.beginPath(); c.moveTo(0, -10); c.lineTo(7, 8); c.lineTo(-7, 8); c.closePath(); c.fill();
         c.restore();

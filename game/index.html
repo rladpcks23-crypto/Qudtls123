@@ -39,6 +39,10 @@
   #money{font-family:var(--display); font-variant-numeric:tabular-nums; font-weight:700; font-size:26px; color:var(--ok);
     text-shadow:0 2px 12px rgba(60,224,138,.35); letter-spacing:.5px}
 
+  #duty{font-family:var(--display); font-size:12px; letter-spacing:.14em; color:var(--gold);
+    text-transform:uppercase; display:none}
+  #duty.on{display:block}
+
   #bars{position:absolute; left:16px; bottom:16px; width:230px; padding:12px 14px; display:flex; flex-direction:column; gap:9px}
   .bar{height:9px; border-radius:6px; background:rgba(255,255,255,.09); overflow:hidden}
   .bar > i{display:block; height:100%; width:100%; border-radius:6px; transition:width .18s linear}
@@ -133,6 +137,33 @@
   #loadmsg{margin-top:10px; font-size:12px; color:var(--dim); font-variant-numeric:tabular-nums}
   .warn{margin-top:14px; font-size:12px; color:var(--gold)}
 
+  /* ---------- Shop / contract board ---------- */
+  #shop{background:rgba(3,6,12,.72); backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px)}
+  .shopcard{width:min(620px,94vw); max-height:86vh; display:flex; flex-direction:column}
+  .dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:8px;
+    vertical-align:baseline; background:var(--ok)}
+  .dot.bad{background:var(--hot)}
+  .shophead{display:flex; justify-content:space-between; align-items:flex-end; gap:16px}
+  .shoptag{font-family:var(--display); font-size:11px; letter-spacing:.26em; color:var(--accent); text-transform:uppercase}
+  .shopname{font-family:var(--display); font-size:30px; font-weight:700; line-height:1.1}
+  .shopcash{font-family:var(--display); font-size:22px; font-weight:700; color:var(--ok);
+    font-variant-numeric:tabular-nums}
+  .shopblurb{margin-top:8px; font-size:13px; color:var(--dim); line-height:1.5}
+  .shoplist{margin-top:18px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;
+    scrollbar-width:thin; scrollbar-color:rgba(140,190,255,.3) transparent}
+  .shoprow{display:flex; align-items:center; gap:14px; padding:12px 14px; border-radius:13px;
+    background:rgba(255,255,255,.04); border:1px solid var(--line)}
+  .shopinfo{flex:1; min-width:0}
+  .shopitem{font-size:15px; font-weight:700}
+  .shopdesc{font-size:12px; color:var(--dim); margin-top:2px}
+  .shoprow button{padding:10px 16px; font-size:14px; font-family:var(--display);
+    font-variant-numeric:tabular-nums; white-space:nowrap}
+  .shoprow button:disabled{background:rgba(255,255,255,.07); color:var(--dim); cursor:default; transform:none}
+  @media (max-width:560px){
+    .shopname{font-size:22px} .shoprow{padding:10px 12px; gap:10px}
+    .shoprow button{padding:9px 12px; font-size:13px}
+  }
+
   /* ---------- Mobile ---------- */
   #touch{position:fixed; inset:0; z-index:8; pointer-events:none; display:none}
   #touch.on{display:block}
@@ -161,6 +192,7 @@
   <div id="topleft">
     <div id="stars"><i class="star"></i><i class="star"></i><i class="star"></i><i class="star"></i><i class="star"></i></div>
     <div id="money">$0</div>
+    <div id="duty"></div>
   </div>
 
   <div id="minimap" class="panel"><canvas id="mmcv" width="360" height="360"></canvas></div>
@@ -199,13 +231,14 @@
   <div class="tbtn" id="tFire">발사</div>
   <div class="tbtn" id="tAct">F</div>
   <div class="tbtn" id="tBrake">브레이크</div>
+  <div class="tbtn" id="tDuty" style="bottom:210px">영업</div>
 </div>
 
 <div class="screen" id="start">
   <div class="card">
     <div class="logo">NEON<br>MILE</div>
-    <div class="sub">밤비 내리는 항구 도시에서 차를 훔치고, 배달을 뛰고, 경찰을 따돌리세요.<br>
-      완전한 오픈월드 · 실시간 낮밤 · 교통 시뮬레이션.</div>
+    <div class="sub">밤비 내리는 항구 도시에서 배달을 뛰고, 택시를 몰고, 번 돈으로 차와 총을 사세요.<br>
+      합법 일감과 뒷골목 계약 · 무기상 · 차량 대리점 · 실시간 낮밤 · 교통 시뮬레이션.</div>
 
     <div class="lbl">그래픽 품질</div>
     <div class="seg" id="qseg">
@@ -219,7 +252,8 @@
       <div><b>Space</b> 점프 / 핸드브레이크</div><div><b>F</b> 탑승 · 하차</div>
       <div><b>마우스</b> 시점</div><div><b>좌클릭</b> 발사</div>
       <div><b>우클릭</b> 조준</div><div><b>1~3</b> 무기 교체</div>
-      <div><b>E</b> 경적</div><div><b>Esc</b> 일시정지</div>
+      <div><b>E</b> 경적</div><div><b>T</b> 택시 영업</div>
+      <div><b>F</b> 상점 이용</div><div><b>Esc</b> 일시정지</div>
     </div>
 
     <div id="loadbar"><i></i></div>

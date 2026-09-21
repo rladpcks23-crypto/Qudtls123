@@ -151,6 +151,28 @@ export function glow() {
   return t;
 }
 
+/** Lit shop sign: big label on a dark board. */
+export function sign(text, sub, hex) {
+  const W = 512, H = 160;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#0a0d14'; g.fillRect(0, 0, W, H);
+  g.strokeStyle = hex; g.lineWidth = 6; g.strokeRect(9, 9, W - 18, H - 18);
+  g.fillStyle = hex;
+  g.font = '700 74px "Chakra Petch", system-ui, sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.shadowColor = hex; g.shadowBlur = 26;
+  g.fillText(text, W / 2, H / 2 - 12);
+  g.shadowBlur = 0;
+  g.font = '600 26px system-ui, sans-serif';
+  g.fillStyle = 'rgba(255,255,255,.72)';
+  g.fillText(sub, W / 2, H - 38);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
+
 export function smoke() {
   const S = 128, [c, g] = cv(S);
   const gr = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);

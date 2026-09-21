@@ -5,12 +5,12 @@ import { clamp, lerp, damp, wrapAngle, dampAngle, randRange, randInt, pick, make
 import { S, ROAD, N, HALF, LANE, roadLine, nearestLine } from './city.js';
 
 const TYPES = {
-  sedan:  { l: 4.5, w: 1.95, h: 1.42, power: 15.5, max: 34, mass: 1, cabin: [.52, .62, .1] },
-  sport:  { l: 4.4, w: 2.0,  h: 1.18, power: 23,   max: 48, mass: .85, cabin: [.45, .5, .05] },
-  suv:    { l: 4.9, w: 2.1,  h: 1.82, power: 15,   max: 32, mass: 1.35, cabin: [.6, .78, .04] },
-  van:    { l: 5.4, w: 2.15, h: 2.15, power: 13,   max: 27, mass: 1.6, cabin: [.72, .95, -.1] },
-  taxi:   { l: 4.6, w: 1.98, h: 1.5,  power: 15,   max: 33, mass: 1.05, cabin: [.54, .64, .08] },
-  police: { l: 4.7, w: 2.02, h: 1.48, power: 20,   max: 42, mass: 1.1, cabin: [.54, .64, .08] },
+  sedan:  { l: 4.5, w: 1.95, h: 1.42, power: 18, max: 38, mass: 1, cabin: [.52, .62, .1] },
+  sport:  { l: 4.4, w: 2.0,  h: 1.18, power: 27,   max: 55, mass: .85, cabin: [.45, .5, .05] },
+  suv:    { l: 4.9, w: 2.1,  h: 1.82, power: 17,   max: 35, mass: 1.35, cabin: [.6, .78, .04] },
+  van:    { l: 5.4, w: 2.15, h: 2.15, power: 15,   max: 30, mass: 1.6, cabin: [.72, .95, -.1] },
+  taxi:   { l: 4.6, w: 1.98, h: 1.5,  power: 17,   max: 36, mass: 1.05, cabin: [.54, .64, .08] },
+  police: { l: 4.7, w: 2.02, h: 1.48, power: 24,   max: 48, mass: 1.1, cabin: [.54, .64, .08] },
 };
 export const VEHICLE_NAMES = {
   sedan: '세단', sport: '스포츠카', suv: 'SUV', van: '밴', taxi: '택시', police: '순찰차'
@@ -225,8 +225,8 @@ export class Vehicle {
 
     const cx = roadLine(i), cz = roadLine(j);
     // keep to the right-hand lane
-    const tx = dx !== 0 ? cx - dx * 6 : cx + (dz > 0 ? LANE : -LANE);
-    const tz = dz !== 0 ? cz - dz * 6 : cz + (dx > 0 ? -LANE : LANE);
+    const tx = dx !== 0 ? cx - dx * 6 : cx + (dz > 0 ? -LANE : LANE);
+    const tz = dz !== 0 ? cz - dz * 6 : cz + (dx > 0 ? LANE : -LANE);
     this.aiTarget = new THREE.Vector2(tx, tz);
   }
 
@@ -297,7 +297,7 @@ export class Vehicle {
     vf += this.throttle * power * dt / T.mass;
     if (this.throttle < 0) vf += this.throttle * power * .55 * dt / T.mass;
     vf -= this.brake * 26 * dt * Math.sign(vf) * (Math.abs(vf) > .4 ? 1 : 0);
-    vf *= Math.exp(-(0.55 + Math.abs(vf) * 0.012) * dt);
+    vf *= Math.exp(-(0.12 + Math.abs(vf) * 0.004) * dt);
     vf = clamp(vf, -maxS * .42, maxS);
 
     // steering: less authority at speed, reversed when backing up
@@ -403,6 +403,22 @@ export class Vehicle {
       const f = on ? (Math.sin(t * 9) > 0 ? 1 : 0) : 0;
       ud.bar.red.material.opacity = on ? (f ? 1 : .15) : .15;
       ud.bar.blue.material.opacity = on ? (f ? .15 : 1) : .15;
+    }
+  }
+
+  /** Drops wheels, glass and shadows for distant cars; hides them entirely far away. */
+  setLod(d2, quality) {
+    const ud = this.mesh.userData;
+    const visible = d2 < 135 * 135;
+    if (this.mesh.visible !== visible) this.mesh.visible = visible;
+    if (!visible) return;
+    const detail = d2 < 52 * 52;
+    if (this._detail !== detail) {
+      this._detail = detail;
+      for (const w of ud.wheels) w.rim.visible = detail;
+      ud.glass.visible = detail || quality === 'high';
+      ud.trim.visible = detail || quality === 'high';
+      ud.body.castShadow = detail;
     }
   }
 

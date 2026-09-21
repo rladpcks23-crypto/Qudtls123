@@ -8,7 +8,7 @@ export class Input {
     this.pressed = new Set();      // edge-triggered, cleared each frame
     this.mouse = { dx: 0, dy: 0, left: false, right: false, leftEdge: false };
     this.locked = false;
-    this.touch = { active: false, mx: 0, my: 0, fire: false, act: false, brake: false, lookDx: 0, lookDy: 0 };
+    this.touch = { active: false, mx: 0, my: 0, fire: false, act: false, brake: false, duty: false };
     this.enabled = true;
 
     addEventListener('keydown', e => {
@@ -44,8 +44,9 @@ export class Input {
   }
 
   requestLock() {
-    if (this.touch.active) return;
-    this.dom.requestPointerLock && this.dom.requestPointerLock();
+    if (this.touch.active || this.locked || !this.dom.requestPointerLock) return;
+    const r = this.dom.requestPointerLock();
+    if (r && r.catch) r.catch(() => {});          // ignore "already locked" / user-gesture errors
   }
 
   initTouch() {
@@ -87,6 +88,7 @@ export class Input {
     bind(document.getElementById('tFire'), 'fire');
     bind(document.getElementById('tAct'), 'act');
     bind(document.getElementById('tBrake'), 'brake');
+    bind(document.getElementById('tDuty'), 'duty');
 
     // Drag anywhere on the right half of the screen to look around.
     let lookId = null, lx = 0, ly = 0;
@@ -126,6 +128,7 @@ export class Input {
   get sprint() { return this.down('ShiftLeft') || this.down('ShiftRight'); }
   get interact() { return this.hit('KeyF') || this.consumeTouchAct(); }
   consumeTouchAct() { if (this.touch.act) { this.touch.act = false; return true; } return false; }
+  consumeTouchDuty() { if (this.touch.duty) { this.touch.duty = false; return true; } return false; }
 
   endFrame() { this.pressed.clear(); this.mouse.dx = this.mouse.dy = 0; this.mouse.leftEdge = false; }
 }

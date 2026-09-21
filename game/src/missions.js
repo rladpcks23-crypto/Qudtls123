@@ -4,7 +4,13 @@ import { HALF } from './city.js';
 import { Vehicle } from './vehicle.js';
 import { Ped } from './npc.js';
 
-const TYPES = ['delivery', 'taxi', 'steal', 'hit'];
+const TYPES = {
+  delivery: { title: '급송 배달', legal: true,  blurb: '소포를 제한 시간 안에 배달합니다' },
+  taxi:     { title: '승객 운송', legal: true,  blurb: '승객을 태우고 목적지까지' },
+  steal:    { title: '차량 탈취', legal: false, blurb: '표시된 차를 훔쳐 인계 (수배 발생)' },
+  hit:      { title: '계약 타격', legal: false, blurb: '표적 제거 (수배 발생)' },
+};
+const TYPE_KEYS = Object.keys(TYPES);
 
 export class Missions {
   constructor(game) {
@@ -32,14 +38,57 @@ export class Missions {
   newJobSpot() {
     this.state = 'idle';
     this.job = null;
+    this.boardOpen = false;
     this.spot = this.spotFar(60);
-    this.g.setObjective(this.spot.x, this.spot.z, 0x38e0ff);
-    this.g.hud.mission('다음 일감', '파란 마커로 이동해 계약을 받으세요');
+    this.restoreMarker();
+    this.g.hud.mission('일감 게시판', '파란 마커로 이동해 계약을 고르세요');
   }
 
-  begin() {
+  /** Puts the blue job marker back after the taxi shift takes it over. */
+  restoreMarker() {
+    if (this.state === 'idle' && this.spot && !this.g.taxi.onDuty) {
+      this.g.setObjective(this.spot.x, this.spot.z, 0x38e0ff);
+      this.g.hud.mission('일감 게시판', '파란 마커로 이동해 계약을 고르세요');
+    }
+  }
+
+  /** Three offers, always including at least one legal job. */
+  makeOffers() {
     const g = this.g;
-    const type = pick(g.rng, TYPES);
+    const legal = TYPE_KEYS.filter(k => TYPES[k].legal);
+    const rest = TYPE_KEYS.filter(k => k !== legal[0]);
+    const keys = [pick(g.rng, legal)];
+    while (keys.length < 3) {
+      const k = pick(g.rng, rest);
+      if (!keys.includes(k)) keys.push(k);
+    }
+    return keys.map(k => {
+      const base = { delivery: 260, taxi: 420, steal: 900, hit: 1100 }[k];
+      const pay = Math.round(base * randRange(g.rng, .85, 1.35));
+      return { type: k, pay, ...TYPES[k] };
+    });
+  }
+
+  openBoard() {
+    const g = this.g;
+    this.boardOpen = true;
+    g.paused = true;
+    g.audio.engineOff();
+    const offers = this.makeOffers();
+    g.overlay.show(
+      { tag: 'JOBS', name: '일감 게시판', blurb: '합법 일감은 수배가 붙지 않습니다.' },
+      offers,
+      o => ({
+        title: `<i class="dot${o.legal ? '' : ' bad'}"></i>${o.legal ? '합법' : '불법'} · ${o.title}`,
+        desc: o.blurb,
+        note: '$' + o.pay.toLocaleString('en-US') + ' 수락',
+      }),
+      o => { g.overlay.close(); this.begin(o.type, o.pay); }
+    );
+  }
+
+  begin(type, pay) {
+    const g = this.g;
     this.state = 'active';
     this.leg = 0;
     this.target = null;
@@ -48,18 +97,18 @@ export class Missions {
     if (type === 'delivery') {
       const dst = this.spotFar(160);
       const d = Math.hypot(dst.x - g.player.pos.x, dst.z - g.player.pos.z);
-      this.job = { type, title: '급송 배달', text: '소포를 목적지까지 배달하세요', dst, pay: Math.round(240 + d * 1.6) };
+      this.job = { type, title: TYPES[type].title, text: '소포를 목적지까지 배달하세요', dst, pay: pay + Math.round(d * 0.9) };
       this.timer = 28 + d / 11;
     } else if (type === 'taxi') {
       const a = this.spotFar(70), b = this.spotFar(170);
-      this.job = { type, title: '승객 운송', text: '차를 타고 승객을 태우러 가세요', dst: a, dst2: b, pay: 420 };
+      this.job = { type, title: TYPES[type].title, text: '차를 타고 승객을 태우러 가세요', dst: a, dst2: b, pay };
       this.timer = 60 + Math.hypot(b.x - a.x, b.z - a.z) / 10;
     } else if (type === 'steal') {
       const a = this.spotFar(90), b = this.spotFar(150);
       this.car = new Vehicle(g, pick(g.rng, ['sport', 'suv', 'sport']), a.x, a.z,
         g.rng() * Math.PI * 2, 'parked', 0xe8e9ee);
       g.vehicles.push(this.car);
-      this.job = { type, title: '차량 탈취', text: '표시된 차량을 훔쳐 인계 장소로', dst: a, dst2: b, pay: 900 };
+      this.job = { type, title: TYPES[type].title, text: '표시된 차량을 훔쳐 인계 장소로', dst: a, dst2: b, pay };
       this.timer = 110;
     } else {
       const a = this.spotFar(110);
@@ -68,12 +117,12 @@ export class Missions {
       ped.human.materials[1].color.setHex(0x7a1220);
       g.peds.push(ped);
       this.target = ped;
-      this.job = { type, title: '계약 타격', text: '표적을 제거하세요 (수배 발생)', dst: a, pay: 1100 };
+      this.job = { type, title: TYPES[type].title, text: '표적을 제거하세요 (수배 발생)', dst: a, pay };
       this.timer = 100;
       g.addWanted(1.2);
     }
 
-    g.hud.toast(this.job.title, this.job.pay ? '보상 $' + this.job.pay : '');
+    g.hud.toast(this.job.title, '보상 $' + this.job.pay.toLocaleString('en-US'));
     g.audio.pickup();
     this.updateObjective();
   }
@@ -102,6 +151,7 @@ export class Missions {
   succeed() {
     const g = this.g;
     g.money += this.job.pay;
+    g.stats.earned += this.job.pay;
     this.completed++;
     g.hud.toast('미션 완료', '+$' + this.job.pay);
     g.audio.pickup();
@@ -130,7 +180,10 @@ export class Missions {
     const p = g.playerWorldPos();
 
     if (this.state === 'idle') {
-      if (Math.hypot(p.x - this.spot.x, p.z - this.spot.z) < 6) this.begin();
+      if (this.g.taxi.onDuty) return;                     // the shift owns the marker
+      const d = Math.hypot(p.x - this.spot.x, p.z - this.spot.z);
+      if (d > 14) this.boardOpen = false;                 // step away to re-open
+      if (d < 6 && !this.boardOpen && !this.g.overlay.open) this.openBoard();
       return;
     }
 

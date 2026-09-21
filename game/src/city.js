@@ -309,6 +309,8 @@ export class City {
       }
     }
 
+    this.placeShops();
+
     // ---- street furniture -------------------------------------------------
     for (let i = 0; i <= N; i++) {
       for (let j = 0; j <= N; j++) {
@@ -384,6 +386,53 @@ export class City {
     this.buildRoadSpawns();
   }
 
+  /** Three fixed storefronts: gun shop, dealership, convenience store. */
+  placeShops() {
+    const rng = this.rng;
+    const built = this.blocks.filter(b => b.kind === 'built');
+    const defs = [
+      { key: 'gun', label: 'AMMU', sub: '무기상', hex: '#ff2e6a', color: 0xff2e6a },
+      { key: 'car', label: 'MOTORS', sub: '차량 대리점', hex: '#38e0ff', color: 0x38e0ff },
+      { key: 'store', label: '24H', sub: '편의점', hex: '#3ce08a', color: 0x3ce08a },
+    ];
+    const glowTex = TX.glow();
+    this.shops = [];
+    for (const d of defs) {
+      let site = null;
+      for (let i = 0; i < 80; i++) {
+        const b = pick(rng, built);
+        const cx = (b.x0 + b.x1) / 2;
+        const far = this.shops.every(s => Math.hypot(s.x - cx, s.z - (b.z0 - 4)) > 170);
+        if (far) { site = b; break; }
+      }
+      site = site || pick(rng, built);
+      const x = (site.x0 + site.x1) / 2, z = site.z0 - 4.2;
+
+      const sign = new THREE.Mesh(
+        new THREE.PlaneGeometry(9, 2.8),
+        new THREE.MeshBasicMaterial({ map: TX.sign(d.label, d.sub, d.hex), transparent: true, toneMapped: false })
+      );
+      sign.position.set(x, 6.2, site.z0 - 0.35);
+      sign.rotation.y = Math.PI;
+      this.scene.add(sign);
+
+      const ring = new THREE.Mesh(
+        new THREE.PlaneGeometry(13, 13),
+        new THREE.MeshBasicMaterial({
+          map: glowTex, color: d.color, transparent: true, opacity: .34,
+          blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
+        })
+      );
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.set(x, 0.07, z);
+      ring.renderOrder = 3;
+      this.scene.add(ring);
+
+      this.lamps.push({ x, y: 6.2, z: site.z0 - 0.5, color: d.color, size: 5, dim: true });
+      this.shops.push({ key: d.key, x, z, color: d.color, deliver: { x, z: site.z0 - 12 } });
+    }
+  }
+
   /** Warm pools of light on the tarmac under each street lamp. */
   buildLightPools(tex) {
     const pos = [], uv = [], idx = [];
@@ -446,10 +495,10 @@ export class City {
     for (let i = 0; i <= N; i++) {
       const c = roadLine(i);
       for (let t = -HALF + 20; t < HALF - 20; t += 30) {
-        this.spawnRoadPoints.push({ x: c + LANE, z: t, dir: [0, 1] });
-        this.spawnRoadPoints.push({ x: c - LANE, z: t, dir: [0, -1] });
-        this.spawnRoadPoints.push({ x: t, z: c - LANE, dir: [1, 0] });
-        this.spawnRoadPoints.push({ x: t, z: c + LANE, dir: [-1, 0] });
+        this.spawnRoadPoints.push({ x: c - LANE, z: t, dir: [0, 1] });
+        this.spawnRoadPoints.push({ x: c + LANE, z: t, dir: [0, -1] });
+        this.spawnRoadPoints.push({ x: t, z: c + LANE, dir: [1, 0] });
+        this.spawnRoadPoints.push({ x: t, z: c - LANE, dir: [-1, 0] });
       }
     }
   }

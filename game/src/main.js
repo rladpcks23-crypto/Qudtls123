@@ -14,18 +14,22 @@ import { HUD } from './hud.js';
 import { Input } from './input.js';
 import { Audio } from './audio.js';
 import { Missions } from './missions.js';
+import { CATALOG, Overlay } from './shop.js';
 import * as TX from './textures.js';
 
 const QUALITY = {
-  low:  { shadow: 0,    bloom: false, cars: 14, peds: 12, pixel: 0.75, far: 420, aa: false },
-  med:  { shadow: 2048, bloom: true,  cars: 22, peds: 20, pixel: 1.0,  far: 700, aa: true },
-  high: { shadow: 4096, bloom: true,  cars: 34, peds: 30, pixel: 1.0,  far: 1100, aa: true },
+  low:  { shadow: 0,    bloom: false, cars: 12, peds: 10, pixel: 0.7,  far: 380, aa: false, shadowEvery: 0, sunBox: 0 },
+  med:  { shadow: 1536, bloom: true,  cars: 18, peds: 16, pixel: 0.9,  far: 620, aa: false, shadowEvery: 2, sunBox: 68 },
+  high: { shadow: 3072, bloom: true,  cars: 30, peds: 26, pixel: 1.0,  far: 1000, aa: true, shadowEvery: 1, sunBox: 95 },
 };
 
+// Distances (squared) at which detail is dropped.
+const LOD = { pedHide: 90 * 90, pedSlow: 42 * 42, carHide: 135 * 135, carSlow: 70 * 70, carDetail: 52 * 52 };
+
 const WEAPONS = [
-  { key: 'fist',   name: '주먹',     dmg: 18, rate: .42, range: 2.2, magSize: 0,  spread: 0,    auto: false, ammo: Infinity, mag: Infinity },
-  { key: 'pistol', name: '9mm 권총', dmg: 26, rate: .17, range: 75,  magSize: 15, spread: .014, auto: false, ammo: 90,  mag: 15 },
-  { key: 'smg',    name: 'SMG',      dmg: 17, rate: .075, range: 65, magSize: 30, spread: .032, auto: true,  ammo: 180, mag: 30 },
+  { key: 'fist',   name: '주먹',     dmg: 18, rate: .42, range: 2.2, magSize: 0,  spread: 0,    auto: false, ammo: Infinity, mag: Infinity, owned: true },
+  { key: 'pistol', name: '9mm 권총', dmg: 26, rate: .17, range: 75,  magSize: 15, spread: .014, auto: false, ammo: 30,  mag: 15, owned: true },
+  { key: 'smg',    name: 'SMG',      dmg: 17, rate: .075, range: 65, magSize: 30, spread: .032, auto: true,  ammo: 0,   mag: 0,  owned: false },
 ];
 
 const DAY_LENGTH = 300;   // seconds for a full day/night cycle
@@ -52,7 +56,9 @@ class Game {
     this.aiming = false;
     this.camYaw = 0; this.camPitch = 0.22; this.camDist = 6.2;
     this.mapYaw = 0;
-    this.stats = { kills: 0, crashes: 0, distance: 0 };
+    this.stats = { kills: 0, crashes: 0, distance: 0, fares: 0, earned: 0 };
+    this.taxi = { onDuty: false, stage: 'pickup', point: null, fare: 0, rideT: 0 };
+    this.ownedCars = [];
   }
 
   get wantedLevel() { return clamp(this.wanted, 0, 5); }
@@ -70,14 +76,20 @@ class Game {
     const renderer = this.renderer = new THREE.WebGLRenderer({
       antialias: this.q.aa, powerPreference: 'high-performance', stencil: false
     });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2) * this.q.pixel);
+    this.basePixel = Math.min(devicePixelRatio, 2);
+    this.renderScale = this.q.pixel;
+    this.maxScale = this.q.pixel;
+    renderer.setPixelRatio(this.basePixel * this.renderScale);
     renderer.setSize(innerWidth, innerHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
     if (this.q.shadow) {
       renderer.shadowMap.enabled = true;
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      renderer.shadowMap.type = this.qname === 'high' ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+      // Refreshing the shadow map every other frame halves its cost and is
+      // invisible at these camera speeds.
+      renderer.shadowMap.autoUpdate = this.q.shadowEvery <= 1;
     }
     document.body.appendChild(renderer.domElement);
 
@@ -102,7 +114,7 @@ class Game {
     this.audio = new Audio();
     this.hud = new HUD();
     this.input = new Input(renderer.domElement);
-    this.input.onUnlock = () => { if (!this.paused && this.started) this.setPaused(true); };
+    this.input.onUnlock = () => { if (!this.paused && this.started && !(this.overlay && this.overlay.open)) this.setPaused(true); };
 
     this.spawnPlayer();
     for (let i = 0; i < this.q.cars; i++) this.spawnTrafficCar();
@@ -121,6 +133,11 @@ class Game {
     }
 
     this.missions = new Missions(this);
+    this.overlay = new Overlay(this);
+    this.overlay.onClose = () => { this.paused = false; this.clock.getDelta(); };
+    addEventListener('keydown', e => {
+      if (e.code === 'Escape' && this.overlay.open) this.overlay.close();
+    });
     this.updateEnv(true);
 
     addEventListener('resize', () => this.resize());
@@ -183,8 +200,8 @@ class Game {
       this.sun.castShadow = true;
       const s = this.sun.shadow;
       s.mapSize.set(this.q.shadow, this.q.shadow);
-      s.camera.near = 1; s.camera.far = 420;
-      const d = 95;
+      s.camera.near = 1; s.camera.far = 300;
+      const d = this.q.sunBox;
       s.camera.left = -d; s.camera.right = d; s.camera.top = d; s.camera.bottom = -d;
       s.bias = -0.0009; s.normalBias = 0.05;
     }
@@ -286,7 +303,7 @@ class Game {
     const v = new Vehicle(this, 'police', p.x, p.z, yaw, 'police');
     const cop = new Human({ rng: this.rng, shirt: 0x1b2a4a, pants: 0x161d2c, cap: 0x14203a });
     v.mesh.add(cop.root);
-    cop.root.position.set(-0.4, 0.16, 0.15);
+    cop.root.position.set(0.4, 0.16, 0.15);
     v.driverModel = cop;
     this.vehicles.push(v);
     return v;
@@ -313,8 +330,7 @@ class Game {
   }
 
   /** Marches a ray; returns {type, point, normal, obj} or null. */
-  raycastWorld(origin, dir, range, ignorePlayer = true) {
-    const step = 0.3;
+  raycastWorld(origin, dir, range, ignorePlayer = true, step = 0.3, worldOnly = false) {
     const p = origin.clone();
     const d = dir.clone().normalize();
     for (let t = 0; t < range; t += step) {
@@ -323,7 +339,7 @@ class Game {
         return { type: 'ground', point: p.clone(), normal: new THREE.Vector3(0, 1, 0) };
       }
       // peds
-      for (const ped of this.peds) {
+      if (!worldOnly) for (const ped of this.peds) {
         if (ped.dead) continue;
         const dx = p.x - ped.pos.x, dz = p.z - ped.pos.z;
         if (dx * dx + dz * dz < 0.2 && p.y > 0.1 && p.y < 1.85) {
@@ -331,7 +347,7 @@ class Game {
         }
       }
       // vehicles
-      for (const v of this.vehicles) {
+      if (!worldOnly) for (const v of this.vehicles) {
         const dx = p.x - v.pos.x, dz = p.z - v.pos.y;
         if (dx * dx + dz * dz > 12) continue;
         if (this.player.vehicle === v && ignorePlayer) continue;
@@ -361,7 +377,13 @@ class Game {
   }
 
   setWeapon(i) {
-    this.weaponIndex = clamp(i, 0, this.weapons.length - 1);
+    i = clamp(i, 0, this.weapons.length - 1);
+    if (!this.weapons[i].owned) {
+      this.hud.toast('미보유 무기', CATALOG.gun.name + '에서 구매하세요');
+      this.audio.blip(160, .1, 'square', .12, .8);
+      return;
+    }
+    this.weaponIndex = i;
     const w = this.weapons[this.weaponIndex];
     this.player.human.attachWeapon(makeWeaponMesh(w.key));
   }
@@ -464,7 +486,7 @@ class Game {
     v.driverModel && (v.driverModel.root.visible = false);
     v.mesh.add(p.human.root);
     const off = v.T.l * (v.type === 'van' ? 0.06 : 0.02);
-    p.human.root.position.set(-0.38, 0.2, off);
+    p.human.root.position.set(0.38, 0.2, off);
     p.human.root.rotation.set(0, 0, 0);
     this.camDist = 9.2;
     this.audio.start();
@@ -481,9 +503,9 @@ class Game {
     v.throttle = 0; v.brake = 1; v.steer = 0;
     v.mesh.remove(p.human.root);
     this.scene.add(p.human.root);
-    // step out to the left of the car
+    // step out on the driver's side
     const side = new THREE.Vector3(Math.cos(v.yaw), 0, -Math.sin(v.yaw));
-    const out = new THREE.Vector3(v.pos.x, 0, v.pos.y).addScaledVector(side, -(v.T.w / 2 + 0.9));
+    const out = new THREE.Vector3(v.pos.x, 0, v.pos.y).addScaledVector(side, v.T.w / 2 + 0.9);
     const probe = { x: out.x, z: out.z };
     this.city.resolveCircle(probe, 0.5, 1.0);
     p.pos.set(probe.x, 0, probe.z);
@@ -505,6 +527,152 @@ class Game {
       if (d < bd) { bd = d; best = v; }
     }
     return best;
+  }
+
+  // ---------------------------------------------------------------- shops
+  nearestShop(r = 6) {
+    const p = this.player.pos;
+    for (const s of this.city.shops) {
+      if (Math.hypot(s.x - p.x, s.z - p.z) < r) return s;
+    }
+    return null;
+  }
+
+  openShop(shop) {
+    const cat = CATALOG[shop.key];
+    this.shopAt = shop;
+    this.paused = true;
+    this.audio.engineOff();
+    this.overlay.show({ tag: cat.tag, name: cat.name, blurb: cat.blurb }, cat.items,
+      it => this.priceRow(it), it => this.buy(it));
+  }
+
+  priceRow(it) {
+    const w = it.w != null ? this.weapons[it.w] : null;
+    let note = null, disabled = this.money < it.price;
+    if (it.kind === 'weapon' && w.owned) { note = '보유 중'; disabled = true; }
+    else if (it.kind === 'ammo' && !w.owned) { note = '무기 미보유'; disabled = true; }
+    else if (it.kind === 'ammo' && w.ammo + w.mag >= 400) { note = '탄약 가득'; disabled = true; }
+    else if (it.kind === 'armor' && this.player.armor >= 100) { note = '착용 중'; disabled = true; }
+    else if (it.kind === 'health' && this.player.health >= 100) { note = '체력 가득'; disabled = true; }
+    else if (it.kind === 'car' && this.ownedCars.length >= 3) { note = '차고 가득'; disabled = true; }
+    return { title: it.name, desc: it.desc, price: it.price, note, disabled };
+  }
+
+  buy(it) {
+    if (this.money < it.price) return;
+    const w = it.w != null ? this.weapons[it.w] : null;
+    if (it.kind === 'weapon') {
+      if (w.owned) return;
+      w.owned = true; w.mag = w.magSize; w.ammo = w.magSize * 2;
+      this.setWeapon(it.w);
+    } else if (it.kind === 'ammo') {
+      if (!w.owned) return;
+      w.ammo += it.amount;
+    } else if (it.kind === 'armor') {
+      if (this.player.armor >= 100) return;
+      this.player.armor = 100;
+    } else if (it.kind === 'health') {
+      if (this.player.health >= 100) return;
+      this.player.health = clamp(this.player.health + it.amount, 0, 100);
+    } else if (it.kind === 'car') {
+      if (this.ownedCars.length >= 3) return;
+      if (!this.deliverCar(it.car)) return;
+    }
+    this.money -= it.price;
+    this.audio.pickup();
+  }
+
+  deliverCar(type) {
+    const shop = this.shopAt || this.city.shops.find(s => s.key === 'car');
+    if (!shop) return false;
+    const spot = shop.deliver;
+    const v = new Vehicle(this, type, spot.x + randRange(this.rng, -3, 3), spot.z, Math.PI, 'parked');
+    v.owned = true;
+    this.vehicles.push(v);
+    this.ownedCars.push(v);
+    this.hud.toast('차량 인도 완료', VEHICLE_NAMES[type] + ' · 매장 앞');
+    return true;
+  }
+
+  // ------------------------------------------------------- taxi work (legal)
+  toggleTaxi() {
+    const v = this.player.vehicle;
+    if (!v || v.type !== 'taxi') {
+      this.hud.toast('택시가 필요합니다', '택시를 타고 T를 누르세요');
+      return;
+    }
+    if (this.missions.state === 'active') {
+      this.hud.toast('계약 진행 중', '계약을 마친 뒤 영업하세요');
+      return;
+    }
+    this.taxi.onDuty = !this.taxi.onDuty;
+    if (this.taxi.onDuty) {
+      this.taxi.stage = 'pickup'; this.taxi.point = null; this.taxi.fare = 0;
+      this.hud.toast('영업 시작', '승객을 태우러 가세요');
+    } else {
+      this.hud.toast('영업 종료', this.taxi.stage === 'drop' ? '승객이 내렸습니다' : '');
+      this.taxi.point = null;
+      this.setObjective(null);
+      this.missions.restoreMarker();
+    }
+    this.audio.pickup();
+  }
+
+  taxiPoint(min, max) {
+    const p = this.playerWorldPos();
+    const pts = this.city.sidewalkPoints;
+    for (let i = 0; i < 80; i++) {
+      const c = pick(this.rng, pts);
+      const d = Math.hypot(c.x - p.x, c.z - p.z);
+      if (d > min && d < max) return { x: c.x, z: c.z };
+    }
+    return null;
+  }
+
+  updateTaxi(dt) {
+    const t = this.taxi;
+    if (!t.onDuty) return;
+    const v = this.player.vehicle;
+    if (!v || v.type !== 'taxi' || v.dead) {
+      t.onDuty = false; t.point = null;
+      this.setObjective(null); this.missions.restoreMarker();
+      this.hud.toast('영업 종료', '택시에서 내렸습니다');
+      return;
+    }
+    if (!t.point) {
+      t.point = this.taxiPoint(60, 260) || this.taxiPoint(20, 600);
+      if (!t.point) return;
+      this.setObjective(t.point.x, t.point.z, t.stage === 'pickup' ? 0x3ce08a : 0xffc63f);
+    }
+    const p = this.playerWorldPos();
+    const d = Math.hypot(p.x - t.point.x, p.z - t.point.z);
+    const stopped = Math.abs(v.forwardSpeed) < 3;
+
+    if (t.stage === 'pickup') {
+      if (d < 8 && stopped) {
+        const drop = this.taxiPoint(140, 420) || this.taxiPoint(40, 800);
+        if (!drop) return;
+        t.stage = 'drop'; t.point = drop; t.rideT = 0;
+        const dist = Math.hypot(drop.x - p.x, drop.z - p.z);
+        t.fare = Math.round(45 + dist * 1.1);
+        this.setObjective(drop.x, drop.z, 0xffc63f);
+        this.hud.toast('승객 탑승', '요금 $' + t.fare);
+        this.audio.pickup();
+      }
+    } else {
+      t.rideT += dt;
+      if (d < 8 && stopped) {
+        const par = 14 + Math.hypot(t.point.x - p.x, t.point.z - p.z) / 12;
+        const quick = t.rideT < par ? Math.round(t.fare * 0.15) : 0;
+        const pay = t.fare + quick;
+        this.money += pay;
+        this.stats.fares++; this.stats.earned += pay;
+        this.hud.toast('운행 완료', '+$' + pay + (quick ? ' (신속 보너스)' : ''));
+        this.audio.pickup();
+        t.stage = 'pickup'; t.point = null; t.fare = 0;
+      }
+    }
   }
 
   // ------------------------------------------------------------- shooting
@@ -610,6 +778,34 @@ class Game {
     this.loop();
   }
 
+  /** Keeps the frame budget by trading resolution, then bloom, for speed. */
+  adapt(dt) {
+    this._accT = (this._accT || 0) + dt;
+    this._accN = (this._accN || 0) + 1;
+    if (this._accN < 30) return;
+    const avg = (this._accT / this._accN) * 1000;
+    this.fps = Math.round(1000 / avg);
+    this._accT = 0; this._accN = 0;
+    if (this._warm === undefined) { this._warm = 0; }
+    if (this._warm < 2) { this._warm++; return; }      // ignore the first frames
+
+    if (avg > 23 && this.renderScale > 0.55) {
+      this.setRenderScale(Math.max(0.55, this.renderScale - 0.1));
+    } else if (avg > 30 && this.composer) {
+      this.composer = null;                             // bloom is the next thing to go
+      this.hud.toast('성능 모드', '블룸 끔');
+    } else if (avg < 13.5 && this.renderScale < this.maxScale) {
+      this.setRenderScale(Math.min(this.maxScale, this.renderScale + 0.05));
+    }
+  }
+
+  setRenderScale(v) {
+    this.renderScale = v;
+    const pr = this.basePixel * v;
+    this.renderer.setPixelRatio(pr);
+    if (this.composer) { this.composer.setPixelRatio(pr); this.composer.setSize(innerWidth, innerHeight); }
+  }
+
   setPaused(p) {
     this.paused = p;
     document.getElementById('pause').classList.toggle('hide', !p);
@@ -618,7 +814,10 @@ class Game {
       const m = this.missions;
       document.getElementById('pstats').innerHTML =
         `소지금 ${fmtMoney(this.money)} · 완료한 일 ${m.completed}건<br>` +
-        `제압 ${this.stats.kills} · 사고 ${this.stats.crashes} · 수배 ${Math.ceil(this.wantedLevel)}★`;
+        `택시 운행 ${this.stats.fares}건 (${fmtMoney(this.stats.earned)}) · 보유 차량 ${this.ownedCars.length}대<br>` +
+        `제압 ${this.stats.kills} · 사고 ${this.stats.crashes} · 수배 ${Math.ceil(this.wantedLevel)}★<br>` +
+        `<span style="opacity:.6">${this.fps || '--'} fps · 렌더 배율 ${Math.round(this.renderScale * 100)}%` +
+        `${this.composer ? '' : ' · 블룸 꺼짐'}</span>`;
     } else {
       this.input.requestLock();
       this.clock.getDelta();
@@ -630,6 +829,8 @@ class Game {
     const dt = Math.min(this.clock.getDelta(), 0.05);
     if (this.paused) { this.render(); return; }
     this.time += dt;
+    this.frame = (this.frame || 0) + 1;
+    this.adapt(dt);
     this.update(dt);
     this.render();
     this.input.endFrame();
@@ -643,6 +844,7 @@ class Game {
     if (inp.hit('Digit2')) this.setWeapon(1);
     if (inp.hit('Digit3')) this.setWeapon(2);
     if (inp.hit('KeyR')) this.reload();
+    if (inp.hit('KeyT') || inp.consumeTouchDuty()) this.toggleTaxi();
 
     // ---- camera look
     const sens = 0.0022;
@@ -669,12 +871,31 @@ class Game {
 
     this.tryFire(dt);
     this.updateWanted(dt);
+    this.updateTaxi(dt);
 
-    for (const v of this.vehicles) v.update(dt, this.city);
-    for (const ped of this.peds) ped.update(dt, this.time);
+    const pp = this.playerWorldPos();
+    const f = this.frame;
+    for (const v of this.vehicles) {
+      const d2 = (v.pos.x - pp.x) ** 2 + (v.pos.y - pp.z) ** 2;
+      v.setLod(d2, this.qname);
+      if (v === this.player.vehicle || d2 < LOD.carSlow) v.update(dt, this.city);
+      else if (f % 2 === 0) v.update(dt * 2, this.city);      // half rate far away
+    }
+    for (const ped of this.peds) {
+      const d2 = (ped.pos.x - pp.x) ** 2 + (ped.pos.z - pp.z) ** 2;
+      const vis = d2 < LOD.pedHide;
+      if (ped.human.root.visible !== vis) ped.human.root.visible = vis;
+      ped.human.setShadow(vis && d2 < LOD.pedSlow);
+      if (!vis) { if (f % 4 === 0) ped.update(dt * 4, this.time); continue; }
+      if (d2 > LOD.pedSlow) { if (f % 2 === 0) ped.update(dt * 2, this.time); }
+      else ped.update(dt, this.time);
+    }
     this.streamEntities(dt);
     this.missions.update(dt);
 
+    if (this.q.shadow && this.q.shadowEvery > 1) {
+      this.renderer.shadowMap.needsUpdate = this.frame % this.q.shadowEvery === 0;
+    }
     this.fx.update(dt, this.time);
     this.updateCamera(dt);
     this.updateAudio(dt);
@@ -685,12 +906,13 @@ class Game {
     const p = this.player, inp = this.input;
     const ax = inp.axis();
     const sprint = inp.sprint && !this.aiming;
-    const maxSpeed = this.aiming ? 2.0 : sprint ? 6.1 : 3.1;
+    const maxSpeed = this.aiming ? 2.2 : sprint ? 7.2 : 3.5;
 
     // camera-relative movement
+    // forward = (sin, cos); right = (-cos, sin)
     const sy = Math.sin(this.camYaw), cy = Math.cos(this.camYaw);
-    let dx = ax.x * cy + ax.y * sy;
-    let dz = -ax.x * sy + ax.y * cy;
+    let dx = -ax.x * cy + ax.y * sy;
+    let dz = ax.x * sy + ax.y * cy;
     const mag = Math.hypot(dx, dz);
     const target = mag > 0.05 ? maxSpeed : 0;
     p.speed = damp(p.speed, target, 9, dt);
@@ -736,11 +958,21 @@ class Game {
     p.human.update(dt, { speed: p.speed, aiming: this.aiming, pitch: this.camPitch });
     if (p.human.stepped && p.onGround) this.audio.step();
 
+    const act = this.input.interact;
+
+    // a storefront takes priority over a parked car
+    const shop = this.nearestShop();
+    if (shop && !this.aiming) {
+      this.hud.prompt('<kbd>F</kbd> ' + CATALOG[shop.key].name + ' 이용');
+      if (act) this.openShop(shop);
+      return;
+    }
+
     // enter a vehicle
     const near = this.nearestVehicle();
     if (near && !this.aiming) {
       this.hud.prompt('<kbd>F</kbd> ' + (VEHICLE_NAMES[near.type] || '차량') + ' 탑승');
-      if (this.input.interact) {
+      if (act) {
         if (near.mode === 'traffic' || near.mode === 'police') {
           if (near.driver) near.driver = null;
           this.addWanted(near.mode === 'police' ? 1.2 : 0.45);
@@ -755,7 +987,7 @@ class Game {
   updateDriving(dt) {
     const p = this.player, v = p.vehicle, inp = this.input;
     const ax = inp.axis();
-    v.steer = damp(v.steer, ax.x, 10, dt);
+    v.steer = damp(v.steer, -ax.x, 10, dt);
     const fwd = v.forwardSpeed;
     if (ax.y > 0.05) { v.throttle = ax.y; v.brake = 0; }
     else if (ax.y < -0.05) {
@@ -790,7 +1022,7 @@ class Game {
       }
     }
 
-    this.hud.prompt('<kbd>F</kbd> 하차');
+    this.hud.prompt(this.taxi.onDuty ? '<kbd>F</kbd> 하차 · <kbd>T</kbd> 영업 종료' : '<kbd>F</kbd> 하차 · <kbd>T</kbd> 택시 영업');
     if (inp.interact) this.ejectPlayer();
   }
 
@@ -828,6 +1060,7 @@ class Game {
       const d = Math.hypot(v.pos.x - p.x, v.pos.y - p.z);
       const stale = v.dead && v.wreckT > 22;
       if (v === this.player.vehicle) continue;
+      if (v.owned) continue;
       if (stale || (d > 230 && v.mode !== 'player' && v !== this.missions.car)) {
         v.dispose(); this.vehicles.splice(i, 1);
       }
@@ -970,14 +1203,14 @@ class Game {
     );
     const target = new THREE.Vector3(tx, ty, tz);
     if (this.aiming) {          // over-the-shoulder offset
-      const right = new THREE.Vector3(Math.cos(this.camYaw), 0, -Math.sin(this.camYaw));
+      const right = new THREE.Vector3(-Math.cos(this.camYaw), 0, Math.sin(this.camYaw));
       target.addScaledVector(right, 0.62).y += 0.12;
     }
 
     let want = target.clone().addScaledVector(dir, -dist).add(new THREE.Vector3(0, 0.6, 0));
 
     // don't let the camera go through buildings or the ground
-    const hit = this.raycastWorld(target, want.clone().sub(target).normalize(), dist + 0.6, true);
+    const hit = this.raycastWorld(target, want.clone().sub(target).normalize(), dist + 0.6, true, 0.6, true);
     if (hit && (hit.type === 'world' || hit.type === 'ground')) {
       const d = target.distanceTo(hit.point) - 0.5;
       want = target.clone().addScaledVector(dir, -Math.max(0.9, d));
@@ -990,7 +1223,7 @@ class Game {
       }
     }
 
-    const lambda = p.vehicle ? 9 : 14;
+    const lambda = p.vehicle ? 11 : 14;
     cam.position.lerp(want, 1 - Math.exp(-lambda * dt));
 
     // screen shake

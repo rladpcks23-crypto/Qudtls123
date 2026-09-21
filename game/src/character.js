@@ -48,7 +48,7 @@ export class Human {
       const hand = new THREE.Group(); hand.position.y = -.3; el.add(hand);
       return { sh, el, hand };
     };
-    this.armL = arm(-1); this.armR = arm(1);
+    this.armL = arm(1); this.armR = arm(-1);
 
     const leg = side => {
       const hip = new THREE.Group(); hip.position.set(side * .12, 0, 0); hips.add(hip);
@@ -58,9 +58,12 @@ export class Human {
       const foot = new THREE.Mesh(box(.16, .1, .27), mShoe); foot.position.set(0, -.44, .05); kn.add(foot);
       return { hip, kn };
     };
-    this.legL = leg(-1); this.legR = leg(1);
+    this.legL = leg(1); this.legR = leg(-1);
 
-    root.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    this.meshes = [];
+    root.traverse(o => {
+      if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; this.meshes.push(o); }
+    });
 
     this.phase = rng() * 10;
     this.aimBlend = 0;
@@ -78,6 +81,13 @@ export class Human {
   }
 
   setVisible(v) { this.root.visible = v; }
+
+  /** Distant characters stop casting shadows - that is a shadow-map draw each. */
+  setShadow(on) {
+    if (this._shadow === on) return;
+    this._shadow = on;
+    for (const m of this.meshes) m.castShadow = on;
+  }
 
   /**
    * @param {object} st  speed (m/s), aiming, sitting, dead, steer (-1..1 for driving)
