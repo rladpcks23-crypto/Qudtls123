@@ -5,12 +5,12 @@ import { clamp, lerp, damp, wrapAngle, dampAngle, randRange, randInt, pick, make
 import { S, ROAD, N, HALF, LANE, roadLine, nearestLine } from './city.js';
 
 const TYPES = {
-  sedan:  { l: 4.5, w: 1.95, h: 1.42, power: 18, max: 38, mass: 1, cabin: [.52, .62, .1] },
-  sport:  { l: 4.4, w: 2.0,  h: 1.18, power: 27,   max: 55, mass: .85, cabin: [.45, .5, .05] },
-  suv:    { l: 4.9, w: 2.1,  h: 1.82, power: 17,   max: 35, mass: 1.35, cabin: [.6, .78, .04] },
-  van:    { l: 5.4, w: 2.15, h: 2.15, power: 15,   max: 30, mass: 1.6, cabin: [.72, .95, -.1] },
-  taxi:   { l: 4.6, w: 1.98, h: 1.5,  power: 17,   max: 36, mass: 1.05, cabin: [.54, .64, .08] },
-  police: { l: 4.7, w: 2.02, h: 1.48, power: 24,   max: 48, mass: 1.1, cabin: [.54, .64, .08] },
+  sedan:  { l: 4.5, w: 1.95, h: 1.42, power: 18, max: 38, mass: 1, cabin: [.52, .55, -.09] },
+  sport:  { l: 4.4, w: 2.0,  h: 1.18, power: 27,   max: 55, mass: .85, cabin: [.45, .46, -.13] },
+  suv:    { l: 4.9, w: 2.1,  h: 1.82, power: 17,   max: 35, mass: 1.35, cabin: [.6, .72, -.05] },
+  van:    { l: 5.4, w: 2.15, h: 2.15, power: 15,   max: 30, mass: 1.6, cabin: [.72, .9, .04] },
+  taxi:   { l: 4.6, w: 1.98, h: 1.5,  power: 17,   max: 36, mass: 1.05, cabin: [.54, .58, -.08] },
+  police: { l: 4.7, w: 2.02, h: 1.48, power: 24,   max: 48, mass: 1.1, cabin: [.54, .58, -.08] },
 };
 export const VEHICLE_NAMES = {
   sedan: '세단', sport: '스포츠카', suv: 'SUV', van: '밴', taxi: '택시', police: '순찰차'
@@ -69,6 +69,9 @@ export function buildVehicle(type, colorHex) {
   // main body: lower slab + upper cabin, slightly tapered nose
   bodyParts.push(boxGeo(W, bh * .52, L, 0, ride + bh * .26, 0));
   bodyParts.push(boxGeo(W * .92, bh * .26, L * .96, 0, ride + bh * .62, 0));
+  // bonnet: a slab from the front bumper to the windscreen
+  const nose = L * (0.5 + T.cabin[2]) - L * T.cabin[1] / 2;
+  bodyParts.push(boxGeo(W * .86, bh * .2, nose, 0, ride + bh * .76, L * (0.5 + T.cabin[2]) - nose / 2));
   const [cw, cl, coff] = T.cabin;
   bodyParts.push(boxGeo(W * cw * 1.55, bh * .46, L * cl, 0, ride + bh * .82, L * coff));
   // fenders

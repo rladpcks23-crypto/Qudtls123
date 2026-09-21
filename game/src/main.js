@@ -489,6 +489,8 @@ class Game {
     p.human.root.position.set(0.38, 0.2, off);
     p.human.root.rotation.set(0, 0, 0);
     this.camDist = 9.2;
+    this.camYaw = v.yaw;
+    this.lookIdle = 0;
     this.audio.start();
     this.hud.toast(VEHICLE_NAMES[v.type] || '차량', '탑승');
     if (v.wasTraffic === undefined) v.wasTraffic = true;
@@ -1000,6 +1002,16 @@ class Game {
     if (inp.hit('KeyE')) this.audio.horn(true);
 
     this.stats.distance += Math.abs(fwd) * dt;
+
+    // Swing the camera in behind the car when the mouse is idle, so you are
+    // always looking where the car is going.
+    if (Math.abs(inp.mouse.dx) > 0.5) this.lookIdle = 0;
+    else this.lookIdle = (this.lookIdle || 0) + dt;
+    const spd = Math.abs(fwd);
+    if (this.lookIdle > 0.8 && spd > 2.5) {
+      const k = clamp((spd - 2.5) / 12, 0, 1) * 3.4;
+      this.camYaw = dampAngle(this.camYaw, v.yaw, k, dt);
+    }
 
     // tyre smoke while drifting
     if ((v.drift > .35 || (v.handbrake && Math.abs(fwd) > 6)) && Math.random() < dt * 25) {
