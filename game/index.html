@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Neon Mile</title>
+<style>
+  :root{
+    --bg:#05070d; --panel:rgba(10,14,22,.78); --line:rgba(140,190,255,.18);
+    --ink:#e8f0ff; --dim:#8fa3c0; --accent:#38e0ff; --hot:#ff2e6a; --gold:#ffc63f;
+    --ok:#3ce08a;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--ink); overflow:hidden;
+    font-family:"Pretendard","Apple SD Gothic Neo","Segoe UI",system-ui,-apple-system,sans-serif;
+    -webkit-font-smoothing:antialiased; user-select:none; touch-action:none;
+  }
+  canvas{display:block; position:fixed; inset:0; width:100%; height:100%; z-index:0}
+
+  /* ---------- HUD ---------- */
+  #hud{position:fixed; inset:0; pointer-events:none; opacity:0; transition:opacity .4s; z-index:6}
+  #hud.on{opacity:1}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px)}
+
+  #topleft{position:absolute; left:16px; top:16px; display:flex; flex-direction:column; gap:10px}
+  #stars{display:flex; gap:4px; height:26px; align-items:center}
+  .star{width:22px; height:22px; opacity:.16; transition:opacity .2s, transform .2s;
+    background:var(--gold); clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
+  .star.on{opacity:1; transform:scale(1.08); filter:drop-shadow(0 0 8px rgba(255,198,63,.8))}
+  .star.blink{animation:blink .55s steps(2,end) infinite}
+  @keyframes blink{50%{opacity:.2}}
+  #money{font-variant-numeric:tabular-nums; font-weight:800; font-size:26px; color:var(--ok);
+    text-shadow:0 2px 12px rgba(60,224,138,.35); letter-spacing:.5px}
+
+  #bars{position:absolute; left:16px; bottom:16px; width:230px; padding:12px 14px; display:flex; flex-direction:column; gap:9px}
+  .bar{height:9px; border-radius:6px; background:rgba(255,255,255,.09); overflow:hidden}
+  .bar > i{display:block; height:100%; width:100%; border-radius:6px; transition:width .18s linear}
+  #hp > i{background:linear-gradient(90deg,#ff5b78,#ff2e6a)}
+  #ar > i{background:linear-gradient(90deg,#7fd8ff,#38e0ff)}
+  .row{display:flex; justify-content:space-between; align-items:baseline; font-size:11px; color:var(--dim);
+    letter-spacing:.14em; text-transform:uppercase}
+  .row b{color:var(--ink); font-size:13px; font-variant-numeric:tabular-nums; letter-spacing:0}
+
+  #weapon{position:absolute; right:16px; bottom:16px; padding:12px 16px; text-align:right; min-width:150px}
+  #wname{font-size:13px; letter-spacing:.12em; color:var(--dim); text-transform:uppercase}
+  #wammo{font-size:30px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.1}
+  #wammo small{font-size:15px; color:var(--dim); font-weight:600}
+
+  #speedo{position:absolute; right:16px; bottom:120px; padding:10px 16px; text-align:right; display:none}
+  #speedo.on{display:block}
+  #kmh{font-size:34px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1}
+  #kmh span{font-size:13px; color:var(--dim); margin-left:4px; font-weight:600}
+  #gear{font-size:11px; letter-spacing:.2em; color:var(--accent)}
+
+  #minimap{position:absolute; right:16px; top:16px; width:186px; height:186px; padding:6px; border-radius:16px}
+  #mmcv{width:100%; height:100%; border-radius:11px; display:block}
+
+  #mission{position:absolute; left:50%; top:22px; transform:translateX(-50%); padding:10px 20px;
+    text-align:center; max-width:min(620px,86vw); opacity:0; transition:opacity .3s}
+  #mission.on{opacity:1}
+  #mtitle{font-size:11px; letter-spacing:.2em; color:var(--accent); text-transform:uppercase}
+  #mtext{font-size:15px; font-weight:600; margin-top:2px}
+  #mtimer{font-size:13px; color:var(--gold); font-variant-numeric:tabular-nums; margin-top:2px}
+
+  #toast{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    font-size:40px; font-weight:900; letter-spacing:.04em; text-align:center; opacity:0;
+    text-shadow:0 6px 30px rgba(0,0,0,.6)}
+  #toast.show{animation:pop 2.2s ease-out}
+  #toast small{display:block; font-size:16px; font-weight:600; color:var(--dim); letter-spacing:.1em; margin-top:6px}
+  @keyframes pop{0%{opacity:0;transform:translate(-50%,-50%) scale(.85)}
+    14%{opacity:1;transform:translate(-50%,-50%) scale(1)} 76%{opacity:1} 100%{opacity:0}}
+
+  #crosshair{position:absolute; left:50%; top:50%; width:26px; height:26px; margin:-13px 0 0 -13px;
+    opacity:0; transition:opacity .15s}
+  #crosshair.on{opacity:.95}
+  #crosshair i{position:absolute; background:#fff; box-shadow:0 0 6px rgba(0,0,0,.8)}
+  #crosshair i:nth-child(1){left:11px; top:0; width:2px; height:8px}
+  #crosshair i:nth-child(2){left:11px; bottom:0; width:2px; height:8px}
+  #crosshair i:nth-child(3){top:11px; left:0; height:2px; width:8px}
+  #crosshair i:nth-child(4){top:11px; right:0; height:2px; width:8px}
+  #hitmark{position:absolute; left:50%; top:50%; width:30px; height:30px; margin:-15px 0 0 -15px; opacity:0}
+  #hitmark.on{animation:hm .35s ease-out}
+  #hitmark i{position:absolute; width:11px; height:2px; background:var(--hot)}
+  #hitmark i:nth-child(1){left:0;top:4px;transform:rotate(45deg)}
+  #hitmark i:nth-child(2){right:0;top:4px;transform:rotate(-45deg)}
+  #hitmark i:nth-child(3){left:0;bottom:4px;transform:rotate(-45deg)}
+  #hitmark i:nth-child(4){right:0;bottom:4px;transform:rotate(45deg)}
+  @keyframes hm{from{opacity:1;transform:scale(.7)} to{opacity:0;transform:scale(1.4)}}
+
+  #prompt{position:absolute; left:50%; bottom:22%; transform:translateX(-50%); padding:8px 16px;
+    font-size:14px; opacity:0; transition:opacity .2s}
+  #prompt.on{opacity:1}
+  #prompt kbd{background:rgba(255,255,255,.14); border:1px solid var(--line); border-radius:6px;
+    padding:1px 7px; font-family:inherit; font-weight:700; margin-right:6px}
+
+  #damage{position:fixed; inset:0; pointer-events:none; z-index:5; opacity:0; transition:opacity .35s;
+    box-shadow:inset 0 0 160px 40px rgba(255,20,60,.55)}
+  #flashwhite{position:fixed; inset:0; pointer-events:none; background:#fff; opacity:0; z-index:7}
+
+  /* ---------- Menus ---------- */
+  .screen{position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(120% 100% at 50% 0%,#101a2e 0%,#05070d 60%); z-index:20; padding:24px}
+  .screen.hide{display:none}
+  .card{width:min(560px,94vw); padding:30px 32px; border-radius:22px;
+    background:rgba(9,13,21,.9); border:1px solid var(--line); box-shadow:0 30px 80px rgba(0,0,0,.6)}
+  .logo{font-size:clamp(38px,8vw,58px); font-weight:900; line-height:.95; letter-spacing:-.02em;
+    background:linear-gradient(94deg,#38e0ff 0%,#a26bff 46%,#ff2e6a 100%);
+    -webkit-background-clip:text; background-clip:text; color:transparent}
+  .sub{color:var(--dim); margin-top:8px; font-size:14px; line-height:1.6}
+  .keys{margin-top:20px; display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:8px 18px;
+    font-size:13px; color:var(--dim)}
+  .keys div{display:flex; gap:8px; align-items:center}
+  .keys b{color:var(--ink); background:rgba(255,255,255,.08); border:1px solid var(--line);
+    border-radius:6px; padding:2px 8px; font-size:12px; min-width:30px; text-align:center}
+  .btnrow{margin-top:24px; display:flex; gap:10px; flex-wrap:wrap}
+  button{font:inherit; font-weight:700; color:#04121a; cursor:pointer; border:0; border-radius:12px;
+    padding:13px 24px; background:linear-gradient(94deg,#38e0ff,#7de0ff); transition:transform .12s, filter .12s}
+  button:hover{transform:translateY(-1px); filter:brightness(1.08)}
+  button.ghost{background:transparent; color:var(--ink); border:1px solid var(--line)}
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:11px; overflow:hidden}
+  .seg button{border-radius:0; padding:9px 16px; background:transparent; color:var(--dim); font-size:13px}
+  .seg button.sel{background:rgba(56,224,255,.16); color:var(--accent)}
+  .lbl{font-size:11px; letter-spacing:.18em; color:var(--dim); text-transform:uppercase; margin:18px 0 7px}
+  #loadbar{height:4px; border-radius:3px; background:rgba(255,255,255,.08); overflow:hidden; margin-top:18px}
+  #loadbar i{display:block; height:100%; width:0%; background:linear-gradient(90deg,#38e0ff,#a26bff); transition:width .25s}
+  #loadmsg{margin-top:10px; font-size:12px; color:var(--dim); font-variant-numeric:tabular-nums}
+  .warn{margin-top:14px; font-size:12px; color:var(--gold)}
+
+  /* ---------- Mobile ---------- */
+  #touch{position:fixed; inset:0; z-index:8; pointer-events:none; display:none}
+  #touch.on{display:block}
+  #stick{position:absolute; left:26px; bottom:26px; width:132px; height:132px; border-radius:50%;
+    border:1px solid var(--line); background:rgba(10,14,22,.45); pointer-events:auto}
+  #stick i{position:absolute; left:50%; top:50%; width:52px; height:52px; margin:-26px 0 0 -26px;
+    border-radius:50%; background:rgba(56,224,255,.35); border:1px solid rgba(56,224,255,.6)}
+  .tbtn{position:absolute; right:22px; width:74px; height:74px; border-radius:50%; pointer-events:auto;
+    display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700;
+    color:var(--ink); background:rgba(10,14,22,.55); border:1px solid var(--line)}
+  #tFire{bottom:120px; background:rgba(255,46,106,.25); border-color:rgba(255,46,106,.5)}
+  #tAct{bottom:34px; right:110px}
+  #tBrake{bottom:34px}
+  @media (max-width:860px){
+    #minimap{width:126px; height:126px}
+    #bars{width:180px}
+    #money{font-size:20px}
+  }
+</style>
+</head>
+<body>
+<div id="damage"></div>
+<div id="flashwhite"></div>
+
+<div id="hud">
+  <div id="topleft">
+    <div id="stars"><i class="star"></i><i class="star"></i><i class="star"></i><i class="star"></i><i class="star"></i></div>
+    <div id="money">$0</div>
+  </div>
+
+  <div id="minimap" class="panel"><canvas id="mmcv" width="360" height="360"></canvas></div>
+
+  <div id="bars" class="panel">
+    <div class="row"><span>체력</span><b id="hpv">100</b></div>
+    <div class="bar" id="hp"><i></i></div>
+    <div class="row"><span>방어구</span><b id="arv">0</b></div>
+    <div class="bar" id="ar"><i style="width:0%"></i></div>
+  </div>
+
+  <div id="weapon" class="panel">
+    <div id="wname">주먹</div>
+    <div id="wammo">∞</div>
+  </div>
+
+  <div id="speedo" class="panel">
+    <div id="kmh">0<span>km/h</span></div>
+    <div id="gear">P</div>
+  </div>
+
+  <div id="mission" class="panel">
+    <div id="mtitle">미션</div>
+    <div id="mtext"></div>
+    <div id="mtimer"></div>
+  </div>
+
+  <div id="crosshair"><i></i><i></i><i></i><i></i></div>
+  <div id="hitmark"><i></i><i></i><i></i><i></i></div>
+  <div id="prompt" class="panel"></div>
+  <div id="toast"></div>
+</div>
+
+<div id="touch">
+  <div id="stick"><i></i></div>
+  <div class="tbtn" id="tFire">발사</div>
+  <div class="tbtn" id="tAct">F</div>
+  <div class="tbtn" id="tBrake">브레이크</div>
+</div>
+
+<div class="screen" id="start">
+  <div class="card">
+    <div class="logo">NEON<br>MILE</div>
+    <div class="sub">밤비 내리는 항구 도시에서 차를 훔치고, 배달을 뛰고, 경찰을 따돌리세요.<br>
+      완전한 오픈월드 · 실시간 낮밤 · 교통 시뮬레이션.</div>
+
+    <div class="lbl">그래픽 품질</div>
+    <div class="seg" id="qseg">
+      <button data-q="low">낮음</button>
+      <button data-q="med" class="sel">중간</button>
+      <button data-q="high">높음</button>
+    </div>
+
+    <div class="keys">
+      <div><b>WASD</b> 이동</div><div><b>Shift</b> 달리기</div>
+      <div><b>Space</b> 점프 / 핸드브레이크</div><div><b>F</b> 탑승 · 하차</div>
+      <div><b>마우스</b> 시점</div><div><b>좌클릭</b> 발사</div>
+      <div><b>우클릭</b> 조준</div><div><b>1~3</b> 무기 교체</div>
+      <div><b>E</b> 경적</div><div><b>Esc</b> 일시정지</div>
+    </div>
+
+    <div id="loadbar"><i></i></div>
+    <div id="loadmsg">엔진 준비 중…</div>
+
+    <div class="btnrow">
+      <button id="play" disabled>게임 시작</button>
+      <button class="ghost" id="freeroam">자유 주행</button>
+    </div>
+    <div class="warn" id="warn"></div>
+  </div>
+</div>
+
+<div class="screen hide" id="pause">
+  <div class="card">
+    <div class="logo" style="font-size:36px">일시정지</div>
+    <div class="sub" id="pstats"></div>
+    <div class="btnrow">
+      <button id="resume">계속하기</button>
+      <button class="ghost" id="restart">처음부터</button>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module" src="./src/main.js"></script>
+<script>
+  window.addEventListener('error', e=>{
+    const w=document.getElementById('warn');
+    if(w) w.textContent='오류: '+(e.message||e.type);
+  });
+</script>
+</body>
+</html>
