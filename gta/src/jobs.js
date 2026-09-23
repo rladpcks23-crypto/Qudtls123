@@ -14,6 +14,9 @@ const JOBS = {
   delivery: { legal: true, name: '음식 배달', desc: '버거 샷에서 음식을 받아 세 집에 배달한다. 늦으면 주문 취소.', vehicle: 'compact', color: '#ff8c1a', label: '배달 차량' },
   export: { legal: false, name: '차량 수출', desc: '브로커가 주문한 차종을 훔쳐 하버 포인트 차고로. 흠집이 적을수록 비싸게 팔린다.' },
   smuggle: { legal: false, name: '밀수 운반', desc: '부두에서 밀수품을 받아 접선 장소로 옮긴다. 제보가 들어가면 경찰(★★)이 따라붙는다.' },
+  vigilante: { legal: true, name: '자경단', desc: '순찰차로 도주 중인 범죄자의 차를 쫓아 부숴라. 단계가 오를수록 범인이 거칠어지고 보상이 커진다.', vehicle: 'police', label: '자경단 순찰차' },
+  bus: { legal: true, name: '버스 기사', desc: '정류장 다섯 곳을 차례로 돌며 정차해 손님을 태운다. 제시간에 돌면 보너스.', vehicle: 'bus', label: '시내버스' },
+  heist: { legal: false, name: '현금수송차 습격', desc: '도시를 도는 현금수송 트럭을 부숴 돈가방을 챙긴다. 공격하는 순간 경보가 울린다(★★★).' },
   pickpocket: { legal: false, name: '소매치기', desc: '표시된 부자 5명의 지갑을 턴다. 뒤로 몰래 다가가 T(모바일: 훔치기). 앞에서 들키면 신고당한다.' },
 };
 
@@ -42,7 +45,7 @@ const Jobs = {
   closeBoard() { document.getElementById('jobs').hidden = true; Game.state = 'play'; Game.shopCool = 4; },
 
   start(id) {
-    if (Missions.active) { UI.toast('스토리 미션 중에는 일을 시작할 수 없다'); return; }
+    if (Missions.active) Missions.abort(`「${Missions.active.def.title}」 미션을 잠시 내려놓고 일을 시작한다 — 의뢰인 마커에서 다시 받을 수 있다`);
     if (this.active) this.stop();
     const J = JOBS[id], P = Game.player;
     const j = this.active = { id, def: J, stage: 'start', timer: null, objective: '', blips: [], count: 0, earned: 0, streak: 0, t: 0, outT: 0 };
@@ -62,6 +65,7 @@ const Jobs = {
     if (j.car) j.car.persistent = false;
     for (const k of ['fare', 'patient', 'rich']) if (j[k] && !j[k].dead) { j[k].persistent = false; j[k].jobMark = false; if (k === 'patient') j[k].downT = 0.5; }
     if (j.target) j.target.persistent = false;
+    for (const k of ['crook', 'truck']) if (j[k]) j[k].persistent = false;
     this.active = null;
     if (msg) UI.toast(`${j.def.name}: ${msg} (이번에 번 돈 $${j.earned.toLocaleString()})`);
     UI.objective('');
@@ -118,6 +122,9 @@ const Jobs = {
     else if (j.id === 'delivery') { UI.toast('남은 주문이 취소됐다'); j.stage = 'pickup'; j.orders = []; j.streak = 0; }
     else if (j.id === 'smuggle') { UI.toast('접선 시간을 놓쳤다'); j.stage = 'pickup'; }
     else if (j.id === 'pickpocket') { this.stop(`시간이 다 됐다 (${j.count}/5)`); }
+    else if (j.id === 'vigilante') { UI.toast('범인이 달아났다'); if (j.crook) { j.crook.persistent = false; j.crook.remove = !onScreen(j.crook.x, j.crook.y, 10); } j.crook = null; }
+    else if (j.id === 'bus') { UI.toast('노선 운행 시간을 넘겼다 — 보너스 없음'); }
+    else if (j.id === 'heist') { UI.toast('현금수송차가 금고로 들어갔다'); if (j.truck) j.truck.persistent = false; j.truck = null; j.wait = 15; }
   },
 
   // ----- 택시 -----
@@ -236,6 +243,66 @@ const Jobs = {
       j.blips = [{ x: j.dest.x, y: j.dest.y, c: '#ff5d8f', big: true }];
       this.obj(j, Wanted.stars ? '경찰을 달고 가면 접선이 깨진다 — 따돌려라' : '밀수품을 접선 장소로 옮겨라');
       if (dist(P.px, P.py, j.dest.x, j.dest.y) < 5 && (!P.car || P.car.speed < 4) && Wanted.stars === 0) { this.pay(j, 1200 + Math.min(6, j.count) * 200, '밀수품 인도'); j.timer = null; j.stage = 'pickup'; }
+    }
+  },
+  // ----- 자경단 -----
+  u_vigilante(j, dt, P) {
+    const c = j.car; c.siren = true;
+    if (!j.crook || !Game.cars.includes(j.crook)) {
+      const sp = offscreenLaneSpot(90, 170); if (!sp) return;
+      const k = new Car(pick(['muscle', 'sports', 'sedan', 'compact']), sp.x, sp.y, sp.a, { persistent: true });
+      k.driver = 'ai'; k.driverKind = 'gang'; k.label = '범인 차량'; k.crook = true;
+      trafficFromHere(k, 'flee'); k.ai.cruiseFlee = 17 + Math.min(10, j.count * 1.5);
+      Game.cars.push(k); j.crook = k; j.timer = 110;
+      UI.toast(`무전: 수배 차량 도주 중! (단계 ${j.count + 1})`);
+    }
+    const k = j.crook;
+    j.blips = [{ ent: k, c: '#ff4d4d', big: true }];
+    this.obj(j, `범인 차량을 부숴라 — 단계 ${j.count + 1}`);
+    if (k.dead || k.burnT > 0 || k.driver !== 'ai') {
+      k.persistent = false; j.crook = null; j.timer = null;
+      this.pay(j, 250 + j.count * 120, '범인 검거');
+    }
+  },
+  // ----- 버스 기사 -----
+  u_bus(j, dt, P) {
+    const c = j.car;
+    if (!j.stops || !j.stops.length) {
+      j.stops = []; let x = c.x, y = c.y;
+      for (let i = 0; i < 5; i++) { const s = this.farSpot(x, y, 90, 170); j.stops.push(s); x = s.x; y = s.y; }
+      let tot = 0, px = c.x, py = c.y; for (const s of j.stops) { tot += dist(px, py, s.x, s.y); px = s.x; py = s.y; }
+      j.timer = Math.round(tot / 8 + 60); j.hold = 0; j.route = (j.route || 0) + 1;
+      UI.toast(`노선 ${j.route}: 정류장 5곳`);
+    }
+    const s = j.stops[0];
+    j.blips = [{ x: s.x, y: s.y, c: '#7ae68f', big: true }, ...(j.stops[1] ? [{ x: j.stops[1].x, y: j.stops[1].y, c: '#3d8f55' }] : [])];
+    this.obj(j, `정류장에 정차하라 (남은 ${j.stops.length}곳)${j.hold > 0 ? ' — 승객 탑승 중…' : ''}`);
+    if (this.stopped(c, s, 8) && c.speed < 1.5) {
+      j.hold += dt;
+      if (j.hold > 2) {
+        j.hold = 0; j.stops.shift(); Effects.text(c.x, c.y - 2, '승객 탑승', '#7ae68f');
+        this.pay(j, 45 + Math.min(5, j.streak) * 8, '정류장 요금');
+        if (!j.stops.length) { if (j.timer > 0) this.pay(j, 150, '정시 운행 보너스'); j.streak++; j.timer = null; }
+      }
+    } else j.hold = 0;
+  },
+  // ----- 현금수송차 습격 -----
+  u_heist(j, dt, P) {
+    if (j.wait > 0) { j.wait -= dt; j.blips = []; this.obj(j, `다음 현금수송차 정보를 기다리는 중… ${Math.ceil(j.wait)}초`); return; }
+    if (!j.truck || !Game.cars.includes(j.truck)) {
+      const sp = offscreenLaneSpot(120, 220); if (!sp) return;
+      const t = new Car('armored', sp.x, sp.y, sp.a, { persistent: true });
+      t.driver = 'ai'; t.driverKind = 'civ'; t.label = '현금수송차'; trafficFromHere(t, 'traffic'); t.ai.cruise = 11;
+      Game.cars.push(t); j.truck = t; j.alarm = false; j.timer = 150;
+    }
+    const t = j.truck;
+    j.blips = [{ ent: t, c: '#f2c14e', big: true }];
+    if (!j.alarm && t.hp < t.maxHp) { j.alarm = true; Wanted.set(Math.max(3, Wanted.stars)); UI.toast('현금수송차 경보 발령!'); if (t.ai) t.ai.panic = true; }
+    this.obj(j, j.alarm ? '현금수송차를 부숴라!' : '현금수송차를 찾아 공격하라');
+    if (t.dead || t.burnT > 0) {
+      t.persistent = false; j.truck = null; j.timer = null; j.wait = 25;
+      for (let i = 0; i < 4; i++) addPickup('cash', t.x + rand(-3, 3), t.y + rand(-3, 3), { amount: randi(300, 650), temp: 45 });
+      this.pay(j, 800 + j.count * 150, '현금 탈취');
     }
   },
   // ----- 소매치기 -----

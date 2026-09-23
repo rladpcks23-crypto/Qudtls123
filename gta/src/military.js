@@ -107,13 +107,30 @@ function specialStep(c, dt) {
 }
 
 // ---------- 무기 ----------
+// 탑승 무기: 차량마다 무기 목록이 있고 Q/E(모바일 [무기])로 바꾼다. 스페이스(모바일 두 번째 버튼)는 보조 무기.
+const VWEAP = {
+  shell: { name: '주포', short: '주포', cd: 1.3 },
+  mg: { name: '동축 기관총', short: '기관총', cd: 0.1 },
+  cannon: { name: '기관포', short: '기관포', cd: 0.08 },
+  rockets: { name: '로켓 포드', short: '로켓', cd: 0.3 },
+  homing: { name: '유도 미사일', short: '유도탄', cd: 1.1 },
+};
+const VSET = { tank: ['shell', 'mg'], heli: ['cannon', 'rockets', 'homing'], jet: ['cannon', 'homing', 'rockets'] };
+const vWeapons = c => VSET[c.V.special] || [];
+const vWeapon = c => vWeapons(c)[(c.vw || 0) % vWeapons(c).length];
+function cycleVWeapon(c, dir) {
+  const n = vWeapons(c).length; if (!n) return;
+  c.vw = ((c.vw || 0) + dir + n) % n; UI.weaponFlash = 1;
+  UI.toast(`무기: ${VWEAP[vWeapon(c)].name}`);
+}
+
 const MilFire = {
   aim(c) {
-    const P = Game.player;
     if (Game.view !== 'top' && View3D.ok) return View3D.yaw;
     if (!Input.usingTouch && !Pad.active) { const [wx, wy] = screenToWorld(Input.mouse.x, Input.mouse.y); return Math.atan2(wy - c.y, wx - c.x); }
     if (Pad.active && (Pad.rx || Pad.ry)) return Math.atan2(Pad.ry, Pad.rx);
-    // 터치: 앞쪽의 가장 가까운 적/차량 자동 조준
+    // 터치: 앞쪽의 가장 가까운 적/차량 자동 조준 (락온 중이면 그 목표)
+    if (c.lock && c.lockT > 0.3) return Math.atan2(c.lock.y - c.y, c.lock.x - c.x);
     let best = null, bs = 1e9;
     for (const q of [...Game.peds, ...Game.cars]) {
       if (q === c || q.dead || (q.kind !== 'car' && (q.kind === 'dog' || q.car))) continue;
@@ -124,39 +141,79 @@ const MilFire = {
     }
     return best ? Math.atan2(best.y - c.y, best.x - c.x) : c.a;
   },
-  shell(c, ang, speed, radius, dmg, from, by = Game.player, air = false) {
-    Game.projectiles.push({ type: 'rocket', x: from[0], y: from[1], vx: Math.cos(ang) * speed + c.vx, vy: Math.sin(ang) * speed + c.vy, life: 2.4, by, a: ang, big: radius, dmg, air, alt: air ? c.alt || 0 : 0 });
+  shell(c, ang, speed, radius, dmg, from, by = Game.player, air = false, target = null, turn = 0) {
+    Game.projectiles.push({ type: 'rocket', x: from[0], y: from[1], vx: Math.cos(ang) * speed + c.vx, vy: Math.sin(ang) * speed + c.vy, life: target ? 4 : 2.4, by, a: ang, big: radius, dmg, air, alt: air ? c.alt || 0 : 0, target, turn });
     Sfx.shot(from[0], from[1], 'rocket'); Effects.flash(from[0], from[1], 8, 0.12);
     if (by === Game.player) crime('gunfire', from[0], from[1]);
   },
-  update(c, dt, firing, alt) {
-    const P = Game.player, V = c.V;
-    c.fireCD = (c.fireCD || 0) - dt; c.altCD = (c.altCD || 0) - dt;
-    const ang = this.aim(c);
-    if (V.special === 'tank') {
-      const d = angNorm(ang - (c.turret ?? c.a));
-      c.turret = angNorm((c.turret ?? c.a) + clamp(d, -1.8 * dt, 1.8 * dt));
-      if ((firing || alt) && c.fireCD <= 0) {
-        c.fireCD = 1.3; const t = c.turret, tip = [c.x + Math.cos(t) * 5.5, c.y + Math.sin(t) * 5.5];
-        this.shell(c, t, 60, 8, 230, tip); c.vx -= Math.cos(t) * 1.5; c.vy -= Math.sin(t) * 1.5; Cam.shake = Math.max(Cam.shake, 0.35); buzz(80);
-      }
-      return;
+  // 락온: 조준 방향 원뿔 안의 목표를 0.8초 겨누면 고정. 공중에 있으면 공중 목표를 우선한다.
+  lockUpdate(c, dt, ang) {
+    const air = airborne(c), H = Police.heli;
+    let best = null, bs = 1e9;
+    const cands = Game.cars.filter(q => q !== c && !q.dead && q.burnT <= 0 && !q.owned);
+    if (H && !H.dead) cands.push(H);
+    for (const q of cands) {
+      const d = dist(q.x, q.y, c.x, c.y); if (d > 190 || d < 8) continue;
+      const da = Math.abs(angNorm(Math.atan2(q.y - c.y, q.x - c.x) - ang)); if (da > 0.42) continue;
+      const qAir = q.kind === 'heli' || airborne(q), hostile = q.driverKind === 'army' || q.driverKind === 'cop' || q.kind === 'heli';
+      const sc = da * 120 + d * 0.25 - (qAir === air ? 25 : 0) - (hostile ? 20 : 0);
+      if (sc < bs) { bs = sc; best = q; }
     }
-    // 헬기·전투기: 기관포(발사) + 미사일(드리프트/스페이스)
-    if (firing && c.fireCD <= 0) {
-      c.fireCD = V.special === 'jet' ? 0.07 : 0.09;
-      const a = V.special === 'jet' ? c.a : ang;
-      fireWeapon(P, 'rifle', a + gauss() * 0.04, 1);
-    }
-    if (alt && c.altCD <= 0) {
-      c.altCD = 0.7;
-      const side = (c.side = -(c.side || 1));
-      const from = [c.x + Math.cos(c.a) * 3 - Math.sin(c.a) * side * 1.5, c.y + Math.sin(c.a) * 3 + Math.cos(c.a) * side * 1.5];
-      const a = V.special === 'jet' ? c.a : ang;
-      this.shell(c, a, V.special === 'jet' ? 95 : 60, 7, 180, from, P, airborne(c) && airTargetAlong(c, a));
+    if (best !== c.lock) { c.lock = best; c.lockT = 0; c.lockBeep = false; }
+    else if (best) {
+      c.lockT += dt;
+      if (c.lockT > 0.8 && !c.lockBeep) { c.lockBeep = true; if (c.driver === 'player') Sfx.tone({ f0: 1500, f1: 1500, dur: 0.12, type: 'square', vol: 0.18 }); }
     }
   },
+  fire(c, w, ang) {
+    const P = Game.player, key = 'cd_' + w;
+    if ((c[key] || 0) > 0) return;
+    c[key] = VWEAP[w].cd;
+    const sp = c.V.special, nose = sp === 'jet' ? c.a : ang;
+    if (w === 'shell') {
+      const t = c.turret ?? c.a, tip = [c.x + Math.cos(t) * 5.5, c.y + Math.sin(t) * 5.5];
+      this.shell(c, t, 60, 8, 230, tip); c.vx -= Math.cos(t) * 1.5; c.vy -= Math.sin(t) * 1.5; Cam.shake = Math.max(Cam.shake, 0.35); buzz(80);
+    } else if (w === 'mg') {
+      fireWeapon(P, 'smg', (c.turret ?? c.a) + gauss() * 0.05, 1);
+    } else if (w === 'cannon') {
+      fireWeapon(P, 'rifle', nose + gauss() * 0.04, 1);
+    } else {
+      const side = (c.side = -(c.side || 1));
+      const from = [c.x + Math.cos(c.a) * 3 - Math.sin(c.a) * side * 1.5, c.y + Math.sin(c.a) * 3 + Math.cos(c.a) * side * 1.5];
+      if (w === 'rockets') this.shell(c, nose + gauss() * 0.03, sp === 'jet' ? 95 : 70, 6, 140, from, P, airborne(c) && airTargetAlong(c, nose));
+      else {
+        const T_ = c.lock && c.lockT > 0.8 ? c.lock : null;
+        const qAir = T_ ? T_.kind === 'heli' || airborne(T_) : airborne(c) && airTargetAlong(c, nose);
+        this.shell(c, T_ ? Math.atan2(T_.y - c.y, T_.x - c.x) : nose, 62, 8, 240, from, P, qAir, T_, 3.2);
+        if (!T_ && !(c.nlT > Game.time)) { c.nlT = Game.time + 10; UI.toast('락온 없이 발사 — 목표를 조준선에 0.8초 겨누면 유도된다'); }
+      }
+    }
+  },
+  update(c, dt, firing, alt) {
+    for (const k of Object.keys(VWEAP)) if (c['cd_' + k] > 0) c['cd_' + k] -= dt;
+    const ang = this.aim(c), sp = c.V.special;
+    if (sp === 'tank') {
+      const d = angNorm(ang - (c.turret ?? c.a));
+      c.turret = angNorm((c.turret ?? c.a) + clamp(d, -1.8 * dt, 1.8 * dt));
+    } else this.lockUpdate(c, dt, sp === 'jet' ? c.a : ang);
+    if (firing) this.fire(c, vWeapon(c), ang);
+    if (alt) this.fire(c, sp === 'tank' ? 'mg' : 'homing', ang);
+  },
 };
+// 락온 표시 (화면 좌표)
+function drawLockHUD() {
+  const P = Game.player, c = P.car;
+  if (!c || !c.V.special || c.V.special === 'tank' || !c.lock) return;
+  const q = c.lock, qa = q.kind === 'heli' ? q.alt : (q.alt || 0);
+  let sx, sy;
+  if (Game.view !== 'top' && View3D.ok) { const r = View3D.project(q.x, q.y, qa + 1.5); if (!r) return; [sx, sy] = r; }
+  else { const [wx, wy] = qa > 1.2 ? proj(q.x, q.y, Math.min(qa, Cam.H - 20)) : [q.x, q.y]; [sx, sy] = toScreen(wx, wy); }
+  const locked = c.lockT > 0.8, k = locked ? 1 : 1.6 - Math.min(0.6, c.lockT * 0.75), r = 18 * k;
+  const g = ctx; g.setTransform(DPR, 0, 0, DPR, 0, 0);
+  g.strokeStyle = locked ? '#ff3b3b' : '#f2c14e'; g.lineWidth = 2.5;
+  for (const [ax, ay] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { g.beginPath(); g.moveTo(sx + ax * r, sy + ay * r * 0.4); g.lineTo(sx + ax * r, sy + ay * r); g.lineTo(sx + ax * r * 0.4, sy + ay * r); g.stroke(); }
+  txt(g, locked ? 'LOCK' : '조준 중', sx, sy - r - 6, `700 12px ${FONT_NUM}`, locked ? '#ff3b3b' : '#f2c14e', 'rgba(0,0,0,0.9)', 3, 'center');
+}
 
 // ---------- 기지 관리 (차량 배치 · 경비병 · 출입 경보) ----------
 const Military = {
@@ -338,11 +395,14 @@ const AirPatrol = {
   spawn() {
     const P = Game.player, a = rand(0, TAU), d = 230;
     const x = clamp(P.px + Math.cos(a) * d, 30, MW * T - 30), y = clamp(P.py + Math.sin(a) * d, 30, MH * T - 30);
-    const c = new Car('milheli', x, y, Math.atan2(P.py - y, P.px - x), { persistent: true });
-    c.alt = 72; c.driver = 'ai'; c.driverKind = 'army'; c.ai = { mode: 'air', fireT: 3, gunT: 1.5, burst: 0 };
-    c.hp = c.maxHp = 320; c.color = '#3d4636'; c.label = '군 공격 헬기';
+    // 플레이어가 전투기를 타고 있으면 전투기가 요격하러 온다
+    const jet = P.car && P.car.V.special === 'jet' && chance(0.75);
+    const c = new Car(jet ? 'jet' : 'milheli', x, y, Math.atan2(P.py - y, P.px - x), { persistent: true });
+    c.alt = jet ? 85 : 72; c.driver = 'ai'; c.driverKind = 'army'; c.ai = { mode: 'air', fireT: 3, gunT: 1.5, burst: 0 };
+    if (jet) c.spd = 55;
+    c.hp = c.maxHp = jet ? 260 : 320; c.color = jet ? '#5b636b' : '#3d4636'; c.label = jet ? '적 전투기' : '군 공격 헬기';
     Game.cars.push(c); this.units.push(c);
-    UI.toast('군 공격 헬기가 출격했다!');
+    UI.toast(jet ? '적 전투기가 요격하러 온다!' : '군 공격 헬기가 출격했다!');
   },
 };
 function airDrive(c, dt) {
@@ -354,17 +414,21 @@ function airDrive(c, dt) {
     if (dist(c.x, c.y, P.px, P.py) > 260) c.remove = true;
   }
   const d = dist(c.x, c.y, tx, ty), da = angNorm(Math.atan2(ty - c.y, tx - c.x) - c.a);
-  inp.st = clamp(da * 2, -1, 1); inp.hb = false; inp.up = true;
-  inp.raw = leave ? 1 : d > 70 ? 1 : d > 35 ? 0.35 : -0.3;
+  const isJet = c.V.special === 'jet';
+  inp.hb = false; inp.up = true;
+  if (isJet) { inp.st = clamp(da * 1.6, -1, 1); inp.raw = 1; } // 전투기: 속도를 유지하며 선회, 지나쳐 가면 다시 돌아온다
+  else { inp.st = clamp(da * 2, -1, 1); inp.raw = leave ? 1 : d > 70 ? 1 : d > 35 ? 0.35 : -0.3; }
   if (leave || c.alt < 20) return;
   ai.fireT -= dt; ai.gunT -= dt;
   const hitAir = AirPatrol.playerAir(), ang = Math.atan2(P.py + (P.car ? P.car.vy : P.vy) * 0.4 - c.y, P.px + (P.car ? P.car.vx : P.vx) * 0.4 - c.x);
   const pilot = { kind: 'army', car: c, x: c.x, y: c.y, px: c.x, py: c.y, vx: c.vx, vy: c.vy };
-  if (d < 95 && Math.abs(da) < 0.35 && ai.fireT <= 0) {
-    ai.fireT = rand(2.8, 4.2);
-    MilFire.shell(c, ang, 55, 6, 110, [c.x + Math.cos(c.a) * 3, c.y + Math.sin(c.a) * 3], pilot, hitAir);
+  // 적 미사일은 약하게 유도된다 (빠르게 선회하거나 건물 뒤로 피하면 빗나간다)
+  if (d < (isJet ? 150 : 95) && Math.abs(da) < 0.35 && ai.fireT <= 0) {
+    ai.fireT = rand(2.8, 4.2) * (isJet ? 1.3 : 1);
+    if (hitAir) UI.toast('미사일 경보! 급선회로 피하라');
+    MilFire.shell(c, ang, 55, 6, 110, [c.x + Math.cos(c.a) * 3, c.y + Math.sin(c.a) * 3], pilot, hitAir, P.car || P, 1.1);
   }
-  if (d < 70 && Math.abs(da) < 0.5 && ai.gunT <= 0) {
+  if (d < (isJet ? 110 : 70) && Math.abs(da) < (isJet ? 0.15 : 0.5) && ai.gunT <= 0) {
     ai.gunT = 0.1; ai.burst++;
     if (ai.burst > 10) { ai.burst = 0; ai.gunT = rand(1.2, 2); }
     fireWeapon(pilot, 'rifle', ang + gauss() * 0.07, 0.8);

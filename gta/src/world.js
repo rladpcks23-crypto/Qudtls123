@@ -10,10 +10,10 @@
  * ===================================================================== */
 
 const T = 4;               // 타일 한 칸 = 4m (차선 폭)
-const MW = 150, MH = 150;  // 타일 수 → 600m × 600m 도시
+const MW = 190, MH = 190;  // 타일 수 → 760m × 760m 도시 (v2.0에서 150 → 190 확장)
 const TL = { WATER: 0, ROAD: 1, WALK: 2, BUILD: 3, GRASS: 4, SAND: 5, LOT: 6, PLAZA: 7, DOCK: 8, RUNWAY: 9 };
-const DIST = { DOWNTOWN: 0, MIDTOWN: 1, RESID: 2, HARBOR: 3, BEACH: 4, PARK: 5, COAST: 6, BASE: 7 };
-const DIST_NAMES = ['다운타운', '미드타운', '웨스트 힐즈', '하버 포인트', '선셋 비치', '센트럴 파크', '해안 산책로', '포트 네온 기지'];
+const DIST = { DOWNTOWN: 0, MIDTOWN: 1, RESID: 2, HARBOR: 3, BEACH: 4, PARK: 5, COAST: 6, BASE: 7, INDUSTRY: 8 };
+const DIST_NAMES = ['다운타운', '미드타운', '웨스트 힐즈', '하버 포인트', '선셋 비치', '센트럴 파크', '해안 산책로', '포트 네온 기지', '아이언 밸리'];
 const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // 동 남 서 북 (화면 좌표, y 아래로)
 const rightOf = d => [-DIRS[d][1], DIRS[d][0]];   // 우측통행: 진행 방향의 오른쪽 차선
 const LIGHT_CYCLE = 23;
@@ -164,7 +164,7 @@ function genWorld(seed) {
   for (const b of W.blocks) {
     const u = (b.x0 + b.x1) / 2 / MW, v = (b.y0 + b.y1) / 2 / MH;
     const dd = Math.hypot(u - 0.52, v - 0.52);
-    b.district = dd < 0.17 ? DIST.DOWNTOWN : u > 0.7 ? DIST.HARBOR : v > 0.68 ? DIST.BEACH : u < 0.36 ? DIST.RESID : DIST.MIDTOWN;
+    b.district = dd < 0.17 ? DIST.DOWNTOWN : u > 0.7 ? DIST.HARBOR : v > 0.68 ? DIST.BEACH : u < 0.36 && v > 0.5 ? DIST.INDUSTRY : u < 0.36 ? DIST.RESID : DIST.MIDTOWN;
     b.area = (b.x1 - b.x0 + 1) * (b.y1 - b.y0 + 1);
   }
   // 공원: 가장 큰 미드타운/주택가 블록 + 하나 더
@@ -204,6 +204,7 @@ function genWorld(seed) {
     ware: ['#7a7f86', '#8a8074', '#6d7a73', '#908c83'],
     beach: ['#e0a96d', '#6cc0c4', '#e7d8b0', '#d47a6a', '#8fc1a0'],
     cont: ['#b03a2e', '#1f6f9b', '#c8871f', '#2f7d4a', '#7a3b8f', '#5a6570'],
+    factory: ['#8b5a44', '#7a7266', '#6e6a5f', '#96806a', '#5f6b72'],
   };
 
   for (const b of W.blocks) {
@@ -232,7 +233,7 @@ function genWorld(seed) {
       b.lots.push({ x0: ix0, y0: iy0, x1: ix1, y1: iy1, park: true });
       continue;
     }
-    const lotSize = { [DIST.DOWNTOWN]: [3, 6], [DIST.MIDTOWN]: [3, 5], [DIST.RESID]: [4, 5], [DIST.HARBOR]: [5, 9], [DIST.BEACH]: [4, 6] }[b.district];
+    const lotSize = { [DIST.DOWNTOWN]: [3, 6], [DIST.MIDTOWN]: [3, 5], [DIST.RESID]: [4, 5], [DIST.HARBOR]: [5, 9], [DIST.BEACH]: [4, 6], [DIST.INDUSTRY]: [5, 8] }[b.district];
     const lots = [];
     subdivide(ix0, iy0, ix1, iy1, lotSize[0], lotSize[1], lots);
     for (const L of lots) {
@@ -260,6 +261,10 @@ function genWorld(seed) {
           continue;
         }
         L.b = addBuilding(L.x0, L.y0, L.x1, L.y1, rr(7, 12), 'warehouse', rpick(PAL.ware));
+      } else if (b.district === DIST.INDUSTRY) { // 아이언 밸리 산업단지: 큰 공장, 야적장, 굴뚝
+        if (R() < 0.28 && w >= 2 && h >= 3) { for (let y = L.y0; y <= L.y1; y++) for (let x = L.x0; x <= L.x1; x++) set(x, y, TL.LOT); L.kind = 'lot'; addParkingRow(L.x0, L.y0, L.x1, L.y1); continue; }
+        if (R() < 0.2) { for (let y = L.y0; y <= L.y1; y++) for (let x = L.x0; x <= L.x1; x++) set(x, y, TL.DOCK); L.kind = 'yard'; for (let y = L.y0; y + 1 <= L.y1; y += 3) for (let x = L.x0; x <= L.x1; x += 2) if (R() < 0.5) addBuilding(x, y, x, Math.min(y + 1, L.y1), 2.6, 'container', rpick(PAL.cont)); continue; }
+        L.b = addBuilding(L.x0, L.y0, L.x1, L.y1, rr(8, 15), 'warehouse', rpick(PAL.factory));
       } else { // BEACH
         if (R() < 0.3) { for (let y = L.y0; y <= L.y1; y++) for (let x = L.x0; x <= L.x1; x++) set(x, y, TL.LOT); L.kind = 'lot'; addParkingRow(L.x0, L.y0, L.x1, L.y1); continue; }
         for (let y = L.y0; y <= L.y1; y++) for (let x = L.x0; x <= L.x1; x++) set(x, y, TL.SAND);
@@ -384,6 +389,7 @@ function genWorld(seed) {
   };
   makeLotPlace('spray', choose(edgeLots(DIST.MIDTOWN, L => (L.x1 - L.x0) >= 2 && (L.y1 - L.y0) >= 2), 0.3, 0.45), '페인트샵');
   makeLotPlace('spray2', choose(edgeLots(DIST.BEACH, L => (L.x1 - L.x0) >= 2 && (L.y1 - L.y0) >= 2), 0.75, 0.8), '페인트샵');
+  makeLotPlace('dealer', choose(edgeLots(DIST.INDUSTRY, L => (L.x1 - L.x0) >= 3 && (L.y1 - L.y0) >= 3), 0.26, 0.58) || choose(edgeLots(DIST.MIDTOWN, L => (L.x1 - L.x0) >= 3 && (L.y1 - L.y0) >= 3), 0.4, 0.6), '네온 모터스');
   makeLotPlace('garage', choose(edgeLots(DIST.HARBOR, L => (L.x1 - L.x0) >= 2 && (L.y1 - L.y0) >= 2), 0.8, 0.35), '차고');
   W.buildings = W.buildings.filter(b => !b.removed);
   W.bIndex.fill(-1);

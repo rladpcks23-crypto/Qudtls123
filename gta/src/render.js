@@ -180,17 +180,19 @@ function drawGround(amb) {
     ctx.fillRect(p.x + 1.5, p.y - (dy < 0 ? 2.6 : -2.6) - (dy < 0 ? 0 : 2.4), 0.1, 2.4 + 0.2);
   }
   // 특수 장소 바닥
-  for (const key of ['spray', 'spray2', 'garage']) {
+  for (const key of ['spray', 'spray2', 'garage', 'dealer']) {
     const pl = World.places[key]; if (!pl) continue;
     const L = pl.lot, X0 = L.x0 * T, Y0 = L.y0 * T, W = (L.x1 - L.x0 + 1) * T, H = (L.y1 - L.y0 + 1) * T;
     if (Math.abs(pl.x - Cam.x) > Cam.vw / 2 + W || Math.abs(pl.y - Cam.y) > Cam.vh / 2 + H) continue;
-    ctx.fillStyle = key === 'garage' ? '#3b3f47' : '#3a4a5c';
+    const dl = key === 'dealer', col = key === 'garage' ? '#f2c14e' : dl ? '#c77dff' : '#6fe0ff';
+    ctx.fillStyle = key === 'garage' ? '#3b3f47' : dl ? '#3a3448' : '#3a4a5c';
     ctx.fillRect(X0, Y0, W, H);
-    ctx.strokeStyle = key === 'garage' ? '#f2c14e' : '#6fe0ff'; ctx.lineWidth = 0.3; ctx.setLineDash([1, 0.8]);
+    ctx.strokeStyle = col; ctx.lineWidth = 0.3; ctx.setLineDash([1, 0.8]);
     ctx.strokeRect(X0 + 0.8, Y0 + 0.8, W - 1.6, H - 1.6); ctx.setLineDash([]);
-    ctx.save(); ctx.translate(pl.x, pl.y); ctx.fillStyle = key === 'garage' ? 'rgba(242,193,78,0.55)' : 'rgba(111,224,255,0.55)';
+    if (dl) { ctx.strokeStyle = 'rgba(240,240,235,0.8)'; ctx.lineWidth = 0.4; ctx.beginPath(); ctx.arc(pl.x, pl.y, Math.min(W, H) / 2 - 2, 0, TAU); ctx.stroke(); }
+    ctx.save(); ctx.translate(pl.x, pl.y); ctx.fillStyle = key === 'garage' ? 'rgba(242,193,78,0.55)' : dl ? 'rgba(199,125,255,0.7)' : 'rgba(111,224,255,0.55)';
     ctx.font = 'bold 1.8px "Black Han Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(key === 'garage' ? '차고' : 'PAY\'N\'SPRAY', 0, 0); ctx.restore();
+    ctx.fillText(key === 'garage' ? '차고' : dl ? 'NEON MOTORS' : 'PAY\'N\'SPRAY', 0, 0); ctx.restore();
   }
 }
 

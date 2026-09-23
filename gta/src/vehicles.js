@@ -25,6 +25,8 @@ const VTYPES = {
   swat: { name: 'SWAT 장갑차', L: 5.8, W: 2.3, mass: 3200, Fe: 14500, vmax: 40, grip: 1.1, cs: 5.0, steer: 0.5, hp: 320, colors: ['#1f2328'], style: 'swat' },
   bike: { name: 'PCJ-600', L: 2.2, W: 0.8, mass: 230, Fe: 3300, vmax: 56, grip: 1.3, cs: 6, steer: 0.7, hp: 60, colors: ['#e0262b', '#1d1d1f', '#f2c200', '#2e7dd1', '#e8e8ea'], style: 'bike' },
   ambulance: { name: '구급차', L: 5.4, W: 2.1, mass: 2300, Fe: 10000, vmax: 42, grip: 1.12, cs: 5.0, steer: 0.54, hp: 180, colors: ['#f4f4f4'], style: 'ambulance' },
+  super: { name: '인페르노', L: 4.5, W: 2.0, mass: 1350, Fe: 14500, vmax: 70, grip: 1.6, cs: 5.8, steer: 0.55, hp: 95, colors: ['#ff5d8f', '#6fe0ff', '#f2c200', '#1d1d1f', '#9be15d'], style: 'sports' },
+  bus: { name: '시내버스', L: 10.5, W: 2.5, mass: 9000, Fe: 26000, vmax: 26, grip: 1.0, cs: 4.2, steer: 0.4, hp: 400, colors: ['#2f7d4a'], style: 'van' },
   armored: { name: '현금수송 트럭', L: 6.4, W: 2.4, mass: 5000, Fe: 16000, vmax: 30, grip: 1.0, cs: 4.6, steer: 0.45, hp: 700, colors: ['#3d4a3a'], style: 'armored' },
 };
 const TRAFFIC_MIX = ['sedan', 'sedan', 'sedan', 'compact', 'compact', 'taxi', 'van', 'muscle', 'sports', 'truck', 'sedan', 'compact', 'bike'];

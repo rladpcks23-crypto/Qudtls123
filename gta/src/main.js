@@ -56,7 +56,7 @@ const Game = {
     const P = this.player = new PlayerPed(st.x, st.y);
     P.money = sv ? sv.money : 200; P.displayMoney = P.money;
     Jobs.active = null; Jobs.stats = (sv && sv.jobs) || {};
-    if (sv) { for (const k in sv.inv) P.inv[k] = sv.inv[k] === -1 ? Infinity : sv.inv[k]; this.clock = sv.time || this.clock; P.armor = sv.armor || 0; if (sv.weapon && P.inv[sv.weapon] > 0) P.weapon = sv.weapon; }
+    if (sv) { for (const k in sv.inv) P.inv[k] = sv.inv[k] === -1 ? Infinity : sv.inv[k]; this.clock = sv.time || this.clock; P.armor = sv.armor || 0; if (sv.weapon && P.inv[sv.weapon] > 0) P.weapon = sv.weapon; P.bag = sv.bag || {}; }
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
     placeStaticPickups();
     Military.reset(); AirPatrol.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
@@ -110,9 +110,10 @@ const Game = {
       const b = document.getElementById('t-enter'); if (b) b.textContent = drv ? '하차' : '탑승';
     }
     const sp = drv && this.player.car.V.special || '';
-    if (sp !== this._lastSp) {
-      this._lastSp = sp;
-      const L = { tank: ['주포', '주포'], heli: ['기관포', '미사일'], jet: ['기관포', '미사일'] }[sp] || ['발사', '드리프트'];
+    const lab = sp ? VWEAP[vWeapon(this.player.car)].short + '|' + sp : '';
+    if (lab !== this._lastSp) {
+      this._lastSp = lab; document.body.classList.toggle('special', !!sp);
+      const L = sp ? [VWEAP[vWeapon(this.player.car)].short, sp === 'tank' ? '기관총' : '유도탄'] : ['발사', '드리프트'];
       const f = document.getElementById('t-fire'), h = document.getElementById('t-hb');
       if (f) f.textContent = L[0]; if (h) h.textContent = L[1];
     }
@@ -145,7 +146,7 @@ const Game = {
       drawWorldTexts3D();
       Rain.draw(this.weather.intensity);
     } else renderScene();
-    if (st === 'play' || st === 'wasted' || st === 'busted' || st === 'shop' || st === 'paused') drawHUD(dt);
+    if (st === 'play' || st === 'wasted' || st === 'busted' || st === 'shop' || st === 'paused') { drawHUD(dt); if (st === 'play') drawLockHUD(); }
     if (st === 'wasted' || st === 'busted') drawDeathScreen(st, this.deathT);
     if (st === 'map') drawFullMap();
   },
@@ -177,10 +178,14 @@ const Game = {
       if (keyHit('KeyX') && Jobs.active) Jobs.stop('일을 그만뒀다');
       if (keyHit('KeyV')) { Settings.camRot = !Settings.camRot; Settings.save(); UI.toast(Settings.camRot ? '운전 시점: 차 방향으로 회전' : '운전 시점: 북쪽 고정'); }
       if (keyHit('KeyF', 'Enter', 'PadY')) { if (P.car) exitCar(P); else if (!(P.alt > 0)) tryEnterCar(P); }
-      if (keyHit('KeyE') || Input.wheel > 0 || (!P.car && keyHit('PadRB', 'PadRight'))) cycleWeapon(P, 1);
-      if (keyHit('KeyQ') || Input.wheel < 0 || (!P.car && keyHit('PadLB', 'PadLeft'))) cycleWeapon(P, -1);
+      const vc = P.car && P.car.V.special ? P.car : null; // 전차·헬기·전투기: 탑승 무기 교체
+      if (keyHit('KeyE') || Input.wheel > 0 || ((!P.car || vc) && keyHit('PadRight'))) { if (vc) cycleVWeapon(vc, 1); else cycleWeapon(P, 1); }
+      if (keyHit('KeyQ') || Input.wheel < 0 || ((!P.car || vc) && keyHit('PadLeft'))) { if (vc) cycleVWeapon(vc, -1); else cycleWeapon(P, -1); }
+      if (!P.car && keyHit('PadRB')) cycleWeapon(P, 1);
+      if (!P.car && keyHit('PadLB')) cycleWeapon(P, -1);
       for (let i = 1; i <= 8; i++) if (keyHit('Digit' + i)) { const w = WEAPON_ORDER[i - 1]; if (P.inv[w] > 0) { P.weapon = w; UI.weaponFlash = 1; } }
       if (keyHit('KeyR', 'PadDown') && P.car) { Radio.cycle(); }
+      if (keyHit('KeyB')) Bag.useBest();
       if (keyHit('KeyC', 'PadUp')) cycleView();
       if (keyHit('KeyZ')) Cam.zoomMul = Cam.zoomMul === 1 ? 1.45 : Cam.zoomMul === 1.45 ? 0.8 : 1;
       if (P.car && (P.car.type === 'police' || P.car.type === 'ambulance') && keyHit('KeyG', 'PadLeft')) { P.car.siren = !P.car.siren; }
@@ -192,7 +197,7 @@ const Game = {
     Jay.update(dt);
     Missions.update(dt);
     Jobs.update(dt);
-    Military.update(dt); AirPatrol.update(dt);
+    Military.update(dt); AirPatrol.update(dt); Bag.update(dt);
     Talk.update(dt); Aim.update(dt); EMS.update(dt); Givers.update(); Vendors.update(dt); GPS.update(dt);
     // 체력 자연 회복: 6초 동안 안 다치면 50까지 천천히 (GTA V)
     if (!P.dead && P.hp < 50 && this.time - (P.lastHurt || 0) > 6) P.hp = Math.min(50, P.hp + 2 * dt);
@@ -359,6 +364,13 @@ const Game = {
         UI.toast(had ? '새 도색 완료! 수배가 해제됐다 (-$100)' : '수리 및 도색 완료 (-$100)');
       }
     }
+    // 네온 모터스: 차를 몰고 마당에 세우거나 걸어서 들어가면 매매 화면
+    const DL = World.places.dealer;
+    if (DL && this.shopCool <= 0 && !(P.alt > 0)) {
+      const inCar = P.car && !(P.car.alt > 1.2) && dist(P.car.x, P.car.y, DL.x, DL.y) < 9 && P.car.speed < 3;
+      const onFoot = !P.car && dist(P.x, P.y, DL.x, DL.y) < 3;
+      if (inCar || onFoot) { Shop.open('dealer'); return; }
+    }
     // 상점 · 직업 게시판 (걸어서 문 앞 마커에 들어가면 열림)
     if (!P.car && !(P.alt > 0) && this.shopCool <= 0 && !(Missions.active && Missions.active.def.noShop)) {
       for (const [k, kind] of [['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart']]) {
@@ -402,7 +414,7 @@ const Game = {
       P.inv = { fist: Infinity }; P.weapon = 'fist';
     }
     const np = new PlayerPed(spot.x, spot.y);
-    Object.assign(np, { money: P.money, displayMoney: P.money, inv: P.inv, weapon: P.weapon in P.inv ? P.weapon : 'fist' });
+    Object.assign(np, { money: P.money, displayMoney: P.money, inv: P.inv, weapon: P.weapon in P.inv ? P.weapon : 'fist', bag: kind === 'wasted' ? P.bag : {} });
     if (kind === 'wasted') np.inv = P.inv;
     this.player = np;
     Wanted.reset(); Police.reset(); Jay.reset();

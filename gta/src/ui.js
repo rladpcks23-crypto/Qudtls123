@@ -61,8 +61,15 @@ function drawHUD(dt) {
   const bw = 62 * s, bx = x - bw, by = y + 30 * s;
   c.fillStyle = 'rgba(12,14,20,0.55)'; roundRect(c, bx, by, bw, bw, 10 * s); c.fill();
   c.strokeStyle = UI.weaponFlash > 0 ? '#f2c14e' : 'rgba(255,255,255,0.25)'; c.lineWidth = 2; c.stroke();
-  c.save(); c.translate(bx + bw / 2, by + bw / 2 - 5 * s); drawWeaponIcon(c, P.weapon, 26 * s, '#f2f2f2'); c.restore();
-  const ammo = P.inv[P.weapon];
+  const VW = P.car && P.car.V.special ? vWeapon(P.car) : null;
+  if (VW) { // 탑승 무기: 이름 + 재장전 게이지
+    txt(c, VWEAP[VW].short, bx + bw / 2, by + bw / 2 + 2 * s, `700 ${14 * s}px ${FONT_KR}`, '#f2f2f2', 'rgba(0,0,0,0.9)', 3, 'center');
+    const cdk = clamp((P.car['cd_' + VW] || 0) / VWEAP[VW].cd, 0, 1);
+    c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(bx + 8 * s, by + bw - 12 * s, bw - 16 * s, 4 * s);
+    c.fillStyle = cdk > 0 ? '#f2c14e' : '#7ae68f'; c.fillRect(bx + 8 * s, by + bw - 12 * s, (bw - 16 * s) * (1 - cdk), 4 * s);
+    txt(c, `${(P.car.vw || 0) % vWeapons(P.car).length + 1}/${vWeapons(P.car).length}`, bx + bw - 5 * s, by + 13 * s, `${10 * s}px ${FONT_NUM}`, '#cfd6e0', 'rgba(0,0,0,0.9)', 2, 'right');
+  } else { c.save(); c.translate(bx + bw / 2, by + bw / 2 - 5 * s); drawWeaponIcon(c, P.weapon, 26 * s, '#f2f2f2'); c.restore(); }
+  const ammo = VW ? undefined : P.inv[P.weapon];
   if (ammo !== Infinity && ammo !== undefined) txt(c, String(ammo), bx + bw / 2, by + bw - 6 * s, `${16 * s}px ${FONT_NUM}`, '#fff', 'rgba(0,0,0,0.9)', 3, 'center');
   // 돈
   const money = '$' + String(Math.max(0, Math.round(P.displayMoney))).padStart(8, '0');
@@ -80,6 +87,12 @@ function drawHUD(dt) {
     c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(barX - 2, by2, barW + 4, barH * 0.55 + 4);
     c.fillStyle = P.boostT > 0 ? '#6fe0ff' : P.exhausted ? (Math.floor(Game.time * 5) % 2 ? '#ff8a5a' : '#8a4a2a') : '#f2c14e';
     c.fillRect(barX, by2 + 2, barW * (P.boostT > 0 ? 1 : P.stamina), barH * 0.55);
+  }
+  // 가방 · 체력 유지제
+  const bagN = Bag.count();
+  if (bagN || P.vitalT > 0) {
+    const t = [bagN ? `가방 ${bagN}${Input.usingTouch ? '' : '(B)'}` : '', P.vitalT > 0 ? `유지 ${Math.ceil(P.vitalT)}s` : ''].filter(Boolean).join(' · ');
+    txt(c, t, barX, by2 + 14 * s, `600 ${11 * s}px ${FONT_KR}`, P.vitalT > 0 ? '#7ae68f' : '#cfd6e0', 'rgba(0,0,0,0.9)', 3, 'left');
   }
   // 별
   const starR = 11 * s, sy = by + bw + 22 * s;
@@ -237,6 +250,7 @@ function placeIcons() {
   if (pl.spray) out.push({ x: pl.spray.x, y: pl.spray.y, ch: 'S', c: '#6fe0ff', label: '페인트샵' });
   if (pl.spray2) out.push({ x: pl.spray2.x, y: pl.spray2.y, ch: 'S', c: '#6fe0ff', label: '페인트샵' });
   if (pl.garage) out.push({ x: pl.garage.x, y: pl.garage.y, ch: 'G', c: '#f2c14e', label: '차고' });
+  if (pl.dealer) out.push({ x: pl.dealer.x, y: pl.dealer.y, ch: 'D', c: '#c77dff', label: '네온 모터스(차량 매매)' });
   if (pl.ammu2) out.push({ x: pl.ammu2.x, y: pl.ammu2.y, ch: '총', c: '#ff6b5a', label: '총포상' });
   for (const k of ['burger', 'burger2']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '버', c: '#ffb347', label: '버거 샷' });
   for (const k of ['mart', 'mart2', 'mart3']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '편', c: '#7ae68f', label: '편의점' });
@@ -331,7 +345,7 @@ function drawFullMap() {
   const c = ctx, P = Game.player;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
   c.fillStyle = 'rgba(6,10,18,0.92)'; c.fillRect(0, 0, CW, CH);
-  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  군사 기지 (전차·헬기·전투기)']];
+  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  군사 기지 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)']];
   // 범례 줄 수를 먼저 재서 지도 크기를 정한다 (글자가 지도·도움말과 겹치지 않게)
   const lf = `500 ${12 * UI.s}px ${FONT_KR}`, lh = 18 * Math.max(1, UI.s);
   c.font = lf;
@@ -431,6 +445,7 @@ function drawItemIcon(g, id, S) {
   g.save(); g.scale(S, S);
   const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
   switch (id) {
+    case 'vital': R(-0.22, -0.5, 0.44, 0.95, '#2fbf71'); R(-0.14, -0.62, 0.28, 0.14, '#f2f2f2'); R(-0.22, -0.1, 0.44, 0.18, '#f2f2f2'); R(-0.05, -0.16, 0.1, 0.3, '#e0443e'); R(-0.15, -0.06, 0.3, 0.1, '#e0443e'); break;
     case 'burger': R(-0.6, -0.35, 1.2, 0.25, '#d99a4e'); R(-0.62, -0.1, 1.24, 0.12, '#4b8f3a'); R(-0.62, 0.02, 1.24, 0.16, '#6b3a22'); R(-0.62, 0.18, 1.24, 0.08, '#f2c14e'); R(-0.58, 0.26, 1.16, 0.18, '#d99a4e'); break;
     case 'set': R(-0.75, -0.2, 0.8, 0.18, '#d99a4e'); R(-0.76, -0.02, 0.82, 0.14, '#6b3a22'); R(-0.72, 0.12, 0.74, 0.16, '#d99a4e'); R(0.15, -0.45, 0.45, 0.8, '#c7302a'); R(0.22, -0.6, 0.06, 0.2, '#f2c14e'); R(0.34, -0.62, 0.06, 0.22, '#f2c14e'); break;
     case 'fries': R(-0.35, -0.1, 0.7, 0.55, '#c7302a'); for (let i = 0; i < 5; i++) R(-0.3 + i * 0.13, -0.5 + (i % 2) * 0.1, 0.08, 0.45, '#f2c14e'); break;
@@ -459,35 +474,49 @@ const SHOPS = {
     { id: 'ramen', name: '컵라면', price: 8, desc: '체력 +20', hp: 20 },
     { id: 'energy', name: '에너지 드링크', price: 15, desc: '60초 동안 지치지 않고 달리기', stam: 1, boost: 60 },
     { id: 'medkit', name: '구급상자', price: 120, desc: '체력 완전 회복', hp: 100 },
+    { id: 'vital', name: '체력 유지제', price: 80, desc: '90초 동안 체력이 계속 차오르고 지치지 않는다', vital: 90 },
     { id: 'lvest', name: '경량 방탄조끼', price: 300, desc: '방어 +50', armor: 50 },
     { id: 'lotto', name: '즉석 복권', price: 10, desc: '5% 확률 $500, 1% 확률 $5,000', lotto: true }] },
 };
 const Shop = {
+  kind: null,
   open(kind) {
     const S = SHOPS[kind] || SHOPS.ammu, P = Game.player;
+    this.kind = kind;
     Game.state = 'shop';
     document.getElementById('shop-title').textContent = S.title;
     document.getElementById('shop-sub').textContent = S.sub;
     const list = document.getElementById('shop-list');
     list.innerHTML = '';
     const items = S.items();
-    const buttons = [];
-    const can = it => P.money >= it.price && !(it.hp && !it.stam && !it.boost && P.hp >= P.maxHp) && !(it.armor && P.armor >= 100) && !(it.id === 'armor' && P.armor >= 100);
-    const refresh = () => { document.getElementById('shop-money').textContent = `보유 $${P.money.toLocaleString()}`; buttons.forEach((b, i) => { b.disabled = !can(items[i]); }); };
+    const buttons = [], bagBtns = [];
+    const food = it => !!CONSUMABLES[it.id];
+    // 체력이 가득해도 음식은 살 수 있다 (가방에 넣는다)
+    const can = it => it.ok ? it.ok() && P.money >= it.price : P.money >= it.price && !(it.armor && P.armor >= 100) && !(it.id === 'armor' && P.armor >= 100) && !(food(it) && !this.useful(it) && Bag.count() >= Bag.MAX);
+    const refresh = () => {
+      document.getElementById('shop-money').textContent = `보유 $${P.money.toLocaleString()}` + (Bag.count() ? ` · 가방 ${Bag.count()}/${Bag.MAX}` : '');
+      buttons.forEach((b, i) => { b.disabled = !can(items[i]); });
+      bagBtns.forEach(([b, it]) => { b.disabled = P.money < it.price || Bag.count() >= Bag.MAX; });
+    };
     for (const it of items) {
       const row = document.createElement('div'); row.className = 'shop-row';
       const cv = document.createElement('canvas'); cv.width = 64; cv.height = 40;
       const g = cv.getContext('2d'); g.translate(32, 20);
-      if (it.id === 'armor') drawPickupIcon(g, 'armor', null, 30); else drawItemIcon(g, it.id, WEAPONS[it.id] ? 26 : 30);
+      if (it.veh) drawVehIcon(g, it.veh);
+      else if (it.id === 'armor') drawPickupIcon(g, 'armor', null, 30); else drawItemIcon(g, it.id, WEAPONS[it.id] ? 26 : 30);
       const info = document.createElement('div'); info.className = 'shop-info';
-      info.innerHTML = `<b>${it.name}</b><span>${it.desc}</span>`;
-      const btn = document.createElement('button'); btn.className = 'btn small'; btn.textContent = `$${it.price.toLocaleString()}`;
+      info.innerHTML = `<b>${it.name}</b><span>${it.desc}${food(it) ? ' · 필요 없으면 가방에 보관' : ''}</span>`;
+      const btn = document.createElement('button'); btn.className = 'btn small';
+      btn.textContent = it.sellPrice !== undefined ? `+$${it.sellPrice.toLocaleString()}` : `$${it.price.toLocaleString()}`;
       btn.onclick = () => {
         if (!can(it)) return;
+        if (it.fn) { P.money -= it.price; it.fn(); if (Game.state === 'shop') refresh(); return; }
         P.money -= it.price; Sfx.cash();
-        if (it.hp) P.hp = Math.min(P.maxHp, P.hp + it.hp);
-        if (it.stam) { P.stamina = 1; P.exhausted = false; }
-        if (it.boost) P.boostT = it.boost;
+        if (food(it)) {
+          if (this.useful(it)) Bag.apply(it.id);
+          else if (Bag.add(it.id)) UI.toast(`${it.name}: 지금은 배부르다 — 가방에 넣었다`);
+          else P.money += it.price;
+        }
         if (it.armor) P.armor = Math.min(100, P.armor + it.armor);
         if (it.lotto) { const r = Math.random(); const win = r < 0.01 ? 5000 : r < 0.06 ? 500 : 0; if (win) { P.money += win; Sfx.passed(); UI.toast(`복권 당첨! +$${win.toLocaleString()}`); } else UI.toast('꽝! 다음 기회에'); }
         if (WEAPONS[it.id]) { giveWeapon(P, it.id, WEAPONS[it.id].pack || 1); P.weapon = it.id; }
@@ -495,10 +524,22 @@ const Shop = {
         refresh();
       };
       buttons.push(btn);
-      row.append(cv, info, btn); list.append(row);
+      const box = document.createElement('div'); box.className = 'shop-btns';
+      row.append(cv, info, box);
+      if (food(it)) {
+        const bb = document.createElement('button'); bb.className = 'btn small ghost'; bb.textContent = '가방에';
+        bb.onclick = () => { if (P.money < it.price || Bag.count() >= Bag.MAX) return; P.money -= it.price; Bag.add(it.id); Sfx.cash(); UI.toast(`${it.name} → 가방 (${Bag.count()}/${Bag.MAX})`); refresh(); };
+        bagBtns.push([bb, it]); box.append(bb);
+      }
+      box.append(btn); list.append(row);
     }
     refresh();
     document.getElementById('shop').hidden = false;
+  },
+  // 지금 먹으면 효과가 있는가
+  useful(it) {
+    const P = Game.player, c = CONSUMABLES[it.id]; if (!c) return true;
+    return (c.hp && P.hp < P.maxHp - 1) || (c.stam && (P.stamina < 0.95 || P.exhausted)) || (c.boost && !(P.boostT > 0)) || (c.vital && !(P.vitalT > 0));
   },
   close() { document.getElementById('shop').hidden = true; Game.state = 'play'; Game.shopCool = 4; },
 };
@@ -538,6 +579,7 @@ const Touch = {
     tap('t-steal', () => { if (Pick.target) Pick.attempt(); });
     tap('t-enter', () => { Input.pressed['KeyF'] = true; });
     tap('t-weapon', () => { Input.pressed['KeyE'] = true; });
+    tap('t-bag', () => Bag.useBest());
     tap('t-radio', () => { Input.pressed['KeyR'] = true; });
     tap('t-map', () => { Input.pressed['KeyM'] = true; });
     tap('t-pause', () => { Input.pressed['Escape'] = true; });

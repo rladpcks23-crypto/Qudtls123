@@ -232,6 +232,19 @@ function updateProjectiles(dt) {
     const p = arr[i];
     if (p.type === 'rocket') {
       p.life -= dt;
+      // 유도: 목표 쪽으로 제한된 속도로 선회
+      if (p.target) {
+        const Q = p.target, gone = Q.dead || (Q.kind === 'car' && (!Game.cars.includes(Q) || Q.burnT > 0)) || (Q.kind === 'heli' && Police.heli !== Q);
+        if (gone) p.target = null;
+        else {
+          const cur = Math.atan2(p.vy, p.vx), sp = Math.hypot(p.vx, p.vy);
+          const na = cur + clamp(angNorm(Math.atan2(Q.y - p.y, Q.x - p.x) - cur), -p.turn * dt, p.turn * dt);
+          p.vx = Math.cos(na) * sp; p.vy = Math.sin(na) * sp; p.a = na;
+          const qa = Q.kind === 'heli' ? Q.alt : (Q.alt || 0);
+          p.air = qa > 1.2;
+          if (dist2(Q.x, Q.y, p.x, p.y) < 9) { p.alt = qa; explode(p.x, p.y, p.big || 7, p.dmg || 150, p.by, null, qa); if (Q.kind === 'heli') Q.hp -= (p.dmg || 150) * 2; arr.splice(i, 1); continue; }
+        }
+      }
       const nx = p.x + p.vx * dt, ny = p.y + p.vy * dt;
       Particles.smoke(p.x, p.y, 0.8, '#d0d0d0'); if (Math.random() < 0.7) Particles.fire(p.x, p.y, 0.6);
       // p.air: 공중 목표를 노린 미사일 (지상 물체·건물은 지나친다)

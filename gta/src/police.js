@@ -74,6 +74,9 @@ function crime(type, x, y) {
   const P = Game.player;
   if (P.dead || Game.state !== 'play') return;
   const c = CRIMES[type]; if (!c) return;
+  // 조직 간 전쟁 미션 중에는 경찰이 끼어들지 않는다 / 자경단 일 중 범인 차를 쏘는 것은 범죄가 아니다
+  if (Missions.active && Missions.active.def.noPolice) return;
+  if (Jobs.active && Jobs.active.id === 'vigilante' && (type === 'gunfire' || type === 'destroyCar' || type === 'explosion')) return;
   if (type === 'gunfire' || type === 'explosion') scarePeds(x, y, type === 'gunfire' ? 26 : 45);
   if (copCanSee(x, y) || copCanSee(P.px, P.py)) {
     if (c.min === 0 && Wanted.stars === 0 && !chance(0.3)) return;

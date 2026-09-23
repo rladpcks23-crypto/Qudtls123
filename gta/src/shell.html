@@ -59,6 +59,8 @@
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 22px; width: min(420px, 100%); box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; max-height: 100%; overflow-y: auto; }
   .card h2 { margin: 0; font-family: var(--disp); font-weight: 400; font-size: 34px; color: var(--gold); letter-spacing: 0.02em; }
   .card p { margin: 0; color: var(--muted); font-size: 13px; }
+  .shop-btns { display: flex; gap: 6px; align-items: center; }
+  .btn.ghost { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.3); font-size: 12px; }
   .shop-row { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
   .shop-info { display: flex; flex-direction: column; font-size: 14px; }
   .shop-info span { color: var(--muted); font-size: 12px; }
@@ -97,6 +99,11 @@
   body.touch.playing.driving #drive { display: block; }
   body.driving #stick, body.driving #stick-zone, body.driving #t-weapon { display: none !important; }
   body:not(.driving) #t-hb, body:not(.driving) #t-radio { display: none !important; } /* 걸을 때는 쓸모없는 버튼 */
+  #t-bag { right: 94px; bottom: calc(206px + env(safe-area-inset-bottom)); width: 48px; height: 48px; font-size: 11px; }
+  body.driving #t-bag { display: none !important; }
+  /* 전차·헬기·전투기: 라디오 자리에 무기 교체 버튼 */
+  body.driving.special #t-radio { display: none !important; }
+  body.driving.special #t-weapon { display: flex !important; right: calc(116px + env(safe-area-inset-right)); bottom: calc(198px + env(safe-area-inset-bottom)); width: 54px; height: 54px; }
   /* 핸들 크기: 설정(보통/크게/아주 크게). 손가락이 닿는 영역은 그림보다 조금 더 넓다 */
   body { --wheel: 204px; }
   body[data-wheel="md"] { --wheel: 168px; } body[data-wheel="xl"] { --wheel: 244px; }
@@ -134,6 +141,7 @@
     #t-enter { right: calc(112px + env(safe-area-inset-right)); bottom: calc(92px + env(safe-area-inset-bottom)); }
     #t-weapon { right: calc(30px + env(safe-area-inset-right)); bottom: calc(122px + env(safe-area-inset-bottom)); }
     #t-radio { right: calc(100px + env(safe-area-inset-right)); bottom: calc(166px + env(safe-area-inset-bottom)); }
+    #t-bag { right: calc(100px + env(safe-area-inset-right)); bottom: calc(166px + env(safe-area-inset-bottom)); }
     #t-run { right: calc(196px + env(safe-area-inset-right)); bottom: calc(20px + env(safe-area-inset-bottom)); }
     #t-steal { right: calc(196px + env(safe-area-inset-right)); bottom: calc(96px + env(safe-area-inset-bottom)); }
     #stick:not(.active) { bottom: calc(24px + env(safe-area-inset-bottom)); left: calc(24px + env(safe-area-inset-left)) !important; }
@@ -199,11 +207,15 @@
     <div class="tab" id="tab-sys" hidden>
       <p><b>수배 ★</b> — 범죄마다 '열기' 점수가 쌓여 별 1~5개가 된다. 경찰이 직접 보거나, 목격한 시민이 몇 초 뒤 신고한다. 경찰 시야를 벗어나면 별이 깜빡이고 레이더에 붉은 수색 원이 생긴다. 원 밖에서 들키지 않고 버티면 수배가 풀린다. 페인트샵(S)도 방법.</p>
       <p><b>경찰 전력</b> — ★ 도보 순경 · ★★ 순찰차와 발포 · ★★★ 헬기와 검문소 · ★★★★ SWAT와 헬기 사격(비행 중이면 군 헬기) · ★★★★★ 군 공격 헬기 2대. ★1~3에서는 붙잡히면 체포(BUSTED).</p>
+      <p><b>갱 전쟁 미션</b> — 청룡파 소탕 · 항구 전쟁 · 증인 호송 · 왕좌 동안에는 경찰이 개입하지 않는다.</p>
       <p><b>스토리</b> — 미션 14개. 도난, 배달, 암살, 소탕, 경주, 미행, 강도, 호송, 시한폭탄, 결전, 그리고 군 기지의 전차 탈취와 공중전.</p>
       <p><b>교통</b> — 차들은 차선을 따라 달리고, 신호를 지키며, 앞차와의 간격을 유지한다. 들이받으면 겁먹고 과속으로 달아나기도 한다.</p>
       <p><b>도시</b> — 다운타운 · 미드타운 · 웨스트 힐즈 · 하버 포인트(청룡파 구역) · 선셋 비치 · 센트럴 파크. 1초 = 게임 속 1분으로 낮과 밤이 돌고, 가끔 비가 와 노면이 미끄러워진다.</p>
       <p><b>상점</b> — 총포상(총): 무기·방탄복 · 버거 샷(버): 버거·세트·콜라 · 24 편의점(편): 간식, 에너지 드링크, 구급상자, 복권. 문 앞 마커로 걸어 들어가면 열린다.</p>
-      <p><b>직업</b> — 고용센터(J): 택시 기사 · 구급대원 · 음식 배달 / 브로커($): 차량 수출 · 밀수 운반 · 소매치기. 반복할수록 보수가 오른다.</p>
+      <p><b>직업</b> — 고용센터(J): 택시 기사 · 구급대원 · 음식 배달 · 자경단 · 버스 기사 / 브로커($): 차량 수출 · 밀수 운반 · 현금수송차 습격 · 소매치기. 반복할수록 보수가 오른다. 스토리 미션 중에 일을 시작하면 미션은 잠시 내려놓는다(마커에서 다시 받기).</p>
+      <p><b>가방</b> — 음식·약은 체력이 가득해도 사서 가방에 넣어 둘 수 있다(최대 10개). PC <b>B</b>, 모바일 [가방] 버튼 = 지금 필요한 것을 꺼내 먹는다. <b>체력 유지제</b>(편의점): 90초 동안 체력이 계속 차오르고 지치지 않는다.</p>
+      <p><b>네온 모터스(D)</b> — 아이언 밸리의 차량 매매상. 타고 온 차를 팔고(훔친 차는 싸게, 산 차는 60%), 새 차·슈퍼카·현금수송 트럭·전차·공격 헬기·전투기를 산다. 산 차량은 사라지지 않는다.</p>
+      <p><b>탑승 무기</b> — 전차: 주포·기관총 / 헬기: 기관포·로켓·유도탄 / 전투기: 기관포·유도탄·로켓. Q/E(모바일 [무기])로 바꾸고, 스페이스(모바일 [유도탄])는 유도 미사일. 목표를 조준선에 0.8초 겨누면 LOCK — 유도탄이 따라간다. 적 미사일은 급선회로 피할 수 있다.</p>
       <p><b>사람들</b> — 회사원·조깅하는 사람·관광객·노인·통화 중인 사람·개 산책(개도 따라다님)·핫도그 노점·버스커. 부딪히면 항의하고, 총을 겨누면 손을 들고, 계속 겨누면 지갑을 떨어뜨린다. 쓰러진 사람에게는 구급차가 와서 되살린다. 청룡파(초록)와 파도파(주황)는 마주치면 싸운다.</p>
       <p><b>편의 기능</b> — 전체 지도를 눌러 웨이포인트를 찍으면 레이더에 GPS 경로가 뜬다. 은신처(집)에서 저장하고 6시간 잔다. 6초 동안 안 다치면 체력이 50까지 차오른다. 일시정지 메뉴에 치트 입력칸이 있다.</p>
       <p><b>군사 기지</b> — 도시 북쪽 끝. 들어가서 5초가 지나면 수배 ★★★★. 전차(주포 · 차를 밀어 부숨), 공격 헬기(가속하면 이륙 · 기관포/미사일), 전투기(활주로에서 약 120km/h에 이륙). 비행 중 <b>하차 한 번 = 착륙</b>, <b>곧바로 한 번 더 = 낙하산 탈출</b>. ★4 이상에서 날고 있으면 군 헬기가 쫓아온다.</p>
@@ -270,6 +282,7 @@
   <button class="tb" id="t-enter">탑승</button>
   <button class="tb" id="t-weapon">무기</button>
   <button class="tb" id="t-radio">라디오</button>
+  <button class="tb" id="t-bag">가방</button>
   <button class="tb" id="t-run">달리기</button>
   <button class="tb" id="t-steal">훔치기</button>
   <button class="tb" id="t-map">지도</button>

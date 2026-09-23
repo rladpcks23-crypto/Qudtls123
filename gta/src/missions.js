@@ -15,7 +15,7 @@ const Save = {
     try {
       const P = Game.player;
       const inv = {}; for (const k in P.inv) if (k !== 'fist') inv[k] = P.inv[k] === Infinity ? -1 : P.inv[k];
-      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon }));
+      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {} }));
     } catch (e) { /* 저장 불가 환경 */ }
   },
   clear() { try { localStorage.removeItem(this.key); } catch (e) { } },
@@ -60,7 +60,8 @@ const Missions = {
     const def = this.defs[i];
     const m = { def, t: 0, stage: 0, timer: null, blips: [], objective: '', ents: [], kills: 0 };
     this.active = m;
-    UI.big(def.title, '미션 시작', 2.6, '#f2c14e');
+    UI.big(def.title, def.noPolice ? '미션 시작 — 조직 간 싸움이라 경찰은 개입하지 않는다' : '미션 시작', 2.6, '#f2c14e');
+    if (def.noPolice) Wanted.clear();
     UI.dialog(def.intro);
     def.start(m);
   },
@@ -80,6 +81,12 @@ const Missions = {
     if (m.def.outro) setTimeout(() => UI.dialog(m.def.outro), 1800);
     if (this.done) setTimeout(() => { UI.big('네온 하버의 새 주인', '모든 스토리 미션 완료 — 자유롭게 도시를 누비세요', 6, '#ff5d8f'); }, 4200);
     Save.write();
+  },
+  // 실패가 아니라 잠시 내려놓기 (직업을 시작할 때) — 의뢰인 마커에서 다시 받을 수 있다
+  abort(reason) {
+    const m = this.active; if (!m) return;
+    this.cleanup(m); this.active = null; this.cool = 3;
+    UI.objective(''); UI.toast(reason || '미션을 중단했다 — 의뢰인 마커에서 다시 시작할 수 있다');
   },
   fail(reason) {
     const m = this.active; if (!m) return;
@@ -137,7 +144,7 @@ const blip = (m, o) => { m.blips.push(o); return o; };
 // 암살 미션 공장: 표적 + 경호원 + 도주 차량. 경계하면 표적이 차로 달아나고, 끌어내면 다시 걸어서 싸운다.
 function assassinDef(o) {
   return {
-    title: o.title, reward: o.reward, intro: o.intro, outro: o.outro,
+    title: o.title, reward: o.reward, intro: o.intro, outro: o.outro, noPolice: o.noPolice,
     start(m) {
       const base = sidewalkNear(o.u * MW * T, o.v * MH * T);
       m.target = missionPed(m, 'target', base.x, base.y);
@@ -244,7 +251,7 @@ const MISSION_DEFS = [
   }),
   {
     title: '4. 청룡파 소탕',
-    reward: 4000,
+    reward: 4000, noPolice: true,
     intro: [['조니 박', '하버 포인트의 청룡파가 우리 창고를 털었어.'], ['조니 박', '기관단총 한 자루 챙겨줄게. 90초 안에 15명. 할 수 있지?']],
     outro: [['조니 박', '항구가 조용해졌네. 청룡파도 한동안은 얌전하겠지.']],
     start(m) {
@@ -297,7 +304,7 @@ const MISSION_DEFS = [
   },
   {
     title: '6. 항구 전쟁',
-    reward: 12000,
+    reward: 12000, noPolice: true,
     intro: [['마담 윤', '청룡파가 현금수송 트럭 세 대로 도시를 빠져나가려 해.'], ['마담 윤', '로켓 런처를 준비했어. 트럭을 전부 날려버려. 그리고 살아서 돌아와.']],
     outro: [['마담 윤', '이제 이 항구는 우리 거야. 네온 하버에 온 걸 환영해, 파트너.']],
     start(m) {
@@ -409,7 +416,7 @@ const MISSION_DEFS = [
   },
   {
     title: '10. 증인 호송',
-    reward: 5000,
+    reward: 5000, noPolice: true,
     intro: [['마담 윤', '청룡파 회계사가 우리 쪽으로 넘어오겠대. 녀석들이 가만있지 않겠지.'], ['마담 윤', '차로 데리러 가서 선셋 비치 은신처까지 무사히 데려와. 차가 터지면 끝이야.']],
     outro: [['마담 윤', '회계사가 장부를 전부 넘겼어. 청룡파 금고가 훤히 보이네.']],
     start(m) {
@@ -475,7 +482,7 @@ const MISSION_DEFS = [
     },
   },
   assassinDef({
-    title: '12. 왕좌', reward: 20000, name: '청룡', u: 0.2, v: 0.22, guards: 8, gWeapon: 'smg', gHp: 110, carType: 'sports', carColor: '#1f8a4c', targetHp: 260,
+    title: '12. 왕좌', reward: 20000, name: '청룡', noPolice: true, u: 0.2, v: 0.22, guards: 8, gWeapon: 'smg', gHp: 110, carType: 'sports', carColor: '#1f8a4c', targetHp: 260,
     targetLook: { shirt: '#1f8a4c', pants: '#0d0d0d', weapon: 'rifle' },
     intro: [['마담 윤', '청룡파 두목 "청룡"이 웨스트 힐즈 저택에 숨어 있어. 경호원이 여덟이야.'], ['마담 윤', '이번 한 번이면 이 도시는 우리 거야. 끝내고 와, 파트너.']],
     outro: [['마담 윤', '끝났어. 네온 하버의 밤은 이제 우리 거야.'], ['마담 윤', '…그리고 넌 이제 이 도시에서 제일 유명한 이름이 됐지.']],
