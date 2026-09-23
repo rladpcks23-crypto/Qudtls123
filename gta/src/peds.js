@@ -90,7 +90,8 @@ class PlayerPed extends Ped {
     this.shirt = '#f2f2f2'; this.pants = '#34495e'; this.skin = '#e2b08a'; this.hair = '#1d1a18';
     this.hp = 100; this.maxHp = 100; this.armor = 0; this.money = 0; this.displayMoney = 0;
     this.inv = { fist: Infinity }; this.weapon = 'fist'; this.state = 'player';
-    this.aim = 0; this.bustT = 0; this.stamina = 1; this.exhausted = false; this.boostT = 0;
+    this.aim = 0; this.bustT = 0; this.stamina = 1; this.exhausted = false; this.boostT = 0; this.alt = 0;
+    this.bornT = typeof Game !== 'undefined' ? Game.time || 0 : 0; // 막 태어난(리스폰) 직후 몇 초는 단속 유예
   }
 }
 

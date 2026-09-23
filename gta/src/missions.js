@@ -15,7 +15,7 @@ const Save = {
     try {
       const P = Game.player;
       const inv = {}; for (const k in P.inv) if (k !== 'fist') inv[k] = P.inv[k] === Infinity ? -1 : P.inv[k];
-      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats }));
+      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon }));
     } catch (e) { /* 저장 불가 환경 */ }
   },
   clear() { try { localStorage.removeItem(this.key); } catch (e) { } },

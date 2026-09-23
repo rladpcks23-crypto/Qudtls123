@@ -96,6 +96,7 @@
   #drive { display: none; }
   body.touch.playing.driving #drive { display: block; }
   body.driving #stick, body.driving #stick-zone, body.driving #t-weapon { display: none !important; }
+  body:not(.driving) #t-hb, body:not(.driving) #t-radio { display: none !important; } /* 걸을 때는 쓸모없는 버튼 */
   /* 핸들 크기: 설정(보통/크게/아주 크게). 손가락이 닿는 영역은 그림보다 조금 더 넓다 */
   body { --wheel: 204px; }
   body[data-wheel="md"] { --wheel: 168px; } body[data-wheel="xl"] { --wheel: 244px; }

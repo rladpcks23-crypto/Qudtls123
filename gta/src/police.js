@@ -293,7 +293,7 @@ const Jay = {
     this.cd -= dt; this.countT -= dt; if (this.countT <= 0) this.count = 0;
     this.updateNpc(dt);
     if (this.cop) { this.chase(dt); return; }
-    if (P.car || P.dead || Wanted.stars > 0) { this.t = 0; return; }
+    if (P.car || P.dead || Wanted.stars > 0 || P.alt > 0 || Game.time - (P.bornT || 0) < 5) { this.t = 0; return; }
     const st = jayStatus(P.x, P.y);
     // 차에 타고 내리느라 길가에 선 경우는 봐준다
     const nearCar = st === 2 && Game.cars.some(c => c.speed < 1 && dist2(c.x, c.y, P.x, P.y) < 3.6 * 3.6);

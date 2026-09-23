@@ -142,6 +142,20 @@ const Sfx = {
     o1.connect(ef); o2.connect(g2); g2.connect(ef); ef.connect(eg); eg.connect(this.sfxBus);
     o1.start(); o2.start();
     this.engine = { gain: eg, filt: ef, o1, o2 };
+    // 헬기 로터음: 노이즈 → 로우패스 → 11Hz로 여닫히는 게인(“두두두”)
+    const rn = c.createBufferSource(); rn.buffer = buf; rn.loop = true;
+    const rf = c.createBiquadFilter(); rf.type = 'lowpass'; rf.frequency.value = 380;
+    const rg = c.createGain(); rg.gain.value = 0;
+    const chop = c.createGain(); chop.gain.value = 0.5;
+    const lfo = c.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 11;
+    const lg = c.createGain(); lg.gain.value = 0.5; lfo.connect(lg); lg.connect(chop.gain);
+    rn.connect(rf); rf.connect(chop); chop.connect(rg); rg.connect(this.sfxBus); rn.start(); lfo.start();
+    // 제트 굉음: 노이즈 → 밴드패스
+    const jn = c.createBufferSource(); jn.buffer = buf; jn.loop = true;
+    const jf = c.createBiquadFilter(); jf.type = 'bandpass'; jf.frequency.value = 1400; jf.Q.value = 0.7;
+    const jg = c.createGain(); jg.gain.value = 0;
+    jn.connect(jf); jf.connect(jg); jg.connect(this.sfxBus); jn.start();
+    this.rotor = { gain: rg, lfo }; this.jet = { gain: jg, filt: jf };
     // 사이렌: 삼각파 + LFO 없이 코드에서 주파수 변조
     const sg = c.createGain(); sg.gain.value = 0;
     const so = c.createOscillator(); so.type = 'triangle'; so.frequency.value = 800;
@@ -221,7 +235,15 @@ const Sfx = {
     // 엔진
     const car = Game.player && Game.player.car;
     const e = this.engine;
-    if (car && !this.muted && !car.dead) {
+    const sp_ = car && car.V.special;
+    if (car && sp_ && !this.muted && !car.dead) {
+      // 전차: 낮고 거친 디젤 · 헬기/전투기: 엔진은 작게 깔고 로터·제트음이 주가 된다
+      const sp = Math.abs(car.vf || 0), thr = Math.abs(car.in.raw || 0);
+      const f = sp_ === 'tank' ? 26 + sp * 3 + thr * 10 : sp_ === 'heli' ? 60 + (car.alt > 1 ? 20 : 0) : 70 + sp * 1.6;
+      e.o1.frequency.setTargetAtTime(f, t, 0.1); e.o2.frequency.setTargetAtTime(f / 2, t, 0.1);
+      e.filt.frequency.setTargetAtTime(sp_ === 'tank' ? 380 + thr * 500 : 900, t, 0.1);
+      e.gain.gain.setTargetAtTime(sp_ === 'tank' ? 0.1 + thr * 0.08 : 0.03, t, 0.1);
+    } else if (car && !this.muted && !car.dead) {
       const sp = Math.abs(car.vf);
       const gear = Math.min(4, Math.floor(sp / 12));
       const rpm = (sp - gear * 12) / 12 + 0.25 + Math.abs(car.in.thr) * 0.25;
@@ -230,6 +252,16 @@ const Sfx = {
       e.filt.frequency.setTargetAtTime(500 + Math.abs(car.in.thr) * 900 + sp * 10, t, 0.08);
       e.gain.gain.setTargetAtTime(0.07 + Math.abs(car.in.thr) * 0.09, t, 0.08);
     } else e.gain.gain.setTargetAtTime(0, t, 0.1);
+    // 로터음: 가장 가까운 헬기(내 헬기, 군 헬기, 경찰 헬기)
+    let hd = 1e9, mine = false;
+    for (const c of Game.cars) if (c.V.special === 'heli' && !c.dead && ((c.rotor || 0) > 0 && (c.alt > 0.1 || c.driver))) { const d = c === car ? 0 : dist(c.x, c.y, Cam.x, Cam.y); if (d < hd) { hd = d; mine = c === car; } }
+    const PH = Police.heli; if (PH && !PH.dead) hd = Math.min(hd, dist(PH.x, PH.y, Cam.x, Cam.y));
+    this.rotor.gain.gain.setTargetAtTime(this.muted ? 0 : (mine ? 0.5 : 0.45 * clamp(1 - hd / 160, 0, 1)), t, 0.15);
+    // 제트음
+    let jd = 1e9, jsp = 0;
+    for (const c of Game.cars) if (c.V.special === 'jet' && !c.dead && (c.spd || 0) > 2) { const d = c === car ? 0 : dist(c.x, c.y, Cam.x, Cam.y); if (d < jd) { jd = d; jsp = c.spd; } }
+    this.jet.gain.gain.setTargetAtTime(this.muted ? 0 : clamp(jsp / 60, 0.15, 1) * 0.35 * clamp(1 - jd / 220, 0, 1), t, 0.15);
+    this.jet.filt.frequency.setTargetAtTime(700 + jsp * 25, t, 0.2);
     // 사이렌: 가장 가까운 사이렌 차량
     let best = null, bd = 1e9;
     for (const c of Game.cars) if (c.siren && !c.dead) { const d = dist(c.x, c.y, Cam.x, Cam.y); if (d < bd) { bd = d; best = c; } }

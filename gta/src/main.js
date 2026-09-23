@@ -52,10 +52,11 @@ const Game = {
     Missions.idx = sv ? sv.idx : 0;
     this.packages = new Set(sv ? sv.packages : []);
     const g = Missions.done ? Missions.givers[0] : Missions.givers[Missions.idx];
-    const P = this.player = new PlayerPed(g.x + 3, g.y);
+    const st = sidewalkNear(g.x, g.y, 3); // 차도 위에서 시작하면 곧바로 무단횡단 단속에 걸린다
+    const P = this.player = new PlayerPed(st.x, st.y);
     P.money = sv ? sv.money : 200; P.displayMoney = P.money;
     Jobs.active = null; Jobs.stats = (sv && sv.jobs) || {};
-    if (sv) { for (const k in sv.inv) P.inv[k] = sv.inv[k] === -1 ? Infinity : sv.inv[k]; this.clock = sv.time || this.clock; }
+    if (sv) { for (const k in sv.inv) P.inv[k] = sv.inv[k] === -1 ? Infinity : sv.inv[k]; this.clock = sv.time || this.clock; P.armor = sv.armor || 0; if (sv.weapon && P.inv[sv.weapon] > 0) P.weapon = sv.weapon; }
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
     placeStaticPickups();
     Military.reset(); AirPatrol.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
