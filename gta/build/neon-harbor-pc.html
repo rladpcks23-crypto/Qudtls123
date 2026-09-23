@@ -9040,15 +9040,17 @@ const Game = {
       c.vx = Math.cos(spot.a) * 9; c.vy = Math.sin(spot.a) * 9;
       this.cars.push(c); traffic++;
     }
-    // 주차 차량
+    // 주차 차량 (빈 차는 최대 TUNE.cars[0]대 — 주차장이 몰린 곳에서 무한정 늘지 않게)
+    let idle = 0; for (const c of this.cars) if (!c.driver && !c.persistent && !c.dead) idle++;
     for (const sp of World.parking) {
+      if (idle >= TUNE.cars[0]) break;
       if (sp.car || sp.cd > 0) continue;
       const d = dist(sp.x, sp.y, f.x, f.y);
       if (d < inner || d > outer || (!initial && onScreen(sp.x, sp.y, 4))) continue;
       sp.cd = 60;
       if (!chance(0.55)) continue;
       const c = new Car(pick(['sedan', 'compact', 'sports', 'muscle', 'van', 'sedan', 'compact', 'bike', 'bike']), sp.x, sp.y, sp.a + (chance(0.5) ? Math.PI : 0));
-      this.cars.push(c); sp.car = c;
+      this.cars.push(c); sp.car = c; idle++;
     }
     // 마리나 보트
     for (const sp of World.marinas || []) {
