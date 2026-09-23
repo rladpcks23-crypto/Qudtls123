@@ -61,6 +61,7 @@ const Game = {
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
     this.fleet = sv ? sv.fleet || [] : [];
     this.props = sv ? sv.props || {} : {};
+    Gangs.load(sv && sv.gangs); GangJob.active = null;
     if (sv && sv.body) { Object.assign(P, sv.body); P.hp = P.maxHp; }
     placeStaticPickups();
     Military.reset(); AirPatrol.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
@@ -84,6 +85,7 @@ const Game = {
   // 전체 지도 클릭 = 웨이포인트 지정/해제 (지도 밖을 누르면 닫기)
   mapClick(sx, sy) {
     const r = this.mapRect; if (!r) return;
+    const tb = this.turfBtn; if (tb && sx >= tb.x && sx <= tb.x + tb.w && sy >= tb.y && sy <= tb.y + tb.h) { this.showTurf = !this.showTurf; return; }
     if (sx < r.ox || sy < r.oy || sx > r.ox + r.size || sy > r.oy + r.size) { this.state = 'play'; return; }
     const x = (sx - r.ox) / r.k, y = (sy - r.oy) / r.k;
     if (this.waypoint && dist(x, y, this.waypoint.x, this.waypoint.y) < 25) { this.waypoint = null; UI.toast('웨이포인트 해제'); }
@@ -129,6 +131,7 @@ const Game = {
       else this.update(dt);
     } else if (st === 'map') {
       if (keyHit('Escape', 'KeyM', 'Tab', 'PadBack', 'PadB', 'PadStart')) this.state = 'play';
+      if (keyHit('KeyG', 'PadY')) this.showTurf = !this.showTurf;
     } else if (st === 'paused') {
       if (keyHit('Escape', 'KeyP', 'PadStart', 'PadB')) this.resume();
     } else if (st === 'menu') {
@@ -197,6 +200,7 @@ const Game = {
       for (let i = 0; i <= 9; i++) if (keyHit('Digit' + i)) { const own = WEAPON_ORDER.filter(w => P.inv[w] > 0), w = own[(i + 9) % 10]; if (w) { P.weapon = w; UI.weaponFlash = 1; } }
       if (keyHit('KeyR', 'PadDown') && P.car) { Radio.cycle(); }
       if (keyHit('KeyB')) Bag.open();
+      if (keyHit('KeyK')) Gangs.callBackup();
       if (keyHit('KeyC', 'PadUp')) cycleView();
       if (keyHit('KeyZ')) Zoom.set(Settings.zoom < 0.7 ? 0.75 : Settings.zoom < 1.1 ? 1.4 : 0.55);
       if (P.car && (P.car.type === 'police' || P.car.type === 'ambulance') && keyHit('KeyG', 'PadLeft')) { P.car.siren = !P.car.siren; }
@@ -208,7 +212,7 @@ const Game = {
     Jay.update(dt);
     Missions.update(dt);
     Jobs.update(dt);
-    Military.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update(); Biz.update(dt); BankRob.update(dt);
+    Military.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update(); Biz.update(dt); BankRob.update(dt); Gangs.update(dt); GangJob.update(dt);
     Talk.update(dt); Aim.update(dt); EMS.update(dt); Givers.update(); Vendors.update(dt); GPS.update(dt);
     // 체력 자연 회복: 6초 동안 안 다치면 50까지 천천히 (GTA V)
     if (!P.dead && P.hp < 50 && this.time - (P.lastHurt || 0) > 6) P.hp = Math.min(50, P.hp + 2 * dt);
@@ -329,8 +333,9 @@ const Game = {
       const d = dist(x, y, f.x, f.y);
       if (d < inner || d > outer || (!initial && onScreen(x, y, 3))) continue;
       const dist_ = b.district;
-      if ((dist_ === DIST.HARBOR && chance(0.35)) || (dist_ === DIST.BEACH && chance(0.22))) {
-        const n = randi(2, 3), gang = dist_ === DIST.BEACH ? 'wave' : 'dragon';
+      const owner = Gangs.turf[b.id];
+      if (owner && chance(0.3)) { // 구역 주인 조직원이 무리 지어 서성인다
+        const n = randi(2, 3), gang = owner;
         for (let i = 0; i < n; i++) { const g = spawnPed('gang', x + rand(-1.5, 1.5), y + rand(-1.5, 1.5)); setGang(g, gang); g.homeX = g.x; g.homeY = g.y; peds++; }
         continue;
       }
@@ -396,7 +401,7 @@ const Game = {
     }
     // 상점 · 직업 게시판 (걸어서 문 앞 마커에 들어가면 열림)
     if (!P.car && !(P.alt > 0) && this.shopCool <= 0 && !(Missions.active && Missions.active.def.noShop)) {
-      for (const [k, kind] of [...Object.keys(BUSINESSES).map(b => [b, b]), ['ammu3', 'ammu'], ['burger3', 'burger'], ['burger4', 'burger'], ['mart4', 'mart'], ['mart5', 'mart'], ['clothes', 'clothes'], ['clothes2', 'clothes'], ['gym', 'gym'], ['pharmacy', 'pharmacy'], ['pharmacy2', 'pharmacy'], ['bank', 'bank'], ['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart']]) {
+      for (const [k, kind] of [...GANG_IDS.map(g => ['hq_' + g, 'hq_' + g]), ...Object.keys(BUSINESSES).map(b => [b, b]), ['ammu3', 'ammu'], ['burger3', 'burger'], ['burger4', 'burger'], ['mart4', 'mart'], ['mart5', 'mart'], ['clothes', 'clothes'], ['clothes2', 'clothes'], ['gym', 'gym'], ['pharmacy', 'pharmacy'], ['pharmacy2', 'pharmacy'], ['bank', 'bank'], ['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart']]) {
         const S = World.places[k]; if (S && dist(P.x, P.y, S.x, S.y) < 1.8) { Shop.open(kind); return; }
       }
       const SH = World.places.safehouse;

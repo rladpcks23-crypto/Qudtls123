@@ -96,6 +96,7 @@ function drawHUD(dt) {
     const t = [bagN ? `가방 ${bagN}${Input.usingTouch ? '' : '(B)'}` : '', P.vitalT > 0 ? `유지 ${Math.ceil(P.vitalT)}s` : ''].filter(Boolean).join(' · ');
     txt(c, t, barX, by2 + 14 * s, `600 ${11 * s}px ${FONT_KR}`, P.vitalT > 0 ? '#7ae68f' : '#cfd6e0', 'rgba(0,0,0,0.9)', 3, 'left');
   }
+  if (Gangs.mine) txt(c, `${GANGS[Gangs.mine].name} ${RANKS[Gangs.rank]} · 평판 ${Gangs.rep}`, barX, by2 + 28 * s, `600 ${11 * s}px ${FONT_KR}`, GANGS[Gangs.mine].color, 'rgba(0,0,0,0.9)', 3, 'left');
   // 별
   const starR = 11 * s, sy = by + bw + 22 * s;
   const flash = Wanted.stars > 0 && !Wanted.seen && Math.floor(Game.time * 3) % 2;
@@ -256,6 +257,7 @@ function placeIcons() {
   for (const m of World.marinas || []) out.push({ x: m.x, y: m.y, ch: '배', c: '#4fc3f7', label: '마리나(보트)' });
   if (pl.mygarage) out.push({ x: pl.mygarage.x, y: pl.mygarage.y, ch: '차', c: '#9be15d', label: '내 차고' });
   if (pl.dealer) out.push({ x: pl.dealer.x, y: pl.dealer.y, ch: 'D', c: '#c77dff', label: '네온 모터스(차량 매매)' });
+  for (const g of GANG_IDS) if (pl['hq_' + g]) out.push({ x: pl['hq_' + g].x, y: pl['hq_' + g].y, ch: GANGS[g].short, c: GANGS[g].color, label: GANGS[g].name + ' 본부' });
   for (const [k, ch, c, l] of [['ammu3', '총', '#ff6b5a', '총포상'], ['burger3', '버', '#ffb347', '버거 샷'], ['burger4', '버', '#ffb347', '버거 샷'], ['mart4', '편', '#7ae68f', '편의점'], ['mart5', '편', '#7ae68f', '편의점'], ['clothes', '옷', '#e07aff', '옷가게'], ['clothes2', '옷', '#e07aff', '옷가게'], ['gym', '체', '#ff9f43', '체육관'], ['pharmacy', '약', '#3ee07a', '약국'], ['pharmacy2', '약', '#3ee07a', '약국'], ['bank', '은', '#ffd700', '은행']]) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch, c, label: l });
   if (pl.ammu2) out.push({ x: pl.ammu2.x, y: pl.ammu2.y, ch: '총', c: '#ff6b5a', label: '총포상' });
   for (const k of ['burger', 'burger2']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '버', c: '#ffb347', label: '버거 샷' });
@@ -351,7 +353,7 @@ function drawFullMap() {
   const c = ctx, P = Game.player;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
   c.fillStyle = 'rgba(6,10,18,0.92)'; c.fillRect(0, 0, CW, CH);
-  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  군사 기지 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)'], ['#9be15d', '차  내 차고 (산 차량 보관·저장)'], ['#4fc3f7', '배  마리나 (제트스키·보트)'], ['#ffd166', '₩  사업체 (사면 1분마다 수입, 초록 = 소유)'], ['#ff5d8f', '♦  다이아몬드 카지노'], ['#e07aff', '옷  옷가게 (변장)'], ['#ff9f43', '체  체육관'], ['#3ee07a', '약  약국'], ['#ffd700', '은  은행 (털 수 있다)']];
+  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  군사 기지 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)'], ['#9be15d', '차  내 차고 (산 차량 보관·저장)'], ['#4fc3f7', '배  마리나 (제트스키·보트)'], ['#ffd166', '₩  사업체 (사면 1분마다 수입, 초록 = 소유)'], ['#ff5d8f', '♦  다이아몬드 카지노'], ['#e07aff', '옷  옷가게 (변장)'], ['#ff9f43', '체  체육관'], ['#3ee07a', '약  약국'], ['#ffd700', '은  은행 (털 수 있다)'], ['#ff4d4d', '청·파·철·코  조직 본부 (가입)']];
   // 범례 줄 수를 먼저 재서 지도 크기를 정한다 (글자가 지도·도움말과 겹치지 않게)
   const lf = `500 ${12 * UI.s}px ${FONT_KR}`, lh = 18 * Math.max(1, UI.s);
   c.font = lf;
@@ -364,7 +366,12 @@ function drawFullMap() {
   c.imageSmoothingEnabled = false;
   c.drawImage(World.mini, ox, oy, size, size);
   c.imageSmoothingEnabled = true;
+  if (Game.showTurf) drawTurfOverlay(c, ox, oy, k);
   c.strokeStyle = 'rgba(255,255,255,0.3)'; c.strokeRect(ox, oy, size, size);
+  // [갱단 구역] 버튼 (G)
+  const tb = Game.turfBtn = { x: ox + size - 132, y: Math.max(4, oy - 44), w: 132, h: 34 };
+  c.fillStyle = Game.showTurf ? '#ff4d4d' : 'rgba(20,24,34,0.9)'; roundRect(c, tb.x, tb.y, tb.w, tb.h, 8); c.fill(); c.strokeStyle = '#ff4d4d'; c.lineWidth = 1.5; c.stroke();
+  txt(c, `갱단 구역 ${Game.showTurf ? '끄기' : '보기'}${Input.usingTouch ? '' : ' (G)'}`, tb.x + tb.w / 2, tb.y + 22, `700 13px ${FONT_KR}`, '#fff', null, 0, 'center');
   txt(c, '네온 하버 지도', CW / 2, 44, `${28 * UI.s}px ${FONT_DISP}`, '#f2c14e', 'rgba(0,0,0,0.9)', 5, 'center');
   // 구역 이름
   const acc = {};
@@ -442,6 +449,7 @@ const Menu = {
     fBtn.onclick = () => { Settings.fps = !Settings.fps; Settings.save(); qLabel(); };
     if (Settings.quality === 'low') Perf.apply(true);
     document.getElementById('btn-view').onclick = () => { this.hidePause(); Game.state = 'play'; cycleView(); };
+    document.getElementById('btn-backup').onclick = () => { this.hidePause(); Game.state = 'play'; Gangs.callBackup(); };
     document.getElementById('btn-quitjob').onclick = () => { Jobs.stop('일을 그만뒀다'); this.hidePause(); Game.state = 'play'; };
     document.getElementById('jobs-close').onclick = () => Jobs.closeBoard();
     const ci = document.getElementById('cheat-input');
@@ -458,7 +466,7 @@ const Menu = {
   },
   show() { this.el.hidden = false; const cont = document.getElementById('btn-continue'); cont.hidden = !Save.read(); },
   hide() { this.el.hidden = true; },
-  showPause() { document.getElementById('pause').hidden = false; document.getElementById('btn-quitjob').hidden = !Jobs.active; if (this.camLabel) this.camLabel(); if (this.qLabel) this.qLabel(); },
+  showPause() { document.getElementById('pause').hidden = false; document.getElementById('btn-quitjob').hidden = !Jobs.active; document.getElementById('btn-backup').hidden = !(Gangs.mine && Gangs.rank >= 1); if (this.camLabel) this.camLabel(); if (this.qLabel) this.qLabel(); },
   hidePause() { document.getElementById('pause').hidden = true; },
 };
 

@@ -39,7 +39,8 @@ bash packaging/desktop/build.sh  # release/NeonHarbor-PC.exe (electron-builder)
 | `render.js` | 2D 렌더(`renderScene`, `drawCar`, `drawPed`, `drawBoat`, 조명 `lightPass`), 카메라 `Cam` |
 | `view3d.js` | Three.js 3D 시점(후면·전면·1인칭). 차량·사람 메시 `makeCar`/`makePed` |
 | `ui.js` | HUD `drawHUD`, 레이더, 전체 지도, 메뉴·일시정지, 상점 `SHOPS`/`Shop`, 터치 조작·핀치 줌 |
-| `economy.js` | 가방 `Bag`, 차량 매매 `Dealer`, 내 차고 `Fleet`, 사업체 `BUSINESSES`/`Biz` |
+| `economy.js` | 가방 `Bag`(패널), 차량 매매 `Dealer`, 내 차고 `Fleet`, 사업체 `BUSINESSES`/`Biz` |
+| `gangs.js` | 조직 `GANGS`/`GANG_IDS`, 구역·전쟁·계급 `Gangs`(turf = 블록 id → 조직), 조직 일 `GangJob`, 호위 부하 `escortAI`, 지도 구역 `drawTurfOverlay` |
 | `casino.js` | 카지노 `Casino`(룰렛·슬롯·블랙잭) |
 | `main.js` | `Game` 루프, 인구 관리 `populate`, 플레이어 조작, 카메라, 사망·체포·리스폰, 장소 진입 `places()` |
 | `shell.html` | 메뉴·상점·카지노 마크업과 **모든 CSS**(모바일 버튼 배치 포함) |

@@ -415,6 +415,11 @@ function genWorld(seed) {
   makePlace('burger4', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.22, 0.56), 'burger', '#f3d9b1', '버거 샷');
   makePlace('mart4', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.5, 0.3), 'mart', '#dfe8e0', '24 편의점');
   makePlace('mart5', choose(edgeLots(DIST.BEACH, L => !L.used && bld('shop')(L)), 0.62, 0.8), 'mart', '#dfe8e0', '24 편의점');
+  // 네 조직의 본부
+  makePlace('hq_dragon', choose(edgeLots(DIST.HARBOR, L => !L.used && bld('warehouse')(L)), 0.8, 0.45), 'hq', '#1f8a4c', '청룡파 본부');
+  makePlace('hq_wave', choose(edgeLots(DIST.BEACH, L => !L.used && bld('shop')(L)), 0.5, 0.86), 'hq', '#e07a1f', '파도파 본부');
+  makePlace('hq_iron', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.14, 0.6), 'hq', '#5b7fa6', '아이언 본부');
+  makePlace('hq_cobra', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.66, 0.36), 'hq', '#8a3bd1', '코브라 본부');
   makePlace('biz_casino', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.58, 0.6), 'casino', '#1d1233', '다이아몬드 카지노');
   // 차고형 장소: 필지를 비워 LOT으로 만든다
   const makeLotPlace = (key, L, label) => {

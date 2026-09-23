@@ -199,7 +199,7 @@ const GANGS = {
   dragon: { name: '청룡파', shirt: '#1f8a4c', band: '#1f8a4c' },
   wave: { name: '파도파', shirt: '#e07a1f', band: '#1b4f9c' },
 };
-function setGang(p, g) { p.gang = g; p.shirt = GANGS[g].shirt; if (g === 'wave') { p.pants = '#2b3a55'; p.weapon = chance(0.4) ? 'pistol' : chance(0.5) ? 'smg' : 'bat'; } }
+function setGang(p, g) { p.gang = g; p.shirt = GANGS[g].shirt; if (GANGS[g].pants) p.pants = GANGS[g].pants; if (g === 'wave') { p.pants = '#2b3a55'; p.weapon = chance(0.4) ? 'pistol' : chance(0.5) ? 'smg' : 'bat'; } if (g === 'iron') p.weapon = chance(0.4) ? 'shotgun' : chance(0.5) ? 'pistol' : 'bat'; if (g === 'cobra') p.weapon = chance(0.4) ? 'smg' : chance(0.5) ? 'knife' : 'pistol'; }
 function feudAI(p, dt) {
   const f = p.foe;
   if (!f || f.dead || !Game.peds.includes(f) || dist2(p.x, p.y, f.x, f.y) > 40 * 40) { p.foe = null; p.state = 'idle'; return; }
@@ -218,6 +218,11 @@ function feudAI(p, dt) {
 }
 function gangLook(p, dt) { // idle 상태의 조직원이 라이벌을 찾는다
   if (!chance(dt * 1.5)) return;
+  // 플레이어가 라이벌 조직원이면 자기 구역에서 공격해 온다
+  const P = Game.player;
+  if (Gangs.mine && Gangs.mine !== p.gang && !P.dead && !(P.car && P.car.alt > 1.2) && Gangs.ownerAt(p.x, p.y) === p.gang && dist2(p.x, p.y, P.px, P.py) < 16 * 16 && losClear(p.x, p.y, P.px, P.py)) {
+    p.state = 'chase'; Talk.say(p, pick(['여긴 우리 구역이다!', `${GANGS[Gangs.mine].name} 놈이다!`, '죽여!']), 2, true); return;
+  }
   for (const q of Game.peds) {
     if (q.dead || q.kind !== 'gang' || q.gang === p.gang || dist2(p.x, p.y, q.x, q.y) > 16 * 16) continue;
     if (!losClear(p.x, p.y, q.x, q.y)) continue;

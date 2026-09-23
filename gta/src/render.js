@@ -608,7 +608,7 @@ function drawBuildings(amb) {
   for (const b of vis) drawBuilding(b, amb, night);
 }
 const PLACE_MARK = { safehouse: '#9be15d', ammu: '#ff6b5a', ammu2: '#ff6b5a', ammu3: '#ff6b5a', burger: '#ffb347', burger2: '#ffb347', burger3: '#ffb347', burger4: '#ffb347', mart: '#7ae68f', mart2: '#7ae68f', mart3: '#7ae68f', mart4: '#7ae68f', mart5: '#7ae68f', jobcenter: '#6fb6ff', broker: '#ff5d8f', clothes: '#e07aff', clothes2: '#e07aff', gym: '#ff9f43', pharmacy: '#3ee07a', pharmacy2: '#3ee07a', bank: '#ffd700' };
-const SHOP_ROOF = { safehouse: ['#4a7a3f', '#f2fff0'], ammu: ['#b23a2e', '#f2f2f2'], burger: ['#e0572f', '#ffe08a'], mart: ['#2e8b57', '#f2fff4'], jobcenter: ['#2d5d9f', '#ffffff'], broker: ['#3a2346', '#ff5d8f'], clothes: ['#8a3b7a', '#ffe3f6'], gym: ['#222', '#ff9f43'], pharmacy: ['#1f8a4c', '#ffffff'], bank: ['#6b5a2a', '#ffd700'], biz: ['#4a3a14', '#ffd166'], casino: ['#1d1233', '#ff5d8f'] };
+const SHOP_ROOF = { safehouse: ['#4a7a3f', '#f2fff0'], ammu: ['#b23a2e', '#f2f2f2'], burger: ['#e0572f', '#ffe08a'], mart: ['#2e8b57', '#f2fff4'], jobcenter: ['#2d5d9f', '#ffffff'], broker: ['#3a2346', '#ff5d8f'], clothes: ['#8a3b7a', '#ffe3f6'], gym: ['#222', '#ff9f43'], pharmacy: ['#1f8a4c', '#ffffff'], bank: ['#6b5a2a', '#ffd700'], biz: ['#4a3a14', '#ffd166'], casino: ['#1d1233', '#ff5d8f'], hq: ['#161616', '#ff4d4d'] };
 function drawBuilding(b, amb, night) {
   const X0 = b.x0 * T, Y0 = b.y0 * T, X1 = (b.x1 + 1) * T, Y1 = (b.y1 + 1) * T, h = b.h;
   const P = (x, y, z) => proj(x, y, z);

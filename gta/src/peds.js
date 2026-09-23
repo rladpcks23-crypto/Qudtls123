@@ -106,7 +106,7 @@ class Ped {
       if ((this.kind === 'cop' || this.kind === 'gang' || this.kind === 'swat') && this.weapon !== 'fist' && chance(0.6)) addPickup('weapon', this.x + rand(-0.8, 0.8), this.y + rand(-0.8, 0.8), { wname: this.weapon, amount: Math.ceil((WEAPONS[this.weapon].pack || 1) / 3), temp: 30 });
     }
     scarePeds(this.x, this.y, 18);
-    Missions.onKill(this, by);
+    Missions.onKill(this, by); Gangs.onKill(this, by);
   }
 }
 
@@ -321,6 +321,7 @@ function aggroGang(x, y, kind, gang) {
   for (const p of Game.peds) {
     if (p.dead) continue;
     if (p.kind === 'gang' && gang && p.gang !== gang) continue;
+    if (Gangs.friendly(p) || p.escort) continue; // 내 조직원은 나를 공격하지 않는다
     if ((p.kind === 'gang' || p.kind === 'guard' || (p.kind === 'target' && kind !== 'gang')) && dist2(p.x, p.y, x, y) < 45 * 45) { if (p.kind === 'target' && p.mission && p.mission.onAlert) p.mission.onAlert(); else p.state = 'chase'; }
   }
 }
@@ -455,6 +456,7 @@ function updatePed(p, dt) {
     case 'dog': updateDog(p, dt); return;
     case 'handsup': Aim.updatePed(p, dt); break;
     case 'feud': feudAI(p, dt); break;
+    case 'escort': escortAI(p, dt); break;
     case 'idle': {
       if (p.homeX === undefined) { p.homeX = p.x; p.homeY = p.y; }
       if (p.stay) { pedSeek(p, p.homeX, p.homeY, 1, dt); if (!P.dead && dist2(p.x, p.y, P.px, P.py) < 100) p.a = Math.atan2(P.py - p.y, P.px - p.x); break; }
@@ -463,7 +465,7 @@ function updatePed(p, dt) {
       p.wt -= dt;
       pedSeek(p, p.wx, p.wy, 0.9, dt);
       dodgeCars(p);
-      if ((p.kind === 'gang' || p.kind === 'guard') && !P.dead && dist2(p.x, p.y, P.px, P.py) < 8 * 8 && WEAPONS[P.weapon] && !WEAPONS[P.weapon].melee && !P.car && chance(dt * 0.5)) { aggroGang(p.x, p.y, 'gang', p.gang); Talk.line(p, 'gang'); }
+      if ((p.kind === 'gang' || p.kind === 'guard') && !Gangs.friendly(p) && !P.dead && dist2(p.x, p.y, P.px, P.py) < 8 * 8 && WEAPONS[P.weapon] && !WEAPONS[P.weapon].melee && !P.car && chance(dt * 0.5)) { aggroGang(p.x, p.y, 'gang', p.gang); Talk.line(p, 'gang'); }
       break;
     }
     case 'patrol': {
