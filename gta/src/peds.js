@@ -346,10 +346,20 @@ function updatePed(p, dt) {
         const o = outs.length ? pick(outs) : null;
         if (o) {
           const tx = cx + o[0] * 3 * T, ty = cy + o[1] * 3 * T, nb = blockAt(tx, ty);
-          if (nb && tileAt(tx, ty) === TL.WALK) { p.state = 'cross'; p.tx = tx; p.ty = ty; p.nb = nb; p.waitT = rand(0, 1.5); }
+          if (nb && tileAt(tx, ty) === TL.WALK) {
+            p.state = 'cross'; p.tx = tx; p.ty = ty; p.nb = nb; p.waitT = rand(0.3, 1.2); p.jay = false; p.holdT = 0;
+            p.crossNode = nearestNode((cx + tx) / 2, (cy + ty) / 2); p.crossCarDir = o[0] !== 0 ? 1 : 0; // 가로로 건너면 세로 도로(남북 신호)
+          }
         }
       }
       p.seg = seg;
+      // 가끔 블록 중간에서 무단횡단하는 시민
+      if (p.kind === 'civ' && chance(dt * 0.006)) {
+        const [cx, cy] = loopPoint(L, p.s), out = [[0, -1], [1, 0], [0, 1], [-1, 0]][seg];
+        const tx = cx + out[0] * 3 * T, ty = cy + out[1] * 3 * T, nb = blockAt(tx, ty);
+        const mid = tileAt(cx + out[0] * 1.5 * T, cy + out[1] * 1.5 * T);
+        if (nb && nb !== p.block && tileAt(tx, ty) === TL.WALK && mid === TL.ROAD) { p.state = 'cross'; p.tx = tx; p.ty = ty; p.nb = nb; p.waitT = rand(0, 0.5); p.jay = true; p.crossNode = null; }
+      }
       const [tx, ty] = loopPoint(L, p.s + p.dir * 0.6);
       if (dist2(tx, ty, p.x, p.y) > 36) p.s = loopParam(L, p.x, p.y);
       pedSeek(p, tx, ty, p.walkSpeed * 1.2, dt);
@@ -357,8 +367,13 @@ function updatePed(p, dt) {
       break;
     }
     case 'cross': {
-      if (p.waitT > 0) { p.waitT -= dt; p.vx *= 0.8; p.vy *= 0.8; break; }
-      pedSeek(p, p.tx, p.ty, p.walkSpeed * 1.3, dt);
+      p.holdT = (p.holdT || 0) + dt;
+      // 준법 시민은 차량 신호가 빨간불이 될 때까지 기다린다 (30초가 지나면 포기하고 건넘)
+      const onRoad = tileAt(p.x, p.y) === TL.ROAD;
+      const mustWait = !p.jay && !onRoad && p.crossNode && p.crossNode.light && lightState(p.crossNode, p.crossCarDir) !== 'r' && p.holdT < 30;
+      if (p.waitT > 0 || mustWait) { p.waitT -= dt; p.vx *= 0.8; p.vy *= 0.8; if (!mustWait || p.holdT > 0.5) p.a = Math.atan2(p.ty - p.y, p.tx - p.x); break; }
+      if (p.jay && onRoad) Jay.npcSeen(p);
+      pedSeek(p, p.tx, p.ty, p.walkSpeed * (p.jay ? 1.8 : 1.3), dt);
       if (dist2(p.x, p.y, p.tx, p.ty) < 0.8) { p.block = p.nb; p.s = loopParam(p.block.loop, p.x, p.y); p.state = 'walk'; p.seg = -1; p.dir = chance(0.5) ? 1 : -1; }
       dodgeCars(p);
       break;
@@ -391,6 +406,13 @@ function updatePed(p, dt) {
     }
     case 'fight': case 'chase': {
       combatAI(p, dt);
+      break;
+    }
+    case 'ticket': { // 무단횡단 단속: 대상에게 걸어가 딱지를 뗀다
+      const tg = p.ticketTarget || Game.player;
+      const tx = tg.px !== undefined ? tg.px : tg.x, ty = tg.py !== undefined ? tg.py : tg.y;
+      p.a = Math.atan2(ty - p.y, tx - p.x);
+      if (dist2(p.x, p.y, tx, ty) > 1.4 * 1.4) pedSeek(p, tx, ty, tg === Game.player ? 4.2 : 3.2, dt, 14); else { p.vx *= 0.7; p.vy *= 0.7; }
       break;
     }
     case 'goto': {

@@ -44,7 +44,7 @@ const Game = {
     // 세계 초기화
     this.cars = []; this.peds = []; this.pickups = []; this.projectiles = [];
     Particles.list = []; Decals.skids = []; Decals.blood_ = []; Decals.scorch_ = [];
-    Wanted.reset(); Police.reset(); Missions.active = null;
+    Wanted.reset(); Police.reset(); Jay.reset(); Missions.active = null;
     Missions.idx = sv ? sv.idx : 0;
     this.packages = new Set(sv ? sv.packages : []);
     const g = Missions.done ? Missions.givers[0] : Missions.givers[Missions.idx];
@@ -87,6 +87,13 @@ const Game = {
     Pad.poll();
     const st = this.state;
     if (st !== this._lastSt) { this._lastSt = st; document.body.classList.toggle('playing', st !== 'menu'); }
+    const drv = st !== 'menu' && !!(this.player && this.player.car);
+    if (drv !== this._lastDrv) {
+      this._lastDrv = drv; document.body.classList.toggle('driving', drv);
+      Input.touch.on = false; Input.touch.jx = Input.touch.jy = 0; Input.touch.stickId = null; Drive.reset();
+      const b = document.getElementById('t-enter'); if (b) b.textContent = drv ? '하차' : '탑승';
+    }
+    Drive.update(dt);
     if (st === 'play') {
       if (keyHit('Escape', 'KeyP', 'PadStart')) { this.pause(); }
       else if (keyHit('KeyM', 'Tab', 'PadBack')) { this.state = 'map'; }
@@ -145,6 +152,7 @@ const Game = {
     this.simulate(dt, false);
     Nav.update(dt);
     Police.update(dt);
+    Jay.update(dt);
     Missions.update(dt);
     updatePickups(dt);
     this.places(dt);
@@ -331,7 +339,7 @@ const Game = {
     Object.assign(np, { money: P.money, displayMoney: P.money, inv: P.inv, weapon: P.weapon in P.inv ? P.weapon : 'fist' });
     if (kind === 'wasted') np.inv = P.inv;
     this.player = np;
-    Wanted.reset(); Police.reset();
+    Wanted.reset(); Police.reset(); Jay.reset();
     for (const p of this.peds) if ((p.kind === 'cop' || p.kind === 'swat' || p.kind === 'gang') && p.state === 'chase') p.state = p.kind === 'gang' ? 'idle' : 'patrol';
     for (const c of this.cars) if (c.ai && (c.ai.mode === 'chase' || c.ai.mode === 'block')) { c.remove = true; }
     this.cars = this.cars.filter(c => !c.remove);

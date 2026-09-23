@@ -466,3 +466,24 @@ function laneSpot(edge, forward, s) {
   s = clamp(s, 2 * T + 3, L - 2 * T - 3);
   return { x: A.x + DIRS[d][0] * s + r[0] * T * 0.5, y: A.y + DIRS[d][1] * s + r[1] * T * 0.5, a: Math.atan2(DIRS[d][1], DIRS[d][0]), A, B, d };
 }
+
+// ---------- 보행자 횡단 규칙 ----------
+// 횡단보도 = 교차로 바로 옆 도로 칸(흰 줄무늬). 그 도로의 차량 신호가 빨간불일 때만 건널 수 있다.
+function isCrosswalk(tx, ty) {
+  if (tx < 1 || ty < 1 || tx >= MW - 1 || ty >= MH - 1) return false;
+  const i = tIdx(tx, ty), rk = World.roadK;
+  if (World.tiles[i] !== TL.ROAD) return false;
+  if (rk[i] === 1) return rk[i - MW] === 3 || rk[i + MW] === 3;
+  if (rk[i] === 2) return rk[i - 1] === 3 || rk[i + 1] === 3;
+  return false;
+}
+// 0: 도로 아님, 1: 합법 횡단(횡단보도 + 보행 신호), 2: 무단횡단
+function jayStatus(x, y) {
+  const tx = Math.floor(x / T), ty = Math.floor(y / T);
+  if (tileAt(x, y) !== TL.ROAD) return 0;
+  if (!isCrosswalk(tx, ty)) return 2;
+  const n = nearestNode(x, y);
+  if (!n.light) return 1;
+  const carDir = World.roadK[tIdx(tx, ty)] === 1 ? 1 : 0; // 세로 도로면 남북 신호
+  return lightState(n, carDir) === 'r' ? 1 : 2;
+}

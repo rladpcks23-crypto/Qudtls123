@@ -175,6 +175,17 @@ function drawStreetFurniture() {
       ctx.fillStyle = st === 'g' ? '#39e36b' : st === 'y' ? '#ffc933' : '#ff3b3b';
       ctx.beginPath(); ctx.arc(x, y, 0.24, 0, TAU); ctx.fill();
     }
+    // 보행자 신호: 각 진입로 횡단보도 양 끝 (차량 신호가 빨간불이면 초록 보행 신호)
+    for (let d = 0; d < 4; d++) {
+      if (n.adj[(d + 2) % 4] < 0) continue;
+      const walk = lightState(n, d) === 'r';
+      const r = rightOf(d);
+      for (const side of [-1, 1]) {
+        const x = n.x - DIRS[d][0] * T * 1.5 + r[0] * side * (T + 0.55), y = n.y - DIRS[d][1] * T * 1.5 + r[1] * side * (T + 0.55);
+        ctx.fillStyle = '#15171b'; ctx.fillRect(x - 0.28, y - 0.28, 0.56, 0.56);
+        ctx.fillStyle = walk ? '#6dff9a' : '#ff5a4a'; ctx.fillRect(x - 0.18, y - 0.18, 0.36, 0.36);
+      }
+    }
   }
   ctx.fillStyle = '#2b2d31';
   for (const l of World.lamps) {

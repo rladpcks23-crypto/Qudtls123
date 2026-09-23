@@ -78,6 +78,30 @@
   #t-map, #t-pause { top: calc(118px + env(safe-area-inset-top)); width: 44px; height: 44px; font-size: 12px; }
   #t-map { left: 14px; }
   #t-pause { left: 66px; }
+  /* ---------- 운전 모드: 핸들 + 브레이크/엑셀 페달 ---------- */
+  #drive { display: none; }
+  body.touch.playing.driving #drive { display: block; }
+  body.driving #stick, body.driving #stick-zone, body.driving #t-weapon { display: none !important; }
+  #wheel { position: fixed; z-index: 6; left: calc(18px + env(safe-area-inset-left)); bottom: calc(16px + env(safe-area-inset-bottom)); width: 156px; height: 156px; touch-action: none; }
+  #wheel svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); }
+  #wheel.on svg { filter: drop-shadow(0 0 10px rgba(255, 93, 143, 0.55)); }
+  .pedal { position: fixed; z-index: 6; bottom: calc(14px + env(safe-area-inset-bottom)); border-radius: 12px 12px 8px 8px; border: 2px solid rgba(255,255,255,0.35);
+    background: repeating-linear-gradient(0deg, #2a2f38 0 9px, #1b1f26 9px 14px); color: #fff; font-weight: 900; font-size: 13px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px; box-sizing: border-box;
+    box-shadow: 0 6px 0 #0b0d12, 0 8px 14px rgba(0,0,0,0.5); transform-origin: 50% 100%; transition: transform .05s, box-shadow .05s; }
+  .pedal span { background: rgba(0,0,0,0.55); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.04em; }
+  .pedal.on { transform: perspective(300px) rotateX(18deg) translateY(4px); box-shadow: 0 2px 0 #0b0d12, 0 3px 6px rgba(0,0,0,0.5); }
+  #pedal-gas { right: calc(16px + env(safe-area-inset-right)); width: 72px; height: 132px; border-color: rgba(120, 230, 150, 0.6); }
+  #pedal-gas.on { border-color: #7ae68f; }
+  #pedal-brake { right: calc(98px + env(safe-area-inset-right)); width: 92px; height: 88px; border-color: rgba(255, 120, 110, 0.6); }
+  #pedal-brake.on { border-color: #ff6b5a; }
+  body.driving #t-hb { right: calc(104px + env(safe-area-inset-right)); bottom: calc(116px + env(safe-area-inset-bottom)); width: 60px; height: 60px; }
+  body.driving #t-enter { right: calc(18px + env(safe-area-inset-right)); bottom: calc(162px + env(safe-area-inset-bottom)); width: 60px; height: 60px; }
+  body.driving #t-fire { right: calc(196px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); width: 62px; height: 62px; font-size: 13px; }
+  body.driving #t-radio { right: calc(104px + env(safe-area-inset-right)); bottom: calc(186px + env(safe-area-inset-bottom)); }
+  @media (orientation: landscape) and (max-height: 520px) {
+    #wheel { width: 150px; height: 150px; }
+    body.driving #t-fire { right: calc(200px + env(safe-area-inset-right)); }
+  }
   @media (orientation: landscape) and (max-height: 520px) {
     .menu-col { gap: 10px; padding-top: max(14px, env(safe-area-inset-top)); }
     .logo { font-size: 46px; } .tag { font-size: 13px; } .btn { padding: 10px 16px; font-size: 15px; }
@@ -187,6 +211,21 @@
   <button class="tb" id="t-radio">라디오</button>
   <button class="tb" id="t-map">지도</button>
   <button class="tb" id="t-pause">Ⅱ</button>
+  <div id="drive">
+    <div id="wheel" aria-label="핸들">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <defs><radialGradient id="rim" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#4a505c"/><stop offset="1" stop-color="#15181e"/></radialGradient></defs>
+        <circle cx="50" cy="50" r="44" fill="none" stroke="url(#rim)" stroke-width="11"/>
+        <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1" stroke-dasharray="2 3"/>
+        <path d="M50 50 L10 56 M50 50 L90 56 M50 50 L50 92" stroke="#2a2f38" stroke-width="9" stroke-linecap="round"/>
+        <circle cx="50" cy="52" r="15" fill="#1b1f26" stroke="#4a505c" stroke-width="2"/>
+        <path d="M50 44 l2.6 5.4 5.9 .8 -4.3 4.1 1 5.9 -5.2-2.8 -5.2 2.8 1-5.9 -4.3-4.1 5.9-.8z" fill="#f2c14e"/>
+        <rect x="46" y="3" width="8" height="10" rx="2" fill="#ff5d8f"/>
+      </svg>
+    </div>
+    <div id="pedal-brake" class="pedal"><span>브레이크</span></div>
+    <div id="pedal-gas" class="pedal"><span>엑셀</span></div>
+  </div>
 </div>
 
 <!-- SCRIPTS -->

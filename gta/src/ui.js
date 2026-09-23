@@ -137,7 +137,7 @@ function drawHUD(dt) {
 
   // ---- 자막 / 목표 ----
   let subY = Input.usingTouch ? (land ? CH - 64 : CH - 290) : CH - 120 * s;
-  const subW = Input.usingTouch && land ? Math.max(260, CW - 470) : Math.min(CW - 60, 640 * s);
+  const subW = Input.usingTouch && land ? Math.max(240, CW - (P.car ? 620 : 470)) : Math.min(CW - 60, 640 * s);
   if (UI.dialogCur) {
     const d = UI.dialogCur;
     c.font = `500 ${18 * s}px ${FONT_KR}`;
@@ -160,6 +160,12 @@ function drawHUD(dt) {
     c.globalAlpha = 1;
   }
 
+  if (UI.jay > 0.15 && !P.car && Wanted.stars === 0) {
+    const a = clamp(UI.jay * 2, 0, 1);
+    c.globalAlpha = a;
+    txt(c, '무단횡단 중! 횡단보도에서 보행 신호에 건너세요', CW / 2, Input.usingTouch ? 96 : CH * 0.2, `700 ${15 * s}px ${FONT_KR}`, '#ffb4a8', 'rgba(0,0,0,0.9)', 4, 'center');
+    c.globalAlpha = 1;
+  }
   // ---- 화면 밖 목표 화살표 ----
   const tg = Missions.targets()[0];
   if (tg && !onScreen(tg.x, tg.y, -4)) {
@@ -271,7 +277,10 @@ function drawRadar(s) {
     const kmh = Math.round(Math.abs(P.car.vf) * 3.6);
     const sx = cx + R + 14 * s, sy = Input.usingTouch ? cy - 8 * s : cy + R - 10 * s;
     txt(c, String(kmh), sx, sy, `${34 * s}px ${FONT_NUM}`, '#fff', 'rgba(0,0,0,0.9)', 4, 'left');
-    txt(c, 'km/h', sx + c.measureText(String(kmh)).width + 5 * s, sy, `${14 * s}px ${FONT_NUM}`, '#cfd6e0', 'rgba(0,0,0,0.9)', 3, 'left');
+    const kmW = c.measureText(String(kmh)).width;
+    txt(c, 'km/h', sx + kmW + 5 * s, sy, `${14 * s}px ${FONT_NUM}`, '#cfd6e0', 'rgba(0,0,0,0.9)', 3, 'left');
+    const rev = P.car.vf < -0.3;
+    txt(c, rev ? 'R' : 'D', sx + kmW + 40 * s, sy, `${22 * s}px ${FONT_NUM}`, rev ? '#ff8a80' : '#7ae68f', 'rgba(0,0,0,0.9)', 3, 'left');
     const hw = 70 * s; c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(sx, sy + 6 * s, hw, 5 * s);
     const hpk = P.car.hp / P.car.maxHp; c.fillStyle = hpk > 0.5 ? '#7ad67a' : hpk > 0.25 ? '#f2c14e' : '#e0443e'; c.fillRect(sx, sy + 6 * s, hw * hpk, 5 * s);
     if (Radio.station > 0) txt(c, Radio.stations[Radio.station].name, sx, sy - 34 * s, `600 ${11 * s}px ${FONT_KR}`, '#ffcf5a', 'rgba(0,0,0,0.9)', 3, 'left');
@@ -423,5 +432,52 @@ const Touch = {
     tap('t-radio', () => { Input.pressed['KeyR'] = true; });
     tap('t-map', () => { Input.pressed['KeyM'] = true; });
     tap('t-pause', () => { Input.pressed['Escape'] = true; });
+    Drive.init();
   },
+};
+
+// ---------- 모바일 운전: 핸들 + 페달 ----------
+// 핸들: 바퀴 테두리를 잡고 돌린다(손가락 각도 변화 = 핸들 회전). 가운데를 잡으면 좌우로 끌어도 된다.
+// 놓으면 스프링처럼 가운데로 돌아온다. 페달: 엑셀 = 가속, 브레이크 = 감속 → 멈춘 뒤 계속 밟으면 후진.
+const Drive = {
+  angle: 0, held: false, id: null, gas: 0, brake: 0, gasV: 0, brakeV: 0, MAX: 2.2, el: null,
+  init() {
+    const w = this.el = document.getElementById('wheel');
+    const pos = t => { const r = w.getBoundingClientRect(); return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, r: r.width / 2 }; };
+    w.addEventListener('touchstart', e => {
+      e.preventDefault(); const t = e.changedTouches[0]; const g = pos();
+      this.id = t.identifier; this.held = true; this.cx = g.cx; this.cy = g.cy;
+      this.center = Math.hypot(t.clientX - g.cx, t.clientY - g.cy) < g.r * 0.35;
+      this.startA = Math.atan2(t.clientY - g.cy, t.clientX - g.cx); this.startX = t.clientX; this.base = this.angle; this.lastA = this.startA; this.acc = 0;
+      w.classList.add('on');
+    }, { passive: false });
+    w.addEventListener('touchmove', e => {
+      e.preventDefault();
+      for (const t of e.changedTouches) if (t.identifier === this.id) {
+        if (this.center) this.angle = clamp(this.base + (t.clientX - this.startX) / 55, -this.MAX, this.MAX);
+        else {
+          const a = Math.atan2(t.clientY - this.cy, t.clientX - this.cx);
+          this.acc += angNorm(a - this.lastA); this.lastA = a; // 누적해서 한 바퀴 넘게 돌려도 튀지 않게
+          this.angle = clamp(this.base + this.acc, -this.MAX, this.MAX);
+        }
+      }
+    }, { passive: false });
+    const end = e => { for (const t of e.changedTouches) if (t.identifier === this.id) { this.held = false; this.id = null; w.classList.remove('on'); } };
+    w.addEventListener('touchend', end); w.addEventListener('touchcancel', end);
+    const pedal = (id, key) => {
+      const b = document.getElementById(id);
+      b.addEventListener('touchstart', e => { e.preventDefault(); this[key] = 1; b.classList.add('on'); buzz(8); }, { passive: false });
+      const up = e => { e.preventDefault(); this[key] = 0; b.classList.remove('on'); };
+      b.addEventListener('touchend', up); b.addEventListener('touchcancel', up);
+    };
+    pedal('pedal-gas', 'gas'); pedal('pedal-brake', 'brake');
+  },
+  reset() { this.angle = 0; this.held = false; this.gas = this.brake = this.gasV = this.brakeV = 0; document.querySelectorAll('.pedal').forEach(p => p.classList.remove('on')); },
+  update(dt) {
+    if (!this.held) this.angle = smooth(this.angle, 0, 6, dt);
+    this.gasV = smooth(this.gasV, this.gas, this.gas ? 10 : 20, dt);
+    this.brakeV = smooth(this.brakeV, this.brake, this.brake ? 14 : 20, dt);
+    if (this.el) this.el.style.transform = `rotate(${this.angle}rad)`;
+  },
+  get steer() { return clamp(this.angle / 1.6, -1, 1); },
 };

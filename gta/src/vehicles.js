@@ -262,7 +262,10 @@ function playerDrive(car, dt) {
     if (Pad.rt > 0.05 || Pad.lt > 0.05) thrKey = Pad.rt - Pad.lt;
     hb = hb || keyDown('PadRB', 'PadB');
   }
-  if (Input.touch.on) {
+  if (Input.usingTouch && document.body.classList.contains('driving')) {
+    st = Drive.steer;
+    thrKey = Drive.gasV - Drive.brakeV;
+  } else if (Input.touch.on) {
     const j = Input.touch;
     if (Math.abs(j.jx) > 0.15) st = clamp(j.jx * 1.3, -1, 1);
     if (Math.abs(j.jy) > 0.2) thrKey = clamp(-j.jy * 1.4, -1, 1);

@@ -55,7 +55,7 @@ st = open(f"{d}/res/values/styles.xml", encoding="utf-8").read()
 st = st.replace('@android:style/Theme.DeviceDefault.NoActionBar"', '@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen"')
 open(f"{d}/res/values/styles.xml", "w", encoding="utf-8").write(st)
 y = open(f"{d}/apktool.yml", encoding="utf-8").read()
-y = re.sub(r"versionCode: '\d+'", "versionCode: '1'", y); y = re.sub(r"versionName: '[^']*'", "versionName: '1.0'", y)
+y = re.sub(r"versionCode: '\d+'", "versionCode: '2'", y); y = re.sub(r"versionName: '[^']*'", "versionName: '1.1'", y)
 open(f"{d}/apktool.yml", "w", encoding="utf-8").write(y)
 PY
 

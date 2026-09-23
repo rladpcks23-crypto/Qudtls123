@@ -83,6 +83,30 @@
   #t-map, #t-pause { top: calc(118px + env(safe-area-inset-top)); width: 44px; height: 44px; font-size: 12px; }
   #t-map { left: 14px; }
   #t-pause { left: 66px; }
+  /* ---------- 운전 모드: 핸들 + 브레이크/엑셀 페달 ---------- */
+  #drive { display: none; }
+  body.touch.playing.driving #drive { display: block; }
+  body.driving #stick, body.driving #stick-zone, body.driving #t-weapon { display: none !important; }
+  #wheel { position: fixed; z-index: 6; left: calc(18px + env(safe-area-inset-left)); bottom: calc(16px + env(safe-area-inset-bottom)); width: 156px; height: 156px; touch-action: none; }
+  #wheel svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); }
+  #wheel.on svg { filter: drop-shadow(0 0 10px rgba(255, 93, 143, 0.55)); }
+  .pedal { position: fixed; z-index: 6; bottom: calc(14px + env(safe-area-inset-bottom)); border-radius: 12px 12px 8px 8px; border: 2px solid rgba(255,255,255,0.35);
+    background: repeating-linear-gradient(0deg, #2a2f38 0 9px, #1b1f26 9px 14px); color: #fff; font-weight: 900; font-size: 13px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px; box-sizing: border-box;
+    box-shadow: 0 6px 0 #0b0d12, 0 8px 14px rgba(0,0,0,0.5); transform-origin: 50% 100%; transition: transform .05s, box-shadow .05s; }
+  .pedal span { background: rgba(0,0,0,0.55); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.04em; }
+  .pedal.on { transform: perspective(300px) rotateX(18deg) translateY(4px); box-shadow: 0 2px 0 #0b0d12, 0 3px 6px rgba(0,0,0,0.5); }
+  #pedal-gas { right: calc(16px + env(safe-area-inset-right)); width: 72px; height: 132px; border-color: rgba(120, 230, 150, 0.6); }
+  #pedal-gas.on { border-color: #7ae68f; }
+  #pedal-brake { right: calc(98px + env(safe-area-inset-right)); width: 92px; height: 88px; border-color: rgba(255, 120, 110, 0.6); }
+  #pedal-brake.on { border-color: #ff6b5a; }
+  body.driving #t-hb { right: calc(104px + env(safe-area-inset-right)); bottom: calc(116px + env(safe-area-inset-bottom)); width: 60px; height: 60px; }
+  body.driving #t-enter { right: calc(18px + env(safe-area-inset-right)); bottom: calc(162px + env(safe-area-inset-bottom)); width: 60px; height: 60px; }
+  body.driving #t-fire { right: calc(196px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); width: 62px; height: 62px; font-size: 13px; }
+  body.driving #t-radio { right: calc(104px + env(safe-area-inset-right)); bottom: calc(186px + env(safe-area-inset-bottom)); }
+  @media (orientation: landscape) and (max-height: 520px) {
+    #wheel { width: 150px; height: 150px; }
+    body.driving #t-fire { right: calc(200px + env(safe-area-inset-right)); }
+  }
   @media (orientation: landscape) and (max-height: 520px) {
     .menu-col { gap: 10px; padding-top: max(14px, env(safe-area-inset-top)); }
     .logo { font-size: 46px; } .tag { font-size: 13px; } .btn { padding: 10px 16px; font-size: 15px; }
@@ -194,6 +218,21 @@
   <button class="tb" id="t-radio">라디오</button>
   <button class="tb" id="t-map">지도</button>
   <button class="tb" id="t-pause">Ⅱ</button>
+  <div id="drive">
+    <div id="wheel" aria-label="핸들">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <defs><radialGradient id="rim" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#4a505c"/><stop offset="1" stop-color="#15181e"/></radialGradient></defs>
+        <circle cx="50" cy="50" r="44" fill="none" stroke="url(#rim)" stroke-width="11"/>
+        <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1" stroke-dasharray="2 3"/>
+        <path d="M50 50 L10 56 M50 50 L90 56 M50 50 L50 92" stroke="#2a2f38" stroke-width="9" stroke-linecap="round"/>
+        <circle cx="50" cy="52" r="15" fill="#1b1f26" stroke="#4a505c" stroke-width="2"/>
+        <path d="M50 44 l2.6 5.4 5.9 .8 -4.3 4.1 1 5.9 -5.2-2.8 -5.2 2.8 1-5.9 -4.3-4.1 5.9-.8z" fill="#f2c14e"/>
+        <rect x="46" y="3" width="8" height="10" rx="2" fill="#ff5d8f"/>
+      </svg>
+    </div>
+    <div id="pedal-brake" class="pedal"><span>브레이크</span></div>
+    <div id="pedal-gas" class="pedal"><span>엑셀</span></div>
+  </div>
 </div>
 
 <script>
@@ -985,6 +1024,27 @@ function laneSpot(edge, forward, s) {
   return { x: A.x + DIRS[d][0] * s + r[0] * T * 0.5, y: A.y + DIRS[d][1] * s + r[1] * T * 0.5, a: Math.atan2(DIRS[d][1], DIRS[d][0]), A, B, d };
 }
 
+// ---------- 보행자 횡단 규칙 ----------
+// 횡단보도 = 교차로 바로 옆 도로 칸(흰 줄무늬). 그 도로의 차량 신호가 빨간불일 때만 건널 수 있다.
+function isCrosswalk(tx, ty) {
+  if (tx < 1 || ty < 1 || tx >= MW - 1 || ty >= MH - 1) return false;
+  const i = tIdx(tx, ty), rk = World.roadK;
+  if (World.tiles[i] !== TL.ROAD) return false;
+  if (rk[i] === 1) return rk[i - MW] === 3 || rk[i + MW] === 3;
+  if (rk[i] === 2) return rk[i - 1] === 3 || rk[i + 1] === 3;
+  return false;
+}
+// 0: 도로 아님, 1: 합법 횡단(횡단보도 + 보행 신호), 2: 무단횡단
+function jayStatus(x, y) {
+  const tx = Math.floor(x / T), ty = Math.floor(y / T);
+  if (tileAt(x, y) !== TL.ROAD) return 0;
+  if (!isCrosswalk(tx, ty)) return 2;
+  const n = nearestNode(x, y);
+  if (!n.light) return 1;
+  const carDir = World.roadK[tIdx(tx, ty)] === 1 ? 1 : 0; // 세로 도로면 남북 신호
+  return lightState(n, carDir) === 'r' ? 1 : 2;
+}
+
 'use strict';
 /* =====================================================================
  * vehicles.js — 차량 물리 + 교통 AI + 경찰 추격 AI
@@ -1249,7 +1309,10 @@ function playerDrive(car, dt) {
     if (Pad.rt > 0.05 || Pad.lt > 0.05) thrKey = Pad.rt - Pad.lt;
     hb = hb || keyDown('PadRB', 'PadB');
   }
-  if (Input.touch.on) {
+  if (Input.usingTouch && document.body.classList.contains('driving')) {
+    st = Drive.steer;
+    thrKey = Drive.gasV - Drive.brakeV;
+  } else if (Input.touch.on) {
     const j = Input.touch;
     if (Math.abs(j.jx) > 0.15) st = clamp(j.jx * 1.3, -1, 1);
     if (Math.abs(j.jy) > 0.2) thrKey = clamp(-j.jy * 1.4, -1, 1);
@@ -1835,10 +1898,20 @@ function updatePed(p, dt) {
         const o = outs.length ? pick(outs) : null;
         if (o) {
           const tx = cx + o[0] * 3 * T, ty = cy + o[1] * 3 * T, nb = blockAt(tx, ty);
-          if (nb && tileAt(tx, ty) === TL.WALK) { p.state = 'cross'; p.tx = tx; p.ty = ty; p.nb = nb; p.waitT = rand(0, 1.5); }
+          if (nb && tileAt(tx, ty) === TL.WALK) {
+            p.state = 'cross'; p.tx = tx; p.ty = ty; p.nb = nb; p.waitT = rand(0.3, 1.2); p.jay = false; p.holdT = 0;
+            p.crossNode = nearestNode((cx + tx) / 2, (cy + ty) / 2); p.crossCarDir = o[0] !== 0 ? 1 : 0; // 가로로 건너면 세로 도로(남북 신호)
+          }
         }
       }
       p.seg = seg;
+      // 가끔 블록 중간에서 무단횡단하는 시민
+      if (p.kind === 'civ' && chance(dt * 0.006)) {
+        const [cx, cy] = loopPoint(L, p.s), out = [[0, -1], [1, 0], [0, 1], [-1, 0]][seg];
+        const tx = cx + out[0] * 3 * T, ty = cy + out[1] * 3 * T, nb = blockAt(tx, ty);
+        const mid = tileAt(cx + out[0] * 1.5 * T, cy + out[1] * 1.5 * T);
+        if (nb && nb !== p.block && tileAt(tx, ty) === TL.WALK && mid === TL.ROAD) { p.state = 'cross'; p.tx = tx; p.ty = ty; p.nb = nb; p.waitT = rand(0, 0.5); p.jay = true; p.crossNode = null; }
+      }
       const [tx, ty] = loopPoint(L, p.s + p.dir * 0.6);
       if (dist2(tx, ty, p.x, p.y) > 36) p.s = loopParam(L, p.x, p.y);
       pedSeek(p, tx, ty, p.walkSpeed * 1.2, dt);
@@ -1846,8 +1919,13 @@ function updatePed(p, dt) {
       break;
     }
     case 'cross': {
-      if (p.waitT > 0) { p.waitT -= dt; p.vx *= 0.8; p.vy *= 0.8; break; }
-      pedSeek(p, p.tx, p.ty, p.walkSpeed * 1.3, dt);
+      p.holdT = (p.holdT || 0) + dt;
+      // 준법 시민은 차량 신호가 빨간불이 될 때까지 기다린다 (30초가 지나면 포기하고 건넘)
+      const onRoad = tileAt(p.x, p.y) === TL.ROAD;
+      const mustWait = !p.jay && !onRoad && p.crossNode && p.crossNode.light && lightState(p.crossNode, p.crossCarDir) !== 'r' && p.holdT < 30;
+      if (p.waitT > 0 || mustWait) { p.waitT -= dt; p.vx *= 0.8; p.vy *= 0.8; if (!mustWait || p.holdT > 0.5) p.a = Math.atan2(p.ty - p.y, p.tx - p.x); break; }
+      if (p.jay && onRoad) Jay.npcSeen(p);
+      pedSeek(p, p.tx, p.ty, p.walkSpeed * (p.jay ? 1.8 : 1.3), dt);
       if (dist2(p.x, p.y, p.tx, p.ty) < 0.8) { p.block = p.nb; p.s = loopParam(p.block.loop, p.x, p.y); p.state = 'walk'; p.seg = -1; p.dir = chance(0.5) ? 1 : -1; }
       dodgeCars(p);
       break;
@@ -1880,6 +1958,13 @@ function updatePed(p, dt) {
     }
     case 'fight': case 'chase': {
       combatAI(p, dt);
+      break;
+    }
+    case 'ticket': { // 무단횡단 단속: 대상에게 걸어가 딱지를 뗀다
+      const tg = p.ticketTarget || Game.player;
+      const tx = tg.px !== undefined ? tg.px : tg.x, ty = tg.py !== undefined ? tg.py : tg.y;
+      p.a = Math.atan2(ty - p.y, tx - p.x);
+      if (dist2(p.x, p.y, tx, ty) > 1.4 * 1.4) pedSeek(p, tx, ty, tg === Game.player ? 4.2 : 3.2, dt, 14); else { p.vx *= 0.7; p.vy *= 0.7; }
       break;
     }
     case 'goto': {
@@ -2360,6 +2445,101 @@ function offscreenWalkSpot(minD, maxD) {
   }
   return null;
 }
+
+// ---------- 무단횡단 단속 ----------
+// 플레이어가 횡단보도가 아닌 곳이나 빨간불(보행자 기준)에 도로를 건너다 경찰 눈에 띄면
+//  · 도보 경찰: 호루라기 → 걸어와서 딱지(벌금 $50). 도망치면(멀어지거나 차에 타면) 수배 ★1
+//  · 순찰차: 확성기 경고 + 벌금 $30
+//  · 90초 안에 세 번 걸리면 상습범으로 수배 ★1
+// 무단횡단하는 시민도 경찰이 보면 딱지를 뗀다.
+const Jay = {
+  t: 0, cd: 0, cop: null, copT: 0, count: 0, countT: 0, npcCop: null, npcT: 0,
+  reset() { if (this.cop && !this.cop.dead) returnToWalk(this.cop); if (this.npcCop && !this.npcCop.dead) returnToWalk(this.npcCop); this.t = 0; this.cd = 0; this.cop = null; this.npcCop = null; this.count = 0; },
+  whistle(x, y) { Sfx.tone({ x, y, f0: 2700, f1: 3000, dur: 0.18, type: 'square', vol: 0.14 }); setTimeout(() => Sfx.tone({ x, y, f0: 2750, f1: 3100, dur: 0.35, type: 'square', vol: 0.14 }), 220); },
+  seenBy(x, y, footR, carR) {
+    let cop = null, bd = footR * footR;
+    for (const p of Game.peds) {
+      if (p.dead || p.downT > 0 || p.kind !== 'cop' || p.state === 'chase' || p.state === 'ticket') continue;
+      const d = dist2(p.x, p.y, x, y); if (d < bd && losClear(p.x, p.y, x, y)) { bd = d; cop = p; }
+    }
+    if (cop) return { cop };
+    for (const c of Game.cars) if (!c.dead && c.driver === 'ai' && c.driverKind === 'cop' && dist2(c.x, c.y, x, y) < carR * carR && losClear(c.x, c.y, x, y)) return { car: c };
+    return null;
+  },
+  update(dt) {
+    const P = Game.player;
+    this.cd -= dt; this.countT -= dt; if (this.countT <= 0) this.count = 0;
+    this.updateNpc(dt);
+    if (this.cop) { this.chase(dt); return; }
+    if (P.car || P.dead || Wanted.stars > 0) { this.t = 0; return; }
+    const st = jayStatus(P.x, P.y);
+    // 차에 타고 내리느라 길가에 선 경우는 봐준다
+    const nearCar = st === 2 && Game.cars.some(c => c.speed < 1 && dist2(c.x, c.y, P.x, P.y) < 3.6 * 3.6);
+    if (st === 2 && !nearCar) this.t += dt; else this.t = Math.max(0, this.t - dt * 2);
+    UI.jay = st === 2 && !nearCar ? this.t : 0;
+    if (this.t < 0.9 || this.cd > 0) return;
+    const w = this.seenBy(P.x, P.y, 30, 40);
+    if (!w) return;
+    this.cd = 25; this.t = 0;
+    if (w.cop) {
+      this.cop = w.cop; this.copT = 0; w.cop.state = 'ticket'; w.cop.ticketTarget = Game.player;
+      this.whistle(w.cop.x, w.cop.y);
+      Effects.text(w.cop.x, w.cop.y - 1.2, '삐익!', '#ffe066');
+      UI.toast('경찰: 거기 서요! 무단횡단입니다 — 그 자리에서 기다리면 벌금만 낸다');
+    } else {
+      w.car.sirenBlip = 1;
+      Sfx.tone({ x: w.car.x, y: w.car.y, f0: 700, f1: 1400, dur: 0.4, type: 'triangle', vol: 0.2 });
+      this.fine(30, '순찰차 확성기: 무단횡단 하지 마세요! 벌금');
+    }
+  },
+  chase(dt) {
+    const c = this.cop, P = Game.player;
+    if (c.dead || c.downT > 0 || Wanted.stars > 0 || P.dead) { if (!c.dead && c.state === 'ticket') returnToWalk(c); this.cop = null; return; }
+    this.copT += dt;
+    const d = dist(c.x, c.y, P.px, P.py);
+    if (d < 1.8 && !P.car) {
+      this.fine(50, '무단횡단 딱지: 벌금');
+      Effects.text(c.x, c.y - 1.2, '딱지 발부', '#9fd0ff');
+      c.state = 'idle'; c.homeX = c.x; c.homeY = c.y; c.wt = 0; setTimeout(() => { if (!c.dead && c.state === 'idle') returnToWalk(c); }, 2500);
+      this.cop = null; return;
+    }
+    if (d > 28 || this.copT > 16 || P.car) {
+      this.cop = null; c.state = 'chase'; c.ticketTarget = null;
+      Wanted.add(0, 1); Wanted.seen = true; Wanted.lkpX = P.px; Wanted.lkpY = P.py;
+      UI.toast('단속에 불응했다! 수배 ★1');
+    }
+  },
+  fine(amt, msg) {
+    const P = Game.player, paid = Math.min(P.money, amt);
+    P.money -= paid;
+    Effects.text(P.px, P.py - 1, `-$${paid}`, '#ff8a80');
+    UI.toast(`${msg} -$${paid}`);
+    this.count++; this.countT = 90;
+    if (this.count >= 3) { this.count = 0; Wanted.add(0, 1); UI.toast('상습 무단횡단으로 수배됐다! ★1'); }
+  },
+  // 시민 무단횡단
+  npcSeen(p) {
+    if (this.npcCop || p.ticketed) return;
+    const w = this.seenBy(p.x, p.y, 26, 0);
+    if (!w || !w.cop || w.cop === this.cop) return;
+    p.ticketed = true;
+    this.npcCop = w.cop; this.npcT = 0; w.cop.state = 'ticket'; w.cop.ticketTarget = p;
+    this.whistle(w.cop.x, w.cop.y);
+    Effects.text(p.x, p.y - 1.2, '무단횡단!', '#ffe066');
+  },
+  updateNpc(dt) {
+    const c = this.npcCop; if (!c) return;
+    const p = c.ticketTarget;
+    this.npcT += dt;
+    if (c.dead || c.state !== 'ticket' || !p || p.dead || this.npcT > 15) { if (!c.dead && c.state === 'ticket') returnToWalk(c); this.npcCop = null; return; }
+    if (dist2(c.x, c.y, p.x, p.y) < 1.8 * 1.8) {
+      Effects.text(p.x, p.y - 1.2, '딱지 발부', '#9fd0ff');
+      if (p.state === 'walk' || p.state === 'cross') { p.state = 'idle'; p.homeX = p.x; p.homeY = p.y; p.wt = 0; setTimeout(() => { if (!p.dead && p.state === 'idle') returnToWalk(p); }, 2500); }
+      c.state = 'idle'; c.homeX = c.x; c.homeY = c.y; c.wt = 0; setTimeout(() => { if (!c.dead && c.state === 'idle') returnToWalk(c); }, 2500);
+      this.npcCop = null;
+    }
+  },
+};
 
 'use strict';
 /* =====================================================================
@@ -2850,6 +3030,17 @@ function drawStreetFurniture() {
       ctx.fillStyle = '#1b1d21'; ctx.fillRect(x - 0.35, y - 0.35, 0.7, 0.7);
       ctx.fillStyle = st === 'g' ? '#39e36b' : st === 'y' ? '#ffc933' : '#ff3b3b';
       ctx.beginPath(); ctx.arc(x, y, 0.24, 0, TAU); ctx.fill();
+    }
+    // 보행자 신호: 각 진입로 횡단보도 양 끝 (차량 신호가 빨간불이면 초록 보행 신호)
+    for (let d = 0; d < 4; d++) {
+      if (n.adj[(d + 2) % 4] < 0) continue;
+      const walk = lightState(n, d) === 'r';
+      const r = rightOf(d);
+      for (const side of [-1, 1]) {
+        const x = n.x - DIRS[d][0] * T * 1.5 + r[0] * side * (T + 0.55), y = n.y - DIRS[d][1] * T * 1.5 + r[1] * side * (T + 0.55);
+        ctx.fillStyle = '#15171b'; ctx.fillRect(x - 0.28, y - 0.28, 0.56, 0.56);
+        ctx.fillStyle = walk ? '#6dff9a' : '#ff5a4a'; ctx.fillRect(x - 0.18, y - 0.18, 0.36, 0.36);
+      }
     }
   }
   ctx.fillStyle = '#2b2d31';
@@ -3537,7 +3728,7 @@ function drawHUD(dt) {
 
   // ---- 자막 / 목표 ----
   let subY = Input.usingTouch ? (land ? CH - 64 : CH - 290) : CH - 120 * s;
-  const subW = Input.usingTouch && land ? Math.max(260, CW - 470) : Math.min(CW - 60, 640 * s);
+  const subW = Input.usingTouch && land ? Math.max(240, CW - (P.car ? 620 : 470)) : Math.min(CW - 60, 640 * s);
   if (UI.dialogCur) {
     const d = UI.dialogCur;
     c.font = `500 ${18 * s}px ${FONT_KR}`;
@@ -3560,6 +3751,12 @@ function drawHUD(dt) {
     c.globalAlpha = 1;
   }
 
+  if (UI.jay > 0.15 && !P.car && Wanted.stars === 0) {
+    const a = clamp(UI.jay * 2, 0, 1);
+    c.globalAlpha = a;
+    txt(c, '무단횡단 중! 횡단보도에서 보행 신호에 건너세요', CW / 2, Input.usingTouch ? 96 : CH * 0.2, `700 ${15 * s}px ${FONT_KR}`, '#ffb4a8', 'rgba(0,0,0,0.9)', 4, 'center');
+    c.globalAlpha = 1;
+  }
   // ---- 화면 밖 목표 화살표 ----
   const tg = Missions.targets()[0];
   if (tg && !onScreen(tg.x, tg.y, -4)) {
@@ -3671,7 +3868,10 @@ function drawRadar(s) {
     const kmh = Math.round(Math.abs(P.car.vf) * 3.6);
     const sx = cx + R + 14 * s, sy = Input.usingTouch ? cy - 8 * s : cy + R - 10 * s;
     txt(c, String(kmh), sx, sy, `${34 * s}px ${FONT_NUM}`, '#fff', 'rgba(0,0,0,0.9)', 4, 'left');
-    txt(c, 'km/h', sx + c.measureText(String(kmh)).width + 5 * s, sy, `${14 * s}px ${FONT_NUM}`, '#cfd6e0', 'rgba(0,0,0,0.9)', 3, 'left');
+    const kmW = c.measureText(String(kmh)).width;
+    txt(c, 'km/h', sx + kmW + 5 * s, sy, `${14 * s}px ${FONT_NUM}`, '#cfd6e0', 'rgba(0,0,0,0.9)', 3, 'left');
+    const rev = P.car.vf < -0.3;
+    txt(c, rev ? 'R' : 'D', sx + kmW + 40 * s, sy, `${22 * s}px ${FONT_NUM}`, rev ? '#ff8a80' : '#7ae68f', 'rgba(0,0,0,0.9)', 3, 'left');
     const hw = 70 * s; c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(sx, sy + 6 * s, hw, 5 * s);
     const hpk = P.car.hp / P.car.maxHp; c.fillStyle = hpk > 0.5 ? '#7ad67a' : hpk > 0.25 ? '#f2c14e' : '#e0443e'; c.fillRect(sx, sy + 6 * s, hw * hpk, 5 * s);
     if (Radio.station > 0) txt(c, Radio.stations[Radio.station].name, sx, sy - 34 * s, `600 ${11 * s}px ${FONT_KR}`, '#ffcf5a', 'rgba(0,0,0,0.9)', 3, 'left');
@@ -3823,7 +4023,54 @@ const Touch = {
     tap('t-radio', () => { Input.pressed['KeyR'] = true; });
     tap('t-map', () => { Input.pressed['KeyM'] = true; });
     tap('t-pause', () => { Input.pressed['Escape'] = true; });
+    Drive.init();
   },
+};
+
+// ---------- 모바일 운전: 핸들 + 페달 ----------
+// 핸들: 바퀴 테두리를 잡고 돌린다(손가락 각도 변화 = 핸들 회전). 가운데를 잡으면 좌우로 끌어도 된다.
+// 놓으면 스프링처럼 가운데로 돌아온다. 페달: 엑셀 = 가속, 브레이크 = 감속 → 멈춘 뒤 계속 밟으면 후진.
+const Drive = {
+  angle: 0, held: false, id: null, gas: 0, brake: 0, gasV: 0, brakeV: 0, MAX: 2.2, el: null,
+  init() {
+    const w = this.el = document.getElementById('wheel');
+    const pos = t => { const r = w.getBoundingClientRect(); return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, r: r.width / 2 }; };
+    w.addEventListener('touchstart', e => {
+      e.preventDefault(); const t = e.changedTouches[0]; const g = pos();
+      this.id = t.identifier; this.held = true; this.cx = g.cx; this.cy = g.cy;
+      this.center = Math.hypot(t.clientX - g.cx, t.clientY - g.cy) < g.r * 0.35;
+      this.startA = Math.atan2(t.clientY - g.cy, t.clientX - g.cx); this.startX = t.clientX; this.base = this.angle; this.lastA = this.startA; this.acc = 0;
+      w.classList.add('on');
+    }, { passive: false });
+    w.addEventListener('touchmove', e => {
+      e.preventDefault();
+      for (const t of e.changedTouches) if (t.identifier === this.id) {
+        if (this.center) this.angle = clamp(this.base + (t.clientX - this.startX) / 55, -this.MAX, this.MAX);
+        else {
+          const a = Math.atan2(t.clientY - this.cy, t.clientX - this.cx);
+          this.acc += angNorm(a - this.lastA); this.lastA = a; // 누적해서 한 바퀴 넘게 돌려도 튀지 않게
+          this.angle = clamp(this.base + this.acc, -this.MAX, this.MAX);
+        }
+      }
+    }, { passive: false });
+    const end = e => { for (const t of e.changedTouches) if (t.identifier === this.id) { this.held = false; this.id = null; w.classList.remove('on'); } };
+    w.addEventListener('touchend', end); w.addEventListener('touchcancel', end);
+    const pedal = (id, key) => {
+      const b = document.getElementById(id);
+      b.addEventListener('touchstart', e => { e.preventDefault(); this[key] = 1; b.classList.add('on'); buzz(8); }, { passive: false });
+      const up = e => { e.preventDefault(); this[key] = 0; b.classList.remove('on'); };
+      b.addEventListener('touchend', up); b.addEventListener('touchcancel', up);
+    };
+    pedal('pedal-gas', 'gas'); pedal('pedal-brake', 'brake');
+  },
+  reset() { this.angle = 0; this.held = false; this.gas = this.brake = this.gasV = this.brakeV = 0; document.querySelectorAll('.pedal').forEach(p => p.classList.remove('on')); },
+  update(dt) {
+    if (!this.held) this.angle = smooth(this.angle, 0, 6, dt);
+    this.gasV = smooth(this.gasV, this.gas, this.gas ? 10 : 20, dt);
+    this.brakeV = smooth(this.brakeV, this.brake, this.brake ? 14 : 20, dt);
+    if (this.el) this.el.style.transform = `rotate(${this.angle}rad)`;
+  },
+  get steer() { return clamp(this.angle / 1.6, -1, 1); },
 };
 
 'use strict';
@@ -3872,7 +4119,7 @@ const Game = {
     // 세계 초기화
     this.cars = []; this.peds = []; this.pickups = []; this.projectiles = [];
     Particles.list = []; Decals.skids = []; Decals.blood_ = []; Decals.scorch_ = [];
-    Wanted.reset(); Police.reset(); Missions.active = null;
+    Wanted.reset(); Police.reset(); Jay.reset(); Missions.active = null;
     Missions.idx = sv ? sv.idx : 0;
     this.packages = new Set(sv ? sv.packages : []);
     const g = Missions.done ? Missions.givers[0] : Missions.givers[Missions.idx];
@@ -3915,6 +4162,13 @@ const Game = {
     Pad.poll();
     const st = this.state;
     if (st !== this._lastSt) { this._lastSt = st; document.body.classList.toggle('playing', st !== 'menu'); }
+    const drv = st !== 'menu' && !!(this.player && this.player.car);
+    if (drv !== this._lastDrv) {
+      this._lastDrv = drv; document.body.classList.toggle('driving', drv);
+      Input.touch.on = false; Input.touch.jx = Input.touch.jy = 0; Input.touch.stickId = null; Drive.reset();
+      const b = document.getElementById('t-enter'); if (b) b.textContent = drv ? '하차' : '탑승';
+    }
+    Drive.update(dt);
     if (st === 'play') {
       if (keyHit('Escape', 'KeyP', 'PadStart')) { this.pause(); }
       else if (keyHit('KeyM', 'Tab', 'PadBack')) { this.state = 'map'; }
@@ -3973,6 +4227,7 @@ const Game = {
     this.simulate(dt, false);
     Nav.update(dt);
     Police.update(dt);
+    Jay.update(dt);
     Missions.update(dt);
     updatePickups(dt);
     this.places(dt);
@@ -4159,7 +4414,7 @@ const Game = {
     Object.assign(np, { money: P.money, displayMoney: P.money, inv: P.inv, weapon: P.weapon in P.inv ? P.weapon : 'fist' });
     if (kind === 'wasted') np.inv = P.inv;
     this.player = np;
-    Wanted.reset(); Police.reset();
+    Wanted.reset(); Police.reset(); Jay.reset();
     for (const p of this.peds) if ((p.kind === 'cop' || p.kind === 'swat' || p.kind === 'gang') && p.state === 'chase') p.state = p.kind === 'gang' ? 'idle' : 'patrol';
     for (const c of this.cars) if (c.ai && (c.ai.mode === 'chase' || c.ai.mode === 'block')) { c.remove = true; }
     this.cars = this.cars.filter(c => !c.remove);

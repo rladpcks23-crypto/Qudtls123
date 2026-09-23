@@ -264,3 +264,98 @@ function offscreenWalkSpot(minD, maxD) {
   }
   return null;
 }
+
+// ---------- 무단횡단 단속 ----------
+// 플레이어가 횡단보도가 아닌 곳이나 빨간불(보행자 기준)에 도로를 건너다 경찰 눈에 띄면
+//  · 도보 경찰: 호루라기 → 걸어와서 딱지(벌금 $50). 도망치면(멀어지거나 차에 타면) 수배 ★1
+//  · 순찰차: 확성기 경고 + 벌금 $30
+//  · 90초 안에 세 번 걸리면 상습범으로 수배 ★1
+// 무단횡단하는 시민도 경찰이 보면 딱지를 뗀다.
+const Jay = {
+  t: 0, cd: 0, cop: null, copT: 0, count: 0, countT: 0, npcCop: null, npcT: 0,
+  reset() { if (this.cop && !this.cop.dead) returnToWalk(this.cop); if (this.npcCop && !this.npcCop.dead) returnToWalk(this.npcCop); this.t = 0; this.cd = 0; this.cop = null; this.npcCop = null; this.count = 0; },
+  whistle(x, y) { Sfx.tone({ x, y, f0: 2700, f1: 3000, dur: 0.18, type: 'square', vol: 0.14 }); setTimeout(() => Sfx.tone({ x, y, f0: 2750, f1: 3100, dur: 0.35, type: 'square', vol: 0.14 }), 220); },
+  seenBy(x, y, footR, carR) {
+    let cop = null, bd = footR * footR;
+    for (const p of Game.peds) {
+      if (p.dead || p.downT > 0 || p.kind !== 'cop' || p.state === 'chase' || p.state === 'ticket') continue;
+      const d = dist2(p.x, p.y, x, y); if (d < bd && losClear(p.x, p.y, x, y)) { bd = d; cop = p; }
+    }
+    if (cop) return { cop };
+    for (const c of Game.cars) if (!c.dead && c.driver === 'ai' && c.driverKind === 'cop' && dist2(c.x, c.y, x, y) < carR * carR && losClear(c.x, c.y, x, y)) return { car: c };
+    return null;
+  },
+  update(dt) {
+    const P = Game.player;
+    this.cd -= dt; this.countT -= dt; if (this.countT <= 0) this.count = 0;
+    this.updateNpc(dt);
+    if (this.cop) { this.chase(dt); return; }
+    if (P.car || P.dead || Wanted.stars > 0) { this.t = 0; return; }
+    const st = jayStatus(P.x, P.y);
+    // 차에 타고 내리느라 길가에 선 경우는 봐준다
+    const nearCar = st === 2 && Game.cars.some(c => c.speed < 1 && dist2(c.x, c.y, P.x, P.y) < 3.6 * 3.6);
+    if (st === 2 && !nearCar) this.t += dt; else this.t = Math.max(0, this.t - dt * 2);
+    UI.jay = st === 2 && !nearCar ? this.t : 0;
+    if (this.t < 0.9 || this.cd > 0) return;
+    const w = this.seenBy(P.x, P.y, 30, 40);
+    if (!w) return;
+    this.cd = 25; this.t = 0;
+    if (w.cop) {
+      this.cop = w.cop; this.copT = 0; w.cop.state = 'ticket'; w.cop.ticketTarget = Game.player;
+      this.whistle(w.cop.x, w.cop.y);
+      Effects.text(w.cop.x, w.cop.y - 1.2, '삐익!', '#ffe066');
+      UI.toast('경찰: 거기 서요! 무단횡단입니다 — 그 자리에서 기다리면 벌금만 낸다');
+    } else {
+      w.car.sirenBlip = 1;
+      Sfx.tone({ x: w.car.x, y: w.car.y, f0: 700, f1: 1400, dur: 0.4, type: 'triangle', vol: 0.2 });
+      this.fine(30, '순찰차 확성기: 무단횡단 하지 마세요! 벌금');
+    }
+  },
+  chase(dt) {
+    const c = this.cop, P = Game.player;
+    if (c.dead || c.downT > 0 || Wanted.stars > 0 || P.dead) { if (!c.dead && c.state === 'ticket') returnToWalk(c); this.cop = null; return; }
+    this.copT += dt;
+    const d = dist(c.x, c.y, P.px, P.py);
+    if (d < 1.8 && !P.car) {
+      this.fine(50, '무단횡단 딱지: 벌금');
+      Effects.text(c.x, c.y - 1.2, '딱지 발부', '#9fd0ff');
+      c.state = 'idle'; c.homeX = c.x; c.homeY = c.y; c.wt = 0; setTimeout(() => { if (!c.dead && c.state === 'idle') returnToWalk(c); }, 2500);
+      this.cop = null; return;
+    }
+    if (d > 28 || this.copT > 16 || P.car) {
+      this.cop = null; c.state = 'chase'; c.ticketTarget = null;
+      Wanted.add(0, 1); Wanted.seen = true; Wanted.lkpX = P.px; Wanted.lkpY = P.py;
+      UI.toast('단속에 불응했다! 수배 ★1');
+    }
+  },
+  fine(amt, msg) {
+    const P = Game.player, paid = Math.min(P.money, amt);
+    P.money -= paid;
+    Effects.text(P.px, P.py - 1, `-$${paid}`, '#ff8a80');
+    UI.toast(`${msg} -$${paid}`);
+    this.count++; this.countT = 90;
+    if (this.count >= 3) { this.count = 0; Wanted.add(0, 1); UI.toast('상습 무단횡단으로 수배됐다! ★1'); }
+  },
+  // 시민 무단횡단
+  npcSeen(p) {
+    if (this.npcCop || p.ticketed) return;
+    const w = this.seenBy(p.x, p.y, 26, 0);
+    if (!w || !w.cop || w.cop === this.cop) return;
+    p.ticketed = true;
+    this.npcCop = w.cop; this.npcT = 0; w.cop.state = 'ticket'; w.cop.ticketTarget = p;
+    this.whistle(w.cop.x, w.cop.y);
+    Effects.text(p.x, p.y - 1.2, '무단횡단!', '#ffe066');
+  },
+  updateNpc(dt) {
+    const c = this.npcCop; if (!c) return;
+    const p = c.ticketTarget;
+    this.npcT += dt;
+    if (c.dead || c.state !== 'ticket' || !p || p.dead || this.npcT > 15) { if (!c.dead && c.state === 'ticket') returnToWalk(c); this.npcCop = null; return; }
+    if (dist2(c.x, c.y, p.x, p.y) < 1.8 * 1.8) {
+      Effects.text(p.x, p.y - 1.2, '딱지 발부', '#9fd0ff');
+      if (p.state === 'walk' || p.state === 'cross') { p.state = 'idle'; p.homeX = p.x; p.homeY = p.y; p.wt = 0; setTimeout(() => { if (!p.dead && p.state === 'idle') returnToWalk(p); }, 2500); }
+      c.state = 'idle'; c.homeX = c.x; c.homeY = c.y; c.wt = 0; setTimeout(() => { if (!c.dead && c.state === 'idle') returnToWalk(c); }, 2500);
+      this.npcCop = null;
+    }
+  },
+};
