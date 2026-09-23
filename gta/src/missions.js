@@ -112,7 +112,7 @@ const Missions = {
   },
 };
 
-const allTargets = () => [...(Jobs.active ? Jobs.targets() : []), ...Missions.targets(), ...GangJob.targets(), ...Empire.targets(), ...Finance.targets(), ...(Gangs.war && (!Gangs.mine || Gangs.war.A === Gangs.mine || Gangs.war.D === Gangs.mine) ? [{ x: Gangs.war.x, y: Gangs.war.y, c: '#ff3b3b', big: true }] : [])];
+const allTargets = () => [...GangJob.targets(), ...(Jobs.active ? Jobs.targets() : []), ...Missions.targets(), ...Empire.targets(), ...Finance.targets(), ...(Gangs.war && (!Gangs.mine || Gangs.war.A === Gangs.mine || Gangs.war.D === Gangs.mine) ? [{ x: Gangs.war.x, y: Gangs.war.y, c: '#ff3b3b', big: true }] : [])];
 
 // ---------- 미션 도우미 ----------
 function missionCar(m, type, x, y, a, opt = {}) {
@@ -181,7 +181,8 @@ function assassinDef(o) {
       }
       const ref = m.target || m.car;
       Missions.obj(m, m.alerted ? o.objNear : o.objFar);
-      if (ref && dist(P.px, P.py, ref.px !== undefined ? ref.px : ref.x, ref.py !== undefined ? ref.py : ref.y) > 280) return { fail: `${o.name}이(가) 달아났다` };
+      // 놓침 판정은 표적이 눈치채고 도망치기 시작한 뒤에만 (맵이 커져서 의뢰인 곁에서 출발하면 처음부터 멀다)
+      if (m.alerted && ref && dist(P.px, P.py, ref.px !== undefined ? ref.px : ref.x, ref.py !== undefined ? ref.py : ref.y) > 350) return { fail: `${o.name}이(가) 달아났다` };
     },
     onKill(m, p) { if (p.kind === 'target' && p.mission === m) Missions.pass(); },
     onCar(m, c) { if (c === m.car && c.driverKind === 'target') { c.driverKind = null; Missions.pass(); } },

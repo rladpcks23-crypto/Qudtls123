@@ -254,9 +254,22 @@ const GangJob = {
     if (kind === 'collect') {
       const own = World.blocks.filter(b => Gangs.turf[b.id] === g);
       if (!own.length) { UI.toast('우리 구역이 없다'); return; }
-      const stops = []; for (let i = 0; i < 3; i++) { const b = pick(own), [x, y] = loopPoint(b.loop, rand(0, b.loop.P)); stops.push({ x, y }); }
-      this.active = { kind, stops, t: 0 };
-      UI.toast('보호비 수금: 표시된 가게 3곳을 돌아라');
+      // 우리 구역 안의 실제 가게(가게·사업체 건물) 앞 인도 → 플레이어에게서 가까운 순서로 3곳 (서로 40m 이상 떨어지게)
+      const cands = [];
+      for (const b of own) for (const L of b.lots || []) {
+        if (!L.b || !['mid', 'shop', 'tower', 'biz', 'burger', 'mart', 'pharmacy', 'clothes', 'gym', 'ammu'].includes(L.b.kind)) continue;
+        const [x, y] = loopPoint(b.loop, loopParam(b.loop, (L.x0 + L.x1 + 1) / 2 * T, (L.y0 + L.y1 + 1) / 2 * T));
+        cands.push({ x, y, name: L.b.label || (L.b.kind === 'tower' ? '빌딩 상가' : '동네 가게') });
+      }
+      if (!cands.length) for (const b of own) { const [x, y] = loopPoint(b.loop, rand(0, b.loop.P)); cands.push({ x, y, name: '동네 가게' }); }
+      const stops = []; let cx = P.px, cy = P.py;
+      for (let i = 0; i < 3 && cands.length; i++) {
+        cands.sort((a, b) => dist(a.x, a.y, cx, cy) - dist(b.x, b.y, cx, cy));
+        const s = cands.find(c => stops.every(o => dist(o.x, o.y, c.x, c.y) > 40)) || cands[0];
+        stops.push(s); cands.splice(cands.indexOf(s), 1); cx = s.x; cy = s.y;
+      }
+      this.active = { kind, stops, t: 0, total: stops.length };
+      UI.big('보호비 수금', `우리 구역 가게 ${stops.length}곳 — 화살표·지도의 표시로 가서 가게 앞에 멈춰라`, 3, GANGS[g].color);
     } else {
       const pr = Gangs.borderPairs().filter(([a, b]) => Gangs.turf[a.id] === g || Gangs.turf[b.id] === g);
       if (!pr.length) { UI.toast('이웃한 라이벌 구역이 없다'); return; }
@@ -273,9 +286,11 @@ const GangJob = {
     J.t += dt;
     if (J.kind === 'collect') {
       const s = J.stops[0];
-      UI.objective(`보호비 수금: 남은 가게 ${J.stops.length}곳`);
-      if (dist(P.px, P.py, s.x, s.y) < 4 && (!P.car || P.car.speed < 3)) {
-        J.stops.shift(); P.money += 300; Sfx.cash(); Effects.text(P.px, P.py - 1, '+$300');
+      const d = Math.round(dist(P.px, P.py, s.x, s.y));
+      UI.objective(`보호비 수금 ${J.total - J.stops.length + 1}/${J.total}: ${s.name}까지 ${d}m — 가게 앞(노란 원)에 멈춰라`);
+      if (d < 7 && (!P.car || P.car.speed < 4)) {
+        const done = J.stops.shift(); P.money += 300; Sfx.cash(); Effects.text(P.px, P.py - 1, '+$300');
+        UI.toast(`${done.name} 주인이 보호비를 냈다 +$300${J.stops.length ? ` — 다음 가게로 (남은 ${J.stops.length}곳)` : ''}`);
         if (!J.stops.length) { Gangs.addRep(40, '보호비 수금'); this.active = null; UI.objective(''); Save.write(); }
       }
     } else {
@@ -296,7 +311,7 @@ const GangJob = {
   },
   targets() {
     const J = this.active; if (!J) return [];
-    if (J.kind === 'collect') return J.stops.slice(0, 1).map(s => ({ x: s.x, y: s.y, c: GANGS[Gangs.mine].color, big: true }));
+    if (J.kind === 'collect') return J.stops.map((s, i) => ({ x: s.x, y: s.y, c: i ? '#b8a15a' : '#f2c14e', big: !i }));
     return [{ x: J.x, y: J.y, c: '#ff4d4d', big: true }];
   },
 };

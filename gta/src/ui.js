@@ -198,7 +198,18 @@ function drawHUD(dt) {
     c.globalAlpha = 1;
   }
   // ---- 화면 밖 목표 화살표 ----
-  const tg = allTargets()[0];
+  const tg = allTargets()[0] || (Game.waypoint ? { x: Game.waypoint.x, y: Game.waypoint.y, c: '#c77dff' } : null);
+  if (tg && Game.view !== 'top' && View3D.ok) { // 3D 시점: 화면 위쪽 가운데 나침반 화살표 (시선 기준 방향 + 거리)
+    const rel = angNorm(Math.atan2(tg.y - P.py, tg.x - P.px) - View3D.yaw);
+    const ax = CW / 2, ay = 118 * s;
+    c.save(); c.translate(ax, ay);
+    c.fillStyle = 'rgba(0,0,0,0.45)'; c.beginPath(); c.arc(0, 0, 26 * s, 0, TAU); c.fill();
+    c.rotate(rel - Math.PI / 2);
+    c.fillStyle = tg.c; c.strokeStyle = 'rgba(0,0,0,0.85)'; c.lineWidth = 3;
+    c.beginPath(); c.moveTo(20 * s, 0); c.lineTo(-11 * s, -13 * s); c.lineTo(-5 * s, 0); c.lineTo(-11 * s, 13 * s); c.closePath(); c.stroke(); c.fill();
+    c.restore();
+    txt(c, `${Math.round(dist(P.px, P.py, tg.x, tg.y))}m`, ax, ay + 44 * s, `${15 * s}px ${FONT_NUM}`, '#fff', 'rgba(0,0,0,0.9)', 3, 'center');
+  }
   if (tg && Game.view === 'top' && !onScreenExact(tg.x, tg.y, -30)) {
     const [sx, sy2] = toScreen(tg.x, tg.y);
     const ang = Math.atan2(sy2 - CH / 2, sx - CW / 2);
