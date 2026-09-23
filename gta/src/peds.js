@@ -530,7 +530,7 @@ function dodgeCars(p) {
 
 // 보행자-지형 충돌
 function pedStatic(p) {
-  const r = p.r;
+  const r = p.r, solidT = p === Game.player ? solidNoWater : solidTile; // 플레이어만 물에 들어가 헤엄칠 수 있다
   const tx0 = Math.floor((p.x - r) / T), tx1 = Math.floor((p.x + r) / T), ty0 = Math.floor((p.y - r) / T), ty1 = Math.floor((p.y + r) / T);
   for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
     if (!solidT(tx, ty)) continue;

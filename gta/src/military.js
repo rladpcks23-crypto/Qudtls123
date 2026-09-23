@@ -70,6 +70,20 @@ function specialStep(c, dt) {
       c.w = inp.st * V.steer;
     } else { c.vx *= Math.exp(-4 * dt); c.vy *= Math.exp(-4 * dt); c.w = c.alt > 0.5 ? inp.st * 0.8 : 0; }
     c.a = angNorm(c.a + c.w * dt);
+  } else if (V.special === 'boat') {
+    // 보트: 물 위에서만 추진, 옆으로 미끄러지며(물) 속도가 있어야 방향이 잘 돈다. 물 밖(좌초)이면 거의 못 움직인다
+    const wet = tileAt(c.x, c.y) === TL.WATER;
+    c.spd = c.spd || 0;
+    if (c.driver && c.burnT <= 0 && wet) c.spd += raw * (raw > 0 ? V.accel : V.accel * 0.8) * dt;
+    c.spd *= Math.exp(-(wet ? (raw ? 0.35 : 0.8) : 6) * dt);
+    c.spd = clamp(c.spd, -8, V.vmax);
+    c.w = (c.driver ? inp.st * V.steer * clamp(Math.abs(c.spd) / 7, 0.35, 1) : 0) * (c.spd < -0.5 ? -1 : 1);
+    c.a = angNorm(c.a + c.w * dt);
+    const cs = Math.cos(c.a), sn = Math.sin(c.a);
+    const lat = (-c.vx * sn + c.vy * cs) * Math.exp(-2.2 * dt); // 옆미끄럼(물)
+    c.vx = cs * c.spd - sn * lat; c.vy = sn * c.spd + cs * lat;
+    c.bob = (c.bob || 0) + dt * (2 + Math.abs(c.spd) * 0.15);
+    if (wet && Math.abs(c.spd) > 4 && Math.random() < 0.6) Particles.splash(c.x - cs * c.L * 0.5 + rand(-0.4, 0.4), c.y - sn * c.L * 0.5 + rand(-0.4, 0.4));
   } else { // jet
     c.spd = c.spd || 0;
     const air = c.alt > 1.2;
@@ -117,6 +131,7 @@ const VWEAP = {
 };
 const VSET = { tank: ['shell', 'mg'], heli: ['cannon', 'rockets', 'homing'], jet: ['cannon', 'homing', 'rockets'] };
 const vWeapons = c => VSET[c.V.special] || [];
+const hasVW = c => !!(c && VSET[c.V.special]); // 탑승 무기가 있는 차량 (보트는 일반 차처럼 창밖 사격)
 const vWeapon = c => vWeapons(c)[(c.vw || 0) % vWeapons(c).length];
 function cycleVWeapon(c, dir) {
   const n = vWeapons(c).length; if (!n) return;

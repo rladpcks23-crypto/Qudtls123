@@ -67,7 +67,8 @@ const Bag = {
 
 // ---------- 차량 매매상 ----------
 const VEHICLE_PRICES = { compact: 3000, sedan: 5000, bike: 4500, van: 6000, muscle: 9000, truck: 12000, sports: 18000, super: 42000, taxi: 5000, police: 15000, swat: 30000, ambulance: 12000, armored: 60000, bus: 25000, tank: 180000, milheli: 150000, jet: 220000 };
-const DEALER_STOCK = ['compact', 'sedan', 'bike', 'van', 'muscle', 'sports', 'super', 'truck', 'armored', 'tank', 'milheli', 'jet'];
+const DEALER_STOCK = ['compact', 'sedan', 'bike', 'van', 'muscle', 'sports', 'super', 'truck', 'armored', 'jetski', 'speedboat', 'tank', 'milheli', 'jet'];
+Object.assign(VEHICLE_PRICES, { jetski: 7000, speedboat: 26000 });
 
 const Dealer = {
   sellable(c) {
@@ -78,7 +79,7 @@ const Dealer = {
   },
   price(c) {
     const base = VEHICLE_PRICES[c.type] || 3000, hpK = 0.3 + 0.7 * clamp(c.hp / c.maxHp, 0, 1);
-    const hot = ['police', 'swat', 'ambulance', 'taxi'].includes(c.type), mil = !!c.V.special;
+    const hot = ['police', 'swat', 'ambulance', 'taxi'].includes(c.type), mil = ['tank', 'milheli', 'jet'].includes(c.type);
     const f = c.owned ? 0.6 : hot ? 0.15 : mil ? 0.2 : 0.35;
     return Math.round(base * f * hpK / 10) * 10;
   },
@@ -95,6 +96,10 @@ const Dealer = {
     const P = Game.player;
     let x, y, a;
     if (type === 'milheli') { x = D.x; y = D.y; a = 0; }
+    else if (VTYPES[type].special === 'boat') { // 보트는 가장 가까운 마리나로
+      const m = (World.marinas || []).slice().sort((p, q) => dist(p.x, p.y, D.x, D.y) - dist(q.x, q.y, D.x, D.y))[0];
+      x = m.x + rand(-3, 3); y = m.y + rand(-3, 3); a = m.a;
+    }
     else if (type === 'jet') {
       let best = null, bd = 1e18;
       for (const e of World.edgesList) {
@@ -116,7 +121,7 @@ const Dealer = {
     P.money -= price; Sfx.cash();
     const c = this.deliver(type); Fleet.add(c);
     Save.write();
-    UI.toast(`${VTYPES[type].name} 구매! ${type === 'jet' ? '근처 긴 직선 도로에서 이륙할 수 있다' : type === 'milheli' ? '매장 마당에 헬기가 있다' : '매장 앞에 세워 뒀다'} (지도에 웨이포인트)`);
+    UI.toast(`${VTYPES[type].name} 구매! ${type === 'jet' ? '근처 긴 직선 도로에서 이륙할 수 있다' : type === 'milheli' ? '매장 마당에 헬기가 있다' : VTYPES[type].special === 'boat' ? '가장 가까운 마리나에 띄워 뒀다' : '매장 앞에 세워 뒀다'} (지도에 웨이포인트)`);
   },
 };
 
@@ -128,7 +133,7 @@ SHOPS.dealer = {
       const why = Dealer.sellable(c);
       out.push({ id: 'sell', veh: c.type, name: `타고 온 ${c.label || c.V.name} 팔기`, price: 0, sellPrice: why ? 0 : Dealer.price(c), desc: why || (c.owned ? '내가 산 차 — 구입가의 60%' : '훔친 차 — 싸게 매입, 차 상태에 따라 값이 다르다'), ok: () => !why, fn: () => { Dealer.sell(); Shop.close(); } });
     }
-    for (const t of DEALER_STOCK) out.push({ id: 'veh_' + t, veh: t, name: VTYPES[t].name, price: VEHICLE_PRICES[t], desc: t === 'tank' ? '라이노 전차 — 주포·기관총' : t === 'milheli' ? '헌터 공격 헬기 — 기관포·로켓·유도미사일' : t === 'jet' ? '라저 전투기 — 기관포·유도미사일·로켓' : `최고 ${Math.round(VTYPES[t].vmax * 3.6)}km/h · 내구 ${VTYPES[t].hp}`, fn: () => { Dealer.buy(t); Shop.close(); } });
+    for (const t of DEALER_STOCK) out.push({ id: 'veh_' + t, veh: t, name: VTYPES[t].name, price: VEHICLE_PRICES[t], desc: VTYPES[t].special === 'boat' ? `보트 — 최고 ${Math.round(VTYPES[t].vmax * 3.6)}km/h, 가까운 마리나로 배달` : t === 'tank' ? '라이노 전차 — 주포·기관총' : t === 'milheli' ? '헌터 공격 헬기 — 기관포·로켓·유도미사일' : t === 'jet' ? '라저 전투기 — 기관포·유도미사일·로켓' : `최고 ${Math.round(VTYPES[t].vmax * 3.6)}km/h · 내구 ${VTYPES[t].hp}`, fn: () => { Dealer.buy(t); Shop.close(); } });
     return out;
   },
 };

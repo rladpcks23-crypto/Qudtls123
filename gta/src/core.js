@@ -262,10 +262,10 @@ const Sfx = {
     if (car && sp_ && !this.muted && !car.dead) {
       // 전차: 낮고 거친 디젤 · 헬기/전투기: 엔진은 작게 깔고 로터·제트음이 주가 된다
       const sp = Math.abs(car.vf || 0), thr = Math.abs(car.in.raw || 0);
-      const f = sp_ === 'tank' ? 26 + sp * 3 + thr * 10 : sp_ === 'heli' ? 60 + (car.alt > 1 ? 20 : 0) : 70 + sp * 1.6;
+      const f = sp_ === 'tank' ? 26 + sp * 3 + thr * 10 : sp_ === 'heli' ? 60 + (car.alt > 1 ? 20 : 0) : sp_ === 'boat' ? 48 + sp * 4 + thr * 15 : 70 + sp * 1.6;
       e.o1.frequency.setTargetAtTime(f, t, 0.1); e.o2.frequency.setTargetAtTime(f / 2, t, 0.1);
-      e.filt.frequency.setTargetAtTime(sp_ === 'tank' ? 380 + thr * 500 : 900, t, 0.1);
-      e.gain.gain.setTargetAtTime(sp_ === 'tank' ? 0.1 + thr * 0.08 : 0.03, t, 0.1);
+      e.filt.frequency.setTargetAtTime(sp_ === 'tank' ? 380 + thr * 500 : sp_ === 'boat' ? 600 + thr * 900 : 900, t, 0.1);
+      e.gain.gain.setTargetAtTime(sp_ === 'tank' ? 0.1 + thr * 0.08 : sp_ === 'boat' ? 0.07 + thr * 0.08 : 0.03, t, 0.1);
     } else if (car && !this.muted && !car.dead) {
       const sp = Math.abs(car.vf);
       const gear = Math.min(4, Math.floor(sp / 12));

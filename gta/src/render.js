@@ -294,6 +294,7 @@ function drawCar(c, shadow) {
   if (shadow) { ctx.fillStyle = 'rgba(0,0,0,0.32)'; rr(ctx, -L / 2 + shadow[0] * 1.2, -W / 2 + shadow[1] * 1.2, L, W, st === 'bike' ? 0.35 : 0.5); ctx.fill(); }
   if (st === 'bike') { drawBike(c); ctx.restore(); return; }
   if (st === 'tank' || st === 'milheli' || st === 'jet') { drawMilVehicle(c); ctx.restore(); return; }
+  if (st === 'boat' || st === 'jetski') { drawBoat(c); ctx.restore(); return; }
   // 바퀴
   ctx.fillStyle = '#111';
   const wx = L * 0.3, wy = W / 2 - 0.12;
@@ -392,8 +393,29 @@ function drawBike(c) {
 }
 
 // ---------- 보행자 ----------
+function drawBoat(c) { // drawCar 안(차 좌표계)
+  const L = c.L, W = c.W, col = c.dead ? '#26272a' : c.color, b = Math.sin(c.bob || 0) * 0.04;
+  ctx.scale(1 + b, 1 - b);
+  ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.beginPath(); ctx.ellipse(0, 0, L / 2 + 0.4, W / 2 + 0.35, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(L / 2, 0); ctx.quadraticCurveTo(L * 0.28, -W / 2, -L * 0.1, -W / 2); ctx.lineTo(-L / 2, -W * 0.42); ctx.lineTo(-L / 2, W * 0.42); ctx.lineTo(-L * 0.1, W / 2); ctx.quadraticCurveTo(L * 0.28, W / 2, L / 2, 0); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(-L / 2, -W * 0.42, L * 0.08, W * 0.84);
+  if (c.V.style === 'boat') {
+    ctx.fillStyle = '#e8e8e8'; ctx.fillRect(-L * 0.28, -W * 0.3, L * 0.34, W * 0.6);
+    ctx.fillStyle = '#1b2735'; ctx.fillRect(L * 0.02, -W * 0.28, L * 0.07, W * 0.56);
+  } else { ctx.fillStyle = '#1d1d1f'; ctx.fillRect(-L * 0.25, -W * 0.2, L * 0.35, W * 0.4); ctx.fillStyle = '#c9ced6'; ctx.fillRect(L * 0.12, -W * 0.3, 0.12, W * 0.6); }
+}
 function drawPed(p, shadow) {
   if (p.kind === 'dog') { drawDog(p); return; }
+  if (p.swim && !p.dead) { // 헤엄: 물결 고리 + 머리와 팔
+    const t = Game.time * 3 + p.id;
+    ctx.save(); ctx.translate(p.x, p.y);
+    ctx.strokeStyle = 'rgba(230,245,255,0.55)'; ctx.lineWidth = 0.08;
+    ctx.beginPath(); ctx.arc(0, 0, 0.55 + (t % 1) * 0.5, 0, TAU); ctx.stroke();
+    ctx.rotate(p.a); ctx.fillStyle = p.skin;
+    const sw = Math.sin(t * 2) * 0.35; ctx.fillRect(0.1, -0.45 + sw * 0.3, 0.45, 0.12); ctx.fillRect(0.1, 0.33 - sw * 0.3, 0.45, 0.12);
+    ctx.beginPath(); ctx.arc(0, 0, 0.24, 0, TAU); ctx.fill(); ctx.fillStyle = p.hair; ctx.beginPath(); ctx.arc(-0.05, 0, 0.2, 0, TAU); ctx.fill();
+    ctx.restore(); return;
+  }
   ctx.save(); ctx.translate(p.x, p.y);
   if (p.dead) {
     ctx.rotate(p.a + Math.PI / 2 * ((p.id % 2) ? 1 : -1));

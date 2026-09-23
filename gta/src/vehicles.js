@@ -27,6 +27,8 @@ const VTYPES = {
   ambulance: { name: '구급차', L: 5.4, W: 2.1, mass: 2300, Fe: 10000, vmax: 42, grip: 1.12, cs: 5.0, steer: 0.54, hp: 180, colors: ['#f4f4f4'], style: 'ambulance' },
   super: { name: '인페르노', L: 4.5, W: 2.0, mass: 1350, Fe: 14500, vmax: 70, grip: 1.6, cs: 5.8, steer: 0.55, hp: 95, colors: ['#ff5d8f', '#6fe0ff', '#f2c200', '#1d1d1f', '#9be15d'], style: 'sports' },
   bus: { name: '시내버스', L: 10.5, W: 2.5, mass: 9000, Fe: 26000, vmax: 26, grip: 1.0, cs: 4.2, steer: 0.4, hp: 400, colors: ['#2f7d4a'], style: 'van' },
+  jetski: { name: '시샤크 제트스키', L: 2.6, W: 1.0, mass: 320, Fe: 1, vmax: 30, grip: 1, cs: 5, steer: 1.9, hp: 70, colors: ['#e8413a', '#f2c200', '#2e7dd1', '#f4f4f4'], style: 'jetski', special: 'boat', accel: 13, armor: 0.3 },
+  speedboat: { name: '스피더 보트', L: 6.4, W: 2.4, mass: 1600, Fe: 1, vmax: 34, grip: 1, cs: 5, steer: 1.1, hp: 170, colors: ['#f4f4f4', '#1d3b6e', '#b3202a', '#f2c200'], style: 'boat', special: 'boat', accel: 9, armor: 0.35 },
   armored: { name: '현금수송 트럭', L: 6.4, W: 2.4, mass: 5000, Fe: 16000, vmax: 30, grip: 1.0, cs: 4.6, steer: 0.45, hp: 700, colors: ['#3d4a3a'], style: 'armored' },
 };
 const TRAFFIC_MIX = ['sedan', 'sedan', 'sedan', 'compact', 'compact', 'taxi', 'van', 'muscle', 'sports', 'truck', 'sedan', 'compact', 'bike'];
@@ -133,12 +135,14 @@ class Car {
     if (this.alt > 1.2) return;
     const r = this.r;
     let impact = 0;
+    // 보트는 물 밖이 벽, 나머지는 건물만 벽 (물에 빠지면 가라앉는다)
+    const solid = this.V.special === 'boat' ? solidBoat : solidNoWater;
     const cs = Math.cos(this.a), sn = Math.sin(this.a);
     for (const o of this.co) {
       let cx = this.x + cs * o, cy = this.y + sn * o;
       const tx0 = Math.floor((cx - r) / T), tx1 = Math.floor((cx + r) / T), ty0 = Math.floor((cy - r) / T), ty1 = Math.floor((cy + r) / T);
       for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
-        if (!solidT(tx, ty)) continue;
+        if (!solid(tx, ty)) continue;
         const px = clamp(cx, tx * T, tx * T + T), py = clamp(cy, ty * T, ty * T + T);
         let dx = cx - px, dy = cy - py, d2 = dx * dx + dy * dy;
         if (d2 >= r * r) continue;
@@ -227,6 +231,13 @@ class Car {
     if (this.alarmT > 0) { const b0 = Math.floor(this.alarmT * 2.5); this.alarmT -= dt; if (Math.floor(this.alarmT * 2.5) !== b0) Sfx.tone({ x: this.x, y: this.y, f0: 560, f1: 560, dur: 0.22, type: 'square', vol: 0.22 }); }
     const moving = this.speed > 0.01 || Math.abs(this.w) > 0.01 || this.in.thr !== 0 || (this.V.special && (this.driver || this.alt > 0));
     if (moving) for (let i = 0; i < sub; i++) { this.step(h); this.collideStatic(); }
+    // 물에 빠짐: 보트가 아닌 차량이 물 위에 멈추면 가라앉는다
+    if (this.V.special !== 'boat' && !(this.alt > 0.3) && !this.sunk && tileAt(this.x, this.y) === TL.WATER) {
+      this.sinkT = (this.sinkT || 0) + dt;
+      const k = Math.exp(-2.5 * dt); this.vx *= k; this.vy *= k; this.w *= k;
+      if (Math.random() < 0.5) Particles.splash(this.x + rand(-1, 1), this.y + rand(-1, 1));
+      if (this.sinkT > 1.8) sinkCar(this);
+    } else this.sinkT = 0;
     // 스키드 마크
     if (this.skid) {
       const c = Math.cos(this.a), s = Math.sin(this.a), bx = this.x - c * this.L * 0.32, by = this.y - s * this.L * 0.32;
@@ -237,6 +248,16 @@ class Car {
       if (Math.random() < 0.3) Particles.smoke(bx, by, 0.6, '#cfcfcf');
     } else this.lastSkid = null;
   }
+}
+
+function sinkCar(c) {
+  c.sunk = true; c.dead = true; c.remove = true; c.burnT = 0;
+  Sfx.tone({ x: c.x, y: c.y, f0: 220, f1: 60, dur: 0.6, type: 'sine', vol: 0.3 });
+  for (let i = 0; i < 12; i++) Particles.splash(c.x + rand(-2, 2), c.y + rand(-2, 2));
+  if (c.fleetId && Game.fleet) { const e = Game.fleet.find(q => q.id === c.fleetId); if (e) { e.wrecked = true; UI.toast(`내 ${c.V.name}이(가) 가라앉았다 — 내 차고에서 보험 복구`); } }
+  const P = Game.player;
+  if (c.driver === 'player') { P.car = null; P.x = c.x; P.y = c.y; P.vx = c.vx * 0.3; P.vy = c.vy * 0.3; UI.toast('차가 가라앉는다! 헤엄쳐 나가자'); }
+  for (const sp of World.parking) if (sp.car === c) { sp.car = null; sp.cd = 30; }
 }
 
 // ---------- 차량 간 충돌 (원 근사 + 충격량) ----------

@@ -111,7 +111,7 @@ const Game = {
       Input.touch.on = false; Input.touch.jx = Input.touch.jy = 0; Input.touch.stickId = null; Drive.reset();
       const b = document.getElementById('t-enter'); if (b) b.textContent = drv ? '하차' : '탑승';
     }
-    const sp = drv && this.player.car.V.special || '';
+    const sp = drv && hasVW(this.player.car) ? this.player.car.V.special : '';
     const lab = sp ? VWEAP[vWeapon(this.player.car)].short + '|' + sp : '';
     if (lab !== this._lastSp) {
       this._lastSp = lab; document.body.classList.toggle('special', !!sp);
@@ -180,7 +180,7 @@ const Game = {
       if (keyHit('KeyX') && Jobs.active) Jobs.stop('일을 그만뒀다');
       if (keyHit('KeyV')) { Settings.camRot = !Settings.camRot; Settings.save(); UI.toast(Settings.camRot ? '운전 시점: 차 방향으로 회전' : '운전 시점: 북쪽 고정'); }
       if (keyHit('KeyF', 'Enter', 'PadY')) { if (P.car) exitCar(P); else if (!(P.alt > 0)) tryEnterCar(P); }
-      const vc = P.car && P.car.V.special ? P.car : null; // 전차·헬기·전투기: 탑승 무기 교체
+      const vc = hasVW(P.car) ? P.car : null; // 전차·헬기·전투기: 탑승 무기 교체
       if (keyHit('KeyE') || Input.wheel > 0 || ((!P.car || vc) && keyHit('PadRight'))) { if (vc) cycleVWeapon(vc, 1); else cycleWeapon(P, 1); }
       if (keyHit('KeyQ') || Input.wheel < 0 || ((!P.car || vc) && keyHit('PadLeft'))) { if (vc) cycleVWeapon(vc, -1); else cycleWeapon(P, -1); }
       if (!P.car && keyHit('PadRB')) cycleWeapon(P, 1);
@@ -298,6 +298,16 @@ const Game = {
       if (!chance(0.55)) continue;
       const c = new Car(pick(['sedan', 'compact', 'sports', 'muscle', 'van', 'sedan', 'compact', 'bike', 'bike']), sp.x, sp.y, sp.a + (chance(0.5) ? Math.PI : 0));
       this.cars.push(c); sp.car = c;
+    }
+    // 마리나 보트
+    for (const sp of World.marinas || []) {
+      if (sp.car && (!this.cars.includes(sp.car) || dist(sp.car.x, sp.car.y, sp.x, sp.y) > 6)) { sp.car = null; sp.cd = 40; }
+      sp.cd -= 0.4;
+      if (sp.car || sp.cd > 0) continue;
+      const d = dist(sp.x, sp.y, f.x, f.y);
+      if (d < inner || d > outer || (!initial && onScreen(sp.x, sp.y, 6))) continue;
+      sp.cd = 60;
+      const c = new Car(chance(0.55) ? 'jetski' : 'speedboat', sp.x, sp.y, sp.a); this.cars.push(c); sp.car = c;
     }
     // 보행자
     const wantPeds = night ? TUNE.peds[1] : TUNE.peds[0];
@@ -479,7 +489,9 @@ function updatePlayerFoot(P, dt) {
   P.boostT = Math.max(0, P.boostT - dt);
   if (sprint) { if (P.boostT <= 0) { P.stamina -= dt / 9; if (P.stamina <= 0) { P.stamina = 0; P.exhausted = true; UI.toast('숨이 차다! 잠깐 걸으며 쉬자'); } } }
   else P.stamina = Math.min(1, P.stamina + dt * (mag > 0.15 ? 0.12 : 0.28));
-  const speed = P.downT > 0 ? 0 : sprint ? (P.boostT > 0 ? 8.2 : 7.6) : P.exhausted ? 3.4 : 4.4;
+  P.swim = tileAt(P.x, P.y) === TL.WATER;
+  if (P.swim && !P._swimMsg) { P._swimMsg = true; UI.toast('헤엄치는 중 — 총은 쓸 수 없다'); } else if (!P.swim) P._swimMsg = false;
+  const speed = P.downT > 0 ? 0 : P.swim ? (sprint ? 3.6 : 2.4) : sprint ? (P.boostT > 0 ? 8.2 : 7.6) : P.exhausted ? 3.4 : 4.4;
   P.cd -= dt; P.hitFlash -= dt; P.flash -= dt;
   if (P.downT > 0) { P.downT -= dt; P.vx *= Math.exp(-3 * dt); P.vy *= Math.exp(-3 * dt); }
   else { P.vx = smooth(P.vx, mx * speed, 14, dt); P.vy = smooth(P.vy, my * speed, 14, dt); }
@@ -500,7 +512,7 @@ function updatePlayerFoot(P, dt) {
   }
   if (this_view3d()) P.aim = View3D.aimAngle();
   if (!W.melee || firing) P.a = P.aim; else if (mag > 0.1) P.a = Math.atan2(P.vy, P.vx);
-  if (firing && P.cd <= 0 && P.downT <= 0) {
+  if (firing && P.cd <= 0 && P.downT <= 0 && !P.swim) {
     if (!W.melee && !(P.inv[P.weapon] > 0)) { cycleWeapon(P, 1); }
     else {
       P.cd = W.rate;
@@ -523,7 +535,7 @@ function updatePlayerInCar(P, dt) {
   P.x = c.x; P.y = c.y; P.vx = c.vx; P.vy = c.vy; P.cd -= dt;
   const W = WEAPONS[P.weapon];
   const firing = Input.mouse.down || Input.touch.fire || keyDown('ControlLeft', 'KeyJ', 'PadX');
-  if (c.V.special) { MilFire.update(c, dt, firing, keyDown('Space', 'PadRB', 'PadB') || Input.touch.hb); return; }
+  if (hasVW(c)) { MilFire.update(c, dt, firing, keyDown('Space', 'PadRB', 'PadB') || Input.touch.hb); return; }
   if (firing && P.cd <= 0 && !W.melee && !W.throw && !W.proj && P.inv[P.weapon] > 0) {
     let ang;
     if (this_view3d()) ang = View3D.aimAngle();
@@ -569,6 +581,7 @@ function tryEnterCar(P) {
     UI.dialog([['도움말', {
       tank: M ? '전차: 가속/브레이크 페달로 전진·후진, 핸들로 제자리 회전. 주포 버튼으로 포탄 — 포탑은 가까운 적을 자동으로 겨눈다.' : '전차: W/S 전진·후진, A/D 제자리 회전. 마우스로 포탑 조준, 클릭 또는 스페이스로 주포.',
       heli: M ? '헬기: 가속 페달 = 이륙·전진, 브레이크 = 후진, 핸들 = 방향. 기관포·미사일 버튼으로 공격. 하차 한 번 = 착륙, 곧바로 한 번 더 = 낙하산.' : '헬기: W 이륙·전진, S 후진, A/D 방향. 클릭 = 기관포, 스페이스 = 미사일. F 한 번 = 착륙, 곧바로 한 번 더 = 낙하산 탈출.',
+      boat: M ? '보트: 가속 페달로 전진, 핸들로 방향. 물 위에서만 움직이고, 속도가 붙어야 잘 돈다. 하차하면 헤엄친다.' : '보트: W 전진, S 후진, A/D 방향. 물 위에서만 움직이고 속도가 붙어야 잘 돈다. F로 내리면 헤엄친다.',
       jet: M ? '전투기: 가속 페달로 활주로를 달려 약 120km/h에서 이륙. 너무 느려지면 떨어진다. 기관포·미사일은 기수 방향. 하차 = 착륙 접근, 두 번 = 낙하산.' : '전투기: W로 활주로를 달려 약 120km/h에서 이륙, 너무 느려지면 고도가 떨어진다. 클릭 = 기관포, 스페이스 = 미사일(기수 방향). F = 착륙 접근, 두 번 = 낙하산.',
     }[sp]]]);
   }
@@ -584,8 +597,8 @@ function exitCar(P, force) {
   }
   const fast = c.speed > 9 && !c.V.special;
   let door = c.doorPos(-1);
-  if (solidT(Math.floor(door[0] / T), Math.floor(door[1] / T))) door = c.doorPos(1);
-  if (solidT(Math.floor(door[0] / T), Math.floor(door[1] / T))) {
+  if (solidNoWater(Math.floor(door[0] / T), Math.floor(door[1] / T))) door = c.doorPos(1);
+  if (solidNoWater(Math.floor(door[0] / T), Math.floor(door[1] / T))) {
     if (c.alt > 1.2) { door = openSpotNear(c.x, c.y); UI.toast('옥상 비상계단으로 내려왔다'); } // 옥상에 세운 헬기
     else if (!force) { UI.toast('문이 막혀 내릴 수 없다'); return; } else door = openSpotNear(c.x, c.y);
   }

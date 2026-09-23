@@ -30,6 +30,10 @@ function tileAt(x, y) {
   if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return TL.WATER;
   return World.tiles[tx + ty * MW];
 }
+// 사람이 헤엄칠 수 있는 판정(물은 막히지 않음) · 보트 판정(물이 아닌 곳은 전부 막힘)
+function solidNoWater(tx, ty) { if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return true; return World.tiles[tx + ty * MW] === TL.BUILD; }
+function solidBoat(tx, ty) { if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return false; return World.tiles[tx + ty * MW] !== TL.WATER; }
+function solidTile(tx, ty) { return solidT(tx, ty); }
 function solidT(tx, ty) {
   if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return true;
   const t = World.tiles[tx + ty * MW];
@@ -83,7 +87,7 @@ function genWorld(seed) {
   const get = (x, y) => (x >= 0 && y >= 0 && x < MW && y < MH) ? W.tiles[x + y * MW] : TL.WATER;
 
   // 1) 바다 경계
-  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (x < 3 || y < 3 || x >= MW - 4 || y >= MH - 4) set(x, y, TL.WATER);
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (x < 3 || y < 3 || x >= MW - 15 || y >= MH - 11) set(x, y, TL.WATER); // 동·남쪽은 보트가 다닐 만큼 넓은 바다
 
   // 2) 도로선 (블록 폭 9~14타일, 도로 2타일)
   W.VX = []; W.HY = [];
@@ -279,7 +283,7 @@ function genWorld(seed) {
   const lastX = W.VX[NX - 1] + 1, lastY = W.HY[NY - 1] + 1, firstX = W.VX[0], firstY = W.HY[0];
   for (let y = 3; y < MH - 4; y++) for (let x = 3; x < MW - 4; x++) {
     const t = get(x, y);
-    if (t === TL.ROAD || W.region[tIdx(x, y)] >= 0) continue;
+    if (t === TL.ROAD || t === TL.WATER || W.region[tIdx(x, y)] >= 0) continue;
     const adjRoad = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]].some(([dx, dy]) => get(x + dx, y + dy) === TL.ROAD);
     if (x > lastX) {
       W.dist[tIdx(x, y)] = DIST.HARBOR;
@@ -292,6 +296,11 @@ function genWorld(seed) {
       set(x, y, adjRoad ? TL.WALK : TL.GRASS);
     }
   }
+  // 마리나: 부두·해변에 붙은 바다 칸 (보트가 세워지는 곳)
+  W.marinas = [];
+  const coastOK = (x, y) => get(x, y) === TL.WATER && get(x + 1, y) === TL.WATER && get(x, y + 1) === TL.WATER && get(x - 1, y) === TL.WATER;
+  for (let y = W.HY[1]; y < MH - 16; y += 22) { const x = MW - 14; if (coastOK(x + 1, y) && get(x - 1, y) !== TL.WATER) W.marinas.push({ x: (x + 1.5) * T, y: (y + 0.5) * T, a: Math.PI / 2, car: null, cd: 0 }); }
+  for (let x = 20; x < MW - 30; x += 30) { const y = MH - 10; if (coastOK(x, y + 1)) W.marinas.push({ x: (x + 0.5) * T, y: (y + 1.5) * T, a: 0, car: null, cd: 0 }); }
   // 부두: 컨테이너 줄 + 창고 몇 동
   for (let y = W.HY[0]; y < lastY - 2; y += 4) {
     for (let x = lastX + 3; x < MW - 7; x += 2) if (R() < 0.5 && get(x, y) === TL.DOCK && get(x, y + 1) === TL.DOCK) addBuilding(x, y, x, y + 1, 2.6 * ri(1, 3), 'container', rpick(PAL.cont));

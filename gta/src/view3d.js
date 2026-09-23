@@ -183,7 +183,13 @@ const View3D = {
     const bodyMat = new THREE.MeshLambertMaterial({ color: c.color });
     g.userData.bodyMat = bodyMat;
     const glass = this.mat('#1b2735');
-    if (st === 'tank') {
+    if (st === 'boat' || st === 'jetski') {
+      const hullH = st === 'boat' ? 0.9 : 0.55;
+      add(bodyMat, L, hullH, W, 0, hullH / 2 - 0.1, 0);
+      add(bodyMat, L * 0.3, hullH * 0.8, W * 0.62, L * 0.58, hullH * 0.4 - 0.1, 0);
+      if (st === 'boat') { add(this.mat('#e8e8e8'), L * 0.34, 0.8, W * 0.6, -L * 0.12, hullH + 0.3, 0); add(glass, 0.1, 0.5, W * 0.56, L * 0.06, hullH + 0.35, 0); }
+      else { add(this.mat('#1d1d1f'), L * 0.35, 0.3, W * 0.4, -L * 0.1, hullH + 0.1, 0); add(this.mat('#c9ced6'), 0.1, 0.5, W * 0.6, L * 0.14, hullH + 0.25, 0); }
+    } else if (st === 'tank') {
       const dark = this.mat('#1c1e21');
       for (const z of [-W / 2 + 0.4, W / 2 - 0.4]) add(dark, L, 1.1, 0.8, 0, 0.55, z);
       add(bodyMat, L * 0.92, 0.8, W - 1.5, 0, 1.0, 0);
@@ -404,7 +410,7 @@ const View3D = {
       let g = this.peds.get(p.id);
       if (!g) { g = this.makePed(p); this.peds.set(p.id, g); }
       g.visible = !(p === P && Game.view === 'fps');
-      g.position.set(p.x, p.alt || 0, p.y);
+      g.position.set(p.x, p.alt || (p.swim ? -1.2 : 0), p.y);
       if (p === P) {
         if (P.chute && !g.userData.chute) {
           const ch = new THREE.Group();
