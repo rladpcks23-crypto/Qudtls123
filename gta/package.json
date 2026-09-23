@@ -1,0 +1,17 @@
+{
+  "name": "neon-harbor",
+  "version": "2.2.0",
+  "private": true,
+  "description": "네온 하버 — GTA 스타일 탑뷰 오픈월드 (순수 JS + Canvas, 번들러 없음)",
+  "scripts": {
+    "build": "python3 build.py",
+    "test": "python3 build.py && node tests/soak-test.js",
+    "test:missions": "node tests/missions-test.js",
+    "test:jobs": "node tests/jobs-test.js",
+    "apk": "bash packaging/build-android.sh",
+    "exe": "bash packaging/desktop/build.sh"
+  },
+  "devDependencies": {
+    "playwright": "^1.45.0"
+  }
+}
