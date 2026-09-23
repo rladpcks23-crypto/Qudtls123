@@ -301,7 +301,7 @@ function genWorld(seed) {
   }
 
   // 7) 특수 장소
-  const edgeLots = (d, pred) => W.blocks.filter(b => b.district === d).flatMap(b => b.lots.filter(L => L.edge && pred(L)));
+  const edgeLots = (d, pred) => W.blocks.filter(b => b.district === d).flatMap(b => b.lots.filter(L => L.edge && !L.used && pred(L)));
   const doorOf = (L) => {
     // 필지와 맞닿은 인도 칸의 중심
     const b = L.block;
@@ -315,6 +315,7 @@ function genWorld(seed) {
   const choose = (list, u, v) => list.sort((a, b) => centerish(a, u, v) - centerish(b, u, v))[0];
   const makePlace = (key, L, kind, color, label) => {
     if (!L) return;
+    L.used = true;
     if (L.b) { L.b.kind = kind; L.b.color = color; L.b.label = label; L.b.h = Math.max(L.b.h, kind === 'police' ? 16 : 12); }
     W.places[key] = { ...doorOf(L), lot: L, label };
   };
@@ -323,6 +324,16 @@ function genWorld(seed) {
   makePlace('ammu', choose(edgeLots(DIST.MIDTOWN, L => L.b && L.b.kind === 'mid'), 0.6, 0.62), 'ammu', '#3b3b3b', '총포상');
   const hosp2 = choose(edgeLots(DIST.RESID, L => L.b && L.b.kind === 'house'), 0.2, 0.7);
   if (hosp2) makePlace('clinic', hosp2, 'hospital', '#e9ecef', '의원');
+  // 상점: 총포상 2호점, 버거 가게 2곳, 편의점 3곳 / 직업 게시판: 고용센터(합법), 브로커(불법)
+  const bld = k => L => L.b && L.b.kind === k;
+  makePlace('ammu2', choose(edgeLots(DIST.HARBOR, bld('warehouse')), 0.86, 0.22), 'ammu', '#3b3b3b', '총포상');
+  makePlace('burger', choose(edgeLots(DIST.BEACH, bld('shop')), 0.55, 0.8), 'burger', '#f3d9b1', '버거 샷');
+  makePlace('burger2', choose(edgeLots(DIST.MIDTOWN, bld('mid')), 0.36, 0.3), 'burger', '#f3d9b1', '버거 샷');
+  makePlace('mart', choose(edgeLots(DIST.RESID, bld('house')), 0.25, 0.45), 'mart', '#dfe8e0', '24 편의점');
+  makePlace('mart2', choose(edgeLots(DIST.DOWNTOWN, bld('tower')), 0.6, 0.36), 'mart', '#dfe8e0', '24 편의점');
+  makePlace('mart3', choose(edgeLots(DIST.HARBOR, bld('warehouse')), 0.8, 0.62), 'mart', '#dfe8e0', '24 편의점');
+  makePlace('jobcenter', choose(edgeLots(DIST.MIDTOWN, bld('mid')), 0.48, 0.5), 'jobcenter', '#c9d6e8', '고용센터');
+  makePlace('broker', choose(edgeLots(DIST.HARBOR, bld('warehouse')), 0.76, 0.45), 'broker', '#2d2433', '브로커');
   // 차고형 장소: 필지를 비워 LOT으로 만든다
   const makeLotPlace = (key, L, label) => {
     if (!L) return;

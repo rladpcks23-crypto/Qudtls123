@@ -56,6 +56,13 @@ const IS_MOBILE = PLATFORM === 'mobile';
 const TUNE = IS_MOBILE
   ? { dpr: 1.3, light: 1 / 3, cars: [20, 12], peds: [30, 18], particles: 450, rain: 140 }
   : { dpr: 2, light: 1 / 2, cars: [28, 17], peds: [46, 26], particles: 900, rain: 260 };
+// 사용자 설정 (브라우저에 저장)
+const Settings = {
+  camRot: true, // 운전 중 화면을 차 방향으로 회전
+  load() { try { const v = localStorage.getItem('nh.camrot'); if (v !== null) this.camRot = v === '1'; } catch (e) { } },
+  save() { try { localStorage.setItem('nh.camrot', this.camRot ? '1' : '0'); } catch (e) { } },
+};
+Settings.load();
 function buzz(ms) { if (IS_MOBILE && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { } } }
 
 // ---------- 입력 ----------
@@ -64,7 +71,7 @@ const Input = {
   keys: {}, pressed: {},
   mouse: { x: 0, y: 0, down: false, clicked: false, wx: 0, wy: 0, moved: false },
   wheel: 0,
-  touch: { on: false, jx: 0, jy: 0, fire: false, hb: false, stickId: null, sx: 0, sy: 0 },
+  touch: { on: false, jx: 0, jy: 0, fire: false, hb: false, run: false, stickId: null, sx: 0, sy: 0 },
   usingTouch: false,
 };
 const GAME_KEYS = ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'];

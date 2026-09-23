@@ -73,7 +73,14 @@ function drawHUD(dt) {
   c.fillStyle = '#5a1a1a'; c.fillRect(barX, barY, barW, barH);
   const hpCol = P.hp < 25 && Math.floor(Game.time * 4) % 2 ? '#ff8a80' : '#e0443e';
   c.fillStyle = hpCol; c.fillRect(barX, barY, barW * clamp(P.hp / P.maxHp, 0, 1), barH);
-  if (P.armor > 0) { c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(barX - 2, barY + barH + 3, barW + 4, barH * 0.7 + 4); c.fillStyle = '#4b8fe8'; c.fillRect(barX, barY + barH + 5, barW * P.armor / 100, barH * 0.7); }
+  let by2 = barY + barH + 3;
+  if (P.armor > 0) { c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(barX - 2, by2, barW + 4, barH * 0.7 + 4); c.fillStyle = '#4b8fe8'; c.fillRect(barX, by2 + 2, barW * P.armor / 100, barH * 0.7); by2 += barH * 0.7 + 5; }
+  // 달리기 체력
+  if (!P.car && (P.stamina < 0.995 || P.boostT > 0)) {
+    c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(barX - 2, by2, barW + 4, barH * 0.55 + 4);
+    c.fillStyle = P.boostT > 0 ? '#6fe0ff' : P.exhausted ? (Math.floor(Game.time * 5) % 2 ? '#ff8a5a' : '#8a4a2a') : '#f2c14e';
+    c.fillRect(barX, by2 + 2, barW * (P.boostT > 0 ? 1 : P.stamina), barH * 0.55);
+  }
   // 별
   const starR = 11 * s, sy = by + bw + 22 * s;
   const flash = Wanted.stars > 0 && !Wanted.seen && Math.floor(Game.time * 3) % 2;
@@ -87,7 +94,7 @@ function drawHUD(dt) {
     c.restore();
   }
   // 미션 타이머
-  const m = Missions.active;
+  const m = Missions.active || Jobs.active;
   let ty = sy + 30 * s;
   if (m && m.timer !== null) {
     const tt = Math.max(0, m.timer), str = `${Math.floor(tt / 60)}:${String(Math.floor(tt % 60)).padStart(2, '0')}`;
@@ -95,7 +102,7 @@ function drawHUD(dt) {
     txt(c, str, x, ty + 2 * s, `${28 * s}px ${FONT_NUM}`, tt < 10 ? '#ff6b5a' : '#fff', 'rgba(0,0,0,0.9)', 4, 'right');
     ty += 30 * s;
   }
-  if (m && m.def.title.includes('소탕') && m.stage === 1) { txt(c, `처치 ${m.kills}/15`, x, ty + 4 * s, `${24 * s}px ${FONT_NUM}`, '#4fe38a', 'rgba(0,0,0,0.9)', 4, 'right'); }
+  if (m && m.def.title && m.def.title.includes('소탕') && m.stage === 1) { txt(c, `처치 ${m.kills}/15`, x, ty + 4 * s, `${24 * s}px ${FONT_NUM}`, '#4fe38a', 'rgba(0,0,0,0.9)', 4, 'right'); }
 
   // ---- 좌상단: 도움말 박스 ----
   const land = CW > CH;
@@ -109,6 +116,14 @@ function drawHUD(dt) {
     c.fillStyle = '#f2c14e'; c.fillRect(pad, hy + 8 * s, 3 * s, h - 16 * s);
     lines.forEach((l, i) => txt(c, l, pad + 14 * s, hy + 22 * s + i * 20 * s, `500 ${14 * s}px ${FONT_KR}`, '#eef2f7', null));
     hy += h + 8 * s; c.globalAlpha = 1;
+  }
+  if (Jobs.active) {
+    const J = Jobs.active, line = `${J.def.name} · ${J.count}건 · $${J.earned.toLocaleString()}` + (Input.usingTouch ? '' : '   (X: 그만두기)');
+    c.font = `700 ${13 * s}px ${FONT_KR}`;
+    const w = c.measureText(line).width + 24 * s;
+    c.fillStyle = J.def.legal ? 'rgba(20,50,90,0.75)' : 'rgba(70,20,50,0.75)'; roundRect(c, pad, hy, w, 26 * s, 6 * s); c.fill();
+    txt(c, line, pad + 12 * s, hy + 18 * s, `700 ${13 * s}px ${FONT_KR}`, J.def.legal ? '#bcdcff' : '#ffc2d6', null);
+    hy += 32 * s;
   }
   if (m && m.objective && UI.objT <= 0) {
     c.font = `600 ${13 * s}px ${FONT_KR}`;
@@ -167,8 +182,8 @@ function drawHUD(dt) {
     c.globalAlpha = 1;
   }
   // ---- 화면 밖 목표 화살표 ----
-  const tg = Missions.targets()[0];
-  if (tg && !onScreen(tg.x, tg.y, -4)) {
+  const tg = allTargets()[0];
+  if (tg && !onScreenExact(tg.x, tg.y, -30)) {
     const [sx, sy2] = toScreen(tg.x, tg.y);
     const ang = Math.atan2(sy2 - CH / 2, sx - CW / 2);
     const mX = CW / 2 - 60 * s, mY = CH / 2 - 70 * s;
@@ -217,6 +232,11 @@ function placeIcons() {
   if (pl.spray) out.push({ x: pl.spray.x, y: pl.spray.y, ch: 'S', c: '#6fe0ff', label: '페인트샵' });
   if (pl.spray2) out.push({ x: pl.spray2.x, y: pl.spray2.y, ch: 'S', c: '#6fe0ff', label: '페인트샵' });
   if (pl.garage) out.push({ x: pl.garage.x, y: pl.garage.y, ch: 'G', c: '#f2c14e', label: '차고' });
+  if (pl.ammu2) out.push({ x: pl.ammu2.x, y: pl.ammu2.y, ch: '총', c: '#ff6b5a', label: '총포상' });
+  for (const k of ['burger', 'burger2']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '버', c: '#ffb347', label: '버거 샷' });
+  for (const k of ['mart', 'mart2', 'mart3']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '편', c: '#7ae68f', label: '편의점' });
+  if (pl.jobcenter) out.push({ x: pl.jobcenter.x, y: pl.jobcenter.y, ch: 'J', c: '#6fb6ff', label: '고용센터' });
+  if (pl.broker) out.push({ x: pl.broker.x, y: pl.broker.y, ch: '$', c: '#ff5d8f', label: '브로커' });
   return out;
 }
 
@@ -233,15 +253,20 @@ function drawRadar(s) {
   c.clip();
   c.imageSmoothingEnabled = false;
   c.globalAlpha = 0.92;
-  c.drawImage(World.mini, 0, 0, MW, MH, cx - P.px * k, cy - P.py * k, MW * T * k, MH * T * k);
+  // 레이더는 화면과 같은 방향으로 돈다(운전 중 차 방향이 위)
+  c.save(); c.translate(cx, cy); c.rotate(-Cam.rot);
+  c.drawImage(World.mini, 0, 0, MW, MH, -P.px * k, -P.py * k, MW * T * k, MH * T * k);
   c.globalAlpha = 1; c.imageSmoothingEnabled = true;
   // 수색 원
   if (Wanted.stars > 0 && !Wanted.seen) {
     c.fillStyle = 'rgba(224,68,62,0.22)'; c.strokeStyle = 'rgba(255,90,80,0.8)'; c.lineWidth = 1.5;
-    c.beginPath(); c.arc(cx + (Wanted.lkpX - P.px) * k, cy + (Wanted.lkpY - P.py) * k, Wanted.radius * k, 0, TAU); c.fill(); c.stroke();
+    c.beginPath(); c.arc((Wanted.lkpX - P.px) * k, (Wanted.lkpY - P.py) * k, Wanted.radius * k, 0, TAU); c.fill(); c.stroke();
   }
+  c.restore();
+  const rc = Math.cos(Cam.rot), rs = Math.sin(Cam.rot);
   const put = (x, y, fn, clampEdge) => {
-    let dx = (x - P.px) * k, dy = (y - P.py) * k;
+    const wx = (x - P.px) * k, wy = (y - P.py) * k;
+    let dx = wx * rc + wy * rs, dy = -wx * rs + wy * rc;
     const d = Math.hypot(dx, dy);
     if (d > R - 7) { if (!clampEdge) return; dx *= (R - 7) / d; dy *= (R - 7) / d; }
     fn(cx + dx, cy + dy);
@@ -257,7 +282,7 @@ function drawRadar(s) {
     c.fillStyle = ic.c; c.font = `bold ${9 * s}px ${FONT_KR}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(ic.ch, x, y + 0.5);
   });
   // 미션 목표
-  for (const t of Missions.targets()) put(t.x, t.y, (x, y) => {
+  for (const t of allTargets()) put(t.x, t.y, (x, y) => {
     c.fillStyle = 'rgba(0,0,0,0.8)'; c.beginPath(); c.arc(x, y, 6.5 * s, 0, TAU); c.fill();
     c.fillStyle = t.c; c.beginPath(); c.arc(x, y, 4.8 * s, 0, TAU); c.fill();
     if (t.giver) { c.fillStyle = '#1a1a1a'; c.font = `bold ${7 * s}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('M', x, y + 0.5); }
@@ -266,9 +291,9 @@ function drawRadar(s) {
   // 테두리 + 플레이어 화살표
   c.strokeStyle = 'rgba(10,12,18,0.95)'; c.lineWidth = 5 * s; c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.stroke();
   c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 1.5; c.beginPath(); c.arc(cx, cy, R + 2.5 * s, 0, TAU); c.stroke();
-  txt(c, 'N', cx, cy - R + 11 * s, `${12 * s}px ${FONT_NUM}`, '#fff', 'rgba(0,0,0,0.9)', 3, 'center');
+  txt(c, 'N', cx + Math.cos(-Math.PI / 2 - Cam.rot) * (R - 11 * s), cy + Math.sin(-Math.PI / 2 - Cam.rot) * (R - 11 * s) + 4 * s, `${12 * s}px ${FONT_NUM}`, '#fff', 'rgba(0,0,0,0.9)', 3, 'center');
   const a = P.car ? P.car.a : P.a;
-  c.save(); c.translate(cx, cy); c.rotate(a);
+  c.save(); c.translate(cx, cy); c.rotate(a - Cam.rot);
   c.fillStyle = '#fff'; c.strokeStyle = '#111'; c.lineWidth = 1.5;
   c.beginPath(); c.moveTo(8 * s, 0); c.lineTo(-5 * s, -5.5 * s); c.lineTo(-2.5 * s, 0); c.lineTo(-5 * s, 5.5 * s); c.closePath(); c.stroke(); c.fill();
   c.restore();
@@ -309,13 +334,13 @@ function drawFullMap() {
     c.fillStyle = 'rgba(0,0,0,0.8)'; c.beginPath(); c.arc(x, y, 9, 0, TAU); c.fill();
     c.fillStyle = ic.c; c.font = `bold 11px ${FONT_KR}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(ic.ch, x, y + 0.5);
   }
-  for (const t of Missions.targets()) { const x = ox + t.x * k, y = oy + t.y * k; c.fillStyle = '#000'; c.beginPath(); c.arc(x, y, 8, 0, TAU); c.fill(); c.fillStyle = t.c; c.beginPath(); c.arc(x, y, 6, 0, TAU); c.fill(); }
+  for (const t of allTargets()) { const x = ox + t.x * k, y = oy + t.y * k; c.fillStyle = '#000'; c.beginPath(); c.arc(x, y, 8, 0, TAU); c.fill(); c.fillStyle = t.c; c.beginPath(); c.arc(x, y, 6, 0, TAU); c.fill(); }
   if (Wanted.stars > 0) { c.strokeStyle = 'rgba(255,90,80,0.9)'; c.beginPath(); c.arc(ox + Wanted.lkpX * k, oy + Wanted.lkpY * k, Wanted.radius * k, 0, TAU); c.stroke(); }
   const px = ox + P.px * k, py = oy + P.py * k;
   c.save(); c.translate(px, py); c.rotate(P.car ? P.car.a : P.a); c.fillStyle = '#fff'; c.strokeStyle = '#000'; c.lineWidth = 2;
   c.beginPath(); c.moveTo(10, 0); c.lineTo(-6, -7); c.lineTo(-3, 0); c.lineTo(-6, 7); c.closePath(); c.stroke(); c.fill(); c.restore();
   // 범례
-  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원 (체력)'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#6fe0ff', 'S  페인트샵 (수배 해제)'], ['#f2c14e', 'G  차고']];
+  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)']];
   let lx = ox, ly = oy + size + 22;
   c.font = `500 ${12 * UI.s}px ${FONT_KR}`;
   for (const [col, l] of legend) { c.fillStyle = col; c.fillRect(lx, ly - 9, 10, 10); txt(c, l, lx + 15, ly, `500 ${12 * UI.s}px ${FONT_KR}`, '#dfe6ee', null); lx += c.measureText(l).width + 34; if (lx > ox + size - 80) { lx = ox; ly += 18; } }
@@ -348,6 +373,12 @@ const Menu = {
     document.getElementById('btn-resume').onclick = () => Game.resume();
     document.getElementById('btn-map').onclick = () => { Game.state = 'map'; this.hidePause(); };
     document.getElementById('btn-sound').onclick = e => { Sfx.muted = !Sfx.muted; e.target.textContent = Sfx.muted ? '소리 켜기' : '소리 끄기'; };
+    const camBtn = document.getElementById('btn-camrot');
+    const camLabel = () => { camBtn.textContent = Settings.camRot ? '운전 시점: 차 방향으로 회전' : '운전 시점: 북쪽 고정'; };
+    camLabel(); camBtn.onclick = () => { Settings.camRot = !Settings.camRot; Settings.save(); camLabel(); };
+    this.camLabel = camLabel;
+    document.getElementById('btn-quitjob').onclick = () => { Jobs.stop('일을 그만뒀다'); this.hidePause(); Game.state = 'play'; };
+    document.getElementById('jobs-close').onclick = () => Jobs.closeBoard();
     document.getElementById('btn-quit').onclick = () => { this.hidePause(); Game.toMenu(); };
     document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => {
       document.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('on', x === b));
@@ -357,39 +388,82 @@ const Menu = {
   },
   show() { this.el.hidden = false; const cont = document.getElementById('btn-continue'); cont.hidden = !Save.read(); },
   hide() { this.el.hidden = true; },
-  showPause() { document.getElementById('pause').hidden = false; },
+  showPause() { document.getElementById('pause').hidden = false; document.getElementById('btn-quitjob').hidden = !Jobs.active; if (this.camLabel) this.camLabel(); },
   hidePause() { document.getElementById('pause').hidden = true; },
 };
 
+// ---------- 상점 (총포상 · 버거 샷 · 24 편의점) ----------
+function drawItemIcon(g, id, S) {
+  g.save(); g.scale(S, S);
+  const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+  switch (id) {
+    case 'burger': R(-0.6, -0.35, 1.2, 0.25, '#d99a4e'); R(-0.62, -0.1, 1.24, 0.12, '#4b8f3a'); R(-0.62, 0.02, 1.24, 0.16, '#6b3a22'); R(-0.62, 0.18, 1.24, 0.08, '#f2c14e'); R(-0.58, 0.26, 1.16, 0.18, '#d99a4e'); break;
+    case 'set': R(-0.75, -0.2, 0.8, 0.18, '#d99a4e'); R(-0.76, -0.02, 0.82, 0.14, '#6b3a22'); R(-0.72, 0.12, 0.74, 0.16, '#d99a4e'); R(0.15, -0.45, 0.45, 0.8, '#c7302a'); R(0.22, -0.6, 0.06, 0.2, '#f2c14e'); R(0.34, -0.62, 0.06, 0.22, '#f2c14e'); break;
+    case 'fries': R(-0.35, -0.1, 0.7, 0.55, '#c7302a'); for (let i = 0; i < 5; i++) R(-0.3 + i * 0.13, -0.5 + (i % 2) * 0.1, 0.08, 0.45, '#f2c14e'); break;
+    case 'cola': R(-0.25, -0.45, 0.5, 0.9, '#b8322c'); R(-0.25, -0.1, 0.5, 0.2, '#f2f2f2'); R(0.05, -0.65, 0.07, 0.25, '#ffffff'); break;
+    case 'onigiri': g.fillStyle = '#f5f5f0'; g.beginPath(); g.moveTo(0, -0.5); g.lineTo(0.5, 0.4); g.lineTo(-0.5, 0.4); g.closePath(); g.fill(); R(-0.18, 0.05, 0.36, 0.35, '#1f2a22'); break;
+    case 'ramen': R(-0.45, -0.3, 0.9, 0.7, '#f2f2f2'); R(-0.45, -0.3, 0.9, 0.18, '#c7302a'); R(-0.3, 0.02, 0.6, 0.1, '#e6b35a'); break;
+    case 'energy': R(-0.22, -0.5, 0.44, 1, '#18d0ff'); R(-0.22, -0.2, 0.44, 0.3, '#10202a'); g.fillStyle = '#f2ff4d'; g.beginPath(); g.moveTo(0.05, -0.18); g.lineTo(-0.1, 0.02); g.lineTo(0.02, 0.02); g.lineTo(-0.05, 0.14); g.lineTo(0.12, -0.05); g.lineTo(0, -0.05); g.closePath(); g.fill(); break;
+    case 'medkit': R(-0.55, -0.4, 1.1, 0.8, '#f2f2f2'); R(-0.1, -0.28, 0.2, 0.56, '#e0283a'); R(-0.3, -0.1, 0.6, 0.2, '#e0283a'); break;
+    case 'lvest': case 'armor': drawPickupIcon(g, 'armor', null, 1); break;
+    case 'lotto': R(-0.6, -0.35, 1.2, 0.7, '#f2c14e'); g.fillStyle = '#6b3a22'; g.font = 'bold 0.4px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('LOTTO', 0, 0.02); break;
+    default: drawWeaponIcon(g, id, 1, '#f2f2f2');
+  }
+  g.restore();
+}
+const SHOPS = {
+  ammu: { title: '총포상', sub: '무기와 탄약', items: () => [
+    ...['pistol', 'smg', 'shotgun', 'rifle', 'grenade', 'rocket'].map(w => ({ id: w, name: WEAPONS[w].name, price: WEAPONS[w].price, desc: `탄약 ${WEAPONS[w].pack}발` })),
+    { id: 'armor', name: '방탄복', price: 500, desc: '피해 흡수 100' }, { id: 'bat', name: '야구방망이', price: 100, desc: '근접 무기' }] },
+  burger: { title: '버거 샷', sub: '든든하게 먹고 체력을 채우자', items: () => [
+    { id: 'burger', name: '치즈 버거', price: 12, desc: '체력 +25', hp: 25 },
+    { id: 'set', name: '더블 버거 세트', price: 30, desc: '체력 +60, 달리기 체력 가득', hp: 60, stam: 1 },
+    { id: 'fries', name: '감자튀김', price: 6, desc: '체력 +10', hp: 10 },
+    { id: 'cola', name: '콜라', price: 4, desc: '달리기 체력 가득', stam: 1 }] },
+  mart: { title: '24 편의점', sub: '먹을거리와 생활용품', items: () => [
+    { id: 'onigiri', name: '삼각김밥', price: 5, desc: '체력 +12', hp: 12 },
+    { id: 'ramen', name: '컵라면', price: 8, desc: '체력 +20', hp: 20 },
+    { id: 'energy', name: '에너지 드링크', price: 15, desc: '60초 동안 지치지 않고 달리기', stam: 1, boost: 60 },
+    { id: 'medkit', name: '구급상자', price: 120, desc: '체력 완전 회복', hp: 100 },
+    { id: 'lvest', name: '경량 방탄조끼', price: 300, desc: '방어 +50', armor: 50 },
+    { id: 'lotto', name: '즉석 복권', price: 10, desc: '5% 확률 $500, 1% 확률 $5,000', lotto: true }] },
+};
 const Shop = {
-  open() {
+  open(kind) {
+    const S = SHOPS[kind] || SHOPS.ammu, P = Game.player;
     Game.state = 'shop';
+    document.getElementById('shop-title').textContent = S.title;
+    document.getElementById('shop-sub').textContent = S.sub;
     const list = document.getElementById('shop-list');
     list.innerHTML = '';
-    const P = Game.player;
-    const items = ['pistol', 'smg', 'shotgun', 'rifle', 'grenade', 'rocket'].map(w => ({ id: w, name: WEAPONS[w].name, price: WEAPONS[w].price, desc: `탄약 ${WEAPONS[w].pack}발` }));
-    items.push({ id: 'armor', name: '방탄복', price: 500, desc: '피해 흡수 100' });
-    items.push({ id: 'bat', name: '야구방망이', price: 100, desc: '근접 무기' });
+    const items = S.items();
+    const buttons = [];
+    const can = it => P.money >= it.price && !(it.hp && !it.stam && !it.boost && P.hp >= P.maxHp) && !(it.armor && P.armor >= 100) && !(it.id === 'armor' && P.armor >= 100);
+    const refresh = () => { document.getElementById('shop-money').textContent = `보유 $${P.money.toLocaleString()}`; buttons.forEach((b, i) => { b.disabled = !can(items[i]); }); };
     for (const it of items) {
       const row = document.createElement('div'); row.className = 'shop-row';
       const cv = document.createElement('canvas'); cv.width = 64; cv.height = 40;
       const g = cv.getContext('2d'); g.translate(32, 20);
-      if (it.id === 'armor') drawPickupIcon(g, 'armor', null, 30); else drawWeaponIcon(g, it.id, 26, '#f2f2f2');
+      if (it.id === 'armor') drawPickupIcon(g, 'armor', null, 30); else drawItemIcon(g, it.id, WEAPONS[it.id] ? 26 : 30);
       const info = document.createElement('div'); info.className = 'shop-info';
       info.innerHTML = `<b>${it.name}</b><span>${it.desc}</span>`;
       const btn = document.createElement('button'); btn.className = 'btn small'; btn.textContent = `$${it.price.toLocaleString()}`;
-      btn.disabled = P.money < it.price;
       btn.onclick = () => {
-        if (P.money < it.price) return;
+        if (!can(it)) return;
         P.money -= it.price; Sfx.cash();
-        if (it.id === 'armor') P.armor = 100; else giveWeapon(P, it.id, WEAPONS[it.id].pack || 1);
-        if (it.id !== 'armor') P.weapon = it.id;
-        document.getElementById('shop-money').textContent = `보유 $${P.money.toLocaleString()}`;
-        list.querySelectorAll('button').forEach((b, i) => { b.disabled = P.money < items[i].price; });
+        if (it.hp) P.hp = Math.min(P.maxHp, P.hp + it.hp);
+        if (it.stam) { P.stamina = 1; P.exhausted = false; }
+        if (it.boost) P.boostT = it.boost;
+        if (it.armor) P.armor = Math.min(100, P.armor + it.armor);
+        if (it.lotto) { const r = Math.random(); const win = r < 0.01 ? 5000 : r < 0.06 ? 500 : 0; if (win) { P.money += win; Sfx.passed(); UI.toast(`복권 당첨! +$${win.toLocaleString()}`); } else UI.toast('꽝! 다음 기회에'); }
+        if (WEAPONS[it.id]) { giveWeapon(P, it.id, WEAPONS[it.id].pack || 1); P.weapon = it.id; }
+        if (it.id === 'armor') P.armor = 100;
+        refresh();
       };
+      buttons.push(btn);
       row.append(cv, info, btn); list.append(row);
     }
-    document.getElementById('shop-money').textContent = `보유 $${P.money.toLocaleString()}`;
+    refresh();
     document.getElementById('shop').hidden = false;
   },
   close() { document.getElementById('shop').hidden = true; Game.state = 'play'; Game.shopCool = 4; },
@@ -426,7 +500,8 @@ const Touch = {
       b.addEventListener('touchend', up); b.addEventListener('touchcancel', up);
     };
     const tap = (id, fn) => { const b = document.getElementById(id); b.addEventListener('touchstart', e => { e.preventDefault(); enable(); fn(); }, { passive: false }); };
-    hold('t-fire', 'fire'); hold('t-hb', 'hb');
+    hold('t-fire', 'fire'); hold('t-hb', 'hb'); hold('t-run', 'run');
+    tap('t-steal', () => { if (Pick.target) Pick.attempt(); });
     tap('t-enter', () => { Input.pressed['KeyF'] = true; });
     tap('t-weapon', () => { Input.pressed['KeyE'] = true; });
     tap('t-radio', () => { Input.pressed['KeyR'] = true; });

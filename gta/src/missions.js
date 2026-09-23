@@ -15,7 +15,7 @@ const Save = {
     try {
       const P = Game.player;
       const inv = {}; for (const k in P.inv) if (k !== 'fist') inv[k] = P.inv[k] === Infinity ? -1 : P.inv[k];
-      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock }));
+      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats }));
     } catch (e) { /* 저장 불가 환경 */ }
   },
   clear() { try { localStorage.removeItem(this.key); } catch (e) { } },
@@ -26,7 +26,7 @@ const Missions = {
   defs: [],
   init() {
     const at = (u, v) => sidewalkNear(u * MW * T, v * MH * T);
-    this.givers = [at(0.4, 0.36), at(0.55, 0.3), at(0.3, 0.62), at(0.66, 0.5), at(0.45, 0.48), at(0.62, 0.22)];
+    this.givers = [at(0.4, 0.36), at(0.55, 0.3), at(0.3, 0.62), at(0.66, 0.5), at(0.45, 0.48), at(0.62, 0.22), at(0.28, 0.4), at(0.5, 0.62), at(0.58, 0.44), at(0.35, 0.25), at(0.7, 0.66), at(0.24, 0.55)];
     this.defs = MISSION_DEFS;
   },
   get done() { return this.idx >= this.defs.length; },
@@ -35,6 +35,7 @@ const Missions = {
     this.cool -= dt;
     if (!this.active) {
       if (this.done || P.dead || this.cool > 0) return;
+      if (Jobs.active) return;
       const g = this.givers[this.idx];
       if (dist(P.px, P.py, g.x, g.y) < 2.2 && (!P.car || P.car.speed < 3)) {
         if (Wanted.stars > 0) { if (!this.warned) { UI.toast('수배 중에는 의뢰를 받을 수 없다'); this.warned = true; } return; }
@@ -98,6 +99,8 @@ const Missions = {
   },
 };
 
+const allTargets = () => Jobs.active ? [...Jobs.targets(), ...Missions.targets()] : Missions.targets();
+
 // ---------- 미션 도우미 ----------
 function missionCar(m, type, x, y, a, opt = {}) {
   for (const c of Game.cars) if (!c.persistent && dist2(c.x, c.y, x, y) < 36) c.remove = true;
@@ -124,6 +127,52 @@ function roadsideSpot(x, y, minD, maxD) {
   return laneSpot(World.edgesList[0], true, 20);
 }
 const blip = (m, o) => { m.blips.push(o); return o; };
+
+// 암살 미션 공장: 표적 + 경호원 + 도주 차량. 경계하면 표적이 차로 달아나고, 끌어내면 다시 걸어서 싸운다.
+function assassinDef(o) {
+  return {
+    title: o.title, reward: o.reward, intro: o.intro, outro: o.outro,
+    start(m) {
+      const base = sidewalkNear(o.u * MW * T, o.v * MH * T);
+      m.target = missionPed(m, 'target', base.x, base.y);
+      m.target.hp = m.target.maxHp = o.targetHp; if (o.targetLook) Object.assign(m.target, o.targetLook);
+      m.blipT = blip(m, { ent: m.target, c: '#ff4d4d', big: true });
+      for (let i = 0; i < o.guards; i++) { const g = missionPed(m, 'guard', base.x + rand(-4, 4), base.y + rand(-4, 4)); g.weapon = o.gWeapon; g.shirt = '#2b2b2b'; g.state = 'idle'; g.hp = g.maxHp = o.gHp; }
+      const rs = roadsideSpot(base.x, base.y, 8, 30);
+      m.car = missionCar(m, o.carType, rs.x, rs.y, rs.a, { color: o.carColor });
+      m.onAlert = () => {
+        if (m.alerted) return; m.alerted = true;
+        for (const p of Game.peds) if (p.mission === m && p.kind === 'guard' && !p.dead) p.state = 'chase';
+        const t = m.target;
+        if (t && !t.dead && !m.car.dead && m.car.burnT <= 0 && !m.car.driver) {
+          const d = m.car.doorPos(-1);
+          t.state = 'goto'; t.tx = d[0]; t.ty = d[1]; t.runSpeed = 5.2;
+          t.onArrive = () => {
+            if (m.car.driver || m.car.dead) { t.state = 'chase'; return; }
+            t.remove = true; m.target = null;
+            m.car.driver = 'ai'; m.car.driverKind = 'target';
+            trafficFromHere(m.car, 'flee'); m.car.ai.cruiseFlee = 26;
+            m.blipT.ent = m.car;
+            UI.toast(`${o.name}이(가) 차를 타고 도주한다!`);
+          };
+        } else if (t) t.state = 'chase';
+      };
+    },
+    update(m) {
+      const P = Game.player;
+      if (!m.alerted) { const t = m.target; if (t && dist(P.px, P.py, t.x, t.y) < 24 && losClear(P.px, P.py, t.x, t.y)) m.onAlert(); }
+      if (!m.target && m.car && m.car.driverKind === 'target' && m.car.driver !== 'ai') {
+        const np = Game.peds.find(p => p.kind === 'target' && p.mission === m && !p.dead);
+        if (np) { m.target = np; np.state = 'chase'; m.blipT.ent = np; m.car.driverKind = null; }
+      }
+      const ref = m.target || m.car;
+      Missions.obj(m, m.alerted ? o.objNear : o.objFar);
+      if (ref && dist(P.px, P.py, ref.px !== undefined ? ref.px : ref.x, ref.py !== undefined ? ref.py : ref.y) > 280) return { fail: `${o.name}이(가) 달아났다` };
+    },
+    onKill(m, p) { if (p.kind === 'target' && p.mission === m) Missions.pass(); },
+    onCar(m, c) { if (c === m.car && c.driverKind === 'target') { c.driverKind = null; Missions.pass(); } },
+  };
+}
 
 // ---------- 미션 정의 ----------
 const MISSION_DEFS = [
@@ -181,55 +230,12 @@ const MISSION_DEFS = [
       }
     },
   },
-  {
-    title: '3. 빚 수금',
-    reward: 3500,
+  assassinDef({
+    title: '3. 빚 수금', reward: 3500, name: '강', u: 0.32, v: 0.78, guards: 3, gWeapon: 'pistol', gHp: 90, carType: 'muscle', carColor: '#101820', targetHp: 120,
     intro: [['마담 윤', '선셋 비치에 사는 "강"이라는 녀석이 3년째 빚을 안 갚아.'], ['마담 윤', '경호원이 붙어 있고, 겁먹으면 차로 튈 거야. 놓치지 마.']],
     outro: [['마담 윤', '장부가 깨끗해졌네. 넌 쓸모가 있어.']],
-    start(m) {
-      const base = sidewalkNear(0.32 * MW * T, 0.78 * MH * T);
-      m.target = missionPed(m, 'target', base.x, base.y);
-      m.target.name = '강';
-      m.blipT = blip(m, { ent: m.target, c: '#ff4d4d', big: true });
-      for (let i = 0; i < 3; i++) { const g = missionPed(m, 'guard', base.x + rand(-3, 3), base.y + rand(-3, 3)); g.weapon = 'pistol'; g.shirt = '#2b2b2b'; g.state = 'idle'; g.hp = 90; }
-      const rs = roadsideSpot(base.x, base.y, 8, 30);
-      m.car = missionCar(m, 'muscle', rs.x, rs.y, rs.a, { color: '#101820' });
-      m.onAlert = () => {
-        if (m.alerted) return; m.alerted = true;
-        for (const p of Game.peds) if (p.mission === m && p.kind === 'guard' && !p.dead) p.state = 'chase';
-        const t = m.target;
-        if (t && !t.dead && !m.car.dead && m.car.burnT <= 0 && !m.car.driver) {
-          const d = m.car.doorPos(-1);
-          t.state = 'goto'; t.tx = d[0]; t.ty = d[1]; t.runSpeed = 5.2;
-          t.onArrive = () => {
-            if (m.car.driver || m.car.dead) { t.state = 'chase'; return; }
-            t.remove = true; m.target = null;
-            m.car.driver = 'ai'; m.car.driverKind = 'target';
-            trafficFromHere(m.car, 'flee'); m.car.ai.cruiseFlee = 26;
-            m.blipT.ent = m.car;
-            UI.toast('강이 차를 타고 도주한다!');
-          };
-        } else if (t) t.state = 'chase';
-      };
-    },
-    update(m) {
-      const P = Game.player;
-      if (!m.alerted) {
-        const t = m.target;
-        if (t && dist(P.px, P.py, t.x, t.y) < 24 && losClear(P.px, P.py, t.x, t.y)) m.onAlert();
-      }
-      // 차에서 끌려 나온 강
-      if (!m.target && m.car && m.car.driverKind === 'target' && m.car.driver !== 'ai') {
-        const np = Game.peds.find(p => p.kind === 'target' && p.mission === m && !p.dead);
-        if (np) { m.target = np; np.state = 'chase'; m.blipT.ent = np; m.car.driverKind = null; }
-      }
-      const ref = m.target || m.car;
-      Missions.obj(m, m.alerted ? '강을 처리하라 — 도망치게 두지 마라' : '선셋 비치의 강을 찾아 처리하라');
-      if (ref && dist(P.px, P.py, ref.px !== undefined ? ref.px : ref.x, ref.py !== undefined ? ref.py : ref.y) > 280) return { fail: '강이 달아났다' };
-    },
-    onKill(m, p) { if (p.kind === 'target' && p.mission === m) { Missions.pass(); } },
-    onCar(m, c) { if (c === m.car && c.driverKind === 'target') { c.driverKind = null; Missions.pass(); } },
-  },
+    objFar: '선셋 비치의 강을 찾아 처리하라', objNear: '강을 처리하라 — 도망치게 두지 마라',
+  }),
   {
     title: '4. 청룡파 소탕',
     reward: 4000,
@@ -309,4 +315,164 @@ const MISSION_DEFS = [
       return 'pass';
     },
   },
+  {
+    title: '7. 항구 스프린트',
+    reward: 3000,
+    intro: [['조니 박', '다음 주 불법 레이스에 네 이름을 올렸어. 오늘은 연습이야.'], ['조니 박', '노란 반시 GT를 준비했다. 체크포인트를 전부 지나 제한시간 안에 들어와.']],
+    outro: [['조니 박', '그 정도면 레이스판에서도 먹히겠어.']],
+    start(m) {
+      const P = Game.player, sp = roadsideSpot(P.px, P.py, 6, 30);
+      m.car = missionCar(m, 'sports', sp.x, sp.y, sp.a, { color: '#f2c200' });
+      let n = nearestNode(sp.x, sp.y), prev = -1; m.cps = []; m.total = 0;
+      for (let i = 0; i < 60 && m.cps.length < 12; i++) {
+        let opts = n.adj.filter(a => a >= 0 && a !== prev); if (!opts.length) opts = n.adj.filter(a => a >= 0);
+        const nx = World.nodes[pick(opts)]; m.total += dist(n.x, n.y, nx.x, nx.y); prev = n.id; n = nx;
+        if (i % 2 === 1 && !m.cps.some(c => dist(c.x, c.y, n.x, n.y) < 30)) m.cps.push({ x: n.x, y: n.y });
+      }
+      m.idx = 0; m.outT = 0;
+    },
+    update(m, dt) {
+      const P = Game.player, c = m.car;
+      if (c.dead || c.burnT > 0) return { fail: '레이스 차가 부서졌다' };
+      if (P.car !== c) {
+        if (m.stage === 0) { m.blips = [{ ent: c, c: '#4fb3ff' }]; Missions.obj(m, '노란 반시 GT에 타라'); return; }
+        m.outT += dt; if (m.outT > 8) return { fail: '차에서 내려 실격' };
+      } else m.outT = 0;
+      if (m.stage === 0) { m.stage = 1; m.timer = Math.round(m.total / 19 + 14); UI.big('출발!', `체크포인트 ${m.cps.length}개`, 1.6, '#4fe38a'); Sfx.passed(); }
+      const cp = m.cps[m.idx], nx = m.cps[m.idx + 1];
+      m.blips = [{ x: cp.x, y: cp.y, c: '#4fe38a', big: true }]; if (nx) m.blips.push({ x: nx.x, y: nx.y, c: '#2a8f55' });
+      Missions.obj(m, `체크포인트 ${m.idx + 1} / ${m.cps.length}`);
+      if (dist(c.x, c.y, cp.x, cp.y) < 9) { m.idx++; Sfx.pickup(); if (m.idx >= m.cps.length) { m.bonus = Math.round(m.timer) * 60; return 'pass'; } }
+    },
+  },
+  {
+    title: '8. 그림자 미행',
+    reward: 3500,
+    intro: [['마담 윤', '시청 쪽 사람이 청룡파와 만난다는 소문이 있어.'], ['마담 윤', '검은 세다나를 따라가. 너무 붙으면 들키고, 놓치면 끝이야.']],
+    outro: [['마담 윤', '역시 그랬군. 이 정보면 한동안 시청이 조용하겠어.']],
+    start(m) {
+      const P = Game.player, sp = roadsideSpot(P.px, P.py, 70, 140);
+      const t = m.tgt = missionCar(m, 'sedan', sp.x, sp.y, sp.a, { color: '#16181c' });
+      t.driver = 'ai'; t.driverKind = 'civ'; trafficFromHere(t, 'traffic'); t.ai.cruise = 12; t.label = '검은 세다나';
+      m.left = 80; m.close = 0; m.far = 0;
+      blip(m, { ent: t, c: '#ff4d4d', big: true });
+    },
+    update(m, dt) {
+      const P = Game.player, t = m.tgt;
+      if (t.dead || t.burnT > 0) return { fail: '표적 차가 부서졌다' };
+      if (t.driver !== 'ai' || (t.ai && t.ai.panic)) return { fail: '미행을 들켰다' };
+      const d = dist(P.px, P.py, t.x, t.y);
+      if (m.stage === 0) { Missions.obj(m, '검은 세다나를 찾아 뒤를 밟아라'); if (d < 60) { m.stage = 1; UI.toast('미행 시작 — 10~60m 거리를 유지하라'); } return; }
+      m.left -= dt;
+      if (d < 12) m.close += dt; else m.close = Math.max(0, m.close - dt * 0.5);
+      if (d > 70) m.far += dt; else m.far = 0;
+      if (m.close > 2.5) return { fail: '너무 가까이 붙어서 들켰다' };
+      if (m.far > 7) return { fail: '표적을 놓쳤다' };
+      Missions.obj(m, `미행 중 · 거리 ${Math.round(d)}m ${d < 12 ? '— 너무 가깝다!' : d > 60 ? '— 놓치겠다!' : ''} · 남은 시간 ${Math.ceil(m.left)}초`);
+      if (m.left <= 0) return 'pass';
+    },
+  },
+  {
+    title: '9. 편의점 털이',
+    reward: 1500, noShop: true,
+    intro: [['조니 박', '다운타운 24 편의점 금고가 두둑하대.'], ['조니 박', '총을 들고 들어가서 점원이 금고를 비울 때까지 버텨. 그다음은 경찰이랑 술래잡기야.']],
+    outro: [['조니 박', '깔끔했어. 네 몫은 이미 주머니에 있지?']],
+    start(m) { m.S = World.places.mart2 || World.places.mart; blip(m, { x: m.S.x, y: m.S.y, c: '#7ae68f', big: true }); m.hold = 0; },
+    update(m, dt) {
+      const P = Game.player, S = m.S;
+      if (m.stage === 0) {
+        Missions.obj(m, '다운타운 편의점에 총을 들고 들어가라');
+        if (!P.car && dist(P.x, P.y, S.x, S.y) < 2.2) {
+          if (WEAPONS[P.weapon].melee || WEAPONS[P.weapon].throw) { Missions.obj(m, '총을 꺼내라 (무기 교체)'); return; }
+          m.stage = 1; m.hold = 0; UI.toast('점원: 히익! 도, 돈 드릴게요!');
+        }
+      } else if (m.stage === 1) {
+        if (P.car || dist(P.x, P.y, S.x, S.y) > 4) { m.stage = 0; UI.toast('가게를 떠났다'); return; }
+        m.hold += dt;
+        Missions.obj(m, `점원이 금고를 비우는 중... ${Math.min(100, Math.round(m.hold / 6 * 100))}%`);
+        if (m.hold > 6) {
+          const loot = randi(900, 1700); P.money += loot; Sfx.cash(); Effects.text(P.x, P.y - 1, `+$${loot}`);
+          m.stage = 2; m.blips = []; Wanted.set(2);
+          UI.toast(`금고 털이 성공 +$${loot} — 경보가 울렸다!`);
+        }
+      } else {
+        Missions.obj(m, '경찰을 따돌려라');
+        if (Wanted.stars === 0) return 'pass';
+      }
+    },
+  },
+  {
+    title: '10. 증인 호송',
+    reward: 5000,
+    intro: [['마담 윤', '청룡파 회계사가 우리 쪽으로 넘어오겠대. 녀석들이 가만있지 않겠지.'], ['마담 윤', '차로 데리러 가서 선셋 비치 은신처까지 무사히 데려와. 차가 터지면 끝이야.']],
+    outro: [['마담 윤', '회계사가 장부를 전부 넘겼어. 청룡파 금고가 훤히 보이네.']],
+    start(m) {
+      const s = sidewalkNear(0.22 * MW * T, 0.3 * MH * T);
+      m.w = missionPed(m, 'civ', s.x, s.y); m.w.state = 'idle'; m.w.shirt = '#e8d9b0'; m.w.pants = '#3b3b3b';
+      m.wb = blip(m, { ent: m.w, c: '#6fe0ff', big: true });
+      m.safe = sidewalkNear(0.78 * MW * T, 0.8 * MH * T); m.spawnT = 0;
+    },
+    update(m, dt) {
+      const P = Game.player;
+      if (m.stage === 0) {
+        if (m.w.dead) return { fail: '증인이 죽었다' };
+        Missions.obj(m, P.car ? '증인 옆에 차를 세워라' : '차를 구해 증인을 데리러 가라');
+        if (P.car && dist(P.car.x, P.car.y, m.w.x, m.w.y) < 7 && P.car.speed < 2.5) {
+          m.w.remove = true; m.wcar = P.car; m.wcar.persistent = true; m.stage = 1;
+          UI.toast('증인 탑승! 청룡파 차량이 따라붙는다');
+        }
+        return;
+      }
+      const wc = m.wcar;
+      if (wc.dead || wc.burnT > 0) return { fail: '증인이 탄 차가 파괴됐다' };
+      m.spawnT -= dt;
+      const hunters = Game.cars.filter(c => c.mission === m && c.ai && c.ai.mode === 'hunt' && !c.dead).length;
+      if (hunters < 2 && m.spawnT <= 0) {
+        m.spawnT = 12;
+        const sp = offscreenLaneSpot(60, 120);
+        if (sp) { const h = missionCar(m, 'muscle', sp.x, sp.y, sp.a, { color: '#1f8a4c' }); h.driver = 'ai'; h.driverKind = 'gang'; h.ai = { mode: 'hunt' }; h.crew = 2; }
+      }
+      if (P.car !== wc) { m.blips = [{ ent: wc, c: '#6fe0ff', big: true }]; Missions.obj(m, '증인이 탄 차로 돌아가라'); return; }
+      m.blips = [{ x: m.safe.x, y: m.safe.y, c: '#f2c14e', big: true }];
+      Missions.obj(m, `증인을 선셋 비치 은신처로 — 차량 상태 ${Math.round(wc.hp / wc.maxHp * 100)}%`);
+      if (dist(wc.x, wc.y, m.safe.x, m.safe.y) < 8 && wc.speed < 3) return 'pass';
+    },
+    cleanup(m) { for (const c of Game.cars) if (c.mission === m && c.ai && c.ai.mode === 'hunt') { c.ai = { mode: 'traffic', route: [] }; trafficFromHere(c); } },
+  },
+  {
+    title: '11. 시한폭탄 밴',
+    reward: 6000,
+    intro: [['조니 박', '큰일 났어! 누가 우리 밴에 폭탄을 달았어. 속도가 떨어지면 터지는 놈이야.'], ['조니 박', '시속 50km 밑으로 떨어지지 말고 하버 포인트 부두까지 몰고 가. 거기 해체반이 있어.']],
+    outro: [['조니 박', '살았다... 너 진짜 강심장이구나.']],
+    start(m) {
+      const P = Game.player, sp = roadsideSpot(P.px, P.py, 8, 35);
+      m.van = missionCar(m, 'van', sp.x, sp.y, sp.a, { color: '#6b2f2f', hp: 320 }); m.van.label = '폭탄 밴';
+      m.dest = sidewalkNear((World.VX[World.NX - 1] + 2) * T, 0.72 * MH * T);
+      blip(m, { ent: m.van, c: '#ff4d4d', big: true }); m.slow = 0;
+    },
+    update(m, dt) {
+      const P = Game.player, v = m.van;
+      if (v.dead || v.burnT > 0) return { fail: '밴이 폭발했다' };
+      if (m.stage === 0) {
+        if (P.car !== v) { Missions.obj(m, '폭탄 밴에 타라'); return; }
+        Missions.obj(m, '속도를 시속 50km 이상으로 올려라 — 넘는 순간 폭탄이 작동한다');
+        m.blips = [{ x: m.dest.x, y: m.dest.y, c: '#f2c14e', big: true }];
+        if (v.speed > 13.9) { m.stage = 1; m.timer = Math.round(dist(v.x, v.y, m.dest.x, m.dest.y) / 11 + 40); UI.big('폭탄 작동!', '시속 50km 아래로 떨어지면 터진다', 2, '#ff4d4d'); }
+        return;
+      }
+      m.blips = [{ x: m.dest.x, y: m.dest.y, c: '#f2c14e', big: true }];
+      if (v.speed < 13.9) { m.slow += dt; if (Math.floor(m.slow * 4) !== Math.floor((m.slow - dt) * 4)) Sfx.tone({ f0: 1400, f1: 1400, dur: 0.08, type: 'square', vol: 0.2 }); }
+      else m.slow = Math.max(0, m.slow - dt * 0.5);
+      if (m.slow > 3) { v.damage(99999, null); v.burnT = 0.01; return { fail: '속도가 떨어져 폭탄이 터졌다' }; }
+      Missions.obj(m, m.slow > 0 ? `속도를 올려라! 폭발까지 ${(3 - m.slow).toFixed(1)}초` : `부두 해체반까지 달려라 — 현재 ${Math.round(v.speed * 3.6)}km/h`);
+      if (dist(v.x, v.y, m.dest.x, m.dest.y) < 12) { UI.toast('해체반: 폭탄 해체 완료!'); return 'pass'; }
+    },
+  },
+  assassinDef({
+    title: '12. 왕좌', reward: 20000, name: '청룡', u: 0.2, v: 0.22, guards: 8, gWeapon: 'smg', gHp: 110, carType: 'sports', carColor: '#1f8a4c', targetHp: 260,
+    targetLook: { shirt: '#1f8a4c', pants: '#0d0d0d', weapon: 'rifle' },
+    intro: [['마담 윤', '청룡파 두목 "청룡"이 웨스트 힐즈 저택에 숨어 있어. 경호원이 여덟이야.'], ['마담 윤', '이번 한 번이면 이 도시는 우리 거야. 끝내고 와, 파트너.']],
+    outro: [['마담 윤', '끝났어. 네온 하버의 밤은 이제 우리 거야.'], ['마담 윤', '…그리고 넌 이제 이 도시에서 제일 유명한 이름이 됐지.']],
+    objFar: '웨스트 힐즈 저택의 청룡을 찾아라', objNear: '청룡을 쓰러뜨려라 — 놓치면 끝이다',
+  }),
 ];

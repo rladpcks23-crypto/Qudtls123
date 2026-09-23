@@ -23,6 +23,7 @@ const VTYPES = {
   truck: { name: '뮬 트럭', L: 7.2, W: 2.4, mass: 4200, Fe: 15000, vmax: 30, grip: 0.95, cs: 4.4, steer: 0.45, hp: 240, colors: ['#e0e0e0', '#b0452f', '#2f5fb0'], style: 'truck' },
   police: { name: '경찰 순찰차', L: 4.8, W: 1.95, mass: 1450, Fe: 10500, vmax: 50, grip: 1.35, cs: 5.4, steer: 0.58, hp: 140, colors: ['#f4f4f4'], style: 'police' },
   swat: { name: 'SWAT 장갑차', L: 5.8, W: 2.3, mass: 3200, Fe: 14500, vmax: 40, grip: 1.1, cs: 5.0, steer: 0.5, hp: 320, colors: ['#1f2328'], style: 'swat' },
+  ambulance: { name: '구급차', L: 5.4, W: 2.1, mass: 2300, Fe: 10000, vmax: 42, grip: 1.12, cs: 5.0, steer: 0.54, hp: 180, colors: ['#f4f4f4'], style: 'ambulance' },
   armored: { name: '현금수송 트럭', L: 6.4, W: 2.4, mass: 5000, Fe: 16000, vmax: 30, grip: 1.0, cs: 4.6, steer: 0.45, hp: 700, colors: ['#3d4a3a'], style: 'armored' },
 };
 const TRAFFIC_MIX = ['sedan', 'sedan', 'sedan', 'compact', 'compact', 'taxi', 'van', 'muscle', 'sports', 'truck', 'sedan', 'compact'];
@@ -381,6 +382,7 @@ function aiDrive(car, dt) {
   const ai = car.ai;
   ai.ignoreT -= dt; ai.honkT -= dt;
   if (ai.mode === 'chase' || ai.mode === 'block') return policeDrive(car, dt);
+  if (ai.mode === 'hunt') return huntDrive(car, dt);
   if (ai.mode === 'parked') { car.in.thr = 0; car.in.brk = 1; car.in.st = 0; return; }
   if (!ai.route || !ai.route.length) { trafficFromHere(car, ai.mode); if (!car.ai.route.length) return; }
   const r = car.ai.route;
@@ -489,6 +491,44 @@ function policeDrive(car, dt) {
   }
 }
 
+// ---------- 조직 추격차 (수배와 무관하게 플레이어를 쫓아 들이받고 창밖으로 쏜다) ----------
+function huntDrive(car, dt) {
+  const ai = car.ai, P = Game.player;
+  if (P.dead) { car.in.thr = 0; car.in.brk = 1; return; }
+  if (ai.revT > 0) { ai.revT -= dt; car.in.thr = -0.9; car.in.brk = 0; car.in.st = -ai.revSt; car.in.hb = false; return; }
+  const d = dist(car.x, car.y, P.px, P.py);
+  const see = d < 55 && losClear(car.x, car.y, P.px, P.py);
+  let tx = P.px, ty = P.py, v0 = 30;
+  if (see) {
+    const pv = P.car ? [P.car.vx, P.car.vy] : [P.vx, P.vy];
+    tx += pv[0] * clamp(d / 25, 0, 1); ty += pv[1] * clamp(d / 25, 0, 1);
+    ai.path = null;
+    ai.shootT = (ai.shootT || 1) - dt;
+    if (ai.shootT <= 0 && d < 26) {
+      ai.shootT = rand(0.9, 1.6);
+      const shooter = { kind: 'gang', px: car.x, py: car.y, x: car.x, y: car.y, vx: car.vx, vy: car.vy, car };
+      fireWeapon(shooter, 'smg', Math.atan2(P.py - car.y, P.px - car.x) + gauss() * 0.08, 0.45);
+    }
+  } else {
+    ai.repath = (ai.repath || 0) - dt;
+    if (!ai.path || ai.repath <= 0) {
+      ai.repath = 1.5;
+      const from = nearestNode(car.x + car.vx * 0.5, car.y + car.vy * 0.5), to = nearestNode(P.px, P.py);
+      ai.path = (nodePath(from.id, to.id) || [from.id]).map(id => ({ x: World.nodes[id].x, y: World.nodes[id].y }));
+      ai.path.push({ x: P.px, y: P.py });
+    }
+    while (ai.path.length > 1 && dist2(ai.path[0].x, ai.path[0].y, car.x, car.y) < 49) ai.path.shift();
+    tx = ai.path[0].x; ty = ai.path[0].y;
+    if (ai.path.length > 1 && Math.abs(angNorm(Math.atan2(ai.path[1].y - ty, ai.path[1].x - tx) - car.a)) > 0.5) v0 = 9 + dist(car.x, car.y, tx, ty) * 0.7;
+  }
+  pursuitSteer(car, tx, ty);
+  car.in.hb = false;
+  const L = findLeader(car, 10 + car.speed, false, true);
+  const acc = see && L.what === P.car ? 6 : idmAccel(Math.max(0, car.vf), v0, L.s, L.v, 5, 6, 1, 0.4);
+  applyAccel(car, acc);
+  if (car.speed < 0.5 && car.in.thr > 0.4) { ai.stuckT = (ai.stuckT || 0) + dt; if (ai.stuckT > 1.4) { ai.stuckT = 0; ai.revT = 1.1; ai.revSt = car.in.st || 1; } } else ai.stuckT = 0;
+}
+
 // 탑승자 하차(공포)
 function bailOut(car, flee) {
   if (car.driver !== 'ai') return;
@@ -497,7 +537,8 @@ function bailOut(car, flee) {
   const p = spawnPed(kind, dx, dy);
   if (car.mission) p.mission = car.mission;
   if (car.driverRef) { Object.assign(p, car.driverRef, { x: dx, y: dy, car: null, dead: false }); }
-  if (flee && kind !== 'cop') { p.state = 'flee'; p.fleeT = 8; p.fearX = car.x; p.fearY = car.y; }
+  if (kind === 'gang' && car.ai && car.ai.mode === 'hunt') p.state = 'chase';
+  else if (flee && kind !== 'cop') { p.state = 'flee'; p.fleeT = 8; p.fearX = car.x; p.fearY = car.y; }
   if (kind === 'cop') { p.state = Wanted.stars > 0 ? 'chase' : 'patrol'; }
   car.driver = null; car.ai = null; car.siren = false;
   return p;

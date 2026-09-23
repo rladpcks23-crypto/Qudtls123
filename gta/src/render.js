@@ -9,7 +9,13 @@
  * 장면 위에 곱하기(multiply) 합성 → 밤 풍경.
  * ===================================================================== */
 
-const Cam = { x: 0, y: 0, ppm: 8, vw: 100, vh: 60, shake: 0, sx: 0, sy: 0, H: 150, zoomMul: 1 };
+// rot: 화면 회전(운전 중 차 방향이 화면 위쪽). vw/vh는 회전된 화면을 감싸는 월드 축 정렬 영역(컬링용).
+const Cam = { x: 0, y: 0, ppm: 8, vw: 100, vh: 60, sw: 100, sh: 60, rot: 0, shake: 0, sx: 0, sy: 0, H: 150, zoomMul: 1 };
+function camSetView() {
+  Cam.sw = CW / Cam.ppm; Cam.sh = CH / Cam.ppm;
+  const c = Math.abs(Math.cos(Cam.rot)), s = Math.abs(Math.sin(Cam.rot));
+  Cam.vw = c * Cam.sw + s * Cam.sh; Cam.vh = s * Cam.sw + c * Cam.sh;
+}
 let canvas, ctx, lightCanvas, lctx, DPR = 1, CW = 0, CH = 0;
 
 function resize() {
@@ -19,9 +25,19 @@ function resize() {
   canvas.style.width = CW + 'px'; canvas.style.height = CH + 'px';
   lightCanvas.width = Math.ceil(CW * TUNE.light); lightCanvas.height = Math.ceil(CH * TUNE.light);
 }
-const toScreen = (x, y) => [(x - Cam.x) * Cam.ppm + CW / 2 + Cam.sx, (y - Cam.y) * Cam.ppm + CH / 2 + Cam.sy];
+function toScreen(x, y) {
+  const dx = x - Cam.x, dy = y - Cam.y, c = Math.cos(Cam.rot), s = Math.sin(Cam.rot);
+  return [(dx * c + dy * s) * Cam.ppm + CW / 2 + Cam.sx, (-dx * s + dy * c) * Cam.ppm + CH / 2 + Cam.sy];
+}
+function screenToWorld(sx, sy) {
+  const lx = (sx - CW / 2 - Cam.sx) / Cam.ppm, ly = (sy - CH / 2 - Cam.sy) / Cam.ppm, c = Math.cos(Cam.rot), s = Math.sin(Cam.rot);
+  return [lx * c - ly * s + Cam.x, lx * s + ly * c + Cam.y];
+}
+function onScreenExact(x, y, m = 0) { const [sx, sy] = toScreen(x, y); return sx > -m && sy > -m && sx < CW + m && sy < CH + m; }
 function worldTransform(c = ctx, scale = DPR) {
-  c.setTransform(Cam.ppm * scale, 0, 0, Cam.ppm * scale, (CW / 2 + Cam.sx - Cam.x * Cam.ppm) * scale, (CH / 2 + Cam.sy - Cam.y * Cam.ppm) * scale);
+  c.setTransform(scale, 0, 0, scale, (CW / 2 + Cam.sx) * scale, (CH / 2 + Cam.sy) * scale);
+  if (Cam.rot) c.rotate(-Cam.rot);
+  c.scale(Cam.ppm, Cam.ppm); c.translate(-Cam.x, -Cam.y);
 }
 // 높이 z의 점을 원근 투영(월드 좌표계 안에서)
 const proj = (x, y, z) => { const f = Cam.H / (Cam.H - z); return [Cam.x + (x - Cam.x) * f, Cam.y + (y - Cam.y) * f]; };
@@ -279,7 +295,7 @@ function drawCar(c, shadow) {
     // 측면 음영
     ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(-L / 2 + 0.3, W / 2 - 0.25, L - 0.6, 0.2); ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(-L / 2 + 0.3, -W / 2 + 0.05, L - 0.6, 0.18);
     let wsF, wsR, roofF, roofR;
-    if (st === 'van' || st === 'swat') { wsF = L * 0.32; wsR = L * 0.22; roofF = L * 0.3; roofR = -L * 0.47; }
+    if (st === 'van' || st === 'swat' || st === 'ambulance') { wsF = L * 0.32; wsR = L * 0.22; roofF = L * 0.3; roofR = -L * 0.47; }
     else if (st === 'sports') { wsF = L * 0.2; wsR = L * 0.02; roofF = L * 0.02; roofR = -L * 0.18; }
     else if (st === 'compact') { wsF = L * 0.2; wsR = L * 0.06; roofF = L * 0.06; roofR = -L * 0.3; }
     else { wsF = L * 0.2; wsR = L * 0.06; roofF = L * 0.06; roofR = -L * 0.24; }
@@ -288,7 +304,7 @@ function drawCar(c, shadow) {
     ctx.beginPath(); ctx.moveTo(wsF, -W / 2 + 0.22); ctx.lineTo(wsF, W / 2 - 0.22); ctx.lineTo(wsR, W / 2 - 0.14); ctx.lineTo(wsR, -W / 2 + 0.14); ctx.closePath(); ctx.fill();
     ctx.fillStyle = 'rgba(180,210,240,0.18)'; ctx.fillRect(wsR + 0.05, -W / 2 + 0.3, 0.2, W * 0.35);
     // 지붕
-    if (st !== 'van' && st !== 'swat') {
+    if (st !== 'van' && st !== 'swat' && st !== 'ambulance') {
       ctx.fillStyle = c.dead ? '#222' : (st === 'police' ? '#f4f4f4' : light);
       rr(ctx, roofR, -W / 2 + 0.16, roofF - roofR, W - 0.32, 0.25); ctx.fill();
       ctx.fillStyle = c.dead ? '#111' : '#1b2735';
@@ -296,6 +312,11 @@ function drawCar(c, shadow) {
     } else {
       ctx.fillStyle = c.dead ? '#222' : (st === 'swat' ? '#34393f' : light);
       rr(ctx, roofR, -W / 2 + 0.12, roofF - roofR, W - 0.24, 0.2); ctx.fill();
+      if (st === 'ambulance' && !c.dead) {
+        ctx.fillStyle = '#d7262e'; ctx.fillRect(-L / 2 + 0.1, -W / 2 + 0.02, L - 0.2, 0.16); ctx.fillRect(-L / 2 + 0.1, W / 2 - 0.18, L - 0.2, 0.16);
+        ctx.fillRect(-1.2, -0.18, 1.3, 0.36); ctx.fillRect(-0.73, -0.65, 0.36, 1.3);
+        const f = Math.floor(Game.time * 7) % 2; ctx.fillStyle = c.siren ? (f ? '#ff2d2d' : '#ffe0e0') : '#8a2020'; ctx.fillRect(roofF - 0.5, -0.8, 0.35, 1.6);
+      }
       if (st === 'swat') { ctx.fillStyle = '#9aa3ad'; ctx.font = 'bold 0.8px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.save(); ctx.rotate(Math.PI / 2); ctx.fillText('SWAT', 0, 0.6); ctx.restore(); }
     }
     // 보닛 라인
@@ -454,7 +475,7 @@ function lightPass(amb) {
   for (const pk of Game.pickups) if (!pk.taken) glow(pk.x, pk.y, 3, '255,255,200', 0.35 * k);
   const H = Police.heli;
   if (H && !H.dead) { const tx = Wanted.seen ? Game.player.px : Wanted.searchX, ty = Wanted.seen ? Game.player.py : Wanted.searchY; glow(lerp(H.x, tx, 0.85), lerp(H.y, ty, 0.85), 8, '230,240,255', 0.9 * k); }
-  for (const m of Missions.targets()) glow(m.x, m.y, 5, '255,220,120', 0.4 * k);
+  for (const m of allTargets()) glow(m.x, m.y, 5, '255,220,120', 0.4 * k);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalCompositeOperation = 'multiply';
   ctx.drawImage(lightCanvas, 0, 0, canvas.width, canvas.height);
@@ -495,6 +516,8 @@ function drawBuildings(amb) {
   vis.sort((a, b) => b._d - a._d);
   for (const b of vis) drawBuilding(b, amb, night);
 }
+const PLACE_MARK = { ammu: '#ff6b5a', ammu2: '#ff6b5a', burger: '#ffb347', burger2: '#ffb347', mart: '#7ae68f', mart2: '#7ae68f', mart3: '#7ae68f', jobcenter: '#6fb6ff', broker: '#ff5d8f' };
+const SHOP_ROOF = { ammu: ['#b23a2e', '#f2f2f2'], burger: ['#e0572f', '#ffe08a'], mart: ['#2e8b57', '#f2fff4'], jobcenter: ['#2d5d9f', '#ffffff'], broker: ['#3a2346', '#ff5d8f'] };
 function drawBuilding(b, amb, night) {
   const X0 = b.x0 * T, Y0 = b.y0 * T, X1 = (b.x1 + 1) * T, Y1 = (b.y1 + 1) * T, h = b.h;
   const P = (x, y, z) => proj(x, y, z);
@@ -588,9 +611,11 @@ function drawBuilding(b, amb, night) {
   } else if (b.kind === 'police') {
     ctx.fillStyle = tint('#f2f2f2', amb); ctx.font = `bold ${2.2 * f}px "Black Han Sans", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('POLICE', 0, 0);
     ctx.strokeStyle = tint('#f2c14e', amb); ctx.lineWidth = 0.3; ctx.beginPath(); ctx.arc(0, 0, Math.min(Math.abs(rw), Math.abs(rh)) * 0.4, 0, TAU); ctx.stroke();
-  } else if (b.kind === 'ammu') {
-    ctx.fillStyle = tint('#b23a2e', amb); ctx.fillRect(-rw / 2 + 0.6, -rh / 2 + 0.6, rw - 1.2, rh - 1.2);
-    ctx.fillStyle = tint('#f2f2f2', amb); ctx.font = `bold ${1.8 * f}px "Black Han Sans", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('총포상', 0, 0);
+  } else if (SHOP_ROOF[b.kind]) {
+    const [bg, fg] = SHOP_ROOF[b.kind];
+    ctx.fillStyle = tint(bg, amb); ctx.fillRect(-rw / 2 + 0.6, -rh / 2 + 0.6, rw - 1.2, rh - 1.2);
+    ctx.fillStyle = tint(fg, amb); ctx.font = `bold ${Math.min(1.8, Math.abs(rw) / Math.max(2, b.label.length) * 0.9) * f}px "Black Han Sans", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(b.label, 0, 0);
+    if (night > 0.35) { ctx.strokeStyle = fg; ctx.globalAlpha = 0.8; ctx.lineWidth = 0.25; ctx.strokeRect(-rw / 2 + 0.9, -rh / 2 + 0.9, rw - 1.8, rh - 1.8); ctx.globalAlpha = 1; }
   } else {
     // 옥상 설비 (결정적 난수)
     let s = b.seed * 1000;
@@ -708,8 +733,8 @@ function renderScene() {
     drawPickupIcon(ctx, k.type, k.wname, 0.9); ctx.restore();
   }
   // 미션 마커 / 상점 / 페인트샵 표시
-  for (const m of Missions.targets()) drawMarker(m.x, m.y, m.c, m.big || m.giver);
-  const am = World.places.ammu; if (am) drawMarker(am.x, am.y, '#ff6b5a', false);
+  for (const m of allTargets()) drawMarker(m.x, m.y, m.c, m.big || m.giver);
+  for (const [k, pl] of Object.entries(World.places)) { const col = PLACE_MARK[k]; if (col && pl) drawMarker(pl.x, pl.y, col, false); }
   drawParticles(true);
   // 보행자(시체 먼저)
   for (const p of Game.peds) if (p.dead && Math.abs(p.x - Cam.x) < Cam.vw / 2 + 2 && Math.abs(p.y - Cam.y) < Cam.vh / 2 + 2) drawPed(p);

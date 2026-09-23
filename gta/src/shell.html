@@ -58,6 +58,9 @@
   .shop-row { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
   .shop-info { display: flex; flex-direction: column; font-size: 14px; }
   .shop-info span { color: var(--muted); font-size: 12px; }
+  .job-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+  .job-row b { display: block; font-size: 15px; } .job-row span { color: var(--muted); font-size: 12.5px; line-height: 1.5; display: block; } .job-row i { color: var(--gold); font-style: normal; font-size: 12px; }
+  #pause .card, #jobs .card, #shop .card { max-height: calc(100% - 16px); }
   #shop-money { font-family: var(--num); font-size: 26px; color: #8df28d; letter-spacing: 0.04em; }
   /* ---------- 터치 조작 ---------- */
   #touch { display: none; }
@@ -75,6 +78,10 @@
   #t-enter { right: 116px; bottom: calc(126px + env(safe-area-inset-bottom)); }
   #t-weapon { right: 30px; bottom: calc(196px + env(safe-area-inset-bottom)); width: 54px; height: 54px; font-size: 12px; }
   #t-radio { right: 94px; bottom: calc(206px + env(safe-area-inset-bottom)); width: 48px; height: 48px; font-size: 11px; }
+  #t-run { right: calc(196px + env(safe-area-inset-right)); bottom: calc(40px + env(safe-area-inset-bottom)); }
+  #t-steal { display: none !important; right: calc(196px + env(safe-area-inset-right)); bottom: calc(118px + env(safe-area-inset-bottom)); background: rgba(242,193,78,0.35); border-color: #f2c14e; }
+  body.cansteal:not(.driving) #t-steal { display: flex !important; }
+  body.driving #t-run { display: none; }
   #t-map, #t-pause { top: calc(118px + env(safe-area-inset-top)); width: 44px; height: 44px; font-size: 12px; }
   #t-map { left: 14px; }
   #t-pause { left: 66px; }
@@ -83,17 +90,20 @@
   body.touch.playing.driving #drive { display: block; }
   body.driving #stick, body.driving #stick-zone, body.driving #t-weapon { display: none !important; }
   #wheel { position: fixed; z-index: 6; left: calc(18px + env(safe-area-inset-left)); bottom: calc(16px + env(safe-area-inset-bottom)); width: 156px; height: 156px; touch-action: none; }
-  #wheel svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5)); }
-  #wheel.on svg { filter: drop-shadow(0 0 10px rgba(255, 93, 143, 0.55)); }
-  .pedal { position: fixed; z-index: 6; bottom: calc(14px + env(safe-area-inset-bottom)); border-radius: 12px 12px 8px 8px; border: 2px solid rgba(255,255,255,0.35);
-    background: repeating-linear-gradient(0deg, #2a2f38 0 9px, #1b1f26 9px 14px); color: #fff; font-weight: 900; font-size: 13px; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 8px; box-sizing: border-box;
-    box-shadow: 0 6px 0 #0b0d12, 0 8px 14px rgba(0,0,0,0.5); transform-origin: 50% 100%; transition: transform .05s, box-shadow .05s; }
-  .pedal span { background: rgba(0,0,0,0.55); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.04em; }
-  .pedal.on { transform: perspective(300px) rotateX(18deg) translateY(4px); box-shadow: 0 2px 0 #0b0d12, 0 3px 6px rgba(0,0,0,0.5); }
-  #pedal-gas { right: calc(16px + env(safe-area-inset-right)); width: 72px; height: 132px; border-color: rgba(120, 230, 150, 0.6); }
-  #pedal-gas.on { border-color: #7ae68f; }
-  #pedal-brake { right: calc(98px + env(safe-area-inset-right)); width: 92px; height: 88px; border-color: rgba(255, 120, 110, 0.6); }
-  #pedal-brake.on { border-color: #ff6b5a; }
+  #wheel svg { width: 100%; height: 100%; display: block; opacity: .88; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.55)); }
+  #wheel.on svg { opacity: 1; }
+  /* 알루미늄 페달: 금속 판 + 고무 미끄럼 방지 줄 */
+  .pedal { position: fixed; z-index: 6; bottom: calc(14px + env(safe-area-inset-bottom)); border-radius: 7px; box-sizing: border-box;
+    background: repeating-linear-gradient(180deg, transparent 0 13px, rgba(10,11,14,.78) 13px 17px), linear-gradient(180deg, #a9b0b9, #5e656f);
+    background-clip: padding-box; border: 3px solid #1a1d22; color: #111; opacity: .9;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 5px 0 #0b0d10, 0 8px 12px rgba(0,0,0,.45);
+    transform-origin: 50% 100%; transition: transform .06s, box-shadow .06s, filter .06s; }
+  .pedal span { position: absolute; left: 50%; top: -20px; transform: translateX(-50%); font-size: 11px; font-weight: 700; color: rgba(255,255,255,.85); letter-spacing: .12em; text-shadow: 0 1px 2px #000; white-space: nowrap; }
+  .pedal::after { content: ''; position: absolute; inset: 4px; border-radius: 4px; border: 1px solid rgba(255,255,255,.25); pointer-events: none; }
+  .pedal.on { opacity: 1; transform: perspective(260px) rotateX(20deg) translateY(3px); filter: brightness(.85); box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 2px 0 #0b0d10, 0 3px 6px rgba(0,0,0,.4); }
+  #pedal-gas { right: calc(18px + env(safe-area-inset-right)); width: 62px; height: 128px; }
+  #pedal-brake { right: calc(96px + env(safe-area-inset-right)); width: 84px; height: 84px; }
+  #pedal-gas.on { border-color: #3fbf6a; } #pedal-brake.on { border-color: #d9443a; }
   body.driving #t-hb { right: calc(104px + env(safe-area-inset-right)); bottom: calc(116px + env(safe-area-inset-bottom)); width: 60px; height: 60px; }
   body.driving #t-enter { right: calc(18px + env(safe-area-inset-right)); bottom: calc(162px + env(safe-area-inset-bottom)); width: 60px; height: 60px; }
   body.driving #t-fire { right: calc(196px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); width: 62px; height: 62px; font-size: 13px; }
@@ -112,6 +122,8 @@
     #t-enter { right: calc(112px + env(safe-area-inset-right)); bottom: calc(92px + env(safe-area-inset-bottom)); }
     #t-weapon { right: calc(30px + env(safe-area-inset-right)); bottom: calc(122px + env(safe-area-inset-bottom)); }
     #t-radio { right: calc(100px + env(safe-area-inset-right)); bottom: calc(166px + env(safe-area-inset-bottom)); }
+    #t-run { right: calc(196px + env(safe-area-inset-right)); bottom: calc(20px + env(safe-area-inset-bottom)); }
+    #t-steal { right: calc(196px + env(safe-area-inset-right)); bottom: calc(96px + env(safe-area-inset-bottom)); }
     #stick:not(.active) { bottom: calc(24px + env(safe-area-inset-bottom)); left: calc(24px + env(safe-area-inset-left)) !important; }
   }
   @media (max-width: 520px) { .kicker { font-size: 12px; letter-spacing: 0.16em; } .tag { font-size: 14px; } }
@@ -136,7 +148,10 @@
     </div>
     <div class="tab" id="tab-keys">
       <dl class="keys only-mobile">
-        <dt>왼쪽 화면</dt><dd>손가락을 대고 끌면 이동 / 운전 (끝까지 밀면 전력 질주)</dd>
+        <dt>왼쪽 화면</dt><dd>손가락을 대고 끌면 이동 (끝까지 밀면 달리기)</dd>
+        <dt>달리기</dt><dd>누르는 동안 달린다 — 체력 바가 바닥나면 잠시 숨을 고른다</dd>
+        <dt>운전</dt><dd>핸들을 돌려 조향, GAS 페달 가속, BRAKE 페달 감속·후진</dd>
+        <dt>훔치기</dt><dd>시민 가까이 가면 나타남 — 뒤에서 누르면 소매치기</dd>
         <dt>발사</dt><dd>누르고 있으면 연사 — 가장 가까운 적을 자동 조준</dd>
         <dt>탑승</dt><dd>차에 타고 내리기 (운전자가 있으면 끌어낸다)</dd>
         <dt>드리프트</dt><dd>핸드브레이크 — 달리면서 꺾으며 누른다</dd>
@@ -149,7 +164,10 @@
         <dt>마우스</dt><dd>조준 · 왼쪽 클릭 사격 (차 안에서는 드라이브바이)</dd>
         <dt>F · ENTER</dt><dd>차량 탑승 / 하차 (운전자가 있으면 끌어내린다)</dd>
         <dt>SPACE</dt><dd>핸드브레이크 — 드리프트</dd>
-        <dt>SHIFT</dt><dd>전력 질주</dd>
+        <dt>SHIFT</dt><dd>달리기 (노란 체력 바를 쓴다 · 음식·음료로 회복)</dd>
+        <dt>T</dt><dd>소매치기 (시민 뒤로 몰래 다가가서)</dd>
+        <dt>X</dt><dd>하던 직업 그만두기</dd>
+        <dt>V</dt><dd>운전 시점 전환 (차 방향 회전 / 북쪽 고정)</dd>
         <dt>Q · E · 휠 · 1–8</dt><dd>무기 교체</dd>
         <dt>R</dt><dd>라디오 채널 (차 안)</dd>
         <dt>H · G</dt><dd>경적 · 경찰차 사이렌</dd>
@@ -162,8 +180,12 @@
     <div class="tab" id="tab-sys" hidden>
       <p><b>수배 ★</b> — 범죄마다 '열기' 점수가 쌓여 별 1~5개가 된다. 경찰이 직접 보거나, 목격한 시민이 몇 초 뒤 신고한다. 경찰 시야를 벗어나면 별이 깜빡이고 레이더에 붉은 수색 원이 생긴다. 원 밖에서 들키지 않고 버티면 수배가 풀린다. 페인트샵(S)도 방법.</p>
       <p><b>경찰 전력</b> — ★ 도보 순경 · ★★ 순찰차와 발포 · ★★★ 헬기와 검문소 · ★★★★ SWAT와 헬기 사격. ★1~3에서는 붙잡히면 체포(BUSTED).</p>
+      <p><b>스토리</b> — 미션 12개. 도난, 배달, 암살, 소탕, 경주, 미행, 강도, 호송, 시한폭탄, 최종 결전.</p>
       <p><b>교통</b> — 차들은 차선을 따라 달리고, 신호를 지키며, 앞차와의 간격을 유지한다. 들이받으면 겁먹고 과속으로 달아나기도 한다.</p>
       <p><b>도시</b> — 다운타운 · 미드타운 · 웨스트 힐즈 · 하버 포인트(청룡파 구역) · 선셋 비치 · 센트럴 파크. 1초 = 게임 속 1분으로 낮과 밤이 돌고, 가끔 비가 와 노면이 미끄러워진다.</p>
+      <p><b>상점</b> — 총포상(총): 무기·방탄복 · 버거 샷(버): 버거·세트·콜라 · 24 편의점(편): 간식, 에너지 드링크, 구급상자, 복권. 문 앞 마커로 걸어 들어가면 열린다.</p>
+      <p><b>직업</b> — 고용센터(J): 택시 기사 · 구급대원 · 음식 배달 / 브로커($): 차량 수출 · 밀수 운반 · 소매치기. 반복할수록 보수가 오른다.</p>
+      <p><b>무단횡단</b> — 횡단보도가 아닌 곳이나 빨간 보행 신호에 건너면 경찰이 딱지를 뗀다.</p>
       <p><b>수집</b> — 숨겨진 꾸러미 10개(개당 $1,000), 뇌물 별(수배 −1), 곳곳의 무기·체력·방탄복.</p>
     </div>
     <div class="tab" id="tab-refs" hidden>
@@ -187,6 +209,8 @@
     <button class="btn primary" id="btn-resume">계속하기</button>
     <button class="btn" id="btn-map">지도 보기</button>
     <button class="btn" id="btn-sound">소리 끄기</button>
+    <button class="btn" id="btn-camrot">운전 시점: 차 방향으로 회전</button>
+    <button class="btn" id="btn-quitjob" hidden>하던 일 그만두기</button>
     <button class="btn" id="btn-quit">메인 메뉴로</button>
     <p>진행 상황은 미션을 완료할 때마다 이 브라우저에 자동 저장된다.</p>
   </div>
@@ -194,10 +218,20 @@
 
 <div id="shop" class="overlay" hidden>
   <div class="card">
-    <h2>총포상</h2>
+    <h2 id="shop-title">총포상</h2>
+    <p id="shop-sub"></p>
     <div id="shop-money">$0</div>
     <div id="shop-list"></div>
     <button class="btn" id="shop-close">나가기</button>
+  </div>
+</div>
+
+<div id="jobs" class="overlay" hidden>
+  <div class="card">
+    <h2 id="jobs-title">고용센터</h2>
+    <p id="jobs-sub"></p>
+    <div id="jobs-list"></div>
+    <button class="btn" id="jobs-close">나가기</button>
   </div>
 </div>
 
@@ -209,22 +243,32 @@
   <button class="tb" id="t-enter">탑승</button>
   <button class="tb" id="t-weapon">무기</button>
   <button class="tb" id="t-radio">라디오</button>
+  <button class="tb" id="t-run">달리기</button>
+  <button class="tb" id="t-steal">훔치기</button>
   <button class="tb" id="t-map">지도</button>
   <button class="tb" id="t-pause">Ⅱ</button>
   <div id="drive">
     <div id="wheel" aria-label="핸들">
       <svg viewBox="0 0 100 100" aria-hidden="true">
-        <defs><radialGradient id="rim" cx="50%" cy="40%" r="60%"><stop offset="0" stop-color="#4a505c"/><stop offset="1" stop-color="#15181e"/></radialGradient></defs>
-        <circle cx="50" cy="50" r="44" fill="none" stroke="url(#rim)" stroke-width="11"/>
-        <circle cx="50" cy="50" r="44" fill="none" stroke="rgba(255,255,255,0.18)" stroke-width="1" stroke-dasharray="2 3"/>
-        <path d="M50 50 L10 56 M50 50 L90 56 M50 50 L50 92" stroke="#2a2f38" stroke-width="9" stroke-linecap="round"/>
-        <circle cx="50" cy="52" r="15" fill="#1b1f26" stroke="#4a505c" stroke-width="2"/>
-        <path d="M50 44 l2.6 5.4 5.9 .8 -4.3 4.1 1 5.9 -5.2-2.8 -5.2 2.8 1-5.9 -4.3-4.1 5.9-.8z" fill="#f2c14e"/>
-        <rect x="46" y="3" width="8" height="10" rx="2" fill="#ff5d8f"/>
+        <defs>
+          <linearGradient id="rimG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3f47"/><stop offset=".5" stop-color="#1a1d22"/><stop offset="1" stop-color="#0c0e11"/></linearGradient>
+          <linearGradient id="spokeG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9ced6"/><stop offset="1" stop-color="#6f7680"/></linearGradient>
+        </defs>
+        <!-- D컷(평평한 아랫부분) 레이싱 핸들 -->
+        <path d="M22.4 80 A40 40 0 1 1 77.6 80 Z" fill="none" stroke="#07080a" stroke-width="12" stroke-linejoin="round" opacity=".55"/>
+        <path d="M22.4 80 A40 40 0 1 1 77.6 80 Z" fill="none" stroke="url(#rimG)" stroke-width="9.5" stroke-linejoin="round"/>
+        <path d="M17 40 A36 36 0 0 1 83 40" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="1.2"/>
+        <path d="M13.5 52 A36.5 36.5 0 0 0 16 64 M86.5 52 A36.5 36.5 0 0 1 84 64" stroke="#2b2f36" stroke-width="10" fill="none" stroke-linecap="round"/>
+        <path d="M49 10.2 h2 v8 h-2 z" fill="#e8413a"/>
+        <path d="M13 50 L38 53 M87 50 L62 53" stroke="url(#spokeG)" stroke-width="5" stroke-linecap="round"/>
+        <path d="M44 62 L41 78 M56 62 L59 78" stroke="url(#spokeG)" stroke-width="3.6" stroke-linecap="round"/>
+        <circle cx="50" cy="55" r="12.5" fill="#121418" stroke="#6f7680" stroke-width="1.4"/>
+        <circle cx="50" cy="55" r="8.5" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
+        <text x="50" y="58.2" text-anchor="middle" font-family="Bebas Neue, Impact, sans-serif" font-size="8.5" fill="#d9dde3" letter-spacing=".5">NH</text>
       </svg>
     </div>
-    <div id="pedal-brake" class="pedal"><span>브레이크</span></div>
-    <div id="pedal-gas" class="pedal"><span>엑셀</span></div>
+    <div id="pedal-brake" class="pedal"><span>BRAKE</span></div>
+    <div id="pedal-gas" class="pedal"><span>GAS</span></div>
   </div>
 </div>
 

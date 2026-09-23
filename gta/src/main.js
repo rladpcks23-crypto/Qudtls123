@@ -50,6 +50,7 @@ const Game = {
     const g = Missions.done ? Missions.givers[0] : Missions.givers[Missions.idx];
     const P = this.player = new PlayerPed(g.x + 3, g.y);
     P.money = sv ? sv.money : 200; P.displayMoney = P.money;
+    Jobs.active = null; Jobs.stats = (sv && sv.jobs) || {};
     if (sv) { for (const k in sv.inv) P.inv[k] = sv.inv[k] === -1 ? Infinity : sv.inv[k]; this.clock = sv.time || this.clock; }
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
     placeStaticPickups();
@@ -110,7 +111,7 @@ const Game = {
       this.update(dt, true);
       if (this.deathT > 4.2) this.respawn(st);
     } else if (st === 'shop') {
-      if (keyHit('Escape', 'PadB')) Shop.close();
+      if (keyHit('Escape', 'PadB')) { if (!document.getElementById('jobs').hidden) Jobs.closeBoard(); else Shop.close(); }
     }
     try { Sfx.update(dt); } catch (e) { /* 오디오 오류는 게임을 멈추지 않게 */ }
     UI.update(st === 'play' || st === 'wasted' || st === 'busted' ? dt : 0);
@@ -132,7 +133,10 @@ const Game = {
     this.simulate(dt, true);
     const f = this.focus();
     Cam.x = smooth(Cam.x, f.x, 3, dt); Cam.y = smooth(Cam.y, f.y, 3, dt);
-    Cam.ppm = smooth(Cam.ppm, Math.min(CW, CH) / 70, 2, dt); Cam.vw = CW / Cam.ppm; Cam.vh = CH / Cam.ppm; Cam.sx = Cam.sy = 0;
+    Cam.ppm = smooth(Cam.ppm, Math.min(CW, CH) / 70, 2, dt); Cam.sx = Cam.sy = 0;
+    const at = this.attract && Settings.camRot ? this.attract.a + Math.PI / 2 : 0;
+    Cam.rot = angNorm(Cam.rot + angNorm(at - Cam.rot) * (1 - Math.exp(-1.5 * dt)));
+    camSetView();
   },
 
   update(dt, dead = false) {
@@ -140,13 +144,16 @@ const Game = {
     this.time += dt; this.clock = (this.clock + dt) % 1440;
     // 입력
     if (!dead) {
+      if (!P.car && keyHit('KeyT', 'PadX') && Pick.target) Pick.attempt();
+      if (keyHit('KeyX') && Jobs.active) Jobs.stop('일을 그만뒀다');
+      if (keyHit('KeyV')) { Settings.camRot = !Settings.camRot; Settings.save(); UI.toast(Settings.camRot ? '운전 시점: 차 방향으로 회전' : '운전 시점: 북쪽 고정'); }
       if (keyHit('KeyF', 'Enter', 'PadY')) { if (P.car) exitCar(P); else tryEnterCar(P); }
       if (keyHit('KeyE') || Input.wheel > 0 || (!P.car && keyHit('PadRB', 'PadRight'))) cycleWeapon(P, 1);
       if (keyHit('KeyQ') || Input.wheel < 0 || (!P.car && keyHit('PadLB', 'PadLeft'))) cycleWeapon(P, -1);
       for (let i = 1; i <= 8; i++) if (keyHit('Digit' + i)) { const w = WEAPON_ORDER[i - 1]; if (P.inv[w] > 0) { P.weapon = w; UI.weaponFlash = 1; } }
       if (keyHit('KeyR', 'PadDown') && P.car) { Radio.cycle(); }
       if (keyHit('KeyZ', 'PadUp')) Cam.zoomMul = Cam.zoomMul === 1 ? 1.45 : Cam.zoomMul === 1.45 ? 0.8 : 1;
-      if (P.car && P.car.type === 'police' && keyHit('KeyG', 'PadLeft')) { P.car.siren = !P.car.siren; }
+      if (P.car && (P.car.type === 'police' || P.car.type === 'ambulance') && keyHit('KeyG', 'PadLeft')) { P.car.siren = !P.car.siren; }
       if (P.car) updatePlayerInCar(P, dt); else updatePlayerFoot(P, dt);
     }
     this.simulate(dt, false);
@@ -154,6 +161,9 @@ const Game = {
     Police.update(dt);
     Jay.update(dt);
     Missions.update(dt);
+    Jobs.update(dt);
+    Pick.scan();
+    if (Pick.target !== this._lastPick) { this._lastPick = Pick.target; document.body.classList.toggle('cansteal', !!Pick.target); }
     updatePickups(dt);
     this.places(dt);
     // 사망
@@ -273,7 +283,13 @@ const Game = {
     const P = this.player;
     let tx = P.px, ty = P.py;
     const car = P.car;
-    if (car) { tx += clamp(car.vx * 0.55, -22, 22); ty += clamp(car.vy * 0.55, -22, 22); }
+    // 운전 중: 화면이 차 방향으로 돌고(차 앞이 화면 위), 진행 방향 앞쪽을 더 보여준다
+    const wantRot = car && Settings.camRot && !car.dead ? car.a + Math.PI / 2 : 0;
+    Cam.rot = angNorm(Cam.rot + angNorm(wantRot - Cam.rot) * (1 - Math.exp(-(car ? 2.6 : 2) * dt)));
+    if (car) {
+      const f = car.fwd(), ahead = car.vf > 1 ? clamp(4 + car.vf * 0.45, 0, 20) : 0;
+      tx += clamp(car.vx * 0.3, -12, 12) + f[0] * ahead; ty += clamp(car.vy * 0.3, -12, 12) + f[1] * ahead;
+    }
     else if (!Input.usingTouch && !Pad.active && this.time - this.lastMouseMove < 3 && WEAPONS[P.weapon] && !WEAPONS[P.weapon].melee) {
       const [wx, wy] = screenToWorld(Input.mouse.x, Input.mouse.y);
       tx += clamp((wx - P.x) * 0.2, -6, 6); ty += clamp((wy - P.y) * 0.2, -6, 6);
@@ -281,7 +297,7 @@ const Game = {
     Cam.x = smooth(Cam.x, tx, car ? 4 : 5, dt); Cam.y = smooth(Cam.y, ty, car ? 4 : 5, dt);
     const span = (car ? 56 + car.speed * 1.05 : 38) * Cam.zoomMul;
     Cam.ppm = smooth(Cam.ppm, Math.min(CW, CH) / Math.min(130, span), 1.6, dt);
-    Cam.vw = CW / Cam.ppm; Cam.vh = CH / Cam.ppm;
+    camSetView();
     Cam.shake = Math.max(0, Cam.shake - dt * 1.6);
     Cam.sx = (Math.random() - 0.5) * Cam.shake * 14; Cam.sy = (Math.random() - 0.5) * Cam.shake * 14;
   },
@@ -303,9 +319,15 @@ const Game = {
         UI.toast(had ? '새 도색 완료! 수배가 해제됐다 (-$100)' : '수리 및 도색 완료 (-$100)');
       }
     }
-    // 총포상
-    const A = World.places.ammu;
-    if (A && !P.car && this.shopCool <= 0 && dist(P.x, P.y, A.x, A.y) < 1.8) { Shop.open(); }
+    // 상점 · 직업 게시판 (걸어서 문 앞 마커에 들어가면 열림)
+    if (!P.car && this.shopCool <= 0 && !(Missions.active && Missions.active.def.noShop)) {
+      for (const [k, kind] of [['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart']]) {
+        const S = World.places[k]; if (S && dist(P.x, P.y, S.x, S.y) < 1.8) { Shop.open(kind); return; }
+      }
+      const JC = World.places.jobcenter, BR = World.places.broker;
+      if (JC && dist(P.x, P.y, JC.x, JC.y) < 1.8) Jobs.openBoard(true);
+      else if (BR && dist(P.x, P.y, BR.x, BR.y) < 1.8) Jobs.openBoard(false);
+    }
   },
 
   wasted() {
@@ -313,6 +335,7 @@ const Game = {
     P.dead = true; this.state = 'wasted'; this.deathT = 0;
     if (P.car) { const c = P.car; c.driver = null; P.car = null; P.x = c.x; P.y = c.y; }
     if (Missions.active) Missions.fail('사망');
+    Jobs.stop('쓰러져서 일을 놓쳤다');
     Sfx.failed();
   },
   busted() {
@@ -321,6 +344,7 @@ const Game = {
     this.state = 'busted'; this.deathT = 0;
     if (P.car) { const c = P.car; exitCar(P, true); c.driver = null; }
     if (Missions.active) Missions.fail('체포됨');
+    Jobs.stop('체포되어 일을 놓쳤다');
     Sfx.failed();
   },
   respawn(kind) {
@@ -350,7 +374,6 @@ const Game = {
   },
 };
 
-function screenToWorld(sx, sy) { return [(sx - CW / 2 - Cam.sx) / Cam.ppm + Cam.x, (sy - CH / 2 - Cam.sy) / Cam.ppm + Cam.y]; }
 
 function spawnLaneSpot(f, inner, outer, initial) {
   for (let k = 0; k < 6; k++) {
@@ -390,8 +413,15 @@ function updatePlayerFoot(P, dt) {
   if (Pad.active && (Pad.lx || Pad.ly)) { mx = Pad.lx; my = Pad.ly; mag = Math.hypot(mx, my); }
   if (Input.touch.on) { mx = Input.touch.jx; my = Input.touch.jy; mag = Math.hypot(mx, my); }
   if (mag > 1) { mx /= mag; my /= mag; mag = 1; }
-  const sprint = keyDown('ShiftLeft', 'ShiftRight', 'PadA') || (Input.touch.on && mag > 0.92);
-  const speed = P.downT > 0 ? 0 : sprint ? 7.2 : 4.4;
+  if (Cam.rot) { const c = Math.cos(Cam.rot), s = Math.sin(Cam.rot); [mx, my] = [mx * c - my * s, mx * s + my * c]; }
+  // 달리기: 체력(스태미나)을 쓰며 빨리 달린다. 바닥나면 숨이 차서 잠깐 못 달림. 음식·음료로 회복.
+  const wantRun = (keyDown('ShiftLeft', 'ShiftRight', 'PadA') || Input.touch.run || (Input.touch.on && mag > 0.92)) && mag > 0.15;
+  if (P.exhausted && P.stamina > 0.35) P.exhausted = false;
+  const sprint = wantRun && !P.exhausted;
+  P.boostT = Math.max(0, P.boostT - dt);
+  if (sprint) { if (P.boostT <= 0) { P.stamina -= dt / 9; if (P.stamina <= 0) { P.stamina = 0; P.exhausted = true; UI.toast('숨이 차다! 잠깐 걸으며 쉬자'); } } }
+  else P.stamina = Math.min(1, P.stamina + dt * (mag > 0.15 ? 0.12 : 0.28));
+  const speed = P.downT > 0 ? 0 : sprint ? (P.boostT > 0 ? 8.2 : 7.6) : P.exhausted ? 3.4 : 4.4;
   P.cd -= dt; P.hitFlash -= dt; P.flash -= dt;
   if (P.downT > 0) { P.downT -= dt; P.vx *= Math.exp(-3 * dt); P.vy *= Math.exp(-3 * dt); }
   else { P.vx = smooth(P.vx, mx * speed, 14, dt); P.vy = smooth(P.vy, my * speed, 14, dt); }
@@ -467,7 +497,7 @@ function tryEnterCar(P) {
   P.car = c; c.driver = 'player'; c.ai = null; c.driverKind = null; c.siren = false;
   if (c.type === 'police') c.sirenMode = 1;
   Sfx.tone({ x: c.x, y: c.y, f0: 180, f1: 90, dur: 0.1, type: 'square', vol: 0.3 });
-  UI.car(c.V.name);
+  UI.car(c.label || c.V.name);
   for (const sp of World.parking) if (sp.car === c) { sp.car = null; sp.cd = 60; }
 }
 function exitCar(P, force) {

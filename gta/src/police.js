@@ -24,6 +24,8 @@ const CRIMES = {
   explosion: { heat: 70, min: 2, name: '폭발' },
   destroyCar: { heat: 35, min: 1, name: '차량 파괴' },
   crash: { heat: 3, min: 0, name: '교통사고', copOnly: true },
+  theft: { heat: 12, min: 1, name: '절도' },
+  robbery: { heat: 380, min: 2, name: '강도' },
 };
 
 const Wanted = {
