@@ -273,7 +273,7 @@
       <p><b>시점</b> — PC <b>C</b> 키 · 모바일 위쪽 <b>시점</b> 버튼 · 게임패드 십자키 ↑ : 탑뷰 → 3인칭(후면) → 3인칭(전면) → 1인칭.</p>
       <p><b>조직</b> — 청룡파·파도파·아이언 형제단·네온 코브라가 도시를 나눠 가진다(지도 [갱단 구역]/G). 5일마다 대규모 전쟁. 지도의 <b>왕관 = 조직 보스</b>: 찾아가 계약하면 조직원 → 파트너(평판 300) → 후계 계약(평판 1000, $5만)으로 보스. 보스는 공격할 수 없다. 은신처(집)에서 <b>내 조직</b>을 세울 수도 있다($2만5천). 보스가 되면 라이벌 암살단이 온다. 조직원 수는 경제력·지지도에 비례.</p>
       <p><b>후원 · 경제</b> — 병원·경찰서·시청·기지 정문에 기부하면 시민·공무원 지지가 오른다(치료비 면제, 수배 빨리 풀림, 기지 출입). 증권거래소(주) · 부동산(부, 임대 수입) · 창고(창, 무역·밀수 운송) · 작전실(작, 대형 강도) · 중앙은행(중, 예금·대출) · 국회(국, 로비로 법 통과). 옷가게에서 모자·색·조직 마크 꾸미기. 지도는 휠·드래그·+/−로 확대.</p>
-      <p><b>도시</b> — 한가운데 에투알 광장(개선문)에서 가로수 대로 8개가 뻗고 둥근 대로 두 겹이 감싼다. 센트럴 파크의 네온 타워, 오페라 하우스, 대성당, 네온 아레나를 찾아보자.</p>
+      <p><b>도시</b> — 바다 위의 거대한 섬. 노란 고속도로 4줄(4차선), 강을 건너는 다리, 섬 양 끝의 숲. 한가운데 에투알 광장(개선문)에서 가로수 대로 8개가 뻗고 둥근 대로 두 겹이 감싼다. 센트럴 파크의 네온 타워, 오페라 하우스, 대성당, 네온 아레나를 찾아보자.</p>
       <p><b>무단횡단</b> — 횡단보도가 아닌 곳이나 빨간 보행 신호에 건너면 경찰이 딱지를 뗀다.</p>
       <p><b>수집</b> — 숨겨진 꾸러미 10개(개당 $1,000), 뇌물 별(수배 −1), 곳곳의 무기·체력·방탄복.</p>
     </div>
@@ -800,12 +800,12 @@ const DIST_NAMES = ['다운타운', '미드타운', '웨스트 힐즈', '하버 
 // 동네: 이름 · 구역 종류 · 씨앗 위치(맵 비율) · w(작을수록 넓게 퍼짐)
 const HOODS = [
   { name: '다운타운', d: 0, u: 0.52, v: 0.5, w: 0.8 },
-  { name: '미드타운', d: 1, u: 0.4, v: 0.36 }, { name: '노스 게이트', d: 1, u: 0.55, v: 0.2 }, { name: '유니언 스퀘어', d: 1, u: 0.66, v: 0.4 },
-  { name: '올드 타운', d: 1, u: 0.42, v: 0.64 }, { name: '리버사이드', d: 1, u: 0.66, v: 0.66 },
-  { name: '웨스트 힐즈', d: 2, u: 0.1, v: 0.3 }, { name: '파인 크레스트', d: 2, u: 0.28, v: 0.16 }, { name: '레이크뷰', d: 2, u: 0.8, v: 0.16 }, { name: '로즈우드', d: 2, u: 0.14, v: 0.5 },
-  { name: '하버 포인트', d: 3, u: 0.93, v: 0.4 }, { name: '터미널 아일랜드', d: 3, u: 0.93, v: 0.68 },
-  { name: '선셋 비치', d: 4, u: 0.5, v: 0.95 }, { name: '코랄 베이', d: 4, u: 0.8, v: 0.94 }, { name: '팜 쇼어', d: 4, u: 0.2, v: 0.95 },
-  { name: '아이언 밸리', d: 8, u: 0.18, v: 0.7 }, { name: '러스트 야드', d: 8, u: 0.34, v: 0.8 },
+  { name: '미드타운', d: 1, u: 0.38, v: 0.42 }, { name: '노스 게이트', d: 1, u: 0.52, v: 0.3 }, { name: '유니언 스퀘어', d: 1, u: 0.66, v: 0.42 },
+  { name: '올드 타운', d: 1, u: 0.46, v: 0.64 }, { name: '리버사이드', d: 1, u: 0.62, v: 0.62 },
+  { name: '웨스트 힐즈', d: 2, u: 0.1, v: 0.45 }, { name: '파인 크레스트', d: 2, u: 0.3, v: 0.26 }, { name: '레이크뷰', d: 2, u: 0.72, v: 0.3 }, { name: '로즈우드', d: 2, u: 0.2, v: 0.4 },
+  { name: '하버 포인트', d: 3, u: 0.88, v: 0.54 }, { name: '터미널 아일랜드', d: 3, u: 0.8, v: 0.66 },
+  { name: '선셋 비치', d: 4, u: 0.52, v: 0.8 }, { name: '코랄 베이', d: 4, u: 0.72, v: 0.78 }, { name: '팜 쇼어', d: 4, u: 0.2, v: 0.76 },
+  { name: '아이언 밸리', d: 8, u: 0.28, v: 0.56 }, { name: '러스트 야드', d: 8, u: 0.34, v: 0.72 },
 ];
 const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // 동 남 서 북 (화면 좌표, y 아래로)
 const rightOf = d => [-DIRS[d][1], DIRS[d][0]];   // 우측통행: 진행 방향의 오른쪽 차선
@@ -931,6 +931,49 @@ function genWorld(seed) {
     hE[ei - 1][ej] = hE[ei][ej] = false; vE[ei][ej - 1] = vE[ei][ej] = false;
     W.etoile = { i: ei, j: ej, cx: W.VX[ei] + 1, cy: W.HY[ej] + 1 }; // 타일 좌표(교차로 한가운데)
   }
+  // 섬: 블록(격자 칸) 단위로 땅/바다를 정한다 → 건물이 물 위에 서지 않는다.
+  //   해안선 = 찌그러진 타원 + 사인파 잡음, 서쪽에서 남쪽 바다로 흐르는 강(다리로 건넌다), 북서쪽 군 기지 반도
+  const ph = [R() * TAU, R() * TAU, R() * TAU, R() * TAU, R() * TAU];
+  const coastN = (u, v) => { const a = Math.atan2(v - 0.52, u - 0.5); return 0.07 * Math.sin(a * 3 + ph[0]) + 0.05 * Math.sin(a * 5 + ph[1]) + 0.03 * Math.sin(a * 9 + ph[2]) + 0.02 * Math.sin(a * 14 + ph[3]); };
+  // 자메이카처럼 동서로 긴 섬: 본섬 + 가늘어지는 동쪽 꼬리 + 기지가 있는 북서쪽 언덕 + 남쪽 곶, 남쪽 해안엔 만(灣) 두 개
+  const E = (u, v, cx, cy, rx, ry) => Math.hypot((u - cx) / rx, (v - cy) / ry);
+  const landAt = (u, v) => {
+    const n = coastN(u, v) * 0.6;
+    const inside = Math.min(E(u, v, 0.47, 0.52, 0.42, 0.33), E(u, v, 0.83, 0.58, 0.14, 0.11), E(u, v, 0.21, 0.2, 0.16, 0.14), E(u, v, 0.52, 0.84, 0.06, 0.08)) < 1 + n;
+    const bay = E(u, v, 0.64, 0.87, 0.075, 0.07) < 1 || E(u, v, 0.33, 0.87, 0.06, 0.05) < 1;
+    return inside && !bay;
+  };
+  const riverAt = (u, v) => (u > 0.1 && u < 0.41 && Math.abs(v - (0.64 + 0.03 * Math.sin(u * 14 + ph[4]))) < 0.022) || (v >= 0.62 && Math.abs(u - (0.4 + 0.02 * Math.sin(v * 12))) < 0.02);
+  W.rural = (u, v) => u < 0.12 || u > 0.87; // 섬 양 끝은 숲과 농가
+  const cellLand = [], cellRiver = [];
+  for (let i = 0; i < NX - 1; i++) { cellLand.push([]); cellRiver.push([]); for (let j = 0; j < NY - 1; j++) {
+    const u = (W.VX[i] + W.VX[i + 1] + 2) / 2 / MW, v = (W.HY[j] + W.HY[j + 1] + 2) / 2 / MH;
+    const base = j <= 1 && W.VX[i + 1] <= 186; // 기지로 이어지는 땅
+    const riv = !base && riverAt(u, v) && Math.hypot(u - 0.52, v - 0.5) > 0.12;
+    cellRiver[i].push(riv); cellLand[i].push((landAt(u, v) || base) && !riv);
+  } }
+  const cl = (i, j) => i >= 0 && j >= 0 && i < NX - 1 && j < NY - 1 && cellLand[i][j];
+  const cr = (i, j) => i >= 0 && j >= 0 && i < NX - 1 && j < NY - 1 && cellRiver[i][j];
+  // 도로 구간은 옆 칸 중 하나라도 땅이면 남긴다. 양쪽이 강이면(또는 땅-강) 다리로 남긴다
+  const keep = (a, b, ra, rb) => a || b || (ra && rb);
+  for (let i = 0; i < NX; i++) for (let j = 0; j < NY; j++) {
+    if (i < NX - 1 && hE[i][j] && !keep(cl(i, j - 1), cl(i, j), cr(i, j - 1), cr(i, j))) hE[i][j] = false;
+    if (j < NY - 1 && vE[i][j] && !keep(cl(i - 1, j), cl(i, j), cr(i - 1, j), cr(i, j))) vE[i][j] = false;
+  }
+  // 섬 가운데와 이어지지 않은 도로 조각은 없앤다
+  {
+    const st = [W.etoile.i + 1, W.etoile.j], seen = new Set([st.join()]), q = [st];
+    const nb = (i, j) => { const o = []; if (i < NX - 1 && hE[i][j]) o.push([i + 1, j]); if (i > 0 && hE[i - 1][j]) o.push([i - 1, j]); if (j < NY - 1 && vE[i][j]) o.push([i, j + 1]); if (j > 0 && vE[i][j - 1]) o.push([i, j - 1]); return o; };
+    while (q.length) { const [i, j] = q.pop(); for (const n of nb(i, j)) { const k = n.join(); if (!seen.has(k)) { seen.add(k); q.push(n); } } }
+    for (let i = 0; i < NX; i++) for (let j = 0; j < NY; j++) if (!seen.has(i + ',' + j)) { if (i < NX - 1) hE[i][j] = false; if (j < NY - 1) vE[i][j] = false; if (i > 0) hE[i - 1][j] = false; if (j > 0) vE[i][j - 1] = false; }
+    for (let i = 0; i < NX - 1; i++) for (let j = 0; j < NY - 1; j++) if (cellLand[i][j] && ![[i, j], [i + 1, j], [i, j + 1], [i + 1, j + 1]].some(([a, b]) => seen.has(a + ',' + b))) cellLand[i][j] = false;
+  }
+  W.cellLand = cellLand; W.cellRiver = cellRiver;
+  // 고속도로: 가로 2줄 · 세로 2줄 (4차선, AI가 빠르게 달린다)
+  const pickLine = (arr, f, avoid) => { let best = 1; for (let k = 1; k < arr.length - 1; k++) if (k !== avoid && Math.abs(arr[k] - f) < Math.abs(arr[best] - f)) best = k; return best; };
+  W.hwH = new Set([pickLine(W.HY, 0.3 * MH, W.etoile.j), pickLine(W.HY, 0.76 * MH, W.etoile.j)]);
+  W.hwV = new Set([pickLine(W.VX, 0.27 * MW, W.etoile.i), pickLine(W.VX, 0.75 * MW, W.etoile.i)]);
+
   // 노드
   W.nodes = [];
   for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
@@ -985,9 +1028,9 @@ function genWorld(seed) {
     const carve = (x, y) => {
       if (x < 1 || y < 1 || x >= MW - 1 || y >= MH - 1) return;
       const i = tIdx(x, y), t = W.tiles[i];
-      if (t === TL.ROAD || t === TL.WATER || t === TL.RUNWAY || W.dist[i] === DIST.BASE || W.region[i] === (W.etoile.block ? W.etoile.block.id : -9)) return;
+      if (t === TL.ROAD || t === TL.WATER || t === TL.RUNWAY || t === TL.DOCK || t === TL.SAND || W.dist[i] === DIST.BASE || W.region[i] === (W.etoile.block ? W.etoile.block.id : -9)) return;
       if (t === TL.BUILD) { const bb = W.buildings[W.bIndex[i]]; if (bb && !bb.removed) { bb.removed = true; for (let yy = bb.y0; yy <= bb.y1; yy++) for (let xx = bb.x0; xx <= bb.x1; xx++) { set(xx, yy, TL.GRASS); W.bIndex[tIdx(xx, yy)] = -1; } } }
-      set(x, y, TL.PLAZA); mask[i] = 1;
+      set(x, y, TL.ROAD); W.roadK[i] = 4; mask[i] = 1;
     };
     for (let y = 1; y < MH - 1; y++) for (let x = 1; x < MW - 1; x++) {
       const dx = x + 0.5 - cx, dy = y + 0.5 - cy, d = Math.hypot(dx, dy);
@@ -999,6 +1042,14 @@ function genWorld(seed) {
     const side = (x, y, tree) => { const tx = Math.floor(x), ty = Math.floor(y); if (tx < 1 || ty < 1 || tx >= MW - 1 || ty >= MH - 1) return; const t = W.tiles[tIdx(tx, ty)]; if (t === TL.ROAD || t === TL.WATER || t === TL.BUILD || W.dist[tIdx(tx, ty)] === DIST.BASE) return; if (tree) addTree(x * T, y * T, 'tree'); else W.lamps.push({ x: x * T, y: y * T }); };
     for (const [ux, uy] of rays) for (let s = R0 + 2, k = 0; s < Lmax; s += 2.6, k++) for (const sg of [-1, 1]) side(cx + ux * s - uy * sg * 2.1, cy + uy * s + ux * sg * 2.1, k % 4 !== 0);
     for (const rr of [ringR, ringR * 0.5]) for (let a = 0, k = 0; a < TAU; a += 2.6 / rr, k++) for (const sg of [-1, 1]) side(cx + Math.cos(a) * (rr + sg * 2.1), cy + Math.sin(a) * (rr + sg * 2.1), k % 4 !== 0);
+    // 골목: 큰 블록 한가운데를 가르는 좁은 길 (roadK 5)
+    for (const b of W.blocks) {
+      if (b.etoile || b.landmark || b.rural || b.district === DIST.PARK || b.district === DIST.DOWNTOWN) continue;
+      const w = b.x1 - b.x0 + 1, h = b.y1 - b.y0 + 1;
+      const alley = (x, y) => { const i = tIdx(x, y), t = W.tiles[i]; if (t === TL.ROAD || t === TL.WATER) return; if (t === TL.BUILD) { const bb = W.buildings[W.bIndex[i]]; if (bb && !bb.removed) { bb.removed = true; for (let yy = bb.y0; yy <= bb.y1; yy++) for (let xx = bb.x0; xx <= bb.x1; xx++) { set(xx, yy, TL.GRASS); W.bIndex[tIdx(xx, yy)] = -1; } } } set(x, y, TL.ROAD); W.roadK[i] = 5; mask[i] = 2; };
+      if (w >= 13 && R() < 0.8) { const x = Math.floor((b.x0 + b.x1) / 2); for (let y = b.y0 + 1; y < b.y1; y++) alley(x, y); }
+      if (h >= 13 && R() < 0.5) { const y = Math.floor((b.y0 + b.y1) / 2); for (let x = b.x0 + 1; x < b.x1; x++) alley(x, y); }
+    }
     // 대로 위의 나무·주차칸 치우고, 헐린 건물의 필지는 비운다
     const inMask = (x, y) => mask[tIdx(clamp(Math.floor(x / T), 0, MW - 1), clamp(Math.floor(y / T), 0, MH - 1))];
     W.trees = W.trees.filter(t => !inMask(t.x, t.y));
@@ -1064,10 +1115,40 @@ function genWorld(seed) {
     }
   }
 
+  // 4-2) 고속도로 바깥 차선 (roadK 6 = 가로 바깥 차선, 7 = 세로 바깥 차선)
+  const hwLane = (x, y, k) => { if (x < 0 || y < 0 || x >= MW || y >= MH) return; const i = tIdx(x, y); if (W.tiles[i] === TL.ROAD) { if (W.roadK[i] !== k) W.roadK[i] = 3; return; } set(x, y, TL.ROAD); W.roadK[i] = k; };
+  for (let i = 0; i < NX; i++) for (let j = 0; j < NY; j++) {
+    if (i < NX - 1 && hE[i][j] && W.hwH.has(j)) for (let x = W.VX[i]; x < W.VX[i + 1] + 2; x++) { hwLane(x, W.HY[j] - 1, 6); hwLane(x, W.HY[j] + 2, 6); }
+    if (j < NY - 1 && vE[i][j] && W.hwV.has(i)) for (let y = W.HY[j]; y < W.HY[j + 1] + 2; y++) { hwLane(W.VX[i] - 1, y, 7); hwLane(W.VX[i] + 2, y, 7); }
+  }
+  W.hwLine = new Uint8Array(MW * MH);
+  for (let i = 0; i < NX; i++) for (let j = 0; j < NY; j++) {
+    if (i < NX - 1 && hE[i][j] && W.hwH.has(j)) for (let x = W.VX[i]; x < W.VX[i + 1] + 2; x++) for (let d = 0; d < 2; d++) W.hwLine[tIdx(x, W.HY[j] + d)] = 1;
+    if (j < NY - 1 && vE[i][j] && W.hwV.has(i)) for (let y = W.HY[j]; y < W.HY[j + 1] + 2; y++) for (let d = 0; d < 2; d++) W.hwLine[tIdx(W.VX[i] + d, y)] = 1;
+  }
+  // 4-3) 바다·강 칸은 물로 (그 위를 지나는 도로 = 다리)
+  //   도로가 없는 줄(칸 사이 띠)은 닿은 칸이 모두 땅일 때만 땅이다 (아니면 블록이 바다 위로 새어 나간다)
+  const inBaseArea = (x, y) => x >= 3 && x <= 188 && y >= 3 && y < W.HY[0];
+  const colI = new Int16Array(MW).fill(-1), colS = new Uint8Array(MW), rowJ = new Int16Array(MH).fill(-1), rowS = new Uint8Array(MH);
+  for (let i = 0; i < NX; i++) for (let x = W.VX[i]; x < (i < NX - 1 ? W.VX[i + 1] : W.VX[i] + 2); x++) { colI[x] = i; colS[x] = x < W.VX[i] + 2 ? 1 : 0; }
+  for (let j = 0; j < NY; j++) for (let y = W.HY[j]; y < (j < NY - 1 ? W.HY[j + 1] : W.HY[j] + 2); y++) { rowJ[y] = j; rowS[y] = y < W.HY[j] + 2 ? 1 : 0; }
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+    if (get(x, y) === TL.ROAD || inBaseArea(x, y)) continue;
+    const i = colI[x], j = rowJ[y];
+    if (i < 0 || j < 0) { set(x, y, TL.WATER); continue; }
+    const xs = colS[x] ? [i - 1, i] : [i], ys = rowS[y] ? [j - 1, j] : [j];
+    let land = true; for (const a of xs) for (const b of ys) if (!cl(a, b)) land = false;
+    if (!land) set(x, y, TL.WATER);
+  }
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+    const outside = x < W.VX[0] || y < W.HY[0] || x > W.VX[NX - 1] + 1 || y > W.HY[NY - 1] + 1;
+    if (outside && !inBaseArea(x, y)) set(x, y, TL.WATER);
+  }
+
   // 5) 블록 찾기 (순환도로 내부의 비도로 영역을 flood fill)
   const bx0 = W.VX[0] + 2, bx1 = W.VX[NX - 1] - 1, by0 = W.HY[0] + 2, by1 = W.HY[NY - 1] - 1;
   for (let y = by0; y <= by1; y++) for (let x = bx0; x <= bx1; x++) {
-    if (get(x, y) === TL.ROAD || W.region[tIdx(x, y)] >= 0) continue;
+    if (get(x, y) === TL.ROAD || get(x, y) === TL.WATER || W.region[tIdx(x, y)] >= 0) continue;
     const id = W.blocks.length, stack = [[x, y]];
     let x0 = x, y0 = y, x1 = x, y1 = y;
     W.region[tIdx(x, y)] = id;
@@ -1077,7 +1158,7 @@ function genWorld(seed) {
       for (const [dx, dy] of DIRS) {
         const nx = cx + dx, ny = cy + dy;
         if (nx < bx0 || nx > bx1 || ny < by0 || ny > by1) continue;
-        if (get(nx, ny) === TL.ROAD || W.region[tIdx(nx, ny)] >= 0) continue;
+        if (get(nx, ny) === TL.ROAD || get(nx, ny) === TL.WATER || W.region[tIdx(nx, ny)] >= 0) continue;
         W.region[tIdx(nx, ny)] = id; stack.push([nx, ny]);
       }
     }
@@ -1150,6 +1231,13 @@ function genWorld(seed) {
     b.lots = [];
     if (ix1 < ix0 || iy1 < iy0) continue;
     if (b.etoile) { buildEtoile(b, ix0, iy0, ix1, iy1); continue; }
+    if (W.rural((b.x0 + b.x1) / 2 / MW, (b.y0 + b.y1) / 2 / MH) && b.district !== DIST.HARBOR) { // 섬 끝의 숲·농가
+      b.rural = true;
+      for (let y = iy0; y <= iy1; y++) for (let x = ix0; x <= ix1; x++) { set(x, y, TL.GRASS); if (R() < 0.22) addTree((x + rr(0.2, 0.8)) * T, (y + rr(0.2, 0.8)) * T, 'tree'); }
+      const L = { x0: ix0 + 1, y0: iy0 + 1, x1: Math.min(ix1 - 1, ix0 + 4), y1: Math.min(iy1 - 1, iy0 + 4), edge: true, block: b };
+      if (L.x1 > L.x0 && L.y1 > L.y0) { for (let y = L.y0; y <= L.y1; y++) for (let x = L.x0; x <= L.x1; x++) set(x, y, TL.GRASS); W.trees = W.trees.filter(t => !(t.x >= L.x0 * T && t.x <= (L.x1 + 1) * T && t.y >= L.y0 * T && t.y <= (L.y1 + 1) * T)); L.b = addBuilding(L.x0, L.y0, L.x1, L.y1, rr(5, 7), 'house', rpick(PAL.house)); b.lots.push(L); }
+      continue;
+    }
     if (b.district === DIST.PARK) {
       for (let y = iy0; y <= iy1; y++) for (let x = ix0; x <= ix1; x++) set(x, y, TL.GRASS);
       const mx = Math.floor((ix0 + ix1) / 2), my = Math.floor((iy0 + iy1) / 2);
@@ -1210,39 +1298,63 @@ function genWorld(seed) {
     }
   }
 
-  // 6) 순환도로 바깥: 동쪽 부두, 남쪽 해변, 서/북 해안 산책로
-  const lastX = W.VX[NX - 1] + 1, lastY = W.HY[NY - 1] + 1, firstX = W.VX[0], firstY = W.HY[0];
+  // 6) 해안: 섬 둘레에 폭이 들쭉날쭉한 해안(산책로 → 남쪽 모래사장 / 동쪽 부두 / 나머지 풀밭·바위)
+  const lastX = W.VX[NX - 1] + 1, lastY = W.HY[NY - 1] + 1;
+  const riverT = new Uint8Array(MW * MH);
+  for (let i = 0; i < NX - 1; i++) for (let j = 0; j < NY - 1; j++) if (cellRiver[i][j]) for (let y = W.HY[j] + 2; y < W.HY[j + 1]; y++) for (let x = W.VX[i] + 2; x < W.VX[i + 1]; x++) riverT[tIdx(x, y)] = 1;
+  W.riverT = riverT;
+  const dL = new Uint8Array(MW * MH).fill(255); let front = [];
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { const i = tIdx(x, y); if (W.tiles[i] !== TL.WATER) { dL[i] = 0; front.push(i); } }
+  for (let d = 1; d <= 6 && front.length; d++) {
+    const nx = [];
+    for (const i of front) { const x = i % MW, y = (i / MW) | 0; for (const [ax, ay] of DIRS) { const X = x + ax, Y = y + ay; if (X < 0 || Y < 0 || X >= MW || Y >= MH) continue; const j = tIdx(X, Y); if (dL[j] === 255 && !riverT[j]) { dL[j] = d; nx.push(j); } } }
+    front = nx;
+  }
+  const cxT = MW * 0.5, cyT = MH * 0.52;
+  for (let y = 2; y < MH - 2; y++) for (let x = 2; x < MW - 2; x++) {
+    const i = tIdx(x, y), d = dL[i];
+    if (W.tiles[i] !== TL.WATER || d === 255 || d === 0 || riverT[i]) continue;
+    const width = 2 + Math.round(2.5 * (0.5 + 0.5 * Math.sin(x * 0.11 + ph[0]) * Math.cos(y * 0.13 + ph[1])));
+    if (d > width) continue;
+    const u = (x - cxT) / MW, v = (y - cyT) / MH, ang = Math.atan2(v, u);
+    const south = v > 0.18 && Math.abs(ang - Math.PI / 2) < 1.0, east = u > 0.2 && Math.abs(ang) < 0.9;
+    if (inBaseArea(x, y)) continue;
+    W.dist[i] = east ? DIST.HARBOR : south ? DIST.BEACH : DIST.COAST;
+    set(x, y, d === 1 ? TL.WALK : east ? TL.DOCK : south ? TL.SAND : TL.GRASS);
+  }
+  // 블록 밖 남은 땅(기지 앞 등): 도로 옆은 인도, 나머지 풀밭
   for (let y = 3; y < MH - 4; y++) for (let x = 3; x < MW - 4; x++) {
     const t = get(x, y);
-    if (t === TL.ROAD || t === TL.WATER || W.region[tIdx(x, y)] >= 0) continue;
-    const adjRoad = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]].some(([dx, dy]) => get(x + dx, y + dy) === TL.ROAD);
-    if (x > lastX) {
-      W.dist[tIdx(x, y)] = DIST.HARBOR;
-      set(x, y, adjRoad ? TL.WALK : TL.DOCK);
-    } else if (y > lastY) {
-      W.dist[tIdx(x, y)] = DIST.BEACH;
-      set(x, y, adjRoad ? TL.WALK : (y <= lastY + 3 ? TL.PLAZA : TL.SAND));
-    } else {
-      W.dist[tIdx(x, y)] = DIST.COAST;
-      set(x, y, adjRoad ? TL.WALK : TL.GRASS);
+    if (t !== TL.GRASS || W.region[tIdx(x, y)] >= 0) continue;
+    if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => get(x + dx, y + dy) === TL.ROAD)) set(x, y, TL.WALK);
+  }
+  // 마리나: 해안에 붙은 넓은 바다 (보트가 세워지는 곳)
+  W.marinas = [];
+  const coastOK = (x, y) => get(x, y) === TL.WATER && get(x + 1, y) === TL.WATER && get(x, y + 1) === TL.WATER && get(x - 1, y) === TL.WATER && get(x, y - 1) === TL.WATER && !riverT[tIdx(x, y)];
+  for (let k = 0; k < 400 && W.marinas.length < 18; k++) {
+    const a = k / 400 * TAU * 3 + R() * 0.02;
+    for (let r = 0.25; r < 0.55; r += 0.004) {
+      const x = Math.round(cxT + Math.cos(a) * r * MW), y = Math.round(cyT + Math.sin(a) * r * MH);
+      if (x < 4 || y < 4 || x >= MW - 4 || y >= MH - 4) break;
+      if (!coastOK(x, y)) continue;
+      const shore = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const t = get(x - dx * 2, y - dy * 2); return t === TL.WALK || t === TL.DOCK || t === TL.SAND; });
+      const px = (x + 0.5) * T, py = (y + 0.5) * T;
+      if (shore && !W.marinas.some(m => dist(m.x, m.y, px, py) < 110)) W.marinas.push({ x: px, y: py, a: Math.atan2(py - cyT * T, px - cxT * T), car: null, cd: 0 });
+      break;
     }
   }
-  // 마리나: 부두·해변에 붙은 바다 칸 (보트가 세워지는 곳)
-  W.marinas = [];
-  const coastOK = (x, y) => get(x, y) === TL.WATER && get(x + 1, y) === TL.WATER && get(x, y + 1) === TL.WATER && get(x - 1, y) === TL.WATER;
-  for (let y = W.HY[1]; y < MH - 16; y += 22) { const x = MW - 14; if (coastOK(x + 1, y) && get(x - 1, y) !== TL.WATER) W.marinas.push({ x: (x + 1.5) * T, y: (y + 0.5) * T, a: Math.PI / 2, car: null, cd: 0 }); }
-  for (let x = 20; x < MW - 30; x += 30) { const y = MH - 10; if (coastOK(x, y + 1)) W.marinas.push({ x: (x + 0.5) * T, y: (y + 1.5) * T, a: 0, car: null, cd: 0 }); }
-  // 부두: 컨테이너 줄 + 창고 몇 동
-  for (let y = W.HY[0]; y < lastY - 2; y += 4) {
-    for (let x = lastX + 3; x < MW - 7; x += 2) if (R() < 0.5 && get(x, y) === TL.DOCK && get(x, y + 1) === TL.DOCK) addBuilding(x, y, x, y + 1, 2.6 * ri(1, 3), 'container', rpick(PAL.cont));
+  // 동쪽 항구 부두(바다로 길게 뻗은 잔교)
+  for (let y = Math.floor(MH * 0.4); y < MH * 0.72; y += 14) {
+    let x = MW - 3; while (x > MW / 2 && get(x, y) === TL.WATER) x--;
+    if (x <= MW / 2 || W.dist[tIdx(x, y)] !== DIST.HARBOR && get(x, y) !== TL.DOCK && get(x, y) !== TL.WALK) continue;
+    for (let k = 1; k <= 12 && x + k < MW - 3; k++) for (let d = 0; d < 2; d++) if (get(x + k, y + d) === TL.WATER && !riverT[tIdx(x + k, y + d)]) { set(x + k, y + d, TL.DOCK); W.dist[tIdx(x + k, y + d)] = DIST.HARBOR; }
   }
-  // 해변 야자수 & 해안 나무
-  for (let x = 6; x < MW - 6; x += 1) {
-    if (R() < 0.18 && get(x, lastY + 2) === TL.PLAZA) addTree((x + 0.5) * T, (lastY + 2.5) * T, 'palm');
-    if (R() < 0.08 && get(x, lastY + 7) === TL.SAND) addTree((x + 0.5) * T, (lastY + 7.5) * T, 'palm');
-  }
+  // 부두 컨테이너 · 해변 야자수 · 해안 나무
+  for (let y = 4; y < MH - 5; y += 3) for (let x = 4; x < MW - 5; x += 2) if (get(x, y) === TL.DOCK && get(x, y + 1) === TL.DOCK && get(x + 1, y) === TL.DOCK && R() < 0.3) addBuilding(x, y, x, y + 1, 2.6 * ri(1, 3), 'container', rpick(PAL.cont));
   for (let y = 4; y < MH - 4; y++) for (let x = 4; x < MW - 4; x++) {
-    if (W.dist[tIdx(x, y)] === DIST.COAST && get(x, y) === TL.GRASS && R() < 0.1) addTree((x + 0.5) * T, (y + 0.5) * T, 'tree');
+    const t = get(x, y);
+    if (t === TL.SAND && R() < 0.05) addTree((x + 0.5) * T, (y + 0.5) * T, 'palm');
+    else if (t === TL.GRASS && W.region[tIdx(x, y)] < 0 && !inBaseArea(x, y) && R() < 0.14) addTree((x + 0.5) * T, (y + 0.5) * T, 'tree');
   }
 
   // 6-2) 포트 네온 군사 기지 (GTA V의 포트 잔쿠도처럼 들어가면 ★★★★)
@@ -1473,7 +1585,10 @@ function buildMinimap() {
   const bm = World.boulevardMask, E = World.etoile;
   for (let i = 0; i < MW * MH; i++) {
     let col = MINI_COL[World.tiles[i]];
-    if (bm && bm[i] && World.tiles[i] === TL.PLAZA) col = '#e8d59c'; // 방사형 대로 · 그랑 불바르
+    if (bm && bm[i] === 1 && World.tiles[i] === TL.ROAD) col = '#e8d59c'; // 방사형 대로 · 그랑 불바르
+    else if (bm && bm[i] === 2) col = '#9ea3ab'; // 골목
+    else if (World.tiles[i] === TL.ROAD && World.roadK[i] >= 6) col = '#f6d365'; // 고속도로
+    else if (World.tiles[i] === TL.ROAD && (World.hwLine && World.hwLine[i])) col = '#f6d365';
     if (E && E.R && Math.hypot(i % MW + 0.5 - E.cx, Math.floor(i / MW) + 0.5 - E.cy) < E.R && World.tiles[i] === TL.PLAZA) col = '#f2e6bf';
     const n = parseInt(col.slice(1), 16);
     img.data[i * 4] = (n >> 16) & 255; img.data[i * 4 + 1] = (n >> 8) & 255; img.data[i * 4 + 2] = n & 255; img.data[i * 4 + 3] = 255;
@@ -1482,6 +1597,11 @@ function buildMinimap() {
   World.mini = c;
 }
 
+// 고속도로 구간인가 (노드 id 두 개)
+function edgeHighway(a, b) {
+  const A = World.nodes[a], B = World.nodes[b]; if (!A || !B || !World.hwH) return false;
+  return A.j === B.j ? World.hwH.has(A.j) : A.i === B.i ? World.hwV.has(A.i) : false;
+}
 // ---------- 도로 그래프 질의 ----------
 function lightState(node, dir) {
   if (!node.light) return 'g';
@@ -1600,6 +1720,7 @@ function isCrosswalk(tx, ty) {
 function jayStatus(x, y) {
   const tx = Math.floor(x / T), ty = Math.floor(y / T);
   if (tileAt(x, y) !== TL.ROAD) return 0;
+  const rk = World.roadK[tIdx(tx, ty)]; if (rk === 4 || rk === 5) return 0; // 대로·골목은 보행자도 다닌다
   if (!isCrosswalk(tx, ty)) return 2;
   const n = nearestNode(x, y);
   if (!n.light) return 1;
@@ -2087,7 +2208,7 @@ function aiDrive(car, dt) {
   car.in.hb = false;
   // 목표 속도
   const panic = ai.mode === 'flee' || ai.mode === 'ems' || ai.panic;
-  let v0 = panic ? (ai.cruiseFlee || 22) : ai.cruise;
+  let v0 = panic ? (ai.cruiseFlee || 22) : ai.cruise * (edgeHighway(ai.from, ai.to) ? 1.9 : 1); // 고속도로는 약 90km/h
   if (Game.weather.rain) v0 *= 0.85;
   let along = 0, px = car.x, py = car.y;
   for (let i = 0; i < r.length && along < 40; i++) {
@@ -5263,6 +5384,11 @@ function drawGround(amb) {
           if (top && lft) ctx.fillRect(X + T - 0.35, Y, 0.28, T);
         }
       }
+      if (k === 6 || k === 7) { // 고속도로 바깥 차선: 차선 점선 + 가장자리 흰 실선
+        ctx.fillStyle = 'rgba(235,235,230,0.75)';
+        if (k === 6) { const inner = rk[i + MW] === 2 ? Y + T - 0.1 : Y; for (let s = 0; s < T; s += 2) ctx.fillRect(X + s, inner, 1, 0.1); ctx.fillRect(X, rk[i + MW] === 2 ? Y + 0.15 : Y + T - 0.25, T + ov, 0.12); }
+        else { const inner = rk[i + 1] === 1 ? X + T - 0.1 : X; for (let s = 0; s < T; s += 2) ctx.fillRect(inner, Y + s, 0.1, 1); ctx.fillRect(rk[i + 1] === 1 ? X + 0.15 : X + T - 0.25, Y, 0.12, T + ov); }
+      } else if (k === 5) { ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(X, Y, T + ov, T + ov); }
       // 맨홀/균열
       const h = hash2(tx * 7, ty * 3);
       if (h < 0.04) { ctx.fillStyle = 'rgba(20,20,22,0.5)'; ctx.beginPath(); ctx.arc(X + 2, Y + 2, 0.45, 0, TAU); ctx.fill(); }

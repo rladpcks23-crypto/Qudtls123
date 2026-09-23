@@ -127,6 +127,11 @@ function drawGround(amb) {
           if (top && lft) ctx.fillRect(X + T - 0.35, Y, 0.28, T);
         }
       }
+      if (k === 6 || k === 7) { // 고속도로 바깥 차선: 차선 점선 + 가장자리 흰 실선
+        ctx.fillStyle = 'rgba(235,235,230,0.75)';
+        if (k === 6) { const inner = rk[i + MW] === 2 ? Y + T - 0.1 : Y; for (let s = 0; s < T; s += 2) ctx.fillRect(X + s, inner, 1, 0.1); ctx.fillRect(X, rk[i + MW] === 2 ? Y + 0.15 : Y + T - 0.25, T + ov, 0.12); }
+        else { const inner = rk[i + 1] === 1 ? X + T - 0.1 : X; for (let s = 0; s < T; s += 2) ctx.fillRect(inner, Y + s, 0.1, 1); ctx.fillRect(rk[i + 1] === 1 ? X + 0.15 : X + T - 0.25, Y, 0.12, T + ov); }
+      } else if (k === 5) { ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(X, Y, T + ov, T + ov); }
       // 맨홀/균열
       const h = hash2(tx * 7, ty * 3);
       if (h < 0.04) { ctx.fillStyle = 'rgba(20,20,22,0.5)'; ctx.beginPath(); ctx.arc(X + 2, Y + 2, 0.45, 0, TAU); ctx.fill(); }

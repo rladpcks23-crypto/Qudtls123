@@ -478,7 +478,7 @@ function aiDrive(car, dt) {
   car.in.hb = false;
   // 목표 속도
   const panic = ai.mode === 'flee' || ai.mode === 'ems' || ai.panic;
-  let v0 = panic ? (ai.cruiseFlee || 22) : ai.cruise;
+  let v0 = panic ? (ai.cruiseFlee || 22) : ai.cruise * (edgeHighway(ai.from, ai.to) ? 1.9 : 1); // 고속도로는 약 90km/h
   if (Game.weather.rain) v0 *= 0.85;
   let along = 0, px = car.x, py = car.y;
   for (let i = 0; i < r.length && along < 40; i++) {
