@@ -69,9 +69,9 @@ function buzz(ms) { if (IS_MOBILE && navigator.vibrate) { try { navigator.vibrat
 // e.code 기반: 한글 IME 상태에서도 WASD가 동작하도록 한다.
 const Input = {
   keys: {}, pressed: {},
-  mouse: { x: 0, y: 0, down: false, clicked: false, wx: 0, wy: 0, moved: false },
+  mouse: { x: 0, y: 0, dx: 0, dy: 0, down: false, clicked: false, wx: 0, wy: 0, moved: false },
   wheel: 0,
-  touch: { on: false, jx: 0, jy: 0, fire: false, hb: false, run: false, stickId: null, sx: 0, sy: 0 },
+  touch: { on: false, jx: 0, jy: 0, fire: false, hb: false, run: false, look: false, stickId: null, sx: 0, sy: 0 },
   usingTouch: false,
 };
 const GAME_KEYS = ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'];

@@ -137,9 +137,12 @@ const Talk = {
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     const P = Game.player;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const v3 = Game.view !== 'top' && View3D.ok;
     for (const p of Game.peds) {
       if (p.dead) continue;
-      const [sx, sy] = toScreen(p.x, p.y);
+      const pr = v3 ? View3D.project(p.x, p.y, p.kind === 'dog' ? 1.1 : 2.1) : toScreen(p.x, p.y);
+      if (!pr || (v3 && dist2(p.x, p.y, P.px, P.py) > 45 * 45)) continue;
+      const [sx, sy] = pr;
       if (sx < -40 || sy < -40 || sx > CW + 40 || sy > CH + 40) continue;
       if (p.nameTag && dist2(p.x, p.y, P.px, P.py) < 30 * 30) {
         ctx.font = `700 ${12}px ${FONT_KR}`;

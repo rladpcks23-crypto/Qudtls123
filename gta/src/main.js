@@ -8,7 +8,7 @@
  * ===================================================================== */
 
 const Game = {
-  state: 'menu', time: 0, clock: 17 * 60, cars: [], peds: [], pickups: [], projectiles: [],
+  state: 'menu', view: 'top', time: 0, clock: 17 * 60, cars: [], peds: [], pickups: [], projectiles: [],
   player: null, weather: { rain: false, intensity: 0, wet: 1, nextT: 90 }, wind: 0.6,
   packages: new Set(), packageTotal: 10, deathT: 0, popT: 0, lastDistrict: -1, districtHold: 0,
   sprayCool: 0, shopCool: 0, attract: null, attractT: 0, lastMouseMove: 0,
@@ -16,7 +16,7 @@ const Game = {
   init() {
     canvas = document.getElementById('game'); ctx = canvas.getContext('2d');
     lightCanvas = document.createElement('canvas'); lctx = lightCanvas.getContext('2d');
-    resize(); addEventListener('resize', resize);
+    resize(); addEventListener('resize', () => { resize(); View3D.resize(); });
     genWorld(90210);
     Missions.init();
     const g = Missions.givers[0];
@@ -31,12 +31,15 @@ const Game = {
     requestAnimationFrame(t => this.loop(t));
   },
   bindMouse() {
-    canvas.addEventListener('mousemove', e => { Input.mouse.x = e.clientX; Input.mouse.y = e.clientY; Input.mouse.moved = true; this.lastMouseMove = this.time; });
+    canvas.addEventListener('mousemove', e => { Input.mouse.x = e.clientX; Input.mouse.y = e.clientY; Input.mouse.moved = true; this.lastMouseMove = this.time; if (document.pointerLockElement === canvas) { Input.mouse.dx += e.movementX || 0; Input.mouse.dy += e.movementY || 0; } });
     canvas.addEventListener('mousedown', e => { if (e.button === 0) { Input.mouse.down = true; Input.mouse.clicked = true; } Sfx.init(); });
     addEventListener('mouseup', e => { if (e.button === 0) Input.mouse.down = false; });
     canvas.addEventListener('wheel', e => { Input.wheel += sign(e.deltaY); e.preventDefault(); }, { passive: false });
     canvas.addEventListener('contextmenu', e => e.preventDefault());
-    canvas.addEventListener('click', e => { if (this.state === 'map') this.mapClick(e.clientX, e.clientY); });
+    canvas.addEventListener('click', e => {
+      if (this.state === 'map') this.mapClick(e.clientX, e.clientY);
+      else if (this.state === 'play' && this.view !== 'top' && !Input.usingTouch && !this.player.car && document.pointerLockElement !== canvas) { try { const r = canvas.requestPointerLock(); if (r && r.catch) r.catch(() => { }); } catch (err) { } }
+    });
   },
 
   newGame(cont) {
@@ -72,7 +75,7 @@ const Game = {
         : [['도움말', 'WASD로 이동, 마우스로 조준·사격, F로 차량 탑승. 노란 M 마커에서 첫 의뢰를 받을 수 있다.'], ['도움말', 'M: 지도 · R: 라디오 · Q/E: 무기 교체 · Esc: 일시정지 · 게임패드도 지원한다']]);
     } else UI.toast('저장된 진행 상황을 불러왔다');
   },
-  toMenu() { this.state = 'menu'; Menu.show(); this.player.hidden = true; Wanted.reset(); Police.reset(); Missions.active = null; },
+  toMenu() { if (this.view !== 'top') setView('top'); this.state = 'menu'; Menu.show(); this.player.hidden = true; Wanted.reset(); Police.reset(); Missions.active = null; },
   // 전체 지도 클릭 = 웨이포인트 지정/해제 (지도 밖을 누르면 닫기)
   mapClick(sx, sy) {
     const r = this.mapRect; if (!r) return;
@@ -126,7 +129,14 @@ const Game = {
     }
     try { Sfx.update(dt); } catch (e) { /* 오디오 오류는 게임을 멈추지 않게 */ }
     UI.update(st === 'play' || st === 'wasted' || st === 'busted' ? dt : 0);
-    renderScene();
+    const is3d = this.view !== 'top' && View3D.ok && st !== 'menu';
+    if (is3d) {
+      if (st === 'play') View3D.updateYaw(dt);
+      ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, canvas.width, canvas.height);
+      View3D.render(dt);
+      drawWorldTexts3D();
+      Rain.draw(this.weather.intensity);
+    } else renderScene();
     if (st === 'play' || st === 'wasted' || st === 'busted' || st === 'shop' || st === 'paused') drawHUD(dt);
     if (st === 'wasted' || st === 'busted') drawDeathScreen(st, this.deathT);
     if (st === 'map') drawFullMap();
@@ -163,7 +173,8 @@ const Game = {
       if (keyHit('KeyQ') || Input.wheel < 0 || (!P.car && keyHit('PadLB', 'PadLeft'))) cycleWeapon(P, -1);
       for (let i = 1; i <= 8; i++) if (keyHit('Digit' + i)) { const w = WEAPON_ORDER[i - 1]; if (P.inv[w] > 0) { P.weapon = w; UI.weaponFlash = 1; } }
       if (keyHit('KeyR', 'PadDown') && P.car) { Radio.cycle(); }
-      if (keyHit('KeyZ', 'PadUp')) Cam.zoomMul = Cam.zoomMul === 1 ? 1.45 : Cam.zoomMul === 1.45 ? 0.8 : 1;
+      if (keyHit('KeyC', 'PadUp')) cycleView();
+      if (keyHit('KeyZ')) Cam.zoomMul = Cam.zoomMul === 1 ? 1.45 : Cam.zoomMul === 1.45 ? 0.8 : 1;
       if (P.car && (P.car.type === 'police' || P.car.type === 'ambulance') && keyHit('KeyG', 'PadLeft')) { P.car.siren = !P.car.siren; }
       if (P.car) updatePlayerInCar(P, dt); else updatePlayerFoot(P, dt);
     }
@@ -225,7 +236,8 @@ const Game = {
   populate(initial) {
     const f = this.focus();
     const viewR = Math.hypot(Cam.vw, Cam.vh) / 2;
-    const inner = initial ? 0 : viewR + 4, outer = viewR + 70, kill = viewR + 110;
+    const v3 = this.view !== 'top';
+    const inner = initial ? 0 : v3 ? 95 : viewR + 4, outer = v3 ? 160 : viewR + 70, kill = v3 ? 200 : viewR + 110;
     const hour = this.clock / 60, night = hour < 5.5 || hour > 22;
     const P = this.player;
     // 제거
@@ -301,7 +313,8 @@ const Game = {
     const car = P.car;
     // 운전 중: 화면이 차 방향으로 돌고(차 앞이 화면 위), 진행 방향 앞쪽을 더 보여준다
     const wantRot = car && Settings.camRot && !car.dead ? car.a + Math.PI / 2 : 0;
-    Cam.rot = angNorm(Cam.rot + angNorm(wantRot - Cam.rot) * (1 - Math.exp(-(car ? 2.6 : 2) * dt)));
+    if (this.view !== 'top' && View3D.ok) Cam.rot = View3D.yaw + Math.PI / 2; // 3D: 조작·레이더 기준 = 시선 방향
+    else Cam.rot = angNorm(Cam.rot + angNorm(wantRot - Cam.rot) * (1 - Math.exp(-(car ? 2.6 : 2) * dt)));
     if (car) {
       const f = car.fwd(), ahead = car.vf > 1 ? clamp(4 + car.vf * 0.45, 0, 20) : 0;
       tx += clamp(car.vx * 0.3, -12, 12) + f[0] * ahead; ty += clamp(car.vy * 0.3, -12, 12) + f[1] * ahead;
@@ -458,6 +471,7 @@ function updatePlayerFoot(P, dt) {
     if (mag > 0.1) P.aim = Math.atan2(my, mx);
     if (firing) { const t = nearestThreat(P, W.melee ? 3 : Math.min(W.range || 20, 28), 0.9); if (t) P.aim = Math.atan2(t.y - P.y, t.x - P.x); }
   }
+  if (this_view3d()) P.aim = View3D.aimAngle();
   if (!W.melee || firing) P.a = P.aim; else if (mag > 0.1) P.a = Math.atan2(P.vy, P.vx);
   if (firing && P.cd <= 0 && P.downT <= 0) {
     if (!W.melee && !(P.inv[P.weapon] > 0)) { cycleWeapon(P, 1); }
@@ -484,7 +498,8 @@ function updatePlayerInCar(P, dt) {
   const firing = Input.mouse.down || Input.touch.fire || keyDown('ControlLeft', 'KeyJ', 'PadX');
   if (firing && P.cd <= 0 && !W.melee && !W.throw && !W.proj && P.inv[P.weapon] > 0) {
     let ang;
-    if (Pad.active) { ang = (Pad.rx || Pad.ry) ? Math.atan2(Pad.ry, Pad.rx) : (() => { const t = nearestThreat({ px: c.x, py: c.y, a: c.a }, 25, 1.4); return t ? Math.atan2(t.y - c.y, t.x - c.x) : c.a; })(); }
+    if (this_view3d()) ang = View3D.aimAngle();
+    else if (Pad.active) { ang = (Pad.rx || Pad.ry) ? Math.atan2(Pad.ry, Pad.rx) : (() => { const t = nearestThreat({ px: c.x, py: c.y, a: c.a }, 25, 1.4); return t ? Math.atan2(t.y - c.y, t.x - c.x) : c.a; })(); }
     else if (!Input.usingTouch) { const [wx, wy] = screenToWorld(Input.mouse.x, Input.mouse.y); ang = Math.atan2(wy - c.y, wx - c.x); }
     else { const t = nearestThreat({ px: c.x, py: c.y, a: c.a }, 25, 1.4); ang = t ? Math.atan2(t.y - c.y, t.x - c.x) : c.a; }
     P.cd = W.rate * 1.2; P.inv[P.weapon]--;
@@ -578,4 +593,14 @@ function mobileEnter() {
   } catch (e) { }
   try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => { }); } catch (e) { }
   setTimeout(() => { if (CH > CW * 1.1) UI.toast('휴대폰을 가로로 돌리면 더 넓게 보입니다'); }, 1500);
+}
+
+const this_view3d = () => Game.view !== 'top' && View3D.ok;
+// 3D 시점에서 떠오르는 글자·말풍선 (3D 투영 위치)
+function drawWorldTexts3D() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.textAlign = 'center'; ctx.font = '700 15px "Noto Sans KR", sans-serif';
+  for (const t of Effects.texts) { const s = View3D.project(t.x, t.y, 2); if (!s) continue; ctx.globalAlpha = t.life / t.max; ctx.fillStyle = '#000'; ctx.fillText(t.s, s[0] + 1, s[1] + 1); ctx.fillStyle = t.c; ctx.fillText(t.s, s[0], s[1]); }
+  ctx.globalAlpha = 1;
+  Talk.draw();
 }

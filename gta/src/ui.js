@@ -183,7 +183,7 @@ function drawHUD(dt) {
   }
   // ---- 화면 밖 목표 화살표 ----
   const tg = allTargets()[0];
-  if (tg && !onScreenExact(tg.x, tg.y, -30)) {
+  if (tg && Game.view === 'top' && !onScreenExact(tg.x, tg.y, -30)) {
     const [sx, sy2] = toScreen(tg.x, tg.y);
     const ang = Math.atan2(sy2 - CH / 2, sx - CW / 2);
     const mX = CW / 2 - 60 * s, mY = CH / 2 - 70 * s;
@@ -212,8 +212,13 @@ function drawHUD(dt) {
     c.fillStyle = '#4b8fe8'; c.fillRect(CW / 2 - w / 2, CH * 0.62, w * clamp(Wanted.bustT / 1.3, 0, 1), 10 * s);
     txt(c, '체포 중! 벗어나라', CW / 2, CH * 0.62 - 8 * s, `700 ${15 * s}px ${FONT_KR}`, '#bcd6ff', 'rgba(0,0,0,0.9)', 3, 'center');
   }
+  // 3D 시점 조준점: 실제 조준 방향 20m 앞
+  if (Game.view !== 'top' && View3D.ok && Game.state === 'play' && !WEAPONS[P.weapon].melee) {
+    const a = P.car ? View3D.yaw : P.aim, pr = View3D.project(P.px + Math.cos(a) * 20, P.py + Math.sin(a) * 20, 1.3);
+    if (pr) { c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = 1.5; c.beginPath(); c.arc(pr[0], pr[1], 7, 0, TAU); c.moveTo(pr[0] - 12, pr[1]); c.lineTo(pr[0] - 4, pr[1]); c.moveTo(pr[0] + 4, pr[1]); c.lineTo(pr[0] + 12, pr[1]); c.stroke(); }
+  }
   // 조준점
-  if (!Input.usingTouch && !Pad.active && !P.car && Game.state === 'play' && P.weapon !== 'fist') {
+  if (Game.view === 'top' && !Input.usingTouch && !Pad.active && !P.car && Game.state === 'play' && P.weapon !== 'fist') {
     c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 1.5;
     const mx = Input.mouse.x, my = Input.mouse.y;
     c.beginPath(); c.arc(mx, my, 9, 0, TAU); c.moveTo(mx - 14, my); c.lineTo(mx - 5, my); c.moveTo(mx + 5, my); c.lineTo(mx + 14, my); c.moveTo(mx, my - 14); c.lineTo(mx, my - 5); c.moveTo(mx, my + 5); c.lineTo(mx, my + 14); c.stroke();
@@ -384,6 +389,7 @@ const Menu = {
     const camLabel = () => { camBtn.textContent = Settings.camRot ? '운전 시점: 차 방향으로 회전' : '운전 시점: 북쪽 고정'; };
     camLabel(); camBtn.onclick = () => { Settings.camRot = !Settings.camRot; Settings.save(); camLabel(); };
     this.camLabel = camLabel;
+    document.getElementById('btn-view').onclick = () => { this.hidePause(); Game.state = 'play'; cycleView(); };
     document.getElementById('btn-quitjob').onclick = () => { Jobs.stop('일을 그만뒀다'); this.hidePause(); Game.state = 'play'; };
     document.getElementById('jobs-close').onclick = () => Jobs.closeBoard();
     const ci = document.getElementById('cheat-input');
@@ -516,6 +522,12 @@ const Touch = {
     tap('t-radio', () => { Input.pressed['KeyR'] = true; });
     tap('t-map', () => { Input.pressed['KeyM'] = true; });
     tap('t-pause', () => { Input.pressed['Escape'] = true; });
+    tap('t-view', () => { Input.pressed['KeyC'] = true; });
+    const lz = document.getElementById('look-zone'); let lid = null, lx = 0;
+    lz.addEventListener('touchstart', e => { e.preventDefault(); const t = e.changedTouches[0]; lid = t.identifier; lx = t.clientX; Input.touch.look = true; }, { passive: false });
+    lz.addEventListener('touchmove', e => { e.preventDefault(); for (const t of e.changedTouches) if (t.identifier === lid) { View3D.lookDX += t.clientX - lx; lx = t.clientX; } }, { passive: false });
+    const lend = e => { for (const t of e.changedTouches) if (t.identifier === lid) { lid = null; Input.touch.look = false; } };
+    lz.addEventListener('touchend', lend); lz.addEventListener('touchcancel', lend);
     Drive.init();
   },
 };

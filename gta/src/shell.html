@@ -20,7 +20,11 @@
   }
   html, body { height: 100%; margin: 0; background: var(--ink); color: var(--text); overflow: hidden; font-family: var(--body); }
   body { overscroll-behavior: none; touch-action: none; -webkit-user-select: none; user-select: none; }
-  #game { position: fixed; inset: 0; display: block; cursor: crosshair; }
+  #game { position: fixed; inset: 0; display: block; cursor: crosshair; z-index: 1; }
+  #view3d { position: fixed; inset: 0; display: none; z-index: 0; }
+  body.view3d #view3d { display: block; }
+  #look-zone { display: none; position: fixed; right: 0; top: 0; width: 50%; height: 62%; z-index: 4; }
+  body.touch.playing.view3d:not(.driving):not(.mapopen) #look-zone { display: block; }
   button { font-family: var(--body); }
   [hidden] { display: none !important; }
   body.mobile .only-pc, body.pc .only-mobile { display: none !important; }
@@ -86,6 +90,7 @@
   body.driving #t-run { display: none; }
   #t-map, #t-pause { top: calc(118px + env(safe-area-inset-top)); width: 44px; height: 44px; font-size: 12px; }
   #t-map { left: 14px; }
+  #t-view { top: calc(118px + env(safe-area-inset-top)); left: 118px; width: 44px; height: 44px; font-size: 12px; }
   #t-pause { left: 66px; }
   /* ---------- 운전 모드: 핸들 + 브레이크/엑셀 페달 ---------- */
   #drive { display: none; }
@@ -118,7 +123,8 @@
     .menu-col { gap: 10px; padding-top: max(14px, env(safe-area-inset-top)); }
     .logo { font-size: 46px; } .tag { font-size: 13px; } .btn { padding: 10px 16px; font-size: 15px; }
     #t-map, #t-pause { top: calc(8px + env(safe-area-inset-top)); left: 50%; }
-    #t-map { transform: translateX(-50px); } #t-pause { transform: translateX(6px); }
+    #t-map { transform: translateX(-76px); } #t-pause { transform: translateX(-22px); }
+    #t-view { top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(32px); }
     #t-fire { right: calc(20px + env(safe-area-inset-right)); bottom: calc(24px + env(safe-area-inset-bottom)); }
     #t-hb { right: calc(116px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom)); }
     #t-enter { right: calc(112px + env(safe-area-inset-right)); bottom: calc(92px + env(safe-area-inset-bottom)); }
@@ -132,6 +138,7 @@
   @media (prefers-reduced-motion: reduce) { .btn { transition: none; } .btn:hover { transform: none; } }
 </style>
 
+<canvas id="view3d" aria-hidden="true"></canvas>
 <canvas id="game" aria-label="네온 하버 게임 화면"></canvas>
 
 <div id="menu" class="overlay">
@@ -159,6 +166,7 @@
         <dt>드리프트</dt><dd>핸드브레이크 — 달리면서 꺾으며 누른다</dd>
         <dt>무기 · 라디오</dt><dd>무기 교체 · 라디오 채널</dd>
         <dt>지도 · Ⅱ</dt><dd>전체 지도 · 일시정지</dd>
+        <dt>시점</dt><dd>탑뷰 → 3인칭 후면 → 3인칭 전면 → 1인칭. 3D에선 오른쪽 위 화면을 끌어 둘러보기</dd>
       </dl>
       <p class="only-mobile">휴대폰을 가로로 두고 플레이하는 것을 권장한다. 게임을 시작하면 전체화면으로 바뀐다.</p>
       <dl class="keys only-pc">
@@ -169,7 +177,8 @@
         <dt>SHIFT</dt><dd>달리기 (노란 체력 바를 쓴다 · 음식·음료로 회복)</dd>
         <dt>T</dt><dd>소매치기 (시민 뒤로 몰래 다가가서)</dd>
         <dt>X</dt><dd>하던 직업 그만두기</dd>
-        <dt>V</dt><dd>운전 시점 전환 (차 방향 회전 / 북쪽 고정)</dd>
+        <dt>C</dt><dd>시점 전환: 탑뷰 → 3인칭 후면 → 3인칭 전면 → 1인칭 (3D에선 화면 클릭 후 마우스로 둘러보기)</dd>
+        <dt>V</dt><dd>탑뷰 운전 시점 (차 방향 회전 / 북쪽 고정)</dd>
         <dt>Q · E · 휠 · 1–8</dt><dd>무기 교체</dd>
         <dt>R</dt><dd>라디오 채널 (차 안)</dd>
         <dt>H · G</dt><dd>경적 · 경찰차 사이렌</dd>
@@ -213,6 +222,7 @@
     <button class="btn primary" id="btn-resume">계속하기</button>
     <button class="btn" id="btn-map">지도 보기</button>
     <button class="btn" id="btn-sound">소리 끄기</button>
+    <button class="btn" id="btn-view">시점 바꾸기 (탑뷰 · 3인칭 후면/전면 · 1인칭)</button>
     <button class="btn" id="btn-camrot">운전 시점: 차 방향으로 회전</button>
     <button class="btn" id="btn-quitjob" hidden>하던 일 그만두기</button>
     <div class="cheat"><input id="cheat-input" type="text" placeholder="치트 코드" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn small" id="cheat-go">입력</button></div>
@@ -252,6 +262,8 @@
   <button class="tb" id="t-steal">훔치기</button>
   <button class="tb" id="t-map">지도</button>
   <button class="tb" id="t-pause">Ⅱ</button>
+  <button class="tb" id="t-view">시점</button>
+  <div id="look-zone"></div>
   <div id="drive">
     <div id="wheel" aria-label="핸들">
       <svg viewBox="0 0 100 100" aria-hidden="true">
