@@ -229,6 +229,7 @@ window.addEventListener('error', function (e) { var b = document.getElementById(
       <button class="btn primary" id="btn-continue" hidden>이어하기</button>
       <button class="btn" id="btn-new">새 게임</button>
       <button class="btn ghost" id="btn-restore" hidden>지난 저장 되살리기</button>
+      <button class="btn ghost" id="btn-savecode2">저장 코드 붙여넣기</button>
     </div>
     <div id="save-info" class="cz-note" style="margin-top:6px"></div>
     <div>
@@ -310,6 +311,11 @@ window.addEventListener('error', function (e) { var b = document.getElementById(
   </div>
 </div>
 
+<div id="savecode" class="overlay" hidden><div class="card" style="width:min(620px,100%)"><h2>저장 코드</h2>
+  <p>아래 코드를 복사해 두면 새 버전·다른 파일·설치판에서 [붙여넣고 불러오기]로 그대로 이어서 할 수 있다.</p>
+  <textarea id="sc-text" style="width:100%;height:150px;background:rgba(255,255,255,0.06);color:#dfe6ee;border:1px solid rgba(255,255,255,0.2);border-radius:6px;font:12px monospace;word-break:break-all"></textarea>
+  <div class="cz-row"><button class="btn small primary" id="sc-copy">코드 복사</button><button class="btn small" id="sc-load">붙여넣은 코드로 불러오기</button><button class="btn" id="sc-close">닫기</button></div>
+  <div id="sc-msg" class="cz-note"></div></div></div>
 <div id="pause" class="overlay" hidden>
   <div class="card">
     <h2>일시정지</h2>
@@ -325,6 +331,7 @@ window.addEventListener('error', function (e) { var b = document.getElementById(
     <button class="btn" id="btn-zoom">화면 거리: 가깝게</button>
     <button class="btn" id="btn-quitjob" hidden>하던 일 그만두기</button>
     <button class="btn" id="btn-backup" hidden>조직 부하 부르기 (PC: K)</button>
+    <button class="btn ghost" id="btn-savecode">저장 코드 (다른 버전·파일로 옮기기)</button>
     <div class="cheat"><input id="cheat-input" type="text" placeholder="치트 코드" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn small" id="cheat-go">입력</button></div>
     <button class="btn" id="btn-quit">메인 메뉴로</button>
     <p>진행 상황은 미션을 완료할 때마다 이 브라우저에 자동 저장된다.</p>
@@ -810,6 +817,7 @@ const Radio = {
  * 시야/탄도 판정: Amanatides & Woo, "A Fast Voxel Traversal Algorithm" (1987) 의 DDA.
  * ===================================================================== */
 
+const ORGANIC_ROADS = false; // v2.13: 구불구불한 옛길·해안도로·에투알 방사로를 끈다 (네모난 격자 도로 + 직선 고속도로·골목만)
 const ENABLE_BASE = false; // v2.8: 군 기지는 잠시 뺀다 (군 장비는 공항 군수 화물 구역에)
 const T = 4;               // 타일 한 칸 = 4m (차선 폭)
 const MW = 640, MH = 640;  // 타일 수 → 2560m × 2560m 섬 (v2.8에서 480 → 640 확장; 3D는 청크 단위로 스트리밍)
@@ -1158,6 +1166,7 @@ function genWorld(seed) {
   // ---------- 길을 먼저 계획한다 (블록·건물보다 먼저) ----------
   //   에투알 둘레 짧은 방사로·작은 원형로, 동네 중심을 잇는 구불구불한 옛길(Parish & Müller 2001), 해안선에 평행한 해안도로(Chen et al. 2008)
   function planRoads() {
+    if (!ORGANIC_ROADS) return;
     const M = W.planRoad, E = W.etoile, cx = E.cx, cy = E.cy;
     const R0 = Math.min(cx - W.VX[E.i - 1], W.VX[E.i + 1] - cx, cy - W.HY[E.j - 1], W.HY[E.j + 1] - cy) + 1;
     const A = W.airport;
@@ -7731,6 +7740,17 @@ const Menu = {
     };
     const cont = document.getElementById('btn-continue');
     cont.onclick = () => { Sfx.init(); Game.newGame(true); };
+    // 저장 코드: 저장 JSON을 base64로 → 다른 파일·버전·설치판으로 옮긴다
+    const SC = document.getElementById('savecode'), scT = document.getElementById('sc-text'), scM = document.getElementById('sc-msg');
+    const openSC = (fromMenu) => { let code = ''; try { if (!fromMenu && Game.player && Game.state !== 'menu') Save.write(); const s = localStorage.getItem(Save.key); if (s) code = btoa(unescape(encodeURIComponent(s))); } catch (e) { } scT.value = code; scM.textContent = code ? '지금 저장을 코드로 만들었다' : '저장이 없다 — 가지고 있는 코드를 붙여넣어라'; SC.hidden = false; };
+    document.getElementById('btn-savecode').onclick = () => openSC(false);
+    document.getElementById('btn-savecode2').onclick = () => openSC(true);
+    document.getElementById('sc-close').onclick = () => { SC.hidden = true; };
+    document.getElementById('sc-copy').onclick = () => { scT.select(); try { navigator.clipboard.writeText(scT.value); } catch (e) { document.execCommand('copy'); } scM.textContent = '복사했다 — 메모장 등에 보관해 두자'; };
+    document.getElementById('sc-load').onclick = () => {
+      try { const json = decodeURIComponent(escape(atob(scT.value.trim()))); const sv = JSON.parse(json); if (typeof sv.money !== 'number') throw 0; Save.clear(); localStorage.setItem(Save.key, json); SC.hidden = true; Menu.hidePause && Menu.hidePause(); Game.newGame(true); UI.toast(`저장 코드를 불러왔다 — 현금 $${Math.round(sv.money).toLocaleString()}`); }
+      catch (e) { scM.textContent = '코드가 올바르지 않다'; }
+    };
     document.getElementById('btn-restore').onclick = () => { if (Save.restore()) { UI.toast('지난 저장을 되살렸다'); this.show(); } };
     this.show();
     document.getElementById('btn-resume').onclick = () => Game.resume();
@@ -9649,6 +9669,8 @@ const Game = {
     Empire.load(sv && sv.empire); Finance.load(sv && sv.finance); Gangs.load(sv && sv.gangs); GangJob.active = null;
     if (!sv) this.introT = 7;
     if (sv && sv.body) { Object.assign(P, sv.body); P.hp = P.maxHp; }
+    // v2.13 보상: 업데이트 중 사라진 돈 $600,000 (이 저장소에서 한 번만)
+    try { if (!localStorage.getItem('neonharbor.gift.600k')) { localStorage.setItem('neonharbor.gift.600k', '1'); P.money += 600000; P.displayMoney = P.money; this.giftMsg = true; } } catch (e) { }
     placeStaticPickups();
     Military.reset(); Airport.reset(); AirPatrol.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
     this.waypoint = null; this.noWanted = false;
@@ -9659,6 +9681,7 @@ const Game = {
     const c = new Car('sedan', sp.x, sp.y, sp.a); this.cars.push(c);
     Menu.hide();
     this.state = 'play';
+    if (this.giftMsg) { this.giftMsg = false; setTimeout(() => UI.big('$600,000 보상', '업데이트로 사라졌던 돈을 돌려드렸습니다', 4, '#9be15d'), 800); Save.write(); }
     if (IS_MOBILE) mobileEnter();
     if (!sv) {
       UI.big('네온 하버', '1998년, 항구 도시의 밤', 3.5, '#ff5d8f');

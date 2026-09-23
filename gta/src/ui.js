@@ -503,6 +503,17 @@ const Menu = {
     };
     const cont = document.getElementById('btn-continue');
     cont.onclick = () => { Sfx.init(); Game.newGame(true); };
+    // 저장 코드: 저장 JSON을 base64로 → 다른 파일·버전·설치판으로 옮긴다
+    const SC = document.getElementById('savecode'), scT = document.getElementById('sc-text'), scM = document.getElementById('sc-msg');
+    const openSC = (fromMenu) => { let code = ''; try { if (!fromMenu && Game.player && Game.state !== 'menu') Save.write(); const s = localStorage.getItem(Save.key); if (s) code = btoa(unescape(encodeURIComponent(s))); } catch (e) { } scT.value = code; scM.textContent = code ? '지금 저장을 코드로 만들었다' : '저장이 없다 — 가지고 있는 코드를 붙여넣어라'; SC.hidden = false; };
+    document.getElementById('btn-savecode').onclick = () => openSC(false);
+    document.getElementById('btn-savecode2').onclick = () => openSC(true);
+    document.getElementById('sc-close').onclick = () => { SC.hidden = true; };
+    document.getElementById('sc-copy').onclick = () => { scT.select(); try { navigator.clipboard.writeText(scT.value); } catch (e) { document.execCommand('copy'); } scM.textContent = '복사했다 — 메모장 등에 보관해 두자'; };
+    document.getElementById('sc-load').onclick = () => {
+      try { const json = decodeURIComponent(escape(atob(scT.value.trim()))); const sv = JSON.parse(json); if (typeof sv.money !== 'number') throw 0; Save.clear(); localStorage.setItem(Save.key, json); SC.hidden = true; Menu.hidePause && Menu.hidePause(); Game.newGame(true); UI.toast(`저장 코드를 불러왔다 — 현금 $${Math.round(sv.money).toLocaleString()}`); }
+      catch (e) { scM.textContent = '코드가 올바르지 않다'; }
+    };
     document.getElementById('btn-restore').onclick = () => { if (Save.restore()) { UI.toast('지난 저장을 되살렸다'); this.show(); } };
     this.show();
     document.getElementById('btn-resume').onclick = () => Game.resume();

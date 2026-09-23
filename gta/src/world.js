@@ -9,6 +9,7 @@
  * 시야/탄도 판정: Amanatides & Woo, "A Fast Voxel Traversal Algorithm" (1987) 의 DDA.
  * ===================================================================== */
 
+const ORGANIC_ROADS = false; // v2.13: 구불구불한 옛길·해안도로·에투알 방사로를 끈다 (네모난 격자 도로 + 직선 고속도로·골목만)
 const ENABLE_BASE = false; // v2.8: 군 기지는 잠시 뺀다 (군 장비는 공항 군수 화물 구역에)
 const T = 4;               // 타일 한 칸 = 4m (차선 폭)
 const MW = 640, MH = 640;  // 타일 수 → 2560m × 2560m 섬 (v2.8에서 480 → 640 확장; 3D는 청크 단위로 스트리밍)
@@ -357,6 +358,7 @@ function genWorld(seed) {
   // ---------- 길을 먼저 계획한다 (블록·건물보다 먼저) ----------
   //   에투알 둘레 짧은 방사로·작은 원형로, 동네 중심을 잇는 구불구불한 옛길(Parish & Müller 2001), 해안선에 평행한 해안도로(Chen et al. 2008)
   function planRoads() {
+    if (!ORGANIC_ROADS) return;
     const M = W.planRoad, E = W.etoile, cx = E.cx, cy = E.cy;
     const R0 = Math.min(cx - W.VX[E.i - 1], W.VX[E.i + 1] - cx, cy - W.HY[E.j - 1], W.HY[E.j + 1] - cy) + 1;
     const A = W.airport;

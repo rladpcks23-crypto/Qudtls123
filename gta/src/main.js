@@ -76,6 +76,8 @@ const Game = {
     Empire.load(sv && sv.empire); Finance.load(sv && sv.finance); Gangs.load(sv && sv.gangs); GangJob.active = null;
     if (!sv) this.introT = 7;
     if (sv && sv.body) { Object.assign(P, sv.body); P.hp = P.maxHp; }
+    // v2.13 보상: 업데이트 중 사라진 돈 $600,000 (이 저장소에서 한 번만)
+    try { if (!localStorage.getItem('neonharbor.gift.600k')) { localStorage.setItem('neonharbor.gift.600k', '1'); P.money += 600000; P.displayMoney = P.money; this.giftMsg = true; } } catch (e) { }
     placeStaticPickups();
     Military.reset(); Airport.reset(); AirPatrol.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
     this.waypoint = null; this.noWanted = false;
@@ -86,6 +88,7 @@ const Game = {
     const c = new Car('sedan', sp.x, sp.y, sp.a); this.cars.push(c);
     Menu.hide();
     this.state = 'play';
+    if (this.giftMsg) { this.giftMsg = false; setTimeout(() => UI.big('$600,000 보상', '업데이트로 사라졌던 돈을 돌려드렸습니다', 4, '#9be15d'), 800); Save.write(); }
     if (IS_MOBILE) mobileEnter();
     if (!sv) {
       UI.big('네온 하버', '1998년, 항구 도시의 밤', 3.5, '#ff5d8f');
