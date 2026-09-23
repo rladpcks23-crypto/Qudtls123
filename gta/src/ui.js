@@ -282,6 +282,7 @@ function drawRadar(s) {
   const fl = Math.floor(Game.time * 4) % 2;
   for (const car of Game.cars) if (car.driverKind === 'cop' && !car.dead && car.driver === 'ai') put(car.x, car.y, (x, y) => { c.fillStyle = car.siren ? (fl ? '#ff3b3b' : '#4b8fe8') : '#4b8fe8'; c.fillRect(x - 3, y - 3, 6, 6); });
   for (const p of Game.peds) if ((p.kind === 'cop' || p.kind === 'swat') && !p.dead && p.state === 'chase') put(p.x, p.y, (x, y) => { c.fillStyle = fl ? '#ff3b3b' : '#4b8fe8'; c.beginPath(); c.arc(x, y, 2.2, 0, TAU); c.fill(); });
+  for (const u of AirPatrol.units) put(u.x, u.y, (x, y) => { c.fillStyle = fl ? '#ff3b3b' : '#ffd24d'; c.font = `bold ${12 * s}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('✈', x, y); }, true);
   if (Police.heli && !Police.heli.dead) put(Police.heli.x, Police.heli.y, (x, y) => { c.fillStyle = '#fff'; c.font = `bold ${11 * s}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('✚', x, y); }, true);
   // 장소
   for (const ic of placeIcons()) put(ic.x, ic.y, (x, y) => {
@@ -314,10 +315,14 @@ function drawRadar(s) {
     txt(c, 'km/h', sx + kmW + 5 * s, sy, `${14 * s}px ${FONT_NUM}`, '#cfd6e0', 'rgba(0,0,0,0.9)', 3, 'left');
     const rev = P.car.vf < -0.3;
     txt(c, rev ? 'R' : 'D', sx + kmW + 40 * s, sy, `${22 * s}px ${FONT_NUM}`, rev ? '#ff8a80' : '#7ae68f', 'rgba(0,0,0,0.9)', 3, 'left');
-    if (isAir(P.car)) txt(c, `고도 ${Math.round(P.car.alt || 0)}m`, sx, sy - 34 * s, `${16 * s}px ${FONT_NUM}`, '#9fd8ff', 'rgba(0,0,0,0.9)', 3, 'left');
+    if (isAir(P.car)) txt(c, `고도 ${Math.round(P.car.alt || 0)}m`, sx, sy - (Radio.station > 0 ? 52 : 34) * s, `${16 * s}px ${FONT_NUM}`, '#9fd8ff', 'rgba(0,0,0,0.9)', 3, 'left');
     const hw = 70 * s; c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(sx, sy + 6 * s, hw, 5 * s);
     const hpk = P.car.hp / P.car.maxHp; c.fillStyle = hpk > 0.5 ? '#7ad67a' : hpk > 0.25 ? '#f2c14e' : '#e0443e'; c.fillRect(sx, sy + 6 * s, hw * hpk, 5 * s);
     if (Radio.station > 0) txt(c, Radio.stations[Radio.station].name, sx, sy - 34 * s, `600 ${11 * s}px ${FONT_KR}`, '#ffcf5a', 'rgba(0,0,0,0.9)', 3, 'left');
+  } else if (P.alt > 0) {
+    const sx = cx + R + 14 * s, sy = Input.usingTouch ? cy - 8 * s : cy + R - 10 * s;
+    txt(c, `고도 ${Math.round(P.alt)}m`, sx, sy, `${24 * s}px ${FONT_NUM}`, '#9fd8ff', 'rgba(0,0,0,0.9)', 4, 'left');
+    txt(c, P.chute ? '낙하산 펼침' : '자유 낙하!', sx, sy + 20 * s, `600 ${13 * s}px ${FONT_KR}`, P.chute ? '#7ae68f' : '#ff8a80', 'rgba(0,0,0,0.9)', 3, 'left');
   }
 }
 
@@ -326,7 +331,14 @@ function drawFullMap() {
   const c = ctx, P = Game.player;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
   c.fillStyle = 'rgba(6,10,18,0.92)'; c.fillRect(0, 0, CW, CH);
-  const size = Math.min(CW - 40, CH - 110);
+  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  군사 기지 (전차·헬기·전투기)']];
+  // 범례 줄 수를 먼저 재서 지도 크기를 정한다 (글자가 지도·도움말과 겹치지 않게)
+  const lf = `500 ${12 * UI.s}px ${FONT_KR}`, lh = 18 * Math.max(1, UI.s);
+  c.font = lf;
+  const widthFor = (w) => { let lx = 0, rows = 1; for (const [, l] of legend) { const lw = c.measureText(l).width + 34; if (lx && lx + lw > w) { lx = 0; rows++; } lx += lw; } return rows; };
+  let size = Math.min(CW - 40, CH - 110);
+  for (let i = 0; i < 3; i++) size = Math.min(CW - 40, CH - 64 - 16 - widthFor(size) * lh - 2 * lh - 8);
+  size = Math.max(120, size);
   const k = size / (MW * T), ox = (CW - size) / 2, oy = 64;
   Game.mapRect = { ox, oy, size, k };
   c.imageSmoothingEnabled = false;
@@ -339,6 +351,7 @@ function drawFullMap() {
   for (const b of World.blocks) { const d = b.district; acc[d] = acc[d] || [0, 0, 0]; acc[d][0] += (b.x0 + b.x1) / 2; acc[d][1] += (b.y0 + b.y1) / 2; acc[d][2]++; }
   acc[DIST.HARBOR] = acc[DIST.HARBOR] || [0, 0, 0];
   for (const d in acc) { const [sx, sy, n] = acc[d]; if (!n) continue; txt(c, DIST_NAMES[d], ox + sx / n * T * k, oy + sy / n * T * k, `${15 * UI.s}px ${FONT_DISP}`, 'rgba(255,255,255,0.85)', 'rgba(0,0,0,0.9)', 4, 'center'); }
+  if (World.base) { const B = World.base; txt(c, '포트 네온 기지', ox + (B.x0 + B.x1) / 2 * k, oy + (B.y0 + B.y1) / 2 * k, `${15 * UI.s}px ${FONT_DISP}`, '#c9d49a', 'rgba(0,0,0,0.9)', 4, 'center'); }
   for (const ic of placeIcons()) {
     const x = ox + ic.x * k, y = oy + ic.y * k;
     c.fillStyle = 'rgba(0,0,0,0.8)'; c.beginPath(); c.arc(x, y, 9, 0, TAU); c.fill();
@@ -348,16 +361,15 @@ function drawFullMap() {
   if (Wanted.stars > 0) { c.strokeStyle = 'rgba(255,90,80,0.9)'; c.beginPath(); c.arc(ox + Wanted.lkpX * k, oy + Wanted.lkpY * k, Wanted.radius * k, 0, TAU); c.stroke(); }
   c.save(); c.translate(ox, oy); GPS.draw(c, k, 0, 0, 3); c.restore();
   if (Game.waypoint) { const wx = ox + Game.waypoint.x * k, wy = oy + Game.waypoint.y * k; c.fillStyle = '#c77dff'; c.strokeStyle = '#000'; c.lineWidth = 2; c.beginPath(); c.moveTo(wx, wy); c.lineTo(wx - 7, wy - 16); c.lineTo(wx + 7, wy - 16); c.closePath(); c.fill(); c.stroke(); }
-  txt(c, Input.usingTouch ? '지도를 눌러 웨이포인트 지정 · 지도 버튼으로 닫기' : '클릭: 웨이포인트 지정/해제 · 지도 밖 클릭/M: 닫기', CW / 2, oy - 4 + size + 44, `500 ${12 * UI.s}px ${FONT_KR}`, '#c7b8ff', null, 0, 'center');
   const px = ox + P.px * k, py = oy + P.py * k;
   c.save(); c.translate(px, py); c.rotate(P.car ? P.car.a : P.a); c.fillStyle = '#fff'; c.strokeStyle = '#000'; c.lineWidth = 2;
   c.beginPath(); c.moveTo(10, 0); c.lineTo(-6, -7); c.lineTo(-3, 0); c.lineTo(-6, 7); c.closePath(); c.stroke(); c.fill(); c.restore();
   // 범례
-  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트']];
-  let lx = ox, ly = oy + size + 22;
-  c.font = `500 ${12 * UI.s}px ${FONT_KR}`;
-  for (const [col, l] of legend) { c.fillStyle = col; c.fillRect(lx, ly - 9, 10, 10); txt(c, l, lx + 15, ly, `500 ${12 * UI.s}px ${FONT_KR}`, '#dfe6ee', null); lx += c.measureText(l).width + 34; if (lx > ox + size - 80) { lx = ox; ly += 18; } }
-  txt(c, `숨겨진 꾸러미 ${Game.packages.size}/${Game.packageTotal}   ·   스토리 ${Math.min(Missions.idx, Missions.defs.length)}/${Missions.defs.length}`, CW / 2, CH - 12, `500 ${12 * UI.s}px ${FONT_KR}`, '#9fb0c4', null, 0, 'center');
+  let lx = ox, ly = oy + size + 16 + lh * 0.5;
+  c.font = lf;
+  for (const [col, l] of legend) { const lw = c.measureText(l).width + 34; if (lx > ox && lx + lw > ox + size) { lx = ox; ly += lh; } c.fillStyle = col; c.fillRect(lx, ly - 9, 10, 10); txt(c, l, lx + 15, ly, lf, '#dfe6ee', null); lx += lw; }
+  ly += lh;
+  txt(c, (Input.usingTouch ? '지도를 눌러 웨이포인트 지정 · 지도 버튼으로 닫기' : '클릭: 웨이포인트 지정/해제 · 지도 밖 클릭/M: 닫기') + `   ·   숨겨진 꾸러미 ${Game.packages.size}/${Game.packageTotal}   ·   스토리 ${Math.min(Missions.idx, Missions.defs.length)}/${Missions.defs.length}`, CW / 2, ly, lf, '#c7b8ff', null, 0, 'center');
 }
 
 // ---------- WASTED / BUSTED ----------

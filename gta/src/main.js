@@ -58,7 +58,7 @@ const Game = {
     if (sv) { for (const k in sv.inv) P.inv[k] = sv.inv[k] === -1 ? Infinity : sv.inv[k]; this.clock = sv.time || this.clock; }
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
     placeStaticPickups();
-    Military.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
+    Military.reset(); AirPatrol.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
     this.waypoint = null; this.noWanted = false;
     Cam.x = P.x; Cam.y = P.y;
     this.populate(true);
@@ -175,7 +175,7 @@ const Game = {
       if (!P.car && keyHit('KeyT', 'PadX') && Pick.target) Pick.attempt();
       if (keyHit('KeyX') && Jobs.active) Jobs.stop('일을 그만뒀다');
       if (keyHit('KeyV')) { Settings.camRot = !Settings.camRot; Settings.save(); UI.toast(Settings.camRot ? '운전 시점: 차 방향으로 회전' : '운전 시점: 북쪽 고정'); }
-      if (keyHit('KeyF', 'Enter', 'PadY')) { if (P.car) exitCar(P); else tryEnterCar(P); }
+      if (keyHit('KeyF', 'Enter', 'PadY')) { if (P.car) exitCar(P); else if (!(P.alt > 0)) tryEnterCar(P); }
       if (keyHit('KeyE') || Input.wheel > 0 || (!P.car && keyHit('PadRB', 'PadRight'))) cycleWeapon(P, 1);
       if (keyHit('KeyQ') || Input.wheel < 0 || (!P.car && keyHit('PadLB', 'PadLeft'))) cycleWeapon(P, -1);
       for (let i = 1; i <= 8; i++) if (keyHit('Digit' + i)) { const w = WEAPON_ORDER[i - 1]; if (P.inv[w] > 0) { P.weapon = w; UI.weaponFlash = 1; } }
@@ -183,7 +183,7 @@ const Game = {
       if (keyHit('KeyC', 'PadUp')) cycleView();
       if (keyHit('KeyZ')) Cam.zoomMul = Cam.zoomMul === 1 ? 1.45 : Cam.zoomMul === 1.45 ? 0.8 : 1;
       if (P.car && (P.car.type === 'police' || P.car.type === 'ambulance') && keyHit('KeyG', 'PadLeft')) { P.car.siren = !P.car.siren; }
-      if (P.car) updatePlayerInCar(P, dt); else updatePlayerFoot(P, dt);
+      if (P.car) updatePlayerInCar(P, dt); else if (P.alt > 0) Para.update(P, dt); else updatePlayerFoot(P, dt);
     }
     this.simulate(dt, false);
     Nav.update(dt);
@@ -191,7 +191,7 @@ const Game = {
     Jay.update(dt);
     Missions.update(dt);
     Jobs.update(dt);
-    Military.update(dt);
+    Military.update(dt); AirPatrol.update(dt);
     Talk.update(dt); Aim.update(dt); EMS.update(dt); Givers.update(); Vendors.update(dt); GPS.update(dt);
     // 체력 자연 회복: 6초 동안 안 다치면 50까지 천천히 (GTA V)
     if (!P.dead && P.hp < 50 && this.time - (P.lastHurt || 0) > 6) P.hp = Math.min(50, P.hp + 2 * dt);
@@ -230,6 +230,7 @@ const Game = {
       for (const p of this.peds) pedCarCollide(p, c);
       if (!P.car && !menu && !P.dead) pedCarCollide(P, c);
     }
+    if (P.alt > 0 && (P.dead || menu)) P.alt = Math.max(0, P.alt - 25 * dt);
     updateProjectiles(dt);
     Particles.update(dt);
     Effects.update(dt);
@@ -332,8 +333,9 @@ const Game = {
       tx += clamp((wx - P.x) * 0.2, -6, 6); ty += clamp((wy - P.y) * 0.2, -6, 6);
     }
     Cam.x = smooth(Cam.x, tx, car ? 4 : 5, dt); Cam.y = smooth(Cam.y, ty, car ? 4 : 5, dt);
-    const span = (car ? 56 + car.speed * 1.05 + (car.alt || 0) * 1.6 : 38) * Cam.zoomMul;
-    Cam.ppm = smooth(Cam.ppm, Math.min(CW, CH) / Math.min(car && car.alt > 1.2 ? 220 : 130, span), 1.6, dt);
+    const alt = car ? car.alt || 0 : P.alt || 0;
+    const span = (car ? 56 + car.speed * 1.05 + alt * 1.6 : 38 + alt * 1.4) * Cam.zoomMul;
+    Cam.ppm = smooth(Cam.ppm, Math.min(CW, CH) / Math.min(alt > 1.2 ? 220 : 130, span), 1.6, dt);
     camSetView();
     Cam.shake = Math.max(0, Cam.shake - dt * 1.6);
     Cam.sx = (Math.random() - 0.5) * Cam.shake * 14; Cam.sy = (Math.random() - 0.5) * Cam.shake * 14;
@@ -344,7 +346,7 @@ const Game = {
     this.sprayCool -= dt; this.shopCool -= dt;
     // 페인트샵
     for (const key of ['spray', 'spray2']) {
-      const S = World.places[key]; if (!S || !P.car || this.sprayCool > 0) continue;
+      const S = World.places[key]; if (!S || !P.car || P.car.alt > 1.2 || this.sprayCool > 0) continue;
       if (dist(P.car.x, P.car.y, S.x, S.y) < 5 && P.car.speed < 5) {
         this.sprayCool = 12;
         if (P.money < 100) { UI.toast('페인트샵: $100이 필요하다'); continue; }
@@ -357,7 +359,7 @@ const Game = {
       }
     }
     // 상점 · 직업 게시판 (걸어서 문 앞 마커에 들어가면 열림)
-    if (!P.car && this.shopCool <= 0 && !(Missions.active && Missions.active.def.noShop)) {
+    if (!P.car && !(P.alt > 0) && this.shopCool <= 0 && !(Missions.active && Missions.active.def.noShop)) {
       for (const [k, kind] of [['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart']]) {
         const S = World.places[k]; if (S && dist(P.x, P.y, S.x, S.y) < 1.8) { Shop.open(kind); return; }
       }
@@ -403,8 +405,9 @@ const Game = {
     if (kind === 'wasted') np.inv = P.inv;
     this.player = np;
     Wanted.reset(); Police.reset(); Jay.reset();
-    for (const p of this.peds) if ((p.kind === 'cop' || p.kind === 'swat' || p.kind === 'gang') && p.state === 'chase') p.state = p.kind === 'gang' ? 'idle' : 'patrol';
-    for (const c of this.cars) if (c.ai && (c.ai.mode === 'chase' || c.ai.mode === 'block')) { c.remove = true; }
+    for (const p of this.peds) if ((p.kind === 'cop' || p.kind === 'swat' || p.kind === 'gang') && p.state === 'chase') p.state = p.kind === 'gang' || p.soldier ? 'idle' : 'patrol';
+    for (const c of this.cars) if (c.ai && (c.ai.mode === 'chase' || c.ai.mode === 'block' || c.ai.mode === 'air')) { c.remove = true; }
+    AirPatrol.reset();
     this.cars = this.cars.filter(c => !c.remove);
     Cam.x = np.x; Cam.y = np.y;
     this.state = 'play';
@@ -546,7 +549,12 @@ function tryEnterCar(P) {
 }
 function exitCar(P, force) {
   const c = P.car; if (!c) return;
-  if (isAir(c) && c.alt > 1 && !force) { c.landing = true; UI.toast(c.V.special === 'jet' ? '착륙 접근 중… 고도를 낮춘다' : '착륙 중…'); return; }
+  if (isAir(c) && c.alt > 1 && !force) {
+    if (c.landing && Game.time - (c.landReqT || 0) < 1.6) { Para.bail(P, c); return; }
+    c.landing = true; c.landReqT = Game.time;
+    UI.toast((c.V.special === 'jet' ? '착륙 접근 중…' : '착륙 중…') + ' 곧바로 한 번 더 누르면 낙하산 탈출');
+    return;
+  }
   const fast = c.speed > 9 && !c.V.special;
   let door = c.doorPos(-1);
   if (solidT(Math.floor(door[0] / T), Math.floor(door[1] / T))) door = c.doorPos(1);

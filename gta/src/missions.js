@@ -28,6 +28,12 @@ const Missions = {
     const at = (u, v) => sidewalkNear(u * MW * T, v * MH * T);
     this.givers = [at(0.4, 0.36), at(0.55, 0.3), at(0.3, 0.62), at(0.66, 0.5), at(0.45, 0.48), at(0.62, 0.22), at(0.28, 0.4), at(0.5, 0.62), at(0.58, 0.44), at(0.35, 0.25), at(0.7, 0.66), at(0.24, 0.55)];
     this.defs = MISSION_DEFS;
+    // 미션 마커가 가게·고용센터 입구와 겹치면 둘이 동시에 열리므로 조금 옮긴다
+    const taken = () => Object.values(World.places).filter(Boolean);
+    this.givers = this.givers.map(g => {
+      for (let k = 0; k < 20 && taken().some(p => dist(p.x, p.y, g.x, g.y) < 8); k++) g = sidewalkNear(g.x + rand(-16, 16), g.y + rand(-16, 16), 6);
+      return g;
+    });
   },
   get done() { return this.idx >= this.defs.length; },
   update(dt) {

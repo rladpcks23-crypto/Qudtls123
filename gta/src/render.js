@@ -480,6 +480,25 @@ function drawMarker(x, y, col, big) {
 }
 
 // ---------- 조명 패스 ----------
+// 빛 번짐 스프라이트: 매 프레임 그라디언트를 수백 개 만들지 않도록 색마다 한 번만 그려 둔다
+const GlowSpr = {
+  m: new Map(),
+  get(col) {
+    let c = this.m.get(col); if (c) return c;
+    c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, `rgba(${col},1)`); gr.addColorStop(1, `rgba(${col},0)`);
+    g.fillStyle = gr; g.fillRect(0, 0, 64, 64); this.m.set(col, c); return c;
+  },
+  cone() {
+    if (this._cone) return this._cone;
+    const c = document.createElement('canvas'); c.width = 160; c.height = 96; // 20m × 12m, 8px/m
+    const g = c.getContext('2d'), gr = g.createRadialGradient(0, 48, 0, 0, 48, 160);
+    gr.addColorStop(0, 'rgba(255,245,210,1)'); gr.addColorStop(1, 'rgba(255,245,210,0)');
+    g.fillStyle = gr; g.beginPath(); g.moveTo(0, 48 - 6.4); g.lineTo(160, 0); g.lineTo(160, 96); g.lineTo(0, 48 + 6.4); g.closePath(); g.fill();
+    return (this._cone = c);
+  },
+};
 function lightPass(amb) {
   const night = 1 - (amb[0] + amb[1] + amb[2]) / 3;
   if (night < 0.03) return;
@@ -492,10 +511,10 @@ function lightPass(amb) {
   worldTransform(lc, s);
   const glow = (x, y, r, col, a) => {
     if (Math.abs(x - Cam.x) > Cam.vw / 2 + r || Math.abs(y - Cam.y) > Cam.vh / 2 + r) return;
-    const g = lc.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(1, `rgba(${col},0)`);
-    lc.fillStyle = g; lc.beginPath(); lc.arc(x, y, r, 0, TAU); lc.fill();
+    if (a <= 0.005) return;
+    lc.globalAlpha = Math.min(1, a); lc.drawImage(GlowSpr.get(col), x - r, y - r, r * 2, r * 2); lc.globalAlpha = 1;
   };
+  const cone = GlowSpr.cone();
   const k = clamp(night * 1.5, 0, 1);
   for (const l of World.lamps) glow(l.x, l.y, 10, '255,196,120', 0.6 * k);
   for (const c of Game.cars) {
@@ -504,11 +523,9 @@ function lightPass(amb) {
     const f = c.fwd(), rgt = [-f[1], f[0]];
     const hx = c.x + f[0] * c.L / 2, hy = c.y + f[1] * c.L / 2;
     // 전조등 원뿔
-    const g = lc.createRadialGradient(hx, hy, 0, hx, hy, 20);
-    g.addColorStop(0, `rgba(255,245,210,${0.7 * k})`); g.addColorStop(1, 'rgba(255,245,210,0)');
-    lc.fillStyle = g; lc.beginPath(); lc.moveTo(hx + rgt[0] * 0.8, hy + rgt[1] * 0.8);
-    lc.lineTo(hx + f[0] * 20 + rgt[0] * 6, hy + f[1] * 20 + rgt[1] * 6); lc.lineTo(hx + f[0] * 20 - rgt[0] * 6, hy + f[1] * 20 - rgt[1] * 6);
-    lc.lineTo(hx - rgt[0] * 0.8, hy - rgt[1] * 0.8); lc.closePath(); lc.fill();
+    if (!c.V.special || c.type === 'tank') {
+      lc.save(); lc.translate(hx, hy); lc.rotate(c.a); lc.globalAlpha = 0.7 * k; lc.drawImage(cone, 0, -6, 20, 12); lc.restore();
+    }
     glow(c.x - f[0] * c.L / 2, c.y - f[1] * c.L / 2, c.brakeLight ? 3.5 : 2, '255,40,30', (c.brakeLight ? 0.7 : 0.4) * k);
     if (c.siren) { const fl = Math.floor(Game.time * 8) % 2; glow(c.x, c.y, 9, fl ? '255,40,40' : '50,100,255', 0.8); }
   }
@@ -784,7 +801,7 @@ function renderScene() {
   for (const p of Game.peds) if (p.dead && Math.abs(p.x - Cam.x) < Cam.vw / 2 + 2 && Math.abs(p.y - Cam.y) < Cam.vh / 2 + 2) drawPed(p);
   for (const p of Game.peds) if (!p.dead && Math.abs(p.x - Cam.x) < Cam.vw / 2 + 2 && Math.abs(p.y - Cam.y) < Cam.vh / 2 + 2) drawPed(p, shadowV);
   const P = Game.player;
-  if (!P.car && !P.hidden && !(P.dead && Game.state === 'menu')) drawPed(P, shadowV);
+  if (!P.car && !P.hidden && !(P.alt > 1.2) && !(P.dead && Game.state === 'menu')) drawPed(P, shadowV);
   for (const c of Game.cars) if (!airborne(c) && Math.abs(c.x - Cam.x) < Cam.vw / 2 + 6 && Math.abs(c.y - Cam.y) < Cam.vh / 2 + 6) drawCar(c, shadowV);
   drawAirShadows(shadowV);
   drawHeli(amb, shadowV);

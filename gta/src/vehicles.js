@@ -424,6 +424,7 @@ function aiDrive(car, dt) {
   ai.ignoreT -= dt; ai.honkT -= dt;
   if (ai.mode === 'chase' || ai.mode === 'block') return policeDrive(car, dt);
   if (ai.mode === 'hunt') return huntDrive(car, dt);
+  if (ai.mode === 'air') return airDrive(car, dt);
   if (ai.mode === 'ems' && EMS.body && dist2(car.x, car.y, EMS.body.x, EMS.body.y) < 14 * 14) { car.in.thr = 0; car.in.brk = 1; car.in.st = 0; car.in.hb = false; return; }
   // 보복 운전: 멈춰 서서 운전자가 내려 싸우러 온다
   if (ai.rageT > 0) {

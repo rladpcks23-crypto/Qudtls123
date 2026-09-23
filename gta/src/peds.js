@@ -177,7 +177,7 @@ function fireWeapon(shooter, wname, ang, accuracy = 1) {
       if (hit.kind === 'car') {
         hit.damage(W.dmg * 0.35, isPlayer ? shooter : null);
         Particles.spark(hx, hy); Sfx.hit(hx, hy);
-        if (hit.driver === 'player' && !isPlayer) P.damage(W.dmg * 0.25, shooter, 0, 0, 'car');
+        if (hit.driver === 'player' && !isPlayer) P.damage(W.dmg * 0.25 * (hit.V.armor || 1), shooter, 0, 0, 'car'); // 장갑차량은 탑승자도 보호
         if (hit.driver === 'ai' && hit.ai && hit.driverKind === 'civ') { hit.ai.panic = true; if (chance(0.15)) bailOut(hit, true); }
         if (isPlayer && hit.type === 'police') crime('hitCop', hx, hy);
       } else if (hit.kind === 'heli') { hit.hp -= W.dmg; Particles.spark(hx, hy); if (isPlayer) crime('hitCop', hx, hy); }
@@ -189,7 +189,7 @@ function fireWeapon(shooter, wname, ang, accuracy = 1) {
 }
 
 // ---------- 폭발 ----------
-function explode(x, y, radius, dmg, by, source) {
+function explode(x, y, radius, dmg, by, source, alt = 0) {
   Sfx.explosion(x, y);
   Effects.boom(x, y, radius);
   Decals.scorch(x, y, radius * 0.45);
@@ -204,11 +204,12 @@ function explode(x, y, radius, dmg, by, source) {
   for (const p of peds) {
     if (p.dead) continue;
     if (p.car) { if (p === P && p.car === source) P.damage(999, by, 0, 0, 'explosion'); continue; }
+    if (Math.abs((p.alt || 0) - alt) > radius) continue;
     const d = dist(p.x, p.y, x, y);
     if (d < radius) { const f = 1 - d / radius; const nx = (p.x - x) / (d || 1), ny = (p.y - y) / (d || 1); p.downT = 1.5; p.damage(dmg * f * (p === P ? 0.6 : 1), by, nx * 6 * f, ny * 6 * f, 'explosion'); }
   }
   for (const c of Game.cars) {
-    if (c === source) continue;
+    if (c === source || Math.abs((c.alt || 0) - alt) > radius) continue; // 높이가 다른 기체는 폭발에 휘말리지 않는다
     const d = dist(c.x, c.y, x, y);
     if (d < radius * 1.3) {
       const f = 1 - d / (radius * 1.3), nx = (c.x - x) / (d || 1), ny = (c.y - y) / (d || 1);
@@ -232,13 +233,15 @@ function updateProjectiles(dt) {
       p.life -= dt;
       const nx = p.x + p.vx * dt, ny = p.y + p.vy * dt;
       Particles.smoke(p.x, p.y, 0.8, '#d0d0d0'); if (Math.random() < 0.7) Particles.fire(p.x, p.y, 0.6);
-      let boom = p.life <= 0 || solidT(Math.floor(nx / T), Math.floor(ny / T)) && tileAt(nx, ny) === TL.BUILD;
-      if (!boom) for (const c of Game.cars) { if (c === (p.by.car || null) || c.alt > 1.2) continue; if (dist2(c.x, c.y, nx, ny) < (c.L / 2 + 0.3) ** 2) { boom = true; break; } }
-      if (!boom) for (const q of Game.peds) { if (!q.dead && q !== p.by && !q.car && dist2(q.x, q.y, nx, ny) < 0.8) { boom = true; break; } }
-      if (!boom && p.by !== Game.player && !Game.player.car && dist2(Game.player.x, Game.player.y, nx, ny) < 0.8) boom = true;
+      // p.air: 공중 목표를 노린 미사일 (지상 물체·건물은 지나친다)
+      let boom = p.life <= 0 || !p.air && solidT(Math.floor(nx / T), Math.floor(ny / T)) && tileAt(nx, ny) === TL.BUILD;
+      if (!boom) for (const c of Game.cars) { if (c === (p.by.car || null) || (c.alt > 1.2) !== !!p.air) continue; if (dist2(c.x, c.y, nx, ny) < (c.L / 2 + (p.air ? 1.5 : 0.3)) ** 2) { boom = true; p.alt = c.alt || 0; break; } }
+      if (!boom && !p.air) for (const q of Game.peds) { if (!q.dead && q !== p.by && !q.car && dist2(q.x, q.y, nx, ny) < 0.8) { boom = true; break; } }
+      const PP = Game.player;
+      if (!boom && p.by !== PP && !PP.car && !PP.dead && (PP.alt > 1.2) === !!p.air && dist2(PP.x, PP.y, nx, ny) < (p.air ? 3 : 0.8)) { boom = true; if (p.air) p.alt = PP.alt; }
       const H = Police.heli; if (!boom && H && !H.dead && p.by === Game.player && dist2(H.x, H.y, nx, ny) < 12) boom = true;
       p.x = nx; p.y = ny;
-      if (boom) { explode(p.x, p.y, p.big || 7, p.dmg || 150, p.by, null); arr.splice(i, 1); }
+      if (boom) { explode(p.x, p.y, p.big || 7, p.dmg || 150, p.by, null, p.alt || 0); arr.splice(i, 1); }
     } else if (p.type === 'grenade') {
       p.fuse -= dt;
       p.vz -= 18 * dt; p.z += p.vz * dt; if (p.z < 0) { p.z = 0; p.vz = -p.vz * 0.4; p.vx *= 0.7; p.vy *= 0.7; }
@@ -497,7 +500,7 @@ function combatAI(p, dt) {
 // 차 피하기 (Reynolds evasion)
 function dodgeCars(p) {
   for (const c of Game.cars) {
-    const sp = c.speed; if (sp < 5) continue;
+    const sp = c.speed; if (sp < 5 || c.alt > 1.2) continue;
     const dx = p.x - c.x, dy = p.y - c.y; if (dx * dx + dy * dy > 144) continue;
     const t = (dx * c.vx + dy * c.vy) / (sp * sp); if (t < 0 || t > 0.9) continue;
     const cx = dx - c.vx * t, cy = dy - c.vy * t;
@@ -538,7 +541,7 @@ function pedStatic(p) {
 
 // 보행자-차량 충돌 (치임)
 function pedCarCollide(p, car) {
-  if (car.alt > 1.2 || p.car || dist2(p.x, p.y, car.x, car.y) > (car.brad + 0.6) ** 2) return;
+  if (car.alt > 1.2 || p.alt > 1.2 || p.car || dist2(p.x, p.y, car.x, car.y) > (car.brad + 0.6) ** 2) return;
   for (const [cx, cy] of car.circles()) {
     const dx = p.x - cx, dy = p.y - cy, d2 = dx * dx + dy * dy, rs = car.r + p.r;
     if (d2 >= rs * rs || d2 < 1e-8) continue;
@@ -620,7 +623,7 @@ function updatePickups(dt) {
     k.bob += dt * 3;
     if (k.temp) { k.temp -= dt; if (k.temp <= 0) { Game.pickups.splice(i, 1); continue; } }
     if (k.taken) { k.cool -= dt; if (k.cool <= 0) k.taken = false; continue; }
-    if (P.dead) continue;
+    if (P.dead || (P.car && P.car.alt > 1.2) || P.alt > 1.2) continue;
     const reach = P.car ? 2.6 : 1.2;
     if (dist2(k.x, k.y, P.px, P.py) > reach * reach) continue;
     if (P.car && k.type !== 'cash' && k.type !== 'package' && k.type !== 'bribe') continue;

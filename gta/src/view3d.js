@@ -319,13 +319,15 @@ const View3D = {
       if (car) { const c = Math.cos(car.a), s = Math.sin(car.a); ex = car.x + c * (car.type === 'bike' ? 0 : 0.1) + s * (car.type === 'bike' ? 0 : 0.36); ey = car.y + s * 0.1 - c * (car.type === 'bike' ? 0 : 0.36); eh = car.type === 'bike' ? 1.75 : ['truck', 'armored', 'van', 'swat', 'ambulance'].includes(car.V.style) ? 1.6 : 1.2; }
       else { ex += fx * 0.18; ey += fy * 0.18; }
       if (car && car.V.special) eh = (car.type === 'tank' ? 3.0 : 2.3) + (car.alt || 0);
+      if (!car) eh += P.alt || 0;
       cam.position.set(ex, eh, ey);
       cam.lookAt(ex + fx * 10, eh + Math.tan(this.pitch) * 10 - (car ? 0.1 : 0), ey + fy * 10);
       cam.fov = car ? 70 : 72;
     } else {
-      const back = car ? (v === 'front' ? -1 : 1) * (6.5 + car.L * 0.8 + Math.min(car.speed, 30) * 0.08) : (v === 'front' ? -4.2 : 4.6);
-      const alt = car ? car.alt || 0 : 0;
-      const up = (car ? 2.6 + car.L * 0.25 : 2.3) + alt;
+      const para = !car && P.alt > 1.2;
+      const back = car ? (v === 'front' ? -1 : 1) * (6.5 + car.L * 0.8 + Math.min(car.speed, 30) * 0.08) : para ? (v === 'front' ? -9 : 9) : (v === 'front' ? -4.2 : 4.6);
+      const alt = car ? car.alt || 0 : P.alt || 0;
+      const up = (car ? 2.6 + car.L * 0.25 : para ? 5 : 2.3) + alt;
       let dist_ = Math.abs(back);
       const dx = -fx * sign(back), dy = -fy * sign(back);
       // 벽에 가리면 카메라를 당긴다
@@ -336,7 +338,7 @@ const View3D = {
       const cp = cam.position;
       if (!this.camInit) { cp.set(cx, up, cy); this.camInit = true; }
       cp.set(lerp(cp.x, cx, k), lerp(cp.y, up + Math.max(0, -this.pitch) * 3, k), lerp(cp.z, cy, k));
-      const lookH = (car ? 1.2 : 1.45) + alt - (alt > 1.2 ? 5 : 0);
+      const lookH = (car ? 1.2 : 1.45) + alt - (alt > 1.2 ? (para ? 1 : 5) : 0);
       cam.lookAt(tx + fx * (v === 'front' ? 0 : 3), lookH + this.pitch * 4, ty + fy * (v === 'front' ? 0 : 3));
       cam.fov = car ? 65 + Math.min(12, car.speed * 0.35) : 60;
     }
@@ -402,7 +404,15 @@ const View3D = {
       let g = this.peds.get(p.id);
       if (!g) { g = this.makePed(p); this.peds.set(p.id, g); }
       g.visible = !(p === P && Game.view === 'fps');
-      g.position.set(p.x, 0, p.y);
+      g.position.set(p.x, p.alt || 0, p.y);
+      if (p === P) {
+        if (P.chute && !g.userData.chute) {
+          const ch = new THREE.Group();
+          for (let k = 0; k < 5; k++) { const m = new THREE.Mesh(this.geo.box, this.mat(k % 2 ? '#f2f2f2' : '#e0443e')); m.scale.set(1.4, 0.15, 1); m.position.set(0.2, 3.2 + Math.cos((k - 2) * 0.35) * 0.4, (k - 2) * 0.9); ch.add(m); }
+          g.add(ch); g.userData.chute = ch;
+        }
+        if (g.userData.chute) g.userData.chute.visible = !!P.chute;
+      }
       g.rotation.set(0, -p.a, 0);
       const U = g.userData;
       if (U.shirt && U.sc !== p.shirt) { U.shirt.color.set(p.shirt); U.sc = p.shirt; }
