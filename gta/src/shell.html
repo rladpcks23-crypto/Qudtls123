@@ -219,8 +219,12 @@ window.addEventListener('error', function (e) { var b = document.getElementById(
     <h1 class="logo">네온 하버<span>NEON HARBOR</span></h1>
     <p class="tag">2.5km 섬 도시. 차를 훔치고, 의뢰를 받고, 경찰을 따돌려라. 신호를 지키는 교통, 겁먹고 흩어지는 시민, 별이 오를수록 거세지는 추격전이 기다린다.</p>
     <div class="btns">
-      <button class="btn primary" id="btn-new">새 게임</button>
-      <button class="btn" id="btn-continue" hidden>이어하기</button>
+      <button class="btn primary" id="btn-continue" hidden>이어하기</button>
+      <button class="btn" id="btn-new">새 게임</button>
+      <button class="btn ghost" id="btn-restore" hidden>지난 저장 되살리기</button>
+    </div>
+    <div id="save-info" class="cz-note" style="margin-top:6px"></div>
+    <div>
     </div>
     <div class="tabs" role="tablist">
       <button data-tab="tab-keys" class="on">조작법</button>

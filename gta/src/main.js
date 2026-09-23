@@ -237,6 +237,7 @@ const Game = {
     Missions.update(dt);
     Jobs.update(dt);
     Military.update(dt); Airport.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update(); Biz.update(dt); BankRob.update(dt); Gangs.update(dt); GangJob.update(dt); Empire.update(dt); Finance.update(dt);
+    this.autoT = (this.autoT || 0) + dt; if (this.autoT > 30 && this.state === 'play') { this.autoT = 0; Save.write(); } // 30초마다 자동 저장
     if (this.introT > 0 && (this.introT -= dt) <= 0) UI.big('조직을 고르자', '지도(M)의 왕관 = 조직 보스 · 찾아가 계약하거나, 은신처(집)에서 내 조직을 세울 수 있다', 5, '#f2c14e');
     Talk.update(dt); Aim.update(dt); EMS.update(dt); Givers.update(); Vendors.update(dt); GPS.update(dt);
     // 체력 자연 회복: 6초 동안 안 다치면 50까지 천천히 (GTA V)
@@ -685,6 +686,9 @@ function placeStaticPickups() {
   Game.packageTotal = chosen.length;
 }
 
+// 창을 닫거나 다른 창으로 가면 저장
+for (const ev of ['beforeunload', 'pagehide']) window.addEventListener(ev, () => { if (Game.player && Game.state !== 'menu') Save.write(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && Game.player && Game.state !== 'menu') Save.write(); });
 window.addEventListener('load', () => {
   // 로딩 화면을 먼저 그린 뒤 도시를 만든다 (만드는 동안 빈 화면으로 멈춘 것처럼 보이지 않게)
   const start = () => setTimeout(() => {

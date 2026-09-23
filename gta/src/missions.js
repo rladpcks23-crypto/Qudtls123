@@ -15,10 +15,14 @@ const Save = {
     try {
       const P = Game.player;
       const inv = {}; for (const k in P.inv) if (k !== 'fist') inv[k] = P.inv[k] === Infinity ? -1 : P.inv[k];
-      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {}, gangs: Gangs.save(), empire: Empire.save(), finance: Finance.save(), body: { maxHp: P.maxHp, endurance: P.endurance || 1, aimSkill: P.aimSkill || 1, shirt: P.shirt, pants: P.pants, hatType: P.hatType || 'none', hatCol: P.hatCol || '', logo: P.logo || '', eduLv: P.eduLv || 0 } }));
+      localStorage.setItem(this.key, JSON.stringify({ savedAt: Date.now(), idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {}, gangs: Gangs.save(), empire: Empire.save(), finance: Finance.save(), body: { maxHp: P.maxHp, endurance: P.endurance || 1, aimSkill: P.aimSkill || 1, shirt: P.shirt, pants: P.pants, hatType: P.hatType || 'none', hatCol: P.hatCol || '', logo: P.logo || '', eduLv: P.eduLv || 0 } }));
     } catch (e) { /* 저장 불가 환경 */ }
   },
-  clear() { try { localStorage.removeItem(this.key); } catch (e) { } },
+  // 지우지 않고 백업으로 옮긴다 (새 게임을 눌러도 '지난 저장 되살리기'로 되돌릴 수 있게)
+  clear() { try { const s = localStorage.getItem(this.key); if (s) localStorage.setItem(this.key + '.bak', s); localStorage.removeItem(this.key); } catch (e) { } },
+  readBak() { try { const s = localStorage.getItem(this.key + '.bak'); return s ? JSON.parse(s) : null; } catch (e) { return null; } },
+  restore() { try { const s = localStorage.getItem(this.key + '.bak'); if (!s) return false; const cur = localStorage.getItem(this.key); localStorage.setItem(this.key, s); if (cur) localStorage.setItem(this.key + '.bak', cur); return true; } catch (e) { return false; } },
+  summary(sv) { if (!sv) return ''; const P = sv.money || 0, dep = sv.finance && sv.finance.bank ? sv.finance.bank.dep || 0 : 0; return `현금 $${Math.round(P).toLocaleString()}${dep ? ` · 예금 $${Math.round(dep).toLocaleString()}` : ''} · 스토리 ${sv.idx || 0}/14${sv.savedAt ? ` · ${new Date(sv.savedAt).toLocaleString()}` : ''}`; },
 };
 
 const Missions = {

@@ -496,10 +496,15 @@ const Menu = {
   el: null,
   init() {
     this.el = document.getElementById('menu');
-    document.getElementById('btn-new').onclick = () => { Sfx.init(); Game.newGame(false); };
+    const nb = document.getElementById('btn-new');
+    nb.onclick = () => { // 저장이 있으면 한 번 더 확인 (실수로 누르면 저장이 사라지던 문제)
+      if (Save.read() && nb.dataset.sure !== '1') { nb.dataset.sure = '1'; nb.textContent = '정말 새로 시작? (저장은 백업된다) — 한 번 더 누르기'; setTimeout(() => { nb.dataset.sure = ''; nb.textContent = '새 게임'; }, 4000); return; }
+      nb.dataset.sure = ''; nb.textContent = '새 게임'; Sfx.init(); Game.newGame(false);
+    };
     const cont = document.getElementById('btn-continue');
-    if (Save.read()) cont.hidden = false;
     cont.onclick = () => { Sfx.init(); Game.newGame(true); };
+    document.getElementById('btn-restore').onclick = () => { if (Save.restore()) { UI.toast('지난 저장을 되살렸다'); this.show(); } };
+    this.show();
     document.getElementById('btn-resume').onclick = () => Game.resume();
     document.getElementById('btn-map').onclick = () => { Game.state = 'map'; this.hidePause(); };
     document.getElementById('btn-sound').onclick = e => { Sfx.muted = !Sfx.muted; e.target.textContent = Sfx.muted ? '소리 켜기' : '소리 끄기'; };
@@ -545,7 +550,15 @@ const Menu = {
     document.getElementById('bag-auto').onclick = () => { Bag.useBest(); Bag.render(); };
     document.getElementById('bagui').addEventListener('click', e => { if (e.target.id === 'bagui') Bag.close(); });
   },
-  show() { this.el.hidden = false; const cont = document.getElementById('btn-continue'); cont.hidden = !Save.read(); },
+  show() {
+    this.el.hidden = false;
+    const sv = Save.read(), bak = Save.readBak();
+    document.getElementById('btn-continue').hidden = !sv;
+    document.getElementById('btn-new').className = sv ? 'btn' : 'btn primary';
+    document.getElementById('btn-restore').hidden = !bak;
+    const info = document.getElementById('save-info');
+    if (info) info.textContent = (sv ? `저장: ${Save.summary(sv)}` : '저장된 게임 없음') + (bak ? `  |  백업: ${Save.summary(bak)}` : '');
+  },
   hide() { this.el.hidden = true; },
   showPause() { document.getElementById('pause').hidden = false; document.getElementById('btn-quitjob').hidden = !Jobs.active; document.getElementById('btn-backup').hidden = !(Gangs.mine && Gangs.rank >= 1); if (this.camLabel) this.camLabel(); if (this.qLabel) this.qLabel(); },
   hidePause() { document.getElementById('pause').hidden = true; },

@@ -219,8 +219,12 @@ window.addEventListener('error', function (e) { var b = document.getElementById(
     <h1 class="logo">네온 하버<span>NEON HARBOR</span></h1>
     <p class="tag">2.5km 섬 도시. 차를 훔치고, 의뢰를 받고, 경찰을 따돌려라. 신호를 지키는 교통, 겁먹고 흩어지는 시민, 별이 오를수록 거세지는 추격전이 기다린다.</p>
     <div class="btns">
-      <button class="btn primary" id="btn-new">새 게임</button>
-      <button class="btn" id="btn-continue" hidden>이어하기</button>
+      <button class="btn primary" id="btn-continue" hidden>이어하기</button>
+      <button class="btn" id="btn-new">새 게임</button>
+      <button class="btn ghost" id="btn-restore" hidden>지난 저장 되살리기</button>
+    </div>
+    <div id="save-info" class="cz-note" style="margin-top:6px"></div>
+    <div>
     </div>
     <div class="tabs" role="tablist">
       <button data-tab="tab-keys" class="on">조작법</button>
@@ -3778,10 +3782,14 @@ const Save = {
     try {
       const P = Game.player;
       const inv = {}; for (const k in P.inv) if (k !== 'fist') inv[k] = P.inv[k] === Infinity ? -1 : P.inv[k];
-      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {}, gangs: Gangs.save(), empire: Empire.save(), finance: Finance.save(), body: { maxHp: P.maxHp, endurance: P.endurance || 1, aimSkill: P.aimSkill || 1, shirt: P.shirt, pants: P.pants, hatType: P.hatType || 'none', hatCol: P.hatCol || '', logo: P.logo || '', eduLv: P.eduLv || 0 } }));
+      localStorage.setItem(this.key, JSON.stringify({ savedAt: Date.now(), idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {}, gangs: Gangs.save(), empire: Empire.save(), finance: Finance.save(), body: { maxHp: P.maxHp, endurance: P.endurance || 1, aimSkill: P.aimSkill || 1, shirt: P.shirt, pants: P.pants, hatType: P.hatType || 'none', hatCol: P.hatCol || '', logo: P.logo || '', eduLv: P.eduLv || 0 } }));
     } catch (e) { /* 저장 불가 환경 */ }
   },
-  clear() { try { localStorage.removeItem(this.key); } catch (e) { } },
+  // 지우지 않고 백업으로 옮긴다 (새 게임을 눌러도 '지난 저장 되살리기'로 되돌릴 수 있게)
+  clear() { try { const s = localStorage.getItem(this.key); if (s) localStorage.setItem(this.key + '.bak', s); localStorage.removeItem(this.key); } catch (e) { } },
+  readBak() { try { const s = localStorage.getItem(this.key + '.bak'); return s ? JSON.parse(s) : null; } catch (e) { return null; } },
+  restore() { try { const s = localStorage.getItem(this.key + '.bak'); if (!s) return false; const cur = localStorage.getItem(this.key); localStorage.setItem(this.key, s); if (cur) localStorage.setItem(this.key + '.bak', cur); return true; } catch (e) { return false; } },
+  summary(sv) { if (!sv) return ''; const P = sv.money || 0, dep = sv.finance && sv.finance.bank ? sv.finance.bank.dep || 0 : 0; return `현금 $${Math.round(P).toLocaleString()}${dep ? ` · 예금 $${Math.round(dep).toLocaleString()}` : ''} · 스토리 ${sv.idx || 0}/14${sv.savedAt ? ` · ${new Date(sv.savedAt).toLocaleString()}` : ''}`; },
 };
 
 const Missions = {
@@ -7709,10 +7717,15 @@ const Menu = {
   el: null,
   init() {
     this.el = document.getElementById('menu');
-    document.getElementById('btn-new').onclick = () => { Sfx.init(); Game.newGame(false); };
+    const nb = document.getElementById('btn-new');
+    nb.onclick = () => { // 저장이 있으면 한 번 더 확인 (실수로 누르면 저장이 사라지던 문제)
+      if (Save.read() && nb.dataset.sure !== '1') { nb.dataset.sure = '1'; nb.textContent = '정말 새로 시작? (저장은 백업된다) — 한 번 더 누르기'; setTimeout(() => { nb.dataset.sure = ''; nb.textContent = '새 게임'; }, 4000); return; }
+      nb.dataset.sure = ''; nb.textContent = '새 게임'; Sfx.init(); Game.newGame(false);
+    };
     const cont = document.getElementById('btn-continue');
-    if (Save.read()) cont.hidden = false;
     cont.onclick = () => { Sfx.init(); Game.newGame(true); };
+    document.getElementById('btn-restore').onclick = () => { if (Save.restore()) { UI.toast('지난 저장을 되살렸다'); this.show(); } };
+    this.show();
     document.getElementById('btn-resume').onclick = () => Game.resume();
     document.getElementById('btn-map').onclick = () => { Game.state = 'map'; this.hidePause(); };
     document.getElementById('btn-sound').onclick = e => { Sfx.muted = !Sfx.muted; e.target.textContent = Sfx.muted ? '소리 켜기' : '소리 끄기'; };
@@ -7758,7 +7771,15 @@ const Menu = {
     document.getElementById('bag-auto').onclick = () => { Bag.useBest(); Bag.render(); };
     document.getElementById('bagui').addEventListener('click', e => { if (e.target.id === 'bagui') Bag.close(); });
   },
-  show() { this.el.hidden = false; const cont = document.getElementById('btn-continue'); cont.hidden = !Save.read(); },
+  show() {
+    this.el.hidden = false;
+    const sv = Save.read(), bak = Save.readBak();
+    document.getElementById('btn-continue').hidden = !sv;
+    document.getElementById('btn-new').className = sv ? 'btn' : 'btn primary';
+    document.getElementById('btn-restore').hidden = !bak;
+    const info = document.getElementById('save-info');
+    if (info) info.textContent = (sv ? `저장: ${Save.summary(sv)}` : '저장된 게임 없음') + (bak ? `  |  백업: ${Save.summary(bak)}` : '');
+  },
   hide() { this.el.hidden = true; },
   showPause() { document.getElementById('pause').hidden = false; document.getElementById('btn-quitjob').hidden = !Jobs.active; document.getElementById('btn-backup').hidden = !(Gangs.mine && Gangs.rank >= 1); if (this.camLabel) this.camLabel(); if (this.qLabel) this.qLabel(); },
   hidePause() { document.getElementById('pause').hidden = true; },
@@ -9782,6 +9803,7 @@ const Game = {
     Missions.update(dt);
     Jobs.update(dt);
     Military.update(dt); Airport.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update(); Biz.update(dt); BankRob.update(dt); Gangs.update(dt); GangJob.update(dt); Empire.update(dt); Finance.update(dt);
+    this.autoT = (this.autoT || 0) + dt; if (this.autoT > 30 && this.state === 'play') { this.autoT = 0; Save.write(); } // 30초마다 자동 저장
     if (this.introT > 0 && (this.introT -= dt) <= 0) UI.big('조직을 고르자', '지도(M)의 왕관 = 조직 보스 · 찾아가 계약하거나, 은신처(집)에서 내 조직을 세울 수 있다', 5, '#f2c14e');
     Talk.update(dt); Aim.update(dt); EMS.update(dt); Givers.update(); Vendors.update(dt); GPS.update(dt);
     // 체력 자연 회복: 6초 동안 안 다치면 50까지 천천히 (GTA V)
@@ -10230,6 +10252,9 @@ function placeStaticPickups() {
   Game.packageTotal = chosen.length;
 }
 
+// 창을 닫거나 다른 창으로 가면 저장
+for (const ev of ['beforeunload', 'pagehide']) window.addEventListener(ev, () => { if (Game.player && Game.state !== 'menu') Save.write(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && Game.player && Game.state !== 'menu') Save.write(); });
 window.addEventListener('load', () => {
   // 로딩 화면을 먼저 그린 뒤 도시를 만든다 (만드는 동안 빈 화면으로 멈춘 것처럼 보이지 않게)
   const start = () => setTimeout(() => {
