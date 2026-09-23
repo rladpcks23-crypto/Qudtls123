@@ -228,7 +228,7 @@ function genWorld(seed) {
 
   const nearAirport = b => { const A = W.airport; if (!A) return false; return b.x1 >= A.bx0 - 40 && b.x0 <= A.bx1 + 40 && b.y1 >= A.by0 - 40 && b.y0 <= A.by1 + 40; };
   // ---------- 에투알 광장 · 대로 · 랜드마크 (파리식 방사형 구조) ----------
-  W.decos = []; W.landmarks = []; W.runways = [];
+  W.decos = []; W.landmarks = []; W.runways = []; W.genT = {};
   function buildEtoile(b, ix0, iy0, ix1, iy1) {
     const cx = W.etoile.cx, cy = W.etoile.cy, Rr = Math.min(cx - ix0, ix1 + 1 - cx, cy - iy0, iy1 + 1 - cy) - 0.6;
     W.etoile.R = Rr;
@@ -594,7 +594,7 @@ function genWorld(seed) {
     if (outside && !inBaseArea(x, y)) set(x, y, TL.WATER);
   }
 
-  reserveAirport();
+  { const _t = performance.now(); reserveAirport(); W.genT['reserveAirport'] = Math.round(performance.now() - _t); }
 
   // 5) 블록 찾기 (순환도로 내부의 비도로 영역을 flood fill)
   const bx0 = W.VX[0] + 2, bx1 = W.VX[NX - 1] - 1, by0 = W.HY[0] + 2, by1 = W.HY[NY - 1] - 1;
@@ -878,13 +878,13 @@ function genWorld(seed) {
   }
 
   // 6-2b) 군사 섬 (참고: 바다 위 군사 기지 섬 위성 사진) — 본섬 옆 바다에 따로 떨어진 섬, 둑길로 연결
-  buildAirportIsland();
-  buildMilitaryIsland();
+  { const _t = performance.now(); buildAirportIsland(); W.genT['buildAirportIsland'] = Math.round(performance.now() - _t); }
+  { const _t = performance.now(); buildMilitaryIsland(); W.genT['buildMilitaryIsland'] = Math.round(performance.now() - _t); }
 
   // 6-3) 파리처럼: 에투알 광장에서 뻗는 8개의 가로수 대로 + 둥근 그랑 불바르 + 랜드마크
-  carveBoulevards();
-  buildLandmarks();
-  buildNeighborhoods();
+  { const _t = performance.now(); carveBoulevards(); W.genT['carveBoulevards'] = Math.round(performance.now() - _t); }
+  { const _t = performance.now(); buildLandmarks(); W.genT['buildLandmarks'] = Math.round(performance.now() - _t); }
+  { const _t = performance.now(); buildNeighborhoods(); W.genT['buildNeighborhoods'] = Math.round(performance.now() - _t); }
 
   // 기지 정문 앞 인도: 국방 후원 창구
   {
@@ -1016,9 +1016,11 @@ function genWorld(seed) {
       W.branches.push({ key, kind: shop, ch, c: icol, label });
     }
   };
+  const _tc = performance.now();
   cover('hospital', ['hospital', 'clinic', 'hospital2', 'hospital3'], 520, 6, '#e9ecef', '종합병원', 'hospital', 'hospital_st', 'H', '#e0443e');
   cover('police', ['police', 'police2', 'police3'], 560, 6, '#2c3e66', '경찰서', 'police', 'police_st', 'P', '#4b8fe8');
   cover('fire', [], 480, 8, '#b3261e', '소방서', 'fire', 'fire_st', '소', '#ff6b3d');
+  W.genT.cover = Math.round(performance.now() - _tc);
   const nearA = W.airport && anyLot(W.airport.cx / MW, (W.airport.by1 + 30) / MH, ['warehouse', 'mid', 'house']);
   if (nearA) makePlace('biz_airhotel', nearA, 'biz', '#8fb3c9', '에어포트 호텔');
   // 차고형 장소: 필지를 비워 LOT으로 만든다
@@ -1058,8 +1060,8 @@ function genWorld(seed) {
   W.treeGrid = new Map();
   for (const t of W.trees) { const k = Math.floor(t.x / 8) + ',' + Math.floor(t.y / 8); if (!W.treeGrid.has(k)) W.treeGrid.set(k, []); W.treeGrid.get(k).push(t); }
 
-  buildSpatial();
-  buildMinimap();
+  { const _t = performance.now(); buildSpatial(); W.genT['buildSpatial'] = Math.round(performance.now() - _t); }
+  { const _t = performance.now(); buildMinimap(); W.genT['buildMinimap'] = Math.round(performance.now() - _t); }
 }
 
 // ---------- 공간 인덱스 (맵이 커져서 '전체 목록에서 무작위로 고르기'·'전체 훑기'를 피한다) ----------

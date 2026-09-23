@@ -203,6 +203,13 @@
   @media (prefers-reduced-motion: reduce) { .btn { transition: none; } .btn:hover { transform: none; } }
 </style>
 
+<div id="boot" style="position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#0a0e17;color:#f2c14e;font:700 26px sans-serif;text-align:center;padding:20px">
+  <div>네온 하버</div><div id="boot-msg" style="font:500 15px sans-serif;color:#cfd6e0">섬 도시를 만드는 중… (몇 초 걸린다)</div>
+</div>
+<script>
+// 시작 중 오류가 나면 화면에 그대로 보여 준다 (실행이 안 될 때 원인을 알 수 있게)
+window.addEventListener('error', function (e) { var b = document.getElementById('boot'), m = document.getElementById('boot-msg'); if (b && m && b.dataset.ok !== '1') { b.style.display = 'flex'; m.style.color = '#ff6b6b'; m.textContent = '오류로 시작하지 못했습니다: ' + (e.message || e) + (e.lineno ? ' (줄 ' + e.lineno + ')' : '') + ' — 이 문구를 알려 주세요'; } });
+</script>
 <canvas id="view3d" aria-hidden="true"></canvas>
 <canvas id="game" aria-label="네온 하버 게임 화면"></canvas>
 
@@ -210,7 +217,7 @@
   <div class="menu-col">
     <div class="kicker">OPEN-WORLD CRIME SANDBOX · 1998</div>
     <h1 class="logo">네온 하버<span>NEON HARBOR</span></h1>
-    <p class="tag">600m × 600m 항구 도시. 차를 훔치고, 의뢰를 받고, 경찰을 따돌려라. 신호를 지키는 교통, 겁먹고 흩어지는 시민, 별이 오를수록 거세지는 추격전이 기다린다.</p>
+    <p class="tag">2.5km 섬 도시. 차를 훔치고, 의뢰를 받고, 경찰을 따돌려라. 신호를 지키는 교통, 겁먹고 흩어지는 시민, 별이 오를수록 거세지는 추격전이 기다린다.</p>
     <div class="btns">
       <button class="btn primary" id="btn-new">새 게임</button>
       <button class="btn" id="btn-continue" hidden>이어하기</button>

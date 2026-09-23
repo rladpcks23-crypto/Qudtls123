@@ -684,8 +684,12 @@ function placeStaticPickups() {
 }
 
 window.addEventListener('load', () => {
-  const start = () => Game.init();
-  if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]).then(start); else start();
+  // 로딩 화면을 먼저 그린 뒤 도시를 만든다 (만드는 동안 빈 화면으로 멈춘 것처럼 보이지 않게)
+  const start = () => setTimeout(() => {
+    try { Game.init(); const b = document.getElementById('boot'); if (b) { b.style.display = 'none'; b.dataset.ok = '1'; } }
+    catch (e) { console.error(e); const m = document.getElementById('boot-msg'); if (m) { m.style.color = '#ff6b6b'; m.textContent = '오류로 시작하지 못했습니다: ' + e.message + ' — 이 문구를 알려 주세요'; } }
+  }, 30);
+  if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 800))]).then(start); else start();
 });
 
 // 모바일판: 전체화면 + 가로 고정 + 화면 꺼짐 방지 (지원하지 않는 환경에서는 조용히 무시)
