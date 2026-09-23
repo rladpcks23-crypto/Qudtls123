@@ -124,7 +124,7 @@ GTA 시리즈(주로 III·산안드레아스·V)에 있는데 네온 하버에 �
 | GPS · 웨이포인트 (IV·V) | 방향 화살표만 | 전체 지도 클릭으로 웨이포인트, 레이더·지도에 도로를 따르는 GPS 경로 |
 | 세이브 하우스 | 미션 후 자동 저장만 | 은신처(집): 저장 + 6시간 수면 + 체력 회복 |
 | 체력 자연 회복 (V) | 없음 | 6초 동안 안 다치면 50까지 회복 |
-| 치트 코드 (SA) | 없음 | HESOYAM, AEZAKMI, TURNUPTHEHEAT, LXGIWYL, UZUMYMW, CPKTNWT, OHDUDE(오토바이). PC는 게임 중 타이핑, 모바일은 일시정지 메뉴 입력칸 |
+| 치트 코드 (SA) | 없음 | HESOYAM, AEZAKMI, TURNUPTHEHEAT, LXGIWYL, UZUMYMW, CPKTNWT, OHDUDE(헌터 헬기), AIWPRTON(라이노 전차), JUMPJET(전투기), MOTORBIKE(오토바이). PC는 게임 중 타이핑, 모바일은 일시정지 메뉴 입력칸 |
 
 아직 없는 것(규모상 제외): 보트·비행기, 수영, 옷·미용실, 전화, 인터넷 멀티플레이.
 
