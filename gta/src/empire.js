@@ -205,7 +205,7 @@ SHOPS.safehouse = {
     } else if (Gangs.mine === 'own') {
       out.push({ id: 'own_info', name: `${Empire.own.name} · 구역 ${Gangs.count('own')}블록 · 조직원 ${Empire.members('own')}명`, price: 0, desc: `평판 ${Gangs.rep} · 부하 호출 ${Empire.backupSize()}명 · 구역 수입 ×${Empire.incomeMul().toFixed(2)}`, ok: () => false });
       out.push({ id: 'gjob1', name: '보호비 수금', price: 0, btn: '시작', desc: '평판 +40, 돈 $300씩', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('collect'); } });
-      out.push({ id: 'gjob2', name: '구역 습격 — 이웃 라이벌 블록', price: 0, btn: '시작', desc: '성공하면 그 블록이 우리 구역', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('raid'); } });
+      out.push({ id: 'gjob2', name: '구역 습격 — 이웃 블록 차지', price: 0, btn: '시작', desc: '라이벌이 없으면 주인 없는 블록의 건달을 몰아낸다 · 성공하면 우리 구역', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('raid'); } });
       out.push({ id: 'gcall', name: `부하 부르기 (${Empire.backupSize()}명)`, price: 0, btn: '호출', desc: 'K 키 / 일시정지 메뉴에서도 된다', ok: () => true, fn: () => { Shop.close(); Gangs.callBackup(); } });
       out.push({ id: 'gwar', name: '전쟁 선포 — 이웃 라이벌 블록 습격', price: 0, btn: '선포', desc: '대규모 전쟁을 지금 시작한다', ok: () => !Gangs.war, fn: () => { Shop.close(); Gangs.declareWar('own'); } });
     }

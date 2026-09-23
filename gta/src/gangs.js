@@ -166,6 +166,17 @@ const Gangs = {
   },
 
   // 전쟁 선포 (보스): 이웃 라이벌 블록 하나를 골라 습격
+  // 우리 구역에 맞닿은 주인 없는 블록 중 가장 가까운 것
+  neutralNeighbor(g) {
+    const own = World.blocks.filter(b => this.turf[b.id] === g), P = Game.player;
+    let best = null, bd = Infinity;
+    for (const b of World.blocks) {
+      if (this.turf[b.id] || !b.loop || b.airport || b.district === DIST.AIRPORT) continue;
+      if (!own.some(a => a.x0 <= b.x1 + 3 && b.x0 <= a.x1 + 3 && a.y0 <= b.y1 + 3 && b.y0 <= a.y1 + 3)) continue;
+      const d = dist((b.x0 + b.x1) / 2 * T, (b.y0 + b.y1) / 2 * T, P.px, P.py); if (d < bd) { bd = d; best = b; }
+    }
+    return best;
+  },
   declareWar(g) {
     const pr = this.borderPairs().filter(([a, b]) => this.turf[a.id] === g || this.turf[b.id] === g);
     if (!pr.length) { UI.toast('이웃한 라이벌 구역이 없다'); return; }
@@ -235,7 +246,7 @@ for (const g of GANG_IDS) {
         const nextNeed = Gangs.rank === 0 ? `파트너까지 평판 ${Math.max(0, 300 - Gangs.rep)}` : Gangs.rank === 1 ? (Gangs.rep >= 1000 ? '후계 계약 가능!' : `후계 계약까지 평판 ${1000 - Gangs.rep}`) : '보스';
         out.push({ id: 'grank', name: `나: ${RANKS[Gangs.rank]} · 평판 ${Gangs.rep}`, price: 0, desc: nextNeed, ok: () => false });
         out.push({ id: 'gjob1', name: '보호비 수금 — 우리 구역 가게 3곳을 돈다', price: 0, btn: '시작', desc: '평판 +40, 돈 $300씩', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('collect'); } });
-        out.push({ id: 'gjob2', name: '구역 습격 — 이웃 라이벌 블록의 조직원 8명 처치', price: 0, btn: '시작', desc: '성공하면 그 블록이 우리 구역, 평판 +150, $3,000', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('raid'); } });
+        out.push({ id: 'gjob2', name: '구역 습격 — 이웃 블록 차지', price: 0, btn: '시작', desc: '라이벌 블록: 조직원 8명 처치(평판 +150, $3,000) · 주인 없는 블록: 건달 5명(평판 +80, $1,500)', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('raid'); } });
         if (Gangs.rank >= 1) out.push({ id: 'gcall', name: `부하 부르기 (${Empire.backupSize()}명)`, price: 0, btn: '호출', desc: '어디서든 PC H 길게 대신 여기서, 또는 일시정지 메뉴', ok: () => true, fn: () => { Shop.close(); Gangs.callBackup(); } });
         if (Gangs.rank === 1 && Gangs.rep >= 1000) out.push({ id: 'gboss', name: `후계 계약 — ${BOSS_INFO[g].name}의 자리를 물려받는다`, price: 50000, btn: '계약', desc: '보스가 된다: 부하 최대 10명, 구역 수입 전부, 전쟁 선포 · 대신 라이벌 암살단이 온다', ok: () => true, fn: () => { Shop.close(); Gangs.succeed(); } });
         if (Gangs.rank === 2) out.push({ id: 'gwar', name: '전쟁 선포 — 이웃 라이벌 블록 습격', price: 0, btn: '선포', desc: '대규모 전쟁을 지금 시작한다', ok: () => !Gangs.war, fn: () => { Shop.close(); Gangs.declareWar(g); } });
@@ -272,11 +283,16 @@ const GangJob = {
       UI.big('보호비 수금', `우리 구역 가게 ${stops.length}곳 — 화살표·지도의 표시로 가서 가게 앞에 멈춰라`, 3, GANGS[g].color);
     } else {
       const pr = Gangs.borderPairs().filter(([a, b]) => Gangs.turf[a.id] === g || Gangs.turf[b.id] === g);
-      if (!pr.length) { UI.toast('이웃한 라이벌 구역이 없다'); return; }
-      const [a, b] = pick(pr), blk = Gangs.turf[a.id] === g ? b : a, rival = Gangs.turf[blk.id];
+      let blk, rival, neutral = false;
+      if (pr.length) { const [a, b] = pick(pr); blk = Gangs.turf[a.id] === g ? b : a; rival = Gangs.turf[blk.id]; }
+      else { // 이웃에 라이벌이 없으면 우리 구역에 붙은 주인 없는 블록을 떠돌이 건달에게서 빼앗는다
+        blk = Gangs.neutralNeighbor(g);
+        if (!blk) { UI.toast('넓힐 수 있는 이웃 블록이 없다'); return; }
+        rival = pick(GANG_IDS.filter(x => x !== g)); neutral = true;
+      }
       const cx = (blk.x0 + blk.x1 + 1) / 2 * T, cy = (blk.y0 + blk.y1 + 1) / 2 * T;
-      this.active = { kind, blk, rival, x: cx, y: cy, spawned: false, foes: [], t: 0 };
-      UI.toast(`구역 습격: ${GANGS[rival].name} 구역으로 가라`);
+      this.active = { kind, blk, rival, neutral, x: cx, y: cy, spawned: false, foes: [], t: 0 };
+      UI.toast(neutral ? '구역 넓히기: 주인 없는 이웃 블록의 건달을 몰아내라 (지도·화살표 표시)' : `구역 습격: ${GANGS[rival].name} 구역으로 가라`);
     }
   },
   update(dt) {
@@ -296,13 +312,13 @@ const GangJob = {
     } else {
       if (!J.spawned && dist(P.px, P.py, J.x, J.y) < 70) {
         J.spawned = true;
-        for (let i = 0; i < 8; i++) { const [x, y] = loopPoint(J.blk.loop, rand(0, J.blk.loop.P)); const q = spawnPed('gang', x, y); setGang(q, J.rival); Object.assign(q, { persistent: true, state: 'chase', raid: true, weapon: pick(['smg', 'pistol', 'shotgun', 'rifle']) }); J.foes.push(q); }
-        UI.big('습격 개시!', `${GANGS[J.rival].name} 조직원 8명`, 2, '#ff4d4d');
+        for (let i = 0; i < (J.neutral ? 5 : 8); i++) { const [x, y] = loopPoint(J.blk.loop, rand(0, J.blk.loop.P)); const q = spawnPed('gang', x, y); setGang(q, J.rival); Object.assign(q, { persistent: true, state: 'chase', raid: true, weapon: pick(['smg', 'pistol', 'shotgun', 'rifle']) }); J.foes.push(q); }
+        UI.big('습격 개시!', J.neutral ? '떠돌이 건달 5명' : `${GANGS[J.rival].name} 조직원 8명`, 2, '#ff4d4d');
       }
       const left = J.foes.filter(q => !q.dead).length;
-      UI.objective(J.spawned ? `라이벌 조직원 처치: 남은 ${left}명` : `${GANGS[J.rival].name} 구역으로 가라`);
+      UI.objective(J.spawned ? `${J.neutral ? '건달' : '라이벌 조직원'} 처치: 남은 ${left}명` : J.neutral ? '주인 없는 이웃 블록으로 가라' : `${GANGS[J.rival].name} 구역으로 가라`);
       if (J.spawned && !left) {
-        Gangs.turf[J.blk.id] = Gangs.mine; Gangs.addRep(150, '구역 습격 성공'); P.money += 3000; Sfx.passed();
+        Gangs.turf[J.blk.id] = Gangs.mine; Gangs.addRep(J.neutral ? 80 : 150, J.neutral ? '구역 넓히기 성공' : '구역 습격 성공'); P.money += J.neutral ? 1500 : 3000; Sfx.passed();
         UI.big('구역 확보!', `${GANGS[Gangs.mine].name} 구역 ${Gangs.count(Gangs.mine)}블록`, 3, GANGS[Gangs.mine].color);
         for (const q of J.foes) q.persistent = false;
         this.active = null; UI.objective(''); Save.write();
