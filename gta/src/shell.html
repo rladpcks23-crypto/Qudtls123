@@ -1,0 +1,170 @@
+<title>네온 하버</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<style>
+  /* 단일 테마(야간 네온) 게임 화면: 의도적으로 어두운 한 가지 룩만 사용한다 */
+  :root {
+    color-scheme: dark;
+    --ink: #0a0e17;
+    --panel: rgba(11, 16, 28, 0.9);
+    --line: rgba(255, 255, 255, 0.14);
+    --text: #eef2f7;
+    --muted: #9fb0c4;
+    --neon: #ff5d8f;
+    --gold: #f2c14e;
+    --sky: #6fe0ff;
+    --disp: "Black Han Sans", "Noto Sans KR", sans-serif;
+    --num: "Bebas Neue", Impact, sans-serif;
+    --body: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  }
+  html, body { height: 100%; margin: 0; background: var(--ink); color: var(--text); overflow: hidden; font-family: var(--body); }
+  body { overscroll-behavior: none; touch-action: none; -webkit-user-select: none; user-select: none; }
+  #game { position: fixed; inset: 0; display: block; cursor: crosshair; }
+  button { font-family: var(--body); }
+  [hidden] { display: none !important; }
+  .overlay { position: fixed; inset: 0; z-index: 10; display: flex; }
+  /* ---------- 시작 메뉴 ---------- */
+  #menu { background: linear-gradient(90deg, rgba(8, 10, 20, 0.94) 0%, rgba(8, 10, 20, 0.78) 42%, rgba(8, 10, 20, 0.15) 75%, rgba(8, 10, 20, 0) 100%); overflow-y: auto; }
+  .menu-col { width: min(520px, 100%); box-sizing: border-box; padding: max(28px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); padding-left: max(16px, 5vw); display: flex; flex-direction: column; gap: 18px; }
+  .kicker { font-family: var(--num); letter-spacing: 0.3em; color: var(--sky); font-size: 15px; }
+  .logo { margin: 0; font-family: var(--disp); font-weight: 400; font-size: clamp(56px, 13vw, 104px); line-height: 0.92; color: #fff; text-shadow: 0 0 18px rgba(255, 93, 143, 0.75), 0 0 2px #fff, 4px 4px 0 #3a0b1f; }
+  .logo span { display: block; font-family: var(--num); font-size: 0.42em; letter-spacing: 0.18em; color: var(--neon); text-shadow: 0 0 12px rgba(255, 93, 143, 0.9); margin-top: 6px; }
+  .tag { margin: 0; color: #d7dfea; font-size: 15px; line-height: 1.6; max-width: 42ch; }
+  .btns { display: flex; flex-direction: column; gap: 10px; max-width: 320px; }
+  .btn { appearance: none; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.06); color: var(--text); font-size: 17px; font-weight: 700; padding: 13px 18px; border-radius: 4px; text-align: left; cursor: pointer; letter-spacing: 0.02em; transition: background .15s, border-color .15s, transform .15s; }
+  .btn:hover, .btn:focus-visible { background: rgba(255, 93, 143, 0.18); border-color: var(--neon); outline: none; transform: translateX(4px); }
+  .btn.primary { background: var(--neon); border-color: var(--neon); color: #1a0710; }
+  .btn.primary:hover { background: #ff7aa3; }
+  .btn.small { font-size: 14px; padding: 8px 12px; text-align: center; }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+  .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); }
+  .tabs button { background: none; border: 0; color: var(--muted); font-size: 14px; font-weight: 700; padding: 8px 10px; cursor: pointer; border-bottom: 2px solid transparent; }
+  .tabs button.on { color: var(--gold); border-color: var(--gold); }
+  .tab { font-size: 13.5px; line-height: 1.65; color: #d4dce7; max-width: 60ch; }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; }
+  .keys dt { font-family: var(--num); font-size: 16px; letter-spacing: 0.06em; color: var(--gold); white-space: nowrap; }
+  .keys dd { margin: 0; }
+  .refs { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+  .refs b { color: #fff; }
+  .refs i { color: var(--muted); font-style: normal; }
+  .refs a { color: var(--sky); }
+  /* ---------- 일시정지 / 상점 ---------- */
+  #pause, #shop { background: rgba(5, 8, 14, 0.7); align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 22px; width: min(420px, 100%); box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; max-height: 100%; overflow-y: auto; }
+  .card h2 { margin: 0; font-family: var(--disp); font-weight: 400; font-size: 34px; color: var(--gold); letter-spacing: 0.02em; }
+  .card p { margin: 0; color: var(--muted); font-size: 13px; }
+  .shop-row { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+  .shop-info { display: flex; flex-direction: column; font-size: 14px; }
+  .shop-info span { color: var(--muted); font-size: 12px; }
+  #shop-money { font-family: var(--num); font-size: 26px; color: #8df28d; letter-spacing: 0.04em; }
+  /* ---------- 터치 조작 ---------- */
+  #touch { display: none; }
+  body.touch #touch { display: block; }
+  body.touch #game { cursor: default; }
+  #stick-zone { position: fixed; left: 0; bottom: 0; width: 50%; height: 55%; z-index: 5; }
+  #stick { position: fixed; left: 40px; bottom: 40px; width: 120px; height: 120px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.25); background: rgba(255, 255, 255, 0.05); pointer-events: none; z-index: 6; opacity: 0.55; }
+  #stick:not(.active) { left: 30px !important; top: auto !important; bottom: calc(40px + env(safe-area-inset-bottom)); }
+  #stick.active { opacity: 1; }
+  #knob { position: absolute; left: 35px; top: 35px; width: 50px; height: 50px; border-radius: 50%; background: rgba(255, 255, 255, 0.35); border: 2px solid rgba(255, 255, 255, 0.6); }
+  .tb { white-space: nowrap; padding: 0; position: fixed; z-index: 6; width: 64px; height: 64px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.35); background: rgba(10, 14, 24, 0.55); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .tb.on { background: rgba(255, 93, 143, 0.55); border-color: var(--neon); }
+  #t-fire { right: 22px; bottom: calc(96px + env(safe-area-inset-bottom)); width: 84px; height: 84px; font-size: 15px; background: rgba(224, 68, 62, 0.45); }
+  #t-hb { right: 118px; bottom: calc(40px + env(safe-area-inset-bottom)); font-size: 12px; }
+  #t-enter { right: 116px; bottom: calc(126px + env(safe-area-inset-bottom)); }
+  #t-weapon { right: 30px; bottom: calc(196px + env(safe-area-inset-bottom)); width: 54px; height: 54px; font-size: 12px; }
+  #t-radio { right: 94px; bottom: calc(206px + env(safe-area-inset-bottom)); width: 48px; height: 48px; font-size: 11px; }
+  #t-map, #t-pause { top: calc(118px + env(safe-area-inset-top)); width: 44px; height: 44px; font-size: 12px; }
+  #t-map { left: 14px; }
+  #t-pause { left: 66px; }
+  @media (max-width: 520px) { .kicker { font-size: 12px; letter-spacing: 0.16em; } .tag { font-size: 14px; } }
+  @media (prefers-reduced-motion: reduce) { .btn { transition: none; } .btn:hover { transform: none; } }
+</style>
+
+<canvas id="game" aria-label="네온 하버 게임 화면"></canvas>
+
+<div id="menu" class="overlay">
+  <div class="menu-col">
+    <div class="kicker">OPEN-WORLD CRIME SANDBOX · 1998</div>
+    <h1 class="logo">네온 하버<span>NEON HARBOR</span></h1>
+    <p class="tag">600m × 600m 항구 도시. 차를 훔치고, 의뢰를 받고, 경찰을 따돌려라. 신호를 지키는 교통, 겁먹고 흩어지는 시민, 별이 오를수록 거세지는 추격전이 기다린다.</p>
+    <div class="btns">
+      <button class="btn primary" id="btn-new">새 게임</button>
+      <button class="btn" id="btn-continue" hidden>이어하기</button>
+    </div>
+    <div class="tabs" role="tablist">
+      <button data-tab="tab-keys" class="on">조작법</button>
+      <button data-tab="tab-sys">게임 시스템</button>
+      <button data-tab="tab-refs">참고 자료</button>
+    </div>
+    <div class="tab" id="tab-keys">
+      <dl class="keys">
+        <dt>W A S D</dt><dd>이동 / 운전 (S는 브레이크·후진)</dd>
+        <dt>마우스</dt><dd>조준 · 왼쪽 클릭 사격 (차 안에서는 드라이브바이)</dd>
+        <dt>F · ENTER</dt><dd>차량 탑승 / 하차 (운전자가 있으면 끌어내린다)</dd>
+        <dt>SPACE</dt><dd>핸드브레이크 — 드리프트</dd>
+        <dt>SHIFT</dt><dd>전력 질주</dd>
+        <dt>Q · E · 휠 · 1–8</dt><dd>무기 교체</dd>
+        <dt>R</dt><dd>라디오 채널 (차 안)</dd>
+        <dt>H · G</dt><dd>경적 · 경찰차 사이렌</dd>
+        <dt>M · TAB</dt><dd>전체 지도</dd>
+        <dt>Z</dt><dd>카메라 줌 전환</dd>
+        <dt>ESC · P</dt><dd>일시정지</dd>
+      </dl>
+      <p>모바일: 왼쪽 화면을 끌어 이동/운전, 오른쪽 버튼으로 발사·탑승·드리프트. 발사 시 가까운 적을 자동 조준한다.</p>
+    </div>
+    <div class="tab" id="tab-sys" hidden>
+      <p><b>수배 ★</b> — 범죄마다 '열기' 점수가 쌓여 별 1~5개가 된다. 경찰이 직접 보거나, 목격한 시민이 몇 초 뒤 신고한다. 경찰 시야를 벗어나면 별이 깜빡이고 레이더에 붉은 수색 원이 생긴다. 원 밖에서 들키지 않고 버티면 수배가 풀린다. 페인트샵(S)도 방법.</p>
+      <p><b>경찰 전력</b> — ★ 도보 순경 · ★★ 순찰차와 발포 · ★★★ 헬기와 검문소 · ★★★★ SWAT와 헬기 사격. ★1~3에서는 붙잡히면 체포(BUSTED).</p>
+      <p><b>교통</b> — 차들은 차선을 따라 달리고, 신호를 지키며, 앞차와의 간격을 유지한다. 들이받으면 겁먹고 과속으로 달아나기도 한다.</p>
+      <p><b>도시</b> — 다운타운 · 미드타운 · 웨스트 힐즈 · 하버 포인트(청룡파 구역) · 선셋 비치 · 센트럴 파크. 1초 = 게임 속 1분으로 낮과 밤이 돌고, 가끔 비가 와 노면이 미끄러워진다.</p>
+      <p><b>수집</b> — 숨겨진 꾸러미 10개(개당 $1,000), 뇌물 별(수배 −1), 곳곳의 무기·체력·방탄복.</p>
+    </div>
+    <div class="tab" id="tab-refs" hidden>
+      <ol class="refs">
+        <li><b>Parish &amp; Müller (2001)</b> Procedural Modeling of Cities, SIGGRAPH. <i>— 도로망 → 블록 → 필지 → 구역별 건물 생성 파이프라인</i></li>
+        <li><b>Marco Monster (2003)</b> Car Physics for Games. <i>— 슬립각 기반 2D 자전거 모델, 핸드브레이크 드리프트</i></li>
+        <li><b>Treiber, Hennecke &amp; Helbing (2000)</b> Congested traffic states…, Phys. Rev. E 62. <i>— 지능형 운전자 모델(IDM)로 차간 거리·신호 정지</i></li>
+        <li><b>Coulter (1992)</b> Implementation of the Pure Pursuit Path Tracking Algorithm, CMU-RI. <i>— 차선 추종 조향</i></li>
+        <li><b>Reynolds (1999)</b> Steering Behaviors for Autonomous Characters, GDC. <i>— 보행자의 추종·도주·분리·회피</i></li>
+        <li><b>Amanatides &amp; Woo (1987)</b> A Fast Voxel Traversal Algorithm. <i>— 시야·탄도 판정용 DDA 광선</i></li>
+        <li><b>Richter et al. (2016)</b> Playing for Data: Ground Truth from Computer Games, ECCV. <i>— GTA V의 도시가 자율주행 학습 데이터로 쓰일 만큼 사실적이라는 연구. 차선·신호·보행 동선을 '그럴듯하게' 만드는 기준으로 삼음</i></li>
+        <li><b>GTA 시리즈 분석</b> GTA 1·2의 의사 3D 탑다운 시점, GTA III의 수배 별·목격자, GTA V의 시야 기반 수색 원. <i>— 수배/추격 시스템</i></li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<div id="pause" class="overlay" hidden>
+  <div class="card">
+    <h2>일시정지</h2>
+    <button class="btn primary" id="btn-resume">계속하기</button>
+    <button class="btn" id="btn-map">지도 보기</button>
+    <button class="btn" id="btn-sound">소리 끄기</button>
+    <button class="btn" id="btn-quit">메인 메뉴로</button>
+    <p>진행 상황은 미션을 완료할 때마다 이 브라우저에 자동 저장된다.</p>
+  </div>
+</div>
+
+<div id="shop" class="overlay" hidden>
+  <div class="card">
+    <h2>총포상</h2>
+    <div id="shop-money">$0</div>
+    <div id="shop-list"></div>
+    <button class="btn" id="shop-close">나가기</button>
+  </div>
+</div>
+
+<div id="touch">
+  <div id="stick-zone"></div>
+  <div id="stick"><div id="knob"></div></div>
+  <button class="tb" id="t-fire">발사</button>
+  <button class="tb" id="t-hb">드리프트</button>
+  <button class="tb" id="t-enter">탑승</button>
+  <button class="tb" id="t-weapon">무기</button>
+  <button class="tb" id="t-radio">라디오</button>
+  <button class="tb" id="t-map">지도</button>
+  <button class="tb" id="t-pause">Ⅱ</button>
+</div>
+
+<!-- SCRIPTS -->
