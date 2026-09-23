@@ -99,6 +99,7 @@ const Game = {
   mapClick(sx, sy) {
     const r = this.mapRect; if (!r) return;
     const tb = this.turfBtn; if (tb && sx >= tb.x && sx <= tb.x + tb.w && sy >= tb.y && sy <= tb.y + tb.h) { this.showTurf = !this.showTurf; return; }
+    const bb = this.bizBtn; if (bb && sx >= bb.x && sx <= bb.x + bb.w && sy >= bb.y && sy <= bb.y + bb.h) { this.showBiz = !this.showBiz; return; }
     for (const b of this.mapZoomBtns || []) if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) { MapView.zoomAt(b.f); return; }
     if (MapView.moved) { MapView.moved = false; return; } // 드래그로 지도를 옮긴 것
     if (sx < r.ox || sy < r.oy || sx > r.ox + r.size || sy > r.oy + r.size) { this.state = 'play'; return; }
@@ -150,6 +151,7 @@ const Game = {
       if (keyHit('Equal', 'NumpadAdd', 'PadRB')) MapView.zoomAt(1.5); if (keyHit('Minus', 'NumpadSubtract', 'PadLB')) MapView.zoomAt(1 / 1.5);
       if (keyHit('Escape', 'KeyM', 'Tab', 'PadBack', 'PadB', 'PadStart')) this.state = 'play';
       if (keyHit('KeyG', 'PadY')) this.showTurf = !this.showTurf;
+      if (keyHit('KeyV')) this.showBiz = !this.showBiz;
     } else if (st === 'paused') {
       if (keyHit('Escape', 'KeyP', 'PadStart', 'PadB')) this.resume();
     } else if (st === 'menu') {

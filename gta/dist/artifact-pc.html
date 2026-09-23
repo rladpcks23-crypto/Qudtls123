@@ -7587,6 +7587,31 @@ function drawRadar(s) {
 }
 
 // ---------- 전체 지도 ----------
+// 전체 지도 '사업체 가격' 보기: 사업체마다 가격 · 1분 수입 (가진 곳은 초록, 단계 표시). 글자가 겹치면 뒤의 것은 생략
+const fmtM = v => v >= 1e6 ? `$${(v / 1e6).toFixed(v >= 1e7 ? 0 : 1)}M` : `$${Math.round(v / 1000)}K`;
+function drawBizPrices(c, ox, oy, k, ox0, oy0, size) {
+  const P = World.places, keys = Object.keys(BUSINESSES).filter(b => P[b]).sort((a, b) => BUSINESSES[b].price - BUSINESSES[a].price);
+  const rects = [], big = MapView.z >= 2.2;
+  for (const key of keys) {
+    const B = BUSINESSES[key], pl = P[key], L = Biz.lv(key), x = ox + pl.x * k, y = oy + pl.y * k;
+    if (x < ox0 || y < oy0 || x > ox0 + size || y > oy0 + size) continue;
+    const l1 = big ? B.name : fmtM(B.price), l2 = L ? `보유 ${L}단계 · ${fmtM(Biz.perMin(key))}/분` : big ? `${fmtM(B.price)} · ${fmtM(B.perMin)}/분` : `${fmtM(B.perMin)}/분`;
+    c.font = `700 ${big ? 12 : 11}px ${FONT_KR}`; const w = Math.max(c.measureText(l1).width, c.measureText(l2).width) + 12, h = big ? 34 : 30;
+    const r = { x: x - w / 2, y: y - 12 - h, w, h };
+    if (rects.some(q => r.x < q.x + q.w && q.x < r.x + r.w && r.y < q.y + q.h && q.y < r.y + r.h)) continue;
+    rects.push(r);
+    const col = L ? '#7ae68f' : B.price >= 3e6 ? '#ff8fab' : B.price >= 1e6 ? '#ffd166' : '#e8eef4';
+    c.fillStyle = 'rgba(8,12,20,0.88)'; roundRect(c, r.x, r.y, r.w, r.h, 6); c.fill(); c.strokeStyle = col; c.lineWidth = 1.5; c.stroke();
+    c.beginPath(); c.moveTo(x - 5, r.y + r.h); c.lineTo(x, y - 8); c.lineTo(x + 5, r.y + r.h); c.fillStyle = col; c.fill();
+    txt(c, l1, x, r.y + (big ? 14 : 13), `700 ${big ? 12 : 11}px ${FONT_KR}`, col, null, 0, 'center');
+    txt(c, l2, x, r.y + (big ? 28 : 25), `500 ${big ? 11 : 10}px ${FONT_KR}`, '#cfd6e0', null, 0, 'center');
+  }
+  // 요약 (지도 왼쪽 아래)
+  const owned = keys.filter(b => Biz.lv(b)).length, tot = Biz.total();
+  const s = `사업체 ${keys.length}곳 · 보유 ${owned}곳 · 사업 수입 1분 ${fmtM(tot)} · 분홍 $300만↑ 노랑 $100만↑ 흰색 그 아래${big ? '' : ' · 확대하면 이름이 보인다'}`;
+  c.font = `600 12px ${FONT_KR}`; const w = c.measureText(s).width + 16;
+  c.fillStyle = 'rgba(0,0,0,0.8)'; c.fillRect(ox0 + 6, oy0 + size - 28, w, 22); txt(c, s, ox0 + 14, oy0 + size - 12, `600 12px ${FONT_KR}`, '#ffd166', null);
+}
 const MapView = {
   z: 1, cx: null, cy: null, drag: null, moved: false,
   reset() { this.z = 1; this.cx = MW * T / 2; this.cy = MH * T / 2; },
@@ -7636,6 +7661,7 @@ function drawFullMap() {
     c.fillStyle = ic.c; c.font = `bold 11px ${FONT_KR}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(ic.ch, x, y + 0.5);
     if (ic.crown) drawCrownMark(c, x, y - 12, 7);
   }
+  if (Game.showBiz) drawBizPrices(c, ox, oy, k, ox0, oy0, size);
   for (const t of allTargets()) { const x = ox + t.x * k, y = oy + t.y * k; c.fillStyle = '#000'; c.beginPath(); c.arc(x, y, 8, 0, TAU); c.fill(); c.fillStyle = t.c; c.beginPath(); c.arc(x, y, 6, 0, TAU); c.fill(); }
   if (Wanted.stars > 0) { c.strokeStyle = 'rgba(255,90,80,0.9)'; c.beginPath(); c.arc(ox + Wanted.lkpX * k, oy + Wanted.lkpY * k, Wanted.radius * k, 0, TAU); c.stroke(); }
   c.save(); c.translate(ox, oy); GPS.draw(c, k, 0, 0, 3); c.restore();
@@ -7647,6 +7673,9 @@ function drawFullMap() {
   c.strokeStyle = 'rgba(255,255,255,0.3)'; c.strokeRect(ox0, oy0, size, size);
   // [갱단 구역] 버튼 (G) · 확대/축소 버튼
   const tb = Game.turfBtn = { x: ox0 + size - 132, y: Math.max(4, oy0 - 44), w: 132, h: 34 };
+  const bb = Game.bizBtn = { x: tb.x - 142, y: tb.y, w: 134, h: 34 };
+  c.fillStyle = Game.showBiz ? '#ffd166' : 'rgba(20,24,34,0.9)'; roundRect(c, bb.x, bb.y, bb.w, bb.h, 8); c.fill(); c.strokeStyle = '#ffd166'; c.lineWidth = 1.5; c.stroke();
+  txt(c, `사업체 가격 ${Game.showBiz ? '끄기' : '보기'}${Input.usingTouch ? '' : ' (V)'}`, bb.x + bb.w / 2, bb.y + 22, `700 13px ${FONT_KR}`, Game.showBiz ? '#1a1a1a' : '#fff', null, 0, 'center');
   const zb = Game.mapZoomBtns = [{ x: ox0, y: Math.max(4, oy0 - 44), w: 40, h: 34, f: 1.5, l: '+' }, { x: ox0 + 46, y: Math.max(4, oy0 - 44), w: 40, h: 34, f: 1 / 1.5, l: '−' }];
   c.fillStyle = Game.showTurf ? '#ff4d4d' : 'rgba(20,24,34,0.9)'; roundRect(c, tb.x, tb.y, tb.w, tb.h, 8); c.fill(); c.strokeStyle = '#ff4d4d'; c.lineWidth = 1.5; c.stroke();
   txt(c, `갱단 구역 ${Game.showTurf ? '끄기' : '보기'}${Input.usingTouch ? '' : ' (G)'}`, tb.x + tb.w / 2, tb.y + 22, `700 13px ${FONT_KR}`, '#fff', null, 0, 'center');
@@ -9615,6 +9644,7 @@ const Game = {
   mapClick(sx, sy) {
     const r = this.mapRect; if (!r) return;
     const tb = this.turfBtn; if (tb && sx >= tb.x && sx <= tb.x + tb.w && sy >= tb.y && sy <= tb.y + tb.h) { this.showTurf = !this.showTurf; return; }
+    const bb = this.bizBtn; if (bb && sx >= bb.x && sx <= bb.x + bb.w && sy >= bb.y && sy <= bb.y + bb.h) { this.showBiz = !this.showBiz; return; }
     for (const b of this.mapZoomBtns || []) if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) { MapView.zoomAt(b.f); return; }
     if (MapView.moved) { MapView.moved = false; return; } // 드래그로 지도를 옮긴 것
     if (sx < r.ox || sy < r.oy || sx > r.ox + r.size || sy > r.oy + r.size) { this.state = 'play'; return; }
@@ -9666,6 +9696,7 @@ const Game = {
       if (keyHit('Equal', 'NumpadAdd', 'PadRB')) MapView.zoomAt(1.5); if (keyHit('Minus', 'NumpadSubtract', 'PadLB')) MapView.zoomAt(1 / 1.5);
       if (keyHit('Escape', 'KeyM', 'Tab', 'PadBack', 'PadB', 'PadStart')) this.state = 'play';
       if (keyHit('KeyG', 'PadY')) this.showTurf = !this.showTurf;
+      if (keyHit('KeyV')) this.showBiz = !this.showBiz;
     } else if (st === 'paused') {
       if (keyHit('Escape', 'KeyP', 'PadStart', 'PadB')) this.resume();
     } else if (st === 'menu') {
