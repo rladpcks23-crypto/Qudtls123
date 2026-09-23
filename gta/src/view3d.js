@@ -80,12 +80,13 @@ const View3D = {
     // 청크별 물건 목록
     const CS = this.CS, NCX = this.NCX = Math.ceil(MW * T / CS), NCY = this.NCY = Math.ceil(MH * T / CS);
     this.bucket = [];
-    for (let i = 0; i < NCX * NCY; i++) this.bucket.push({ b: [], trees: [], lamps: [], tl: [] });
+    for (let i = 0; i < NCX * NCY; i++) this.bucket.push({ b: [], trees: [], lamps: [], tl: [], decos: [] });
     const at = (x, y) => this.bucket[clamp(Math.floor(x / CS), 0, NCX - 1) + clamp(Math.floor(y / CS), 0, NCY - 1) * NCX];
     for (const b of World.buildings) at((b.x0 + b.x1 + 1) / 2 * T, (b.y0 + b.y1 + 1) / 2 * T).b.push(b);
     for (const t of World.trees) at(t.x, t.y).trees.push(t);
     for (const l of World.lamps) at(l.x, l.y).lamps.push(l);
     for (const t of tls) at(t.x, t.y).tl.push(t);
+    for (const d of World.decos || []) at(d.x !== undefined ? d.x : (d.x0 + d.x1) / 2, d.y !== undefined ? d.y : (d.y0 + d.y1) / 2).decos.push(d);
     this.chunks = new Map();
     this.drawR = 300;
   },
@@ -121,7 +122,8 @@ const View3D = {
       const SOLID = [[0.02, 0.98], [0.03, 0.98], [0.03, 0.97], [0.02, 0.97]];
       for (const b of bk.b) {
         const X0 = b.x0 * T, Z0 = b.y0 * T, X1 = (b.x1 + 1) * T, Z1 = (b.y1 + 1) * T, H = b.h;
-        const hasWin = b.kind !== 'container' && b.kind !== 'house' && b.kind !== 'warehouse' && b.kind !== 'fence' && H > 5;
+        if (b.kind === 'eiffel') continue; // 탑은 addDeco에서 따로 만든다
+        const hasWin = !['container', 'house', 'warehouse', 'fence', 'arch', 'church', 'arena'].includes(b.kind) && H > 5;
         const wallUV = (len) => hasWin ? [[0, 0], [len / 3, 0], [len / 3, H / 3.4], [0, H / 3.4]] : SOLID;
         const base = color.set(b.color).clone();
         const side = f => base.clone().multiplyScalar(f);
@@ -177,8 +179,26 @@ const View3D = {
       const tp = inst(this.sg.tpole, this.mat('#1b1d21'), bk.tl.length), th = ch.tlHeads = inst(this.sg.tbox, this.tlMat, bk.tl.length);
       bk.tl.forEach((t, i) => { m4.makeTranslation(t.x, 1.8, t.y); tp.setMatrixAt(i, m4); m4.makeTranslation(t.x, 3.7, t.y); th.setMatrixAt(i, m4); th.setColorAt(i, color.set('#39e36b')); });
     }
+    for (const d of bk.decos) this.addDeco(G, d);
     this.scene.add(G);
     return ch;
+  },
+  // 랜드마크 장식: 개선문 윗부분 · 오페라 돔 · 성당 첨탑 · 네온 타워(에펠탑 느낌)
+  addDeco(G, d) {
+    const m = new THREE.MeshLambertMaterial({ color: d.c }), add = (geo, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); G.add(o); return o; };
+    if (d.t === 'lintel') { add(new THREE.BoxGeometry(d.x1 - d.x0, d.z1 - d.z0, d.y1 - d.y0), (d.x0 + d.x1) / 2, (d.z0 + d.z1) / 2, (d.y0 + d.y1) / 2); add(new THREE.BoxGeometry(d.x1 - d.x0 + 1, 1.2, d.y1 - d.y0 + 1), (d.x0 + d.x1) / 2, d.z1 + 0.6, (d.y0 + d.y1) / 2); }
+    else if (d.t === 'dome') { add(new THREE.SphereGeometry(d.r, 20, 10, 0, TAU, 0, Math.PI / 2), d.x, d.z, d.y); add(new THREE.CylinderGeometry(0.4, 0.8, 5, 8), d.x, d.z + d.r + 2, d.y); }
+    else if (d.t === 'spire') add(new THREE.ConeGeometry(2.2, d.h, 8), d.x, d.z + d.h / 2, d.y);
+    else if (d.t === 'eiffel') {
+      // 네 다리(기울어진 기둥) + 층층이 좁아지는 몸통 + 첨탑. 밤에는 금빛으로 빛난다
+      m.emissive = new THREE.Color('#3a2a10'); this.eiffelMat = m;
+      const H = d.h, legH = H * 0.3;
+      for (const [sx, sz] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { const leg = add(new THREE.BoxGeometry(2.2, legH * 1.08, 2.2), d.x + sx * 5.5, legH / 2, d.y + sz * 5.5); leg.rotation.set(-sz * 0.33, 0, sx * 0.33); }
+      add(new THREE.BoxGeometry(14, 1.6, 14), d.x, legH, d.y);
+      for (let k = 0; k < 6; k++) { const t0 = k / 6, w = 9 * (1 - t0) + 1.6; add(new THREE.BoxGeometry(w, (H * 0.55) / 6 * 0.9, w), d.x, legH + (k + 0.5) * (H * 0.55) / 6, d.y); }
+      add(new THREE.BoxGeometry(5, 1.2, 5), d.x, legH + H * 0.28, d.y);
+      add(new THREE.CylinderGeometry(0.25, 0.9, H * 0.15, 6), d.x, H * 0.925, d.y);
+    }
   },
   disposeChunk(ch) {
     this.scene.remove(ch.G);
@@ -480,6 +500,7 @@ const View3D = {
     this.hemi.color.setRGB(amb[0], amb[1], amb[2]);
     this.bmat.emissiveIntensity = night > 0.35 ? night * 0.9 : 0;
     this.lampMat.color.setScalar(night > 0.3 ? 1 : 0.55);
+    if (this.eiffelMat) this.eiffelMat.emissive.setRGB(0.23 + night * 0.6, 0.16 + night * 0.4, 0.06 + night * 0.08);
     // 신호등
     if (!this.tlT || Game.time - this.tlT > 0.4) {
       this.tlT = Game.time; const cc = new THREE.Color();

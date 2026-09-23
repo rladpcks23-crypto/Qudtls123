@@ -55,7 +55,9 @@ function blocksSight(tx, ty) {
 }
 // 현재 위치의 동네 이름 (블록 밖이면 구역 이름)
 function hoodAt(x, y) {
-  const tx = clamp(Math.floor(x / T), 0, MW - 1), ty = clamp(Math.floor(y / T), 0, MH - 1), i = tx + ty * MW;
+  const tx = clamp(Math.floor(x / T), 0, MW - 1), ty = clamp(Math.floor(y / T), 0, MH - 1);
+  let i = tx + ty * MW;
+  if (World.region[i] < 0 && World.tiles[i] === TL.ROAD) for (const [dx, dy] of [[3, 0], [-3, 0], [0, 3], [0, -3]]) { const j = clamp(tx + dx, 0, MW - 1) + clamp(ty + dy, 0, MH - 1) * MW; if (World.region[j] >= 0) { i = j; break; } } // 도로 위면 옆 블록의 동네
   const b = World.region[i] >= 0 ? World.blocks[World.region[i]] : null;
   if (b && b.park) return b.park;
   if (World.dist[i] === DIST.PARK) return '공원';
@@ -137,6 +139,15 @@ function genWorld(seed) {
     touched.add(a); touched.add(b);
   }
 
+  // 에투알(별) 광장: 도심 한가운데 교차로 하나를 없애고 주변 네 블록을 합쳐 원형 광장을 만든다
+  {
+    const tx = 0.52 * MW, ty = 0.5 * MH;
+    let ei = 1, ej = 1;
+    for (let i = 1; i < NX - 1; i++) if (Math.abs(W.VX[i] - tx) < Math.abs(W.VX[ei] - tx)) ei = i;
+    for (let j = 1; j < NY - 1; j++) if (Math.abs(W.HY[j] - ty) < Math.abs(W.HY[ej] - ty)) ej = j;
+    hE[ei - 1][ej] = hE[ei][ej] = false; vE[ei][ej - 1] = vE[ei][ej] = false;
+    W.etoile = { i: ei, j: ej, cx: W.VX[ei] + 1, cy: W.HY[ej] + 1 }; // 타일 좌표(교차로 한가운데)
+  }
   // 노드
   W.nodes = [];
   for (let j = 0; j < NY; j++) for (let i = 0; i < NX; i++) {
@@ -157,10 +168,117 @@ function genWorld(seed) {
 
   // 4) 도로 칠하기
   const paintRoad = (x, y, k) => { set(x, y, TL.ROAD); W.roadK[x + y * MW] = k; };
-  for (const n of W.nodes) { const x = W.VX[n.i], y = W.HY[n.j]; for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) paintRoad(x + a, y + b, 3); }
+  for (const n of W.nodes) { if (!n.deg) continue; const x = W.VX[n.i], y = W.HY[n.j]; for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) paintRoad(x + a, y + b, 3); }
   for (let i = 0; i < NX; i++) for (let j = 0; j < NY; j++) {
     if (hE[i][j]) for (let x = W.VX[i] + 2; x < W.VX[i + 1]; x++) { paintRoad(x, W.HY[j], 2); paintRoad(x, W.HY[j] + 1, 2); }
     if (vE[i][j]) for (let y = W.HY[j] + 2; y < W.HY[j + 1]; y++) { paintRoad(W.VX[i], y, 1); paintRoad(W.VX[i] + 1, y, 1); }
+  }
+
+  // ---------- 에투알 광장 · 대로 · 랜드마크 (파리식 방사형 구조) ----------
+  W.decos = []; W.landmarks = [];
+  function buildEtoile(b, ix0, iy0, ix1, iy1) {
+    const cx = W.etoile.cx, cy = W.etoile.cy, Rr = Math.min(cx - ix0, ix1 + 1 - cx, cy - iy0, iy1 + 1 - cy) - 0.6;
+    W.etoile.R = Rr;
+    for (let y = iy0; y <= iy1; y++) for (let x = ix0; x <= ix1; x++) {
+      const d = Math.hypot(x + 0.5 - cx, y + 0.5 - cy);
+      set(x, y, d < Rr ? TL.PLAZA : TL.GRASS);
+      if (d >= Rr && R() < 0.35) addTree((x + 0.5) * T, (y + 0.5) * T, 'tree');
+    }
+    // 둥근 가로수 · 네 분수
+    for (let k = 0; k < 24; k++) { const a = k / 24 * TAU; addTree((cx + Math.cos(a) * (Rr - 0.9)) * T, (cy + Math.sin(a) * (Rr - 0.9)) * T, 'tree'); }
+    for (let k = 0; k < 4; k++) { const a = Math.PI / 4 + k * Math.PI / 2, fx = Math.round(cx + Math.cos(a) * Rr * 0.5 - 1), fy = Math.round(cy + Math.sin(a) * Rr * 0.5 - 1); for (let y = fy; y < fy + 2; y++) for (let x = fx; x < fx + 2; x++) set(x, y, TL.WATER); }
+    for (let k = 0; k < 8; k++) { const a = k / 8 * TAU + Math.PI / 8; W.lamps.push({ x: (cx + Math.cos(a) * Rr * 0.72) * T, y: (cy + Math.sin(a) * Rr * 0.72) * T }); }
+    // 네온 개선문: 기둥 두 개(가운데로 지나갈 수 있다) + 3D 아치 윗부분
+    addBuilding(cx - 3, cy - 1, cx - 2, cy, 24, 'arch', '#d8cdb4').label = '개선문';
+    addBuilding(cx + 1, cy - 1, cx + 2, cy, 24, 'arch', '#d8cdb4');
+    W.decos.push({ t: 'lintel', x0: (cx - 3) * T, y0: (cy - 1) * T, x1: (cx + 3) * T, y1: (cy + 1) * T, z0: 24, z1: 31, c: '#d8cdb4' });
+    b.lots = [];
+    W.landmarks.push({ name: '네온 개선문', x: cx * T, y: cy * T });
+  }
+  function carveBoulevards() {
+    const cx = W.etoile.cx, cy = W.etoile.cy, R0 = (W.etoile.R || 8) + 2, Lmax = 0.47 * MW, ringR = 0.3 * MW;
+    const mask = new Uint8Array(MW * MH);
+    const rays = []; for (let k = 0; k < 8; k++) { const a = Math.PI / 8 + k * Math.PI / 4; rays.push([Math.cos(a), Math.sin(a)]); }
+    const carve = (x, y) => {
+      if (x < 1 || y < 1 || x >= MW - 1 || y >= MH - 1) return;
+      const i = tIdx(x, y), t = W.tiles[i];
+      if (t === TL.ROAD || t === TL.WATER || t === TL.RUNWAY || W.dist[i] === DIST.BASE || W.region[i] === (W.etoile.block ? W.etoile.block.id : -9)) return;
+      if (t === TL.BUILD) { const bb = W.buildings[W.bIndex[i]]; if (bb && !bb.removed) { bb.removed = true; for (let yy = bb.y0; yy <= bb.y1; yy++) for (let xx = bb.x0; xx <= bb.x1; xx++) { set(xx, yy, TL.GRASS); W.bIndex[tIdx(xx, yy)] = -1; } } }
+      set(x, y, TL.PLAZA); mask[i] = 1;
+    };
+    for (let y = 1; y < MH - 1; y++) for (let x = 1; x < MW - 1; x++) {
+      const dx = x + 0.5 - cx, dy = y + 0.5 - cy, d = Math.hypot(dx, dy);
+      let hit = Math.abs(d - ringR) < 1.6 || Math.abs(d - ringR * 0.5) < 1.4;
+      if (!hit && d > R0 && d < Lmax) for (const [ux, uy] of rays) { const al = dx * ux + dy * uy; if (al > 0 && Math.abs(dx * uy - dy * ux) < 1.6) { hit = true; break; } }
+      if (hit) carve(x, y);
+    }
+    // 가로수와 가로등 (대로 양옆)
+    const side = (x, y, tree) => { const tx = Math.floor(x), ty = Math.floor(y); if (tx < 1 || ty < 1 || tx >= MW - 1 || ty >= MH - 1) return; const t = W.tiles[tIdx(tx, ty)]; if (t === TL.ROAD || t === TL.WATER || t === TL.BUILD || W.dist[tIdx(tx, ty)] === DIST.BASE) return; if (tree) addTree(x * T, y * T, 'tree'); else W.lamps.push({ x: x * T, y: y * T }); };
+    for (const [ux, uy] of rays) for (let s = R0 + 2, k = 0; s < Lmax; s += 2.6, k++) for (const sg of [-1, 1]) side(cx + ux * s - uy * sg * 2.1, cy + uy * s + ux * sg * 2.1, k % 4 !== 0);
+    for (const rr of [ringR, ringR * 0.5]) for (let a = 0, k = 0; a < TAU; a += 2.6 / rr, k++) for (const sg of [-1, 1]) side(cx + Math.cos(a) * (rr + sg * 2.1), cy + Math.sin(a) * (rr + sg * 2.1), k % 4 !== 0);
+    // 대로 위의 나무·주차칸 치우고, 헐린 건물의 필지는 비운다
+    const inMask = (x, y) => mask[tIdx(clamp(Math.floor(x / T), 0, MW - 1), clamp(Math.floor(y / T), 0, MH - 1))];
+    W.trees = W.trees.filter(t => !inMask(t.x, t.y));
+    W.parking = W.parking.filter(p => !inMask(p.x, p.y));
+    for (const b of W.blocks) for (const L of b.lots || []) if (L.b && L.b.removed) { L.b = null; L.used = true; }
+    W.boulevardMask = mask;
+  }
+  // 블록 하나를 통째로 비우고 랜드마크를 세운다
+  function landmarkBlock(u, v, pred, build) {
+    const cands = W.blocks.filter(b => !b.etoile && !b.landmark && pred(b) && b.x1 - b.x0 >= 9 && b.y1 - b.y0 >= 9);
+    if (!cands.length) return null;
+    const b = cands.sort((p, q) => Math.hypot((p.x0 + p.x1) / 2 / MW - u, (p.y0 + p.y1) / 2 / MH - v) - Math.hypot((q.x0 + q.x1) / 2 / MW - u, (q.y0 + q.y1) / 2 / MH - v))[0];
+    b.landmark = true;
+    const ix0 = b.x0 + 1, iy0 = b.y0 + 1, ix1 = b.x1 - 1, iy1 = b.y1 - 1;
+    for (const L of b.lots || []) { if (L.b) L.b.removed = true; L.b = null; L.used = true; }
+    for (const bb of W.buildings) if (!bb.removed && bb.x0 >= ix0 && bb.x1 <= ix1 && bb.y0 >= iy0 && bb.y1 <= iy1) bb.removed = true;
+    for (let y = iy0; y <= iy1; y++) for (let x = ix0; x <= ix1; x++) { set(x, y, TL.PLAZA); W.bIndex[tIdx(x, y)] = -1; }
+    W.trees = W.trees.filter(t => !(t.x >= ix0 * T && t.x <= (ix1 + 1) * T && t.y >= iy0 * T && t.y <= (iy1 + 1) * T));
+    W.parking = W.parking.filter(p => !(p.x >= ix0 * T && p.x <= (ix1 + 1) * T && p.y >= iy0 * T && p.y <= (iy1 + 1) * T));
+    const mx = Math.floor((ix0 + ix1) / 2), my = Math.floor((iy0 + iy1) / 2);
+    const main = build(b, ix0, iy0, ix1, iy1, mx, my);
+    b.lots = [];
+    const door = { x: (mx + 0.5) * T, y: (b.y1 + 0.5) * T, face: 1 };
+    return { b, main, door };
+  }
+  function buildLandmarks() {
+    const core = b => b.district === DIST.DOWNTOWN || b.district === DIST.MIDTOWN;
+    const place = (key, r, label) => { if (r) W.places[key] = { ...r.door, lot: { x0: r.b.x0 + 1, y0: r.b.y0 + 1, x1: r.b.x1 - 1, y1: r.b.y1 - 1, block: r.b, b: r.main }, label }; };
+    // 네온 오페라 하우스: 돔 지붕
+    place('biz_opera', landmarkBlock(0.6, 0.44, core, (b, ix0, iy0, ix1, iy1, mx, my) => {
+      const w = Math.min(4, Math.floor((ix1 - ix0) / 2) - 1), h = Math.min(3, Math.floor((iy1 - iy0) / 2) - 1);
+      const m = addBuilding(mx - w, my - h, mx + w, my + h, 18, 'opera', '#d9c9a3'); m.label = '오페라 하우스';
+      W.decos.push({ t: 'dome', x: (mx + 0.5) * T, y: (my + 0.5) * T, r: Math.min(w, h) * T * 0.9, z: 18, c: '#6f9a86' });
+      for (const [x, y] of [[ix0 + 1, iy0 + 1], [ix1 - 1, iy0 + 1], [ix0 + 1, iy1 - 1], [ix1 - 1, iy1 - 1]]) addTree((x + 0.5) * T, (y + 0.5) * T, 'tree');
+      W.landmarks.push({ name: '네온 오페라 하우스', x: (mx + 0.5) * T, y: (my + 0.5) * T });
+      return m;
+    }), '네온 오페라 하우스');
+    // 노트르담식 대성당: 본당 + 앞쪽 쌍탑 + 첨탑
+    landmarkBlock(0.44, 0.6, core, (b, ix0, iy0, ix1, iy1, mx, my) => {
+      const top = Math.max(iy0 + 1, my - 5), bot = Math.min(iy1 - 1, my + 4);
+      const m = addBuilding(mx - 2, top + 3, mx + 2, bot, 20, 'church', '#cfc6b0'); m.label = '대성당';
+      addBuilding(mx - 3, top, mx - 1, top + 2, 36, 'church', '#c7bda5'); addBuilding(mx + 1, top, mx + 3, top + 2, 36, 'church', '#c7bda5');
+      W.decos.push({ t: 'spire', x: (mx + 0.5) * T, y: ((top + 3 + bot) / 2 + 0.5) * T, z: 20, h: 22, c: '#5d6670' });
+      W.landmarks.push({ name: '네온 대성당', x: (mx + 0.5) * T, y: (my + 0.5) * T });
+      return m;
+    });
+    // 네온 아레나(경기장)
+    place('biz_arena', landmarkBlock(0.64, 0.64, core, (b, ix0, iy0, ix1, iy1) => {
+      const m = addBuilding(ix0 + 1, iy0 + 1, ix1 - 1, iy1 - 2, 16, 'arena', '#9aa3ad'); m.label = '네온 아레나';
+      W.landmarks.push({ name: '네온 아레나', x: (ix0 + ix1 + 1) / 2 * T, y: (iy0 + iy1 + 1) / 2 * T });
+      return m;
+    }), '네온 아레나');
+    // 네온 타워(에펠탑 느낌): 센트럴 파크 한가운데
+    const cp = W.blocks.filter(b => b.park === '센트럴 파크').sort((p, q) => (q.x1 - q.x0) * (q.y1 - q.y0) - (p.x1 - p.x0) * (p.y1 - p.y0))[0];
+    if (cp) {
+      const mx = Math.floor((cp.x0 + cp.x1) / 2), my = Math.floor((cp.y0 + cp.y1) / 2);
+      for (let y = my - 4; y <= my + 5; y++) for (let x = mx - 4; x <= mx + 5; x++) if (x > cp.x0 && x < cp.x1 && y > cp.y0 && y < cp.y1) set(x, y, TL.PLAZA);
+      W.trees = W.trees.filter(t => !(Math.abs(t.x / T - mx - 0.5) < 5.5 && Math.abs(t.y / T - my - 0.5) < 5.5));
+      const m = addBuilding(mx - 1, my - 1, mx + 2, my + 2, 55, 'eiffel', '#8a6d4a'); m.label = '네온 타워';
+      W.decos.push({ t: 'eiffel', x: (mx + 1) * T, y: (my + 1) * T, h: 140, c: '#8a6d4a' });
+      W.places.biz_towerview = { x: (mx + 1) * T, y: (my + 4.5) * T, face: 1, label: '네온 타워 전망대' };
+      W.landmarks.push({ name: '네온 타워', x: (mx + 1) * T, y: (my + 1) * T });
+    }
   }
 
   // 5) 블록 찾기 (순환도로 내부의 비도로 영역을 flood fill)
@@ -201,6 +319,8 @@ function genWorld(seed) {
   const extra = parkC.slice(3).filter(b => b.area > 60 && b.district !== DIST.PARK);
   for (let k = 0; k < Math.round(MW * MH / 12000) && extra.length; k++) { const b = extra.splice(Math.floor(R() * extra.length), 1)[0]; b.district = DIST.PARK; }
   W.hoodT = new Uint8Array(MW * MH).fill(255);
+  const eb = W.blocks[W.region[tIdx(W.etoile.cx, W.etoile.cy)]];
+  if (eb) { eb.district = DIST.PARK; eb.park = '에투알 광장'; eb.etoile = true; W.etoile.block = eb; }
 
   const addTree = (x, y, kind) => W.trees.push({ x, y, kind, r: kind === 'palm' ? 2.2 : rr(1.9, 2.8), h: kind === 'palm' ? rr(7, 9) : rr(5, 8), hue: R() });
   const addBuilding = (x0, y0, x1, y1, h, kind, color) => {
@@ -246,6 +366,7 @@ function genWorld(seed) {
     const ix0 = b.x0 + 1, iy0 = b.y0 + 1, ix1 = b.x1 - 1, iy1 = b.y1 - 1;
     b.lots = [];
     if (ix1 < ix0 || iy1 < iy0) continue;
+    if (b.etoile) { buildEtoile(b, ix0, iy0, ix1, iy1); continue; }
     if (b.district === DIST.PARK) {
       for (let y = iy0; y <= iy1; y++) for (let x = ix0; x <= ix1; x++) set(x, y, TL.GRASS);
       const mx = Math.floor((ix0 + ix1) / 2), my = Math.floor((iy0 + iy1) / 2);
@@ -278,7 +399,7 @@ function genWorld(seed) {
       } else if (b.district === DIST.MIDTOWN) {
         if (R() < 0.25 && w >= 2 && h >= 3) { for (let y = L.y0; y <= L.y1; y++) for (let x = L.x0; x <= L.x1; x++) set(x, y, TL.LOT); L.kind = 'lot'; addParkingRow(L.x0, L.y0, L.x1, L.y1); continue; }
         L.b = addBuilding(L.x0, L.y0, L.x1, L.y1, rr(9, 22), 'mid', rpick(PAL.mid));
-      } else if (b.district === DIST.RESID && R() < 0.35) { // 주택가 속 동네 가게(상가)
+      } else if (b.district === DIST.RESID && R() < 0.55) { // 주택가 속 동네 가게(상가)
         L.b = addBuilding(L.x0, L.y0, L.x1, L.y1, rr(6, 11), 'mid', rpick(PAL.mid));
       } else if (b.district === DIST.RESID) {
         const x0 = L.x0 + (w > 3 ? 1 : 0), y0 = L.y0 + (h > 3 ? 1 : 0), x1 = L.x1 - (w > 4 ? 1 : 0), y1 = L.y1 - (h > 4 ? 1 : 0);
@@ -377,6 +498,10 @@ function genWorld(seed) {
     };
   }
 
+  // 6-3) 파리처럼: 에투알 광장에서 뻗는 8개의 가로수 대로 + 둥근 그랑 불바르 + 랜드마크
+  carveBoulevards();
+  buildLandmarks();
+
   // 기지 정문 앞 인도: 국방 후원 창구
   {
     const gt = W.base.gate, tx0 = Math.floor(gt.x / T) + 3, ty0 = Math.floor(gt.y / T) + 3;
@@ -467,6 +592,27 @@ function genWorld(seed) {
   makePlace('wh_iron', anyLot(0.22, 0.74, ['warehouse']), 'warehouse', '#6e6a5f', '밸리 창고');
   makePlace('wh_north', anyLot(0.7, 0.14, ['mid', 'warehouse', 'house']), 'warehouse', '#8a8074', '노스 창고');
   makePlace('heist', anyLot(0.34, 0.3, ['mid', 'house']), 'hq', '#2d2433', '작전실');
+  // v2.6 사업체 13곳 추가 (카페·주유소·쇼핑몰·시장·미술관·백화점·양조장·골프장·스파·제약·빵집·비스트로)
+  for (const [k, u, v, kinds, col, label] of [
+    ['biz_cafe', 0.5, 0.47, ['tower', 'mid'], '#8a5a3c', '카페 파리지앵'], ['biz_bakery', 0.42, 0.4, ['mid', 'house'], '#e9c98a', '불랑제리 네온'],
+    ['biz_bistro', 0.56, 0.52, ['tower', 'mid'], '#7a2d3a', '비스트로 에투알'], ['biz_gas1', 0.3, 0.2, ['mid', 'house', 'warehouse'], '#d7263d', '네온 주유소 노스'],
+    ['biz_gas2', 0.7, 0.78, ['mid', 'shop', 'warehouse'], '#d7263d', '네온 주유소 사우스'], ['biz_mall', 0.84, 0.46, ['warehouse', 'mid'], '#5b7fa6', '하버 쇼핑몰'],
+    ['biz_market', 0.4, 0.66, ['mid'], '#c46f1b', '올드 타운 시장'], ['biz_gallery', 0.47, 0.36, ['mid', 'tower'], '#f2f2f2', '루미에르 미술관'],
+    ['biz_dept', 0.57, 0.4, ['tower'], '#2b2d42', '갤러리 네온 백화점'], ['biz_brewery', 0.34, 0.82, ['warehouse'], '#6b4a2a', '러스트 양조장'],
+    ['biz_golf', 0.26, 0.14, ['house', 'mid'], '#3f8a3a', '파인 크레스트 골프 클럽'], ['biz_spa', 0.8, 0.18, ['house', 'mid'], '#6fe0ff', '레이크뷰 스파'],
+    ['biz_pharma', 0.15, 0.5, ['mid', 'house', 'warehouse'], '#3ee07a', '로즈우드 제약'],
+  ]) makePlace(k, anyLot(u, v, kinds), 'biz', col, label);
+  // 동네마다 생활 시설 두 곳 (편의점 + 버거/약국/옷/총포상/체육관 돌아가며)
+  W.branches = [];
+  const BR = [['burger', '버', '#ffb347', '버거 샷', '#f3d9b1'], ['pharmacy', '약', '#3ee07a', '약국', '#e8fff0'], ['clothes', '옷', '#e07aff', '옷가게', '#f4d6e8'], ['ammu', '총', '#ff6b5a', '총포상', '#3b3b3b'], ['gym', '체', '#ff9f43', '체육관', '#2b2b2b']];
+  W.hoods.forEach((h, i) => {
+    const sets = [['mart', '편', '#7ae68f', '24 편의점', '#dfe8e0'], BR[i % BR.length]];
+    sets.forEach(([kind, ch, c, label, bc], k) => {
+      const L = anyLot(h.u + (k ? 0.025 : -0.02), h.v + (k ? -0.02 : 0.02), ['mid', 'house', 'shop', 'warehouse', 'tower']);
+      if (!L) return; const key = `br${i}${k}`;
+      makePlace(key, L, kind, bc, label); W.branches.push({ key, kind, ch, c, label }); if (typeof PLACE_MARK !== 'undefined') PLACE_MARK[key] = c;
+    });
+  });
   makePlace('biz_casino', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.58, 0.6), 'casino', '#1d1233', '다이아몬드 카지노');
   // 차고형 장소: 필지를 비워 LOT으로 만든다
   const makeLotPlace = (key, L, label) => {
@@ -524,7 +670,7 @@ function gridQuery(m, x, y, r, out = []) {
 function buildSpatial() {
   const W = World, N = W.nodes;
   W.edgeGrid = gridMake(W.edgesList, e => (N[e[0]].x + N[e[1]].x) / 2, e => (N[e[0]].y + N[e[1]].y) / 2);
-  W.nodeGrid = gridMake(N, n => n.x, n => n.y);
+  W.nodeGrid = gridMake(N.filter(n => n.deg), n => n.x, n => n.y);
   W.blockGrid = gridMake(W.blocks, b => (b.x0 + b.x1 + 1) / 2 * T, b => (b.y0 + b.y1 + 1) / 2 * T);
 }
 // 반경 r 안(대략)의 도로 구간 / 블록 — 구간 길이만큼 여유를 둔다
@@ -541,8 +687,12 @@ const MINI_COL = { [TL.WATER]: '#1d4e6e', [TL.ROAD]: '#c9ccd2', [TL.WALK]: '#8b8
 function buildMinimap() {
   const c = document.createElement('canvas'); c.width = MW; c.height = MH;
   const g = c.getContext('2d'), img = g.createImageData(MW, MH);
+  const bm = World.boulevardMask, E = World.etoile;
   for (let i = 0; i < MW * MH; i++) {
-    const n = parseInt(MINI_COL[World.tiles[i]].slice(1), 16);
+    let col = MINI_COL[World.tiles[i]];
+    if (bm && bm[i] && World.tiles[i] === TL.PLAZA) col = '#e8d59c'; // 방사형 대로 · 그랑 불바르
+    if (E && E.R && Math.hypot(i % MW + 0.5 - E.cx, Math.floor(i / MW) + 0.5 - E.cy) < E.R && World.tiles[i] === TL.PLAZA) col = '#f2e6bf';
+    const n = parseInt(col.slice(1), 16);
     img.data[i * 4] = (n >> 16) & 255; img.data[i * 4 + 1] = (n >> 8) & 255; img.data[i * 4 + 2] = n & 255; img.data[i * 4 + 3] = 255;
   }
   g.putImageData(img, 0, 0);
@@ -562,7 +712,7 @@ function nearestNode(x, y) {
   for (let r = 70; r < 5000 && !best; r *= 2) {
     for (const n of gridQuery(World.nodeGrid, x, y, r)) { const d = dist2(x, y, n.x, n.y); if (d < bd) { bd = d; best = n; } }
   }
-  if (!best) for (const n of World.nodes) { const d = dist2(x, y, n.x, n.y); if (d < bd) { bd = d; best = n; } }
+  if (!best) for (const n of World.nodes) { if (!n.deg) continue; const d = dist2(x, y, n.x, n.y); if (d < bd) { bd = d; best = n; } }
   return best;
 }
 // 가장 가까운 도로 구간과 그 위의 위치

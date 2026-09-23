@@ -28,7 +28,7 @@ bash packaging/desktop/build.sh  # release/NeonHarbor-PC.exe (electron-builder)
 | 파일 | 내용 |
 |---|---|
 | `core.js` | 수학 헬퍼(`clamp` `lerp` `smooth` `dist` `rand` `pick`…), 입력(`Input` `keyDown` `keyHit` `Pad`), `Sfx`(Web Audio), `Radio`, `Settings`(localStorage), `Perf`(성능 모드), `Zoom`, `TUNE` |
-| `world.js` | `genWorld(seed)` 절차적 도시 생성: 타일 `TL`, 구역 `DIST`/`DIST_NAMES`, 동네 `HOODS`(보로노이, `hoodAt(x,y)`), 공간 인덱스 `edgesNear/blocksNear/gridQuery`, 도로 그래프 `World.nodes/edgesList`, 건물, 장소 `World.places`(`makePlace`/`makeLotPlace`), 군사 기지 `World.base`, 마리나 `World.marinas`. `solidT`(사람·AI), `solidNoWater`(헤엄치는 플레이어·차), `solidBoat`(보트) |
+| `world.js` | `genWorld(seed)` 절차적 도시 생성: 타일 `TL`, 구역 `DIST`/`DIST_NAMES`, 동네 `HOODS`(보로노이, `hoodAt(x,y)`), 방사형 구조 `buildEtoile`/`carveBoulevards`(`World.etoile`, `boulevardMask`)·랜드마크 `buildLandmarks`(`World.decos` → 3D `View3D.addDeco`, `World.landmarks`), 동네 생활 시설 `World.branches`, 공간 인덱스 `edgesNear/blocksNear/gridQuery`, 도로 그래프 `World.nodes/edgesList`, 건물, 장소 `World.places`(`makePlace`/`makeLotPlace`), 군사 기지 `World.base`, 마리나 `World.marinas`. `solidT`(사람·AI), `solidNoWater`(헤엄치는 플레이어·차), `solidBoat`(보트) |
 | `vehicles.js` | `VTYPES`(차종 표), `class Car`(자전거 모델 물리), 교통 AI(IDM·pure pursuit), 경찰차 추격, `playerDrive`, 물에 빠짐 `sinkCar` |
 | `peds.js` | `WEAPONS`, `class Ped`/`PlayerPed`, `fireWeapon`, `explode(x,y,r,dmg,by,source,alt)`, 유도탄, 보행자 AI, `Particles` `Decals` `Effects`, 픽업 |
 | `police.js` | 수배 `Wanted`, `crime(type,x,y)`, 경찰 배차·헬기, 무단횡단 `Jay` |

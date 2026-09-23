@@ -253,6 +253,7 @@ const EXTRA_PLACES = [], EXTRA_ICONS = [];
 function placeIcons() {
   const out = [];
   const pl = World.places;
+  for (const b of World.branches || []) if (pl[b.key]) out.push({ x: pl[b.key].x, y: pl[b.key].y, ch: b.ch, c: b.c, label: b.label });
   for (const e of EXTRA_ICONS) if (pl[e.key]) out.push({ x: pl[e.key].x, y: pl[e.key].y, ch: e.ch, c: typeof e.c === 'function' ? e.c() : e.c, label: e.label });
   for (const k of ['hospital2', 'hospital3']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: 'H', c: '#e0443e', label: '병원' });
   for (const k of ['police2', 'police3']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: 'P', c: '#4b8fe8', label: '경찰서' });
