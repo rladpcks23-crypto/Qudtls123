@@ -149,7 +149,7 @@ const Jobs = {
       this.obj(j, '손님을 목적지에 내려줘라');
       if (this.stopped(c, j.dest, 7)) {
         const tip = Math.max(0, Math.round(j.timer)) * 2, hurt = c.hp / c.maxHp < 0.5 ? 0.6 : 1;
-        this.pay(j, ((20 + j.fdist * 0.25 + tip) * hurt + j.streak * 10) * (Biz.owned().biz_taxi ? 1.25 : 1), '택시 요금');
+        this.pay(j, ((20 + j.fdist * 0.25 + tip) * hurt + j.streak * 10) * (Biz.has('biz_taxi') ? 1.25 : 1), '택시 요금');
         j.streak++; j.timer = null; j.stage = 'find';
       }
     }
@@ -242,7 +242,7 @@ const Jobs = {
     } else {
       j.blips = [{ x: j.dest.x, y: j.dest.y, c: '#ff5d8f', big: true }];
       this.obj(j, Wanted.stars ? '경찰을 달고 가면 접선이 깨진다 — 따돌려라' : '밀수품을 접선 장소로 옮겨라');
-      if (dist(P.px, P.py, j.dest.x, j.dest.y) < 5 && (!P.car || P.car.speed < 4) && Wanted.stars === 0) { this.pay(j, 1200 + Math.min(6, j.count) * 200, '밀수품 인도'); j.timer = null; j.stage = 'pickup'; }
+      if (dist(P.px, P.py, j.dest.x, j.dest.y) < 5 && (!P.car || P.car.speed < 4) && Wanted.stars === 0) { this.pay(j, (1200 + Math.min(6, j.count) * 200) * (Biz.has('biz_logi') ? 1.25 : 1), '밀수품 인도'); j.timer = null; j.stage = 'pickup'; }
     }
   },
   // ----- 자경단 -----

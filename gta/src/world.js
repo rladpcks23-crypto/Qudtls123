@@ -390,7 +390,12 @@ function genWorld(seed) {
   makePlace('biz_wash', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.62, 0.3), 'biz', '#cfe3f0', '스파클 세차장');
   makePlace('biz_taxi', choose(edgeLots(DIST.HARBOR, L => !L.used && bld('warehouse')(L)), 0.82, 0.55), 'biz', '#f2c14e', '하버 택시 회사');
   makePlace('biz_bar', choose(edgeLots(DIST.BEACH, L => !L.used && bld('shop')(L)), 0.4, 0.8), 'biz', '#e0a96d', '선셋 비치 바');
-  makePlace('biz_factory', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.2, 0.6), 'biz', '#8b5a44', '아이언 밸리 공장');
+  makePlace('biz_factory', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.2, 0.6), 'biz', '#8b5a44', '아이언 밸리 제철소');
+  makePlace('biz_burger', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.42, 0.62), 'biz', '#f3d9b1', '버거 샷 가맹점');
+  makePlace('biz_surf', choose(edgeLots(DIST.BEACH, L => !L.used && bld('shop')(L)), 0.7, 0.82), 'biz', '#6cc0c4', '서핑·보트 대여점');
+  makePlace('biz_logi', choose(edgeLots(DIST.HARBOR, L => !L.used && bld('warehouse')(L)), 0.85, 0.3), 'biz', '#7a7f86', '하버 물류창고');
+  makePlace('biz_hotel', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.44, 0.44), 'biz', '#c9b27a', '스카이라인 호텔');
+  makePlace('biz_casino', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.58, 0.6), 'casino', '#1d1233', '다이아몬드 카지노');
   // 차고형 장소: 필지를 비워 LOT으로 만든다
   const makeLotPlace = (key, L, label) => {
     if (!L) return;

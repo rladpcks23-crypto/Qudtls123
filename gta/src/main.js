@@ -138,7 +138,7 @@ const Game = {
       this.update(dt, true);
       if (this.deathT > 4.2) this.respawn(st);
     } else if (st === 'shop') {
-      if (keyHit('Escape', 'PadB')) { if (!document.getElementById('jobs').hidden) Jobs.closeBoard(); else Shop.close(); }
+      if (keyHit('Escape', 'PadB')) { if (!document.getElementById('jobs').hidden) Jobs.closeBoard(); else if (!document.getElementById('casino').hidden) { if (!Casino.busy) Casino.close(); } else Shop.close(); }
     }
     try { Sfx.update(dt); } catch (e) { /* 오디오 오류는 게임을 멈추지 않게 */ }
     UI.update(st === 'play' || st === 'wasted' || st === 'busted' ? dt : 0);

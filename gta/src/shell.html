@@ -55,6 +55,31 @@
   .refs i { color: var(--muted); font-style: normal; }
   .refs a { color: var(--sky); }
   /* ---------- 일시정지 / 상점 ---------- */
+  #casino { background: radial-gradient(circle at 50% 30%, rgba(80,20,60,0.85), rgba(5,4,12,0.92)); align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
+  #casino .card { max-height: calc(100% - 16px); overflow-y: auto; border: 1px solid #ff5d8f; }
+  #casino .card > * { flex-shrink: 0; }
+  /* 가로로 눕힌 휴대폰: 왼쪽 = 베팅·결과, 오른쪽 = 게임판 (스크롤 없이 한 화면에) */
+  @media (max-height: 520px) {
+    #casino .card { width: min(880px, 100%); display: grid; grid-template-columns: 1fr 1.3fr; grid-template-areas: "h g" "m g" "b g" "t g" "r g" "c g"; column-gap: 16px; row-gap: 4px; padding: 12px 16px; align-content: start; }
+    #casino h2 { grid-area: h; margin: 0; font-size: 20px; } .cz-money { grid-area: m; font-size: 15px; margin: 0; } .cz-bets { grid-area: b; margin: 0; } .cz-tabs { grid-area: t; margin: 0; }
+    .cz-game { grid-area: g; margin: 0; min-height: 0; padding: 8px; } .cz-result { grid-area: r; margin: 2px 0; font-size: 13px; } #cz-close { grid-area: c; padding: 7px 12px; font-size: 14px; } .cz-money { font-size: 13px !important; }
+    .cz-card { width: 36px; height: 50px; font-size: 15px; } .cz-hand { min-height: 50px; margin: 2px 0 4px; } .cz-wheel { width: 64px; height: 64px; font-size: 26px; margin: 2px auto 6px; }
+    .cz-reels span { width: 56px; height: 56px; font-size: 30px; } #casino .btn.small { padding: 6px 9px; font-size: 12px; }
+  }
+  #casino h2 small { font-size: 13px; }
+  .cz-money { font-family: var(--num); font-size: 20px; color: #8df28d; margin: 4px 0 8px; }
+  .cz-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 6px 0; color: #dfe6ee; font-size: 13px; }
+  .cz-bet.on { background: #ff5d8f; color: #fff; }
+  .cz-game { min-height: 150px; margin: 8px 0; padding: 10px; border-radius: 12px; background: rgba(10,60,40,0.55); border: 1px solid rgba(255,255,255,0.12); text-align: center; }
+  .cz-wheel { width: 84px; height: 84px; margin: 4px auto 10px; border-radius: 50%; border: 5px solid #d4af37; display: flex; align-items: center; justify-content: center; font: 700 32px var(--num); color: #fff; background: #222; }
+  .cz-wheel.r { background: #b3202a; } .cz-wheel.b { background: #111; } .cz-wheel.g { background: #1f8a4c; }
+  .cz-reels { display: flex; justify-content: center; gap: 10px; margin: 6px 0 10px; }
+  .cz-reels span { width: 70px; height: 70px; border-radius: 10px; background: #f4f4f4; color: #b3202a; display: flex; align-items: center; justify-content: center; font: 700 38px var(--num); box-shadow: inset 0 -6px 0 rgba(0,0,0,0.15); }
+  .cz-note { color: #cfd6e0; font-size: 12px; margin: 4px 0; }
+  .cz-hand { display: flex; justify-content: center; gap: 6px; margin: 4px 0 8px; min-height: 58px; }
+  .cz-card { font-style: normal; width: 42px; height: 58px; border-radius: 6px; background: #fafafa; color: #111; display: flex; align-items: center; justify-content: center; font: 700 17px var(--num); }
+  .cz-card.red { color: #c0202a; } .cz-card.back { background: repeating-linear-gradient(45deg, #b3202a 0 6px, #7a1420 6px 12px); color: transparent; }
+  .cz-result { min-height: 22px; font-weight: 700; font-size: 16px; margin: 6px 0 10px; }
   #pause, #shop { background: rgba(5, 8, 14, 0.7); align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 22px; width: min(420px, 100%); box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; max-height: 100%; overflow-y: auto; }
   .card h2 { margin: 0; font-family: var(--disp); font-weight: 400; font-size: 34px; color: var(--gold); letter-spacing: 0.02em; }
@@ -216,7 +241,7 @@
       <p><b>직업</b> — 고용센터(J): 택시 기사 · 구급대원 · 음식 배달 · 자경단 · 버스 기사 / 브로커($): 차량 수출 · 밀수 운반 · 현금수송차 습격 · 소매치기. 반복할수록 보수가 오른다. 스토리 미션 중에 일을 시작하면 미션은 잠시 내려놓는다(마커에서 다시 받기).</p>
       <p><b>가방</b> — 음식·약은 체력이 가득해도 사서 가방에 넣어 둘 수 있다(최대 10개). PC <b>B</b>, 모바일 [가방] 버튼 = 지금 필요한 것을 꺼내 먹는다. <b>체력 유지제</b>(편의점): 90초 동안 체력이 계속 차오르고 지치지 않는다.</p>
       <p><b>네온 모터스(D)</b> — 아이언 밸리의 차량 매매상. 타고 온 차를 팔고(훔친 차는 싸게, 산 차는 60%), 새 차·슈퍼카·현금수송 트럭·전차·공격 헬기·전투기를 산다. 산 차량은 사라지지 않는다.</p>
-      <p><b>내 차고(차)</b> — 산 차량·보관한 차는 저장된다. 부서지면 보험 수리 후 다시 꺼낸다. <b>마리나(배)</b> — 제트스키·보트, 물에 들어가면 헤엄친다(차는 가라앉는다). <b>사업체(₩)</b> — 사 두면 매일 금고에 돈이 쌓인다. <b>그래픽</b> — 일시정지 메뉴에서 FPS 표시·성능 절약 모드.</p>
+      <p><b>내 차고(차)</b> — 산 차량·보관한 차는 저장된다. 부서지면 보험 수리 후 다시 꺼낸다. <b>마리나(배)</b> — 제트스키·보트, 물에 들어가면 헤엄친다(차는 가라앉는다). <b>사업체(₩)</b> — 사 두면 1분마다 수입이 바로 들어오고, 5단계까지 업그레이드. <b>카지노(♦)</b> — 룰렛·슬롯·블랙잭. <b>그래픽</b> — 일시정지 메뉴에서 FPS 표시·성능 절약 모드.</p>
       <p><b>탑승 무기</b> — 전차: 주포·기관총 / 헬기: 기관포·로켓·유도탄 / 전투기: 기관포·유도탄·로켓. Q/E(모바일 [무기])로 바꾸고, 스페이스(모바일 [유도탄])는 유도 미사일. 목표를 조준선에 0.8초 겨누면 LOCK — 유도탄이 따라간다. 적 미사일은 급선회로 피할 수 있다.</p>
       <p><b>사람들</b> — 회사원·조깅하는 사람·관광객·노인·통화 중인 사람·개 산책(개도 따라다님)·핫도그 노점·버스커. 부딪히면 항의하고, 총을 겨누면 손을 들고, 계속 겨누면 지갑을 떨어뜨린다. 쓰러진 사람에게는 구급차가 와서 되살린다. 청룡파(초록)와 파도파(주황)는 마주치면 싸운다.</p>
       <p><b>편의 기능</b> — 전체 지도를 눌러 웨이포인트를 찍으면 레이더에 GPS 경로가 뜬다. 은신처(집)에서 저장하고 6시간 잔다. 6초 동안 안 다치면 체력이 50까지 차오른다. 일시정지 메뉴에 치트 입력칸이 있다.</p>
@@ -260,6 +285,7 @@
   </div>
 </div>
 
+<div id="casino" class="overlay" hidden><div class="card"></div></div>
 <div id="shop" class="overlay" hidden>
   <div class="card">
     <h2 id="shop-title">총포상</h2>

@@ -115,8 +115,9 @@ const Dealer = {
     Game.cars.push(c); Game.waypoint = { x, y };
     return c;
   },
+  cost(type) { return Math.round(VEHICLE_PRICES[type] * (VTYPES[type].special === 'boat' && Biz.has('biz_surf') ? 0.5 : 1)); },
   buy(type) {
-    const P = Game.player, price = VEHICLE_PRICES[type];
+    const P = Game.player, price = this.cost(type);
     if (P.money < price) return;
     P.money -= price; Sfx.cash();
     const c = this.deliver(type); Fleet.add(c);
@@ -133,7 +134,7 @@ SHOPS.dealer = {
       const why = Dealer.sellable(c);
       out.push({ id: 'sell', veh: c.type, name: `타고 온 ${c.label || c.V.name} 팔기`, price: 0, sellPrice: why ? 0 : Dealer.price(c), desc: why || (c.owned ? '내가 산 차 — 구입가의 60%' : '훔친 차 — 싸게 매입, 차 상태에 따라 값이 다르다'), ok: () => !why, fn: () => { Dealer.sell(); Shop.close(); } });
     }
-    for (const t of DEALER_STOCK) out.push({ id: 'veh_' + t, veh: t, name: VTYPES[t].name, price: VEHICLE_PRICES[t], desc: VTYPES[t].special === 'boat' ? `보트 — 최고 ${Math.round(VTYPES[t].vmax * 3.6)}km/h, 가까운 마리나로 배달` : t === 'tank' ? '라이노 전차 — 주포·기관총' : t === 'milheli' ? '헌터 공격 헬기 — 기관포·로켓·유도미사일' : t === 'jet' ? '라저 전투기 — 기관포·유도미사일·로켓' : `최고 ${Math.round(VTYPES[t].vmax * 3.6)}km/h · 내구 ${VTYPES[t].hp}`, fn: () => { Dealer.buy(t); Shop.close(); } });
+    for (const t of DEALER_STOCK) out.push({ id: 'veh_' + t, veh: t, name: VTYPES[t].name, price: Dealer.cost(t), desc: VTYPES[t].special === 'boat' ? `보트 — 최고 ${Math.round(VTYPES[t].vmax * 3.6)}km/h, 가까운 마리나로 배달` : t === 'tank' ? '라이노 전차 — 주포·기관총' : t === 'milheli' ? '헌터 공격 헬기 — 기관포·로켓·유도미사일' : t === 'jet' ? '라저 전투기 — 기관포·유도미사일·로켓' : `최고 ${Math.round(VTYPES[t].vmax * 3.6)}km/h · 내구 ${VTYPES[t].hp}`, fn: () => { Dealer.buy(t); Shop.close(); } });
     return out;
   },
 };
@@ -186,46 +187,71 @@ SHOPS.mygarage = {
   },
 };
 
-// ---------- 사업체: 사 두면 금고에 돈이 쌓인다 (GTA 바이스시티식 부동산) ----------
+// ---------- 사업체: 사 두면 1분마다 수입이 바로 들어온다. 5단계까지 업그레이드 ----------
 const BUSINESSES = {
-  biz_club: { name: '네온 나이트클럽', price: 60000, daily: 2600, desc: '다운타운의 밤을 책임지는 클럽' },
-  biz_wash: { name: '스파클 세차장', price: 25000, daily: 1000, desc: '작지만 꾸준한 현금 장사' },
-  biz_taxi: { name: '하버 택시 회사', price: 40000, daily: 1700, desc: '택시 기사 일 보수 +25%' },
-  biz_bar: { name: '선셋 비치 바', price: 30000, daily: 1300, desc: '해변 손님이 끊이지 않는다' },
-  biz_factory: { name: '아이언 밸리 공장', price: 90000, daily: 4000, desc: '가장 비싸지만 가장 많이 번다' },
+  biz_wash: { name: '스파클 세차장', price: 150000, perMin: 900, desc: '작지만 꾸준한 현금 장사' },
+  biz_bar: { name: '선셋 비치 바', price: 250000, perMin: 1500, desc: '해변 손님이 끊이지 않는다' },
+  biz_burger: { name: '버거 샷 가맹점', price: 400000, perMin: 2400, desc: '버거 샷 음식 반값' },
+  biz_surf: { name: '서핑·보트 대여점', price: 550000, perMin: 3300, desc: '네온 모터스 보트 반값' },
+  biz_taxi: { name: '하버 택시 회사', price: 700000, perMin: 4200, desc: '택시 기사 일 보수 +25%' },
+  biz_club: { name: '네온 나이트클럽', price: 1200000, perMin: 7200, desc: '다운타운의 밤을 책임지는 클럽' },
+  biz_logi: { name: '하버 물류창고', price: 1600000, perMin: 9600, desc: '밀수 운반 보수 +25%' },
+  biz_hotel: { name: '스카이라인 호텔', price: 2500000, perMin: 15000, desc: '호텔에서 쉬면 체력·방탄복 가득(은신처처럼 저장)' },
+  biz_factory: { name: '아이언 밸리 제철소', price: 3200000, perMin: 19000, desc: '가장 많이 버는 일반 사업체' },
+  biz_casino: { name: '다이아몬드 카지노', price: 5000000, perMin: 30000, desc: '베팅 한도 10배 · 카지노에서 잃은 돈의 20% 환급' },
 };
+const BIZ_MULT = [1, 1.5, 2.2, 3.1, 4.3];       // 단계별 수입 배율
+const BIZ_UPG = [0.35, 0.6, 1.0, 1.6];          // 다음 단계 업그레이드 비용 = 구입가 × 이 값
+const BIZ_UPG_NAME = ['리모델링', '확장 공사', '프리미엄 브랜딩', '플래그십 단계'];
 const Biz = {
+  t: 0,
   owned() { return Game.props || (Game.props = {}); },
-  // 게임 시간 하루(1440분 = 24분) 동안 daily만큼 쌓인다. 최대 5일치
+  lv(k) { const o = this.owned()[k]; return o ? o.lv || 1 : 0; },
+  perMin(k) { const B = BUSINESSES[k], L = this.lv(k); return L ? Math.round(B.perMin * BIZ_MULT[L - 1]) : 0; },
+  total() { return Object.keys(this.owned()).reduce((a, k) => a + (BUSINESSES[k] ? this.perMin(k) : 0), 0); },
+  // 실제 플레이 1분마다 소유한 사업체 수입이 바로 입금된다
   update(dt) {
     const O = this.owned();
-    for (const k in O) { const B = BUSINESSES[k]; if (B) O[k].safe = Math.min(B.daily * 5, (O[k].safe || 0) + B.daily / 1440 * dt); }
-    const h = Math.floor(Game.clock / 60);
-    if (h !== this.lastH) { if (h === 9 && this.lastH !== undefined) { const tot = Object.values(O).reduce((a, o) => a + (o.safe || 0), 0); if (tot > 50) UI.toast(`사업체 금고에 $${Math.round(tot).toLocaleString()}이 쌓였다 — 찾아가서 수령하자`); } this.lastH = h; }
-  },
-  collect(k) {
-    const o = this.owned()[k]; if (!o) return 0;
-    const amt = Math.floor(o.safe || 0); if (amt <= 0) return 0;
-    o.safe -= amt; Game.player.money += amt; Sfx.cash(); UI.toast(`${BUSINESSES[k].name} 금고 수령 +$${amt.toLocaleString()}`);
-    return amt;
+    for (const k in O) if (O[k].safe) { Game.player.money += Math.floor(O[k].safe); O[k].safe = 0; } // 예전 저장(금고) 정산
+    if (!Object.keys(O).length) { this.t = 0; return; }
+    this.t += dt;
+    if (this.t >= 60) {
+      this.t -= 60;
+      const amt = this.total(); if (amt <= 0) return;
+      Game.player.money += amt; Sfx.cash();
+      UI.toast(`사업 수입 +$${amt.toLocaleString()} (${Object.keys(O).length}곳)`);
+    }
   },
   buy(k) {
     const B = BUSINESSES[k], P = Game.player;
     if (this.owned()[k] || P.money < B.price) return;
-    P.money -= B.price; this.owned()[k] = { safe: 0 }; Sfx.passed();
-    UI.big('사업체 구입!', `${B.name} — 하루 $${B.daily.toLocaleString()}`, 3, '#ffd166'); Save.write();
+    P.money -= B.price; this.owned()[k] = { lv: 1 }; Sfx.passed();
+    UI.big('사업체 인수!', `${B.name} — 1분마다 $${this.perMin(k).toLocaleString()}`, 3, '#ffd166'); Save.write();
   },
-  total() { return Object.keys(this.owned()).reduce((a, k) => a + (BUSINESSES[k] ? BUSINESSES[k].daily : 0), 0); },
+  upgradeCost(k) { const L = this.lv(k); return L && L < 5 ? Math.round(BUSINESSES[k].price * BIZ_UPG[L - 1]) : 0; },
+  upgrade(k) {
+    const P = Game.player, c = this.upgradeCost(k);
+    if (!c || P.money < c) return;
+    P.money -= c; this.owned()[k].lv++; Sfx.passed();
+    UI.big(`${BUSINESSES[k].name} ${this.lv(k)}단계`, `1분마다 $${this.perMin(k).toLocaleString()}`, 2.6, '#ffd166'); Save.write();
+  },
+  has(k) { return !!this.owned()[k]; },
 };
 for (const [k, B] of Object.entries(BUSINESSES)) {
-  PLACE_MARK[k] = '#ffd166';
+  PLACE_MARK[k] = k === 'biz_casino' ? '#ff5d8f' : '#ffd166';
   SHOPS[k] = {
     title: B.name, sub: B.desc,
     items: () => {
-      const o = Biz.owned()[k];
-      if (!o) return [{ id: 'buybiz', veh: null, name: `${B.name} 구입`, price: B.price, desc: `하루(게임 24분) $${B.daily.toLocaleString()} 수입 · 금고는 5일치까지 쌓인다`, ok: () => true, fn: () => { Biz.buy(k); Shop.close(); } }];
-      return [{ id: 'collect', name: '금고 수령', price: 0, sellPrice: Math.floor(o.safe || 0), desc: `소유 중 · 하루 $${B.daily.toLocaleString()} · 금고 최대 $${(B.daily * 5).toLocaleString()}`, ok: () => (o.safe || 0) >= 1, fn: () => { Biz.collect(k); Shop.close(); Save.write(); } },
-        { id: 'info', name: `내 사업체 ${Object.keys(Biz.owned()).length}곳 · 하루 총 $${Biz.total().toLocaleString()}`, price: 0, desc: '지도에 금색 ₩ 표시', ok: () => false }];
+      const L = Biz.lv(k), out = [];
+      if (k === 'biz_casino') out.push({ id: 'casino_play', name: '카지노 입장 — 룰렛 · 슬롯머신 · 블랙잭', price: 0, btn: '입장', desc: `베팅 한도 $${Casino.limit().toLocaleString()}${L ? ' (소유주 VIP)' : ''}`, ok: () => true, fn: () => { Shop.close(); Casino.open(); } });
+      if (!L) out.push({ id: 'buybiz', name: `${B.name} 인수`, price: B.price, desc: `1분마다 $${B.perMin.toLocaleString()} · 5단계까지 업그레이드 (최대 ×${BIZ_MULT[4]})`, ok: () => true, fn: () => { Biz.buy(k); Shop.close(); } });
+      else {
+        const c = Biz.upgradeCost(k);
+        out.push({ id: 'bizinfo', name: `소유 중 · ${L}단계 · 1분마다 $${Biz.perMin(k).toLocaleString()}`, price: 0, desc: `${'★'.repeat(L)}${'☆'.repeat(5 - L)} · 내 사업체 ${Object.keys(Biz.owned()).length}곳, 합계 1분 $${Biz.total().toLocaleString()}`, ok: () => false });
+        if (c) out.push({ id: 'bizup', name: `${BIZ_UPG_NAME[L - 1]} → ${L + 1}단계`, price: c, desc: `1분 수입 $${Biz.perMin(k).toLocaleString()} → $${Math.round(B.perMin * BIZ_MULT[L]).toLocaleString()}`, ok: () => true, fn: () => { Biz.upgrade(k); Shop.open(k); } });
+        if (k === 'biz_hotel') out.push({ id: 'rest', name: '스위트룸에서 쉬기', price: 0, btn: '쉬기', desc: '체력·방탄복 가득, 저장', ok: () => Wanted.stars === 0, fn: () => { const P = Game.player; P.hp = P.maxHp; P.armor = 100; Game.clock = (Game.clock + 240) % 1440; Save.write(); Shop.close(); UI.big('저장 완료', '호텔 스위트룸에서 푹 쉬었다', 2.4, '#9be15d'); } });
+      }
+      return out;
     },
   };
 }
