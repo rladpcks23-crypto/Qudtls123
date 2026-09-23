@@ -4135,6 +4135,13 @@ Object.assign(VTYPES, {
   milheli: { name: '헌터 공격 헬기', L: 9, W: 2.4, mass: 5000, Fe: 1, vmax: 36, grip: 1, cs: 5, steer: 1.5, hp: 700, colors: ['#4a5540'], style: 'milheli', special: 'heli', armor: 0.5 },
   jet: { name: '라저 전투기', L: 12, W: 3, mass: 9000, Fe: 1, vmax: 78, grip: 1, cs: 5, steer: 0.9, hp: 600, colors: ['#8a929c'], style: 'jet', special: 'jet', armor: 0.5 },
 });
+// 그 자리 건물 옥상 높이 (건물이 없으면 0)
+function roofAt(x, y) {
+  const tx = Math.floor(x / T), ty = Math.floor(y / T);
+  if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return 0;
+  const bi = World.bIndex[tIdx(tx, ty)];
+  return bi >= 0 && World.buildings[bi] ? World.buildings[bi].h : 0;
+}
 const isAir = c => c && (c.V.special === 'heli' || c.V.special === 'jet');
 const airborne = c => c && c.alt > 1.2;
 
@@ -4152,10 +4159,12 @@ function specialStep(c, dt) {
     const ex = c.vx - cs * c.vf, ey = c.vy - sn * c.vf;
     c.vx = cs * c.spd + ex * Math.exp(-6 * dt); c.vy = sn * c.spd + ey * Math.exp(-6 * dt);
   } else if (V.special === 'heli') {
-    const flying = c.driver && !c.landing && c.burnT <= 0 && (c.alt > 0.5 || Math.abs(raw) > 0.1 || Math.abs(inp.st) > 0.1 || inp.up);
-    const target = flying ? 72 : 0;
+    // 옥상 착륙: 수직으로 내려오면 지붕 위에 선다 (옆에서 들이받으면 아래 충돌 판정으로 추락)
+    const roof = roofAt(c.x, c.y);
+    const flying = c.driver && !c.landing && c.burnT <= 0 && (c.alt - roof > 0.5 || Math.abs(raw) > 0.1 || Math.abs(inp.st) > 0.1 || inp.up);
+    const target = flying ? 72 : roof;
     c.alt = c.alt < target ? Math.min(target, c.alt + 8 * dt) : Math.max(target, c.alt - (c.landing ? 7 : 5) * dt);
-    if (c.landing && c.alt <= 0.05) { c.landing = false; UI.toast('착륙 완료'); }
+    if (c.landing && c.alt <= roof + 0.05) { c.landing = false; if (c.driver === 'player') UI.toast(roof > 0 ? '옥상에 착륙했다' : '착륙 완료'); }
     c.rotor = (c.rotor || 0) + dt * (c.alt > 0.1 || flying ? 42 : 4);
     const cs = Math.cos(c.a), sn = Math.sin(c.a);
     if (c.alt > 3) {
@@ -4197,7 +4206,7 @@ function specialStep(c, dt) {
   if (c.alt > 1.2 && !c.dead) {
     const tx = Math.floor(c.x / T), ty = Math.floor(c.y / T);
     const bi = tx >= 0 && ty >= 0 && tx < MW && ty < MH ? World.bIndex[tIdx(tx, ty)] : -1;
-    if (bi >= 0 && World.buildings[bi] && World.buildings[bi].h > c.alt) { c.damage(9999, null); c.burnT = 0.01; UI.toast('건물에 충돌했다!'); }
+    if (bi >= 0 && World.buildings[bi] && World.buildings[bi].h > c.alt + 0.3) { c.damage(9999, null); c.burnT = 0.01; if (c.driver === 'player') UI.toast('건물에 충돌했다!'); }
   }
 }
 
@@ -4404,8 +4413,7 @@ const Para = {
     P.x = clamp(P.x + P.vx * dt, 8, MW * T - 8); P.y = clamp(P.y + P.vy * dt, 8, MH * T - 8);
     P.alt -= P.vz * dt; P.moving = 0; P.cd -= dt; P.hitFlash -= dt; P.flash -= dt;
     // 건물 옥상보다 낮아지면 거기서 착지(가장자리로 밀려 내려온다)
-    const bi = World.bIndex[tIdx(clamp(Math.floor(P.x / T), 0, MW - 1), clamp(Math.floor(P.y / T), 0, MH - 1))];
-    const roof = bi >= 0 && World.buildings[bi] ? World.buildings[bi].h : 0;
+    const roof = roofAt(P.x, P.y);
     if (P.alt <= roof) {
       const hard = P.vz > 12;
       P.alt = 0; P.chute = false; P.vz = 0; P.vx *= 0.3; P.vy *= 0.3;
@@ -6956,7 +6964,7 @@ function tryEnterCar(P) {
 }
 function exitCar(P, force) {
   const c = P.car; if (!c) return;
-  if (isAir(c) && c.alt > 1 && !force) {
+  if (isAir(c) && c.alt - roofAt(c.x, c.y) > 1 && !force) {
     if (c.landing && Game.time - (c.landReqT || 0) < 1.6) { Para.bail(P, c); return; }
     c.landing = true; c.landReqT = Game.time;
     UI.toast((c.V.special === 'jet' ? '착륙 접근 중…' : '착륙 중…') + ' 곧바로 한 번 더 누르면 낙하산 탈출');

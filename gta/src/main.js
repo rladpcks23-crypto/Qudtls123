@@ -561,7 +561,7 @@ function tryEnterCar(P) {
 }
 function exitCar(P, force) {
   const c = P.car; if (!c) return;
-  if (isAir(c) && c.alt > 1 && !force) {
+  if (isAir(c) && c.alt - roofAt(c.x, c.y) > 1 && !force) {
     if (c.landing && Game.time - (c.landReqT || 0) < 1.6) { Para.bail(P, c); return; }
     c.landing = true; c.landReqT = Game.time;
     UI.toast((c.V.special === 'jet' ? '착륙 접근 중…' : '착륙 중…') + ' 곧바로 한 번 더 누르면 낙하산 탈출');
