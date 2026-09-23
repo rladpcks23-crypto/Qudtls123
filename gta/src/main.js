@@ -58,6 +58,7 @@ const Game = {
     Jobs.active = null; Jobs.stats = (sv && sv.jobs) || {};
     if (sv) { for (const k in sv.inv) P.inv[k] = sv.inv[k] === -1 ? Infinity : sv.inv[k]; this.clock = sv.time || this.clock; P.armor = sv.armor || 0; if (sv.weapon && P.inv[sv.weapon] > 0) P.weapon = sv.weapon; P.bag = sv.bag || {}; }
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
+    this.fleet = sv ? sv.fleet || [] : [];
     placeStaticPickups();
     Military.reset(); AirPatrol.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
     this.waypoint = null; this.noWanted = false;
@@ -197,7 +198,7 @@ const Game = {
     Jay.update(dt);
     Missions.update(dt);
     Jobs.update(dt);
-    Military.update(dt); AirPatrol.update(dt); Bag.update(dt);
+    Military.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update();
     Talk.update(dt); Aim.update(dt); EMS.update(dt); Givers.update(); Vendors.update(dt); GPS.update(dt);
     // 체력 자연 회복: 6초 동안 안 다치면 50까지 천천히 (GTA V)
     if (!P.dead && P.hp < 50 && this.time - (P.lastHurt || 0) > 6) P.hp = Math.min(50, P.hp + 2 * dt);
@@ -364,12 +365,13 @@ const Game = {
         UI.toast(had ? '새 도색 완료! 수배가 해제됐다 (-$100)' : '수리 및 도색 완료 (-$100)');
       }
     }
-    // 네온 모터스: 차를 몰고 마당에 세우거나 걸어서 들어가면 매매 화면
-    const DL = World.places.dealer;
-    if (DL && this.shopCool <= 0 && !(P.alt > 0)) {
+    // 네온 모터스 · 내 차고: 차를 몰고 마당에 세우거나 걸어서 들어가면 화면이 열린다
+    for (const key of ['dealer', 'mygarage']) {
+      const DL = World.places[key];
+      if (!DL || this.shopCool > 0 || P.alt > 0) continue;
       const inCar = P.car && !(P.car.alt > 1.2) && dist(P.car.x, P.car.y, DL.x, DL.y) < 9 && P.car.speed < 3;
       const onFoot = !P.car && dist(P.x, P.y, DL.x, DL.y) < 3;
-      if (inCar || onFoot) { Shop.open('dealer'); return; }
+      if (inCar || onFoot) { Shop.open(key); return; }
     }
     // 상점 · 직업 게시판 (걸어서 문 앞 마커에 들어가면 열림)
     if (!P.car && !(P.alt > 0) && this.shopCool <= 0 && !(Missions.active && Missions.active.def.noShop)) {

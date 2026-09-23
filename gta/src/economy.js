@@ -86,13 +86,13 @@ const Dealer = {
     const P = Game.player, c = P.car;
     const why = this.sellable(c); if (why) { UI.toast(why); return; }
     const amt = this.price(c);
-    exitCar(P, true); c.remove = true;
-    P.money += amt; Sfx.cash(); UI.toast(`${c.label || c.V.name} 판매 +$${amt.toLocaleString()}`);
+    exitCar(P, true); c.remove = true; Fleet.drop(c);
+    P.money += amt; Sfx.cash(); UI.toast(`${c.label || c.V.name} 판매 +$${amt.toLocaleString()}`); Save.write();
     for (const sp of World.parking) if (sp.car === c) { sp.car = null; sp.cd = 60; }
   },
-  // 산 차량을 내어 준다: 헬기는 매장 마당, 전투기는 긴 직선 도로 시작점, 나머지는 매장 앞 도로
-  deliver(type) {
-    const D = World.places.dealer, P = Game.player;
+  // 차량을 내어 준다: 헬기는 마당, 전투기는 가까운 긴 직선 도로 시작점, 나머지는 앞 도로
+  deliver(type, D = World.places.dealer, color) {
+    const P = Game.player;
     let x, y, a;
     if (type === 'milheli') { x = D.x; y = D.y; a = 0; }
     else if (type === 'jet') {
@@ -105,7 +105,7 @@ const Dealer = {
       const sp = best ? laneSpot(best, true, 12) : roadsideSpot(D.x, D.y, 8, 40); x = sp.x; y = sp.y; a = sp.a;
     } else { const sp = roadsideSpot(D.x, D.y, 6, 40); x = sp.x; y = sp.y; a = sp.a; }
     for (const q of Game.cars) if (q !== P.car && !q.persistent && dist2(q.x, q.y, x, y) < 100) q.remove = true;
-    const c = new Car(type, x, y, a, { persistent: true });
+    const c = new Car(type, x, y, a, { persistent: true, color });
     c.owned = true; c.alt = 0; c.label = `내 ${c.V.name}`;
     Game.cars.push(c); Game.waypoint = { x, y };
     return c;
@@ -114,7 +114,8 @@ const Dealer = {
     const P = Game.player, price = VEHICLE_PRICES[type];
     if (P.money < price) return;
     P.money -= price; Sfx.cash();
-    this.deliver(type);
+    const c = this.deliver(type); Fleet.add(c);
+    Save.write();
     UI.toast(`${VTYPES[type].name} 구매! ${type === 'jet' ? '근처 긴 직선 도로에서 이륙할 수 있다' : type === 'milheli' ? '매장 마당에 헬기가 있다' : '매장 앞에 세워 뒀다'} (지도에 웨이포인트)`);
   },
 };
@@ -128,6 +129,54 @@ SHOPS.dealer = {
       out.push({ id: 'sell', veh: c.type, name: `타고 온 ${c.label || c.V.name} 팔기`, price: 0, sellPrice: why ? 0 : Dealer.price(c), desc: why || (c.owned ? '내가 산 차 — 구입가의 60%' : '훔친 차 — 싸게 매입, 차 상태에 따라 값이 다르다'), ok: () => !why, fn: () => { Dealer.sell(); Shop.close(); } });
     }
     for (const t of DEALER_STOCK) out.push({ id: 'veh_' + t, veh: t, name: VTYPES[t].name, price: VEHICLE_PRICES[t], desc: t === 'tank' ? '라이노 전차 — 주포·기관총' : t === 'milheli' ? '헌터 공격 헬기 — 기관포·로켓·유도미사일' : t === 'jet' ? '라저 전투기 — 기관포·유도미사일·로켓' : `최고 ${Math.round(VTYPES[t].vmax * 3.6)}km/h · 내구 ${VTYPES[t].hp}`, fn: () => { Dealer.buy(t); Shop.close(); } });
+    return out;
+  },
+};
+
+// ---------- 내 차고: 산 차량·보관한 차를 저장하고 꺼낸다. 부서지면 보험으로 복구 ----------
+const Fleet = {
+  MAX: 12,
+  list() { return Game.fleet || (Game.fleet = []); },
+  add(c, color) {
+    const e = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), type: c.type, color: color || c.color, wrecked: false };
+    this.list().push(e); c.fleetId = e.id; c.owned = true; c.persistent = true; c.label = `내 ${c.V.name}`;
+    return e;
+  },
+  drop(c) { if (c.fleetId) Game.fleet = this.list().filter(e => e.id !== c.fleetId); c.fleetId = null; },
+  carOf(e) { return Game.cars.find(c => c.fleetId === e.id && !c.dead && c.burnT <= 0); },
+  // 부서진 내 차량은 '폐차' 표시 → 차고에서 보험 수리
+  update() {
+    for (const c of Game.cars) if (c.fleetId && (c.dead || c.burnT > 0)) {
+      const e = this.list().find(q => q.id === c.fleetId); if (e && !e.wrecked) { e.wrecked = true; UI.toast(`내 ${c.V.name}이(가) 부서졌다 — 내 차고에서 보험으로 복구할 수 있다`); }
+      c.fleetId = null;
+    }
+  },
+  store() {
+    const P = Game.player, c = P.car; if (!c) return;
+    if (c.mission || (Jobs.active && Jobs.active.car === c)) { UI.toast('미션·업무 차량은 보관할 수 없다'); return; }
+    if (!c.fleetId) { if (this.list().length >= this.MAX) { UI.toast(`차고가 가득 찼다 (${this.MAX}대)`); return; } this.add(c); }
+    exitCar(P, true); c.remove = true;
+    UI.toast(`${c.V.name} 보관 — 저장됐다`); Save.write();
+  },
+  takeOut(e) {
+    if (this.carOf(e)) { const c = this.carOf(e); Game.waypoint = { x: c.x, y: c.y }; UI.toast('이미 밖에 있다 — 지도에 위치 표시'); return; }
+    const c = Dealer.deliver(e.type, World.places.mygarage, e.color); c.fleetId = e.id; e.wrecked = false;
+    UI.toast(`${c.V.name}을(를) 꺼냈다`);
+  },
+  insurance(e) { return Math.round((VEHICLE_PRICES[e.type] || 3000) * 0.08 / 10) * 10; },
+};
+SHOPS.mygarage = {
+  title: '내 차고', sub: '산 차량과 보관한 차는 저장된다 · 부서진 차는 보험으로 복구',
+  items: () => {
+    const P = Game.player, out = [];
+    if (P.car) out.push({ id: 'store', veh: P.car.type, name: `타고 온 ${P.car.V.name} 보관`, price: 0, desc: P.car.fleetId ? '내 차 — 차고에 넣는다' : '이 차를 내 차로 등록해 보관한다', ok: () => true, fn: () => { Fleet.store(); Shop.close(); } });
+    for (const e of Fleet.list()) {
+      const out_ = Fleet.carOf(e), ins = Fleet.insurance(e);
+      out.push({ id: 'fleet_' + e.id, veh: e.type, name: `${VTYPES[e.type].name}${e.wrecked ? ' (폐차)' : out_ ? ' (밖에 있음)' : ''}`, price: e.wrecked ? ins : 0,
+        desc: e.wrecked ? `보험 수리 $${ins.toLocaleString()} 후 꺼내기` : out_ ? '지도에 위치 표시' : '꺼내기',
+        ok: () => true, fn: () => { Fleet.takeOut(e); Shop.close(); Save.write(); } });
+    }
+    if (!out.length) out.push({ id: 'none', name: '비어 있다', price: 0, desc: '네온 모터스에서 차를 사거나, 아무 차나 몰고 와서 보관하자', ok: () => false });
     return out;
   },
 };

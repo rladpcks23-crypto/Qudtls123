@@ -389,6 +389,7 @@ function genWorld(seed) {
   };
   makeLotPlace('spray', choose(edgeLots(DIST.MIDTOWN, L => (L.x1 - L.x0) >= 2 && (L.y1 - L.y0) >= 2), 0.3, 0.45), '페인트샵');
   makeLotPlace('spray2', choose(edgeLots(DIST.BEACH, L => (L.x1 - L.x0) >= 2 && (L.y1 - L.y0) >= 2), 0.75, 0.8), '페인트샵');
+  makeLotPlace('mygarage', choose(edgeLots(DIST.RESID, L => !L.used && (L.x1 - L.x0) >= 3 && (L.y1 - L.y0) >= 3), 0.3, 0.42), '내 차고');
   makeLotPlace('dealer', choose(edgeLots(DIST.INDUSTRY, L => (L.x1 - L.x0) >= 3 && (L.y1 - L.y0) >= 3), 0.26, 0.58) || choose(edgeLots(DIST.MIDTOWN, L => (L.x1 - L.x0) >= 3 && (L.y1 - L.y0) >= 3), 0.4, 0.6), '네온 모터스');
   makeLotPlace('garage', choose(edgeLots(DIST.HARBOR, L => (L.x1 - L.x0) >= 2 && (L.y1 - L.y0) >= 2), 0.8, 0.35), '차고');
   W.buildings = W.buildings.filter(b => !b.removed);
