@@ -235,14 +235,14 @@ function drawLockHUD() {
 const Military = {
   slots: [], warnT: 0, warned: false, soldiers: [],
   reset() { this.slots = []; this.soldiers = []; this.warnT = 0; this.warned = false; },
-  inside(x, y) { const B = World.base; return B && x > B.x0 && x < B.x1 && y > B.y0 && y < B.y1; },
+  inside(x, y) { const B = World.base; if (!B || x <= B.x0 || x >= B.x1 || y <= B.y0 || y >= B.y1) return false; return !B.island || World.dist[clamp(Math.floor(x / T), 0, MW - 1) + clamp(Math.floor(y / T), 0, MH - 1) * MW] === DIST.BASE; },
   update(dt) {
     const B = World.base || World.depot; if (!B) return;
     const zone = !!World.base; // 기지가 있을 때만 경비병·출입 경보
     const P = Game.player;
     // 전차가 굴러오면 시민들이 달아난다
     if (P.car && P.car.type === 'tank' && !P.car.dead && chance(dt * 1.5)) scarePeds(P.car.x, P.car.y, P.car.speed > 1 ? 26 : 14);
-    const sp0 = B.spots.tanks[0], near = zone ? Math.abs(P.px - (B.x0 + B.x1) / 2) < (B.x1 - B.x0) / 2 + 150 && P.py < B.y1 + 160 : dist(P.px, P.py, sp0.x, sp0.y) < 350;
+    const sp0 = B.spots.tanks[0], near = zone ? P.px > B.x0 - 150 && P.px < B.x1 + 150 && P.py > B.y0 - 150 && P.py < B.y1 + 150 : dist(P.px, P.py, sp0.x, sp0.y) < 350;
     if (!this.slots.length) {
       for (const s of B.spots.tanks) this.slots.push({ s, type: 'tank', car: null, cool: 0 });
       for (const s of B.spots.helis) this.slots.push({ s, type: 'milheli', car: null, cool: 0 });

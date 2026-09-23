@@ -401,6 +401,85 @@ function genWorld(seed) {
     const door = { x: (mx + 0.5) * T, y: (b.y1 + 0.5) * T, face: 1 };
     return { b, main, door };
   }
+  function buildMilitaryIsland() {
+    const rx = 58, ry = 36, M = 8;
+    // 1) 바다만 있는 자리 중 본섬에 가장 가까운 곳
+    let best = null, bd = 1e9;
+    for (let cy = ry + M + 4; cy < MH - ry - M - 4; cy += 6) for (let cx = rx + M + 4; cx < MW - rx - M - 4; cx += 6) {
+      let ok = true;
+      for (let y = cy - ry - M; y <= cy + ry + M && ok; y += 2) for (let x = cx - rx - M; x <= cx + rx + M; x += 2) { if (((x - cx) / (rx + M)) ** 2 + ((y - cy) / (ry + M)) ** 2 > 1) continue; if (get(x, y) !== TL.WATER) { ok = false; break; } }
+      if (!ok) continue;
+      let near = 1e9; for (let r = rx + M; r < rx + 60 && near > 1e8; r += 2) for (let a = 0; a < TAU; a += 0.08) { const x = Math.round(cx + Math.cos(a) * r), y = Math.round(cy + Math.sin(a) * r * ry / rx); if (x > 0 && y > 0 && x < MW && y < MH && get(x, y) !== TL.WATER) { near = r; break; } }
+      const W2 = W.airport ? Math.hypot(cx - (W.VX[W.airport.i0] + W.VX[W.airport.i1 + 1]) / 2, cy - (W.HY[W.airport.j0] + W.HY[W.airport.j1 + 1]) / 2) : 1e9;
+      const score = near + (W2 < 200 ? 200 : 0);
+      if (score < bd) { bd = score; best = { cx, cy }; }
+    }
+    if (!best) return;
+    const { cx, cy } = best;
+    const shape = (x, y) => { const a = Math.atan2((y - cy) / ry, (x - cx) / rx); const r = 1 + 0.08 * Math.sin(a * 3 + 1.3) + 0.05 * Math.sin(a * 7 + 0.4) + 0.03 * Math.sin(a * 13); return ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 < r * r; };
+    const inner = (x, y) => shape(x, y) && shape(x + 3, y) && shape(x - 3, y) && shape(x, y + 3) && shape(x, y - 3);
+    for (let y = cy - ry - 4; y <= cy + ry + 4; y++) for (let x = cx - rx - 4; x <= cx + rx + 4; x++) {
+      if (!shape(x, y)) continue; const i = tIdx(x, y);
+      set(x, y, inner(x, y) ? TL.GRASS : TL.SAND); W.dist[i] = DIST.BASE;
+    }
+    const pave = (x0, y0, x1, y1, t = TL.LOT) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (inner(x, y)) set(x, y, t); };
+    // 활주로 + 평행 유도로 + 연결 유도로
+    const rwy = cy - 12, rx0 = cx - rx + 14, rx1 = cx + rx - 14;
+    pave(rx0, rwy, rx1, rwy + 5, TL.RUNWAY); W.runways.push({ x0: rx0 * T, y0: rwy * T, x1: (rx1 + 1) * T, y1: (rwy + 6) * T });
+    pave(rx0 + 4, rwy + 8, rx1 - 4, rwy + 9); for (let x = rx0 + 6; x < rx1 - 4; x += 24) pave(x, rwy + 6, x + 1, rwy + 7);
+    // 섬을 한 바퀴 도는 기지 도로
+    for (let a = 0; a < TAU; a += 0.004) { const x = Math.round(cx + Math.cos(a) * (rx - 9)), y = Math.round(cy + Math.sin(a) * (ry - 8)); if (inner(x, y) && get(x, y) === TL.GRASS) { set(x, y, TL.LOT); if (inner(x + 1, y) && get(x + 1, y) === TL.GRASS) set(x + 1, y, TL.LOT); } }
+    const mk = (x0, y0, x1, y1, h, kind, col) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!inner(x, y) || get(x, y) === TL.RUNWAY) return null; return addBuilding(x0, y0, x1, y1, h, kind, col); };
+    // 격납고(아치 지붕) 계류장
+    pave(cx - rx + 16, cy - 1, cx - 14, cy + 9);
+    for (let k = 0; k < 3; k++) { const hx = cx - rx + 18 + k * 11; if (mk(hx, cy + 1, hx + 8, cy + 7, 8, 'hangar', '#5f6b4f')) W.decos.push({ t: 'vault', x0: hx * T, y0: (cy + 1) * T, x1: (hx + 9) * T, y1: (cy + 8) * T, z: 8, c: '#56604a' }); }
+    // 관제탑 · 레이더
+    if (mk(cx - 8, cy - 1, cx - 7, cy, 26, 'ctower', '#8a8f82')) W.decos.push({ t: 'cab', x: (cx - 7) * T, y: cy * T, z: 26, c: '#2b4a5a' });
+    if (mk(cx - 3, cy + 1, cx - 2, cy + 2, 7, 'radar', '#7a8070')) W.decos.push({ t: 'dome', x: (cx - 2) * T, y: (cy + 2) * T, r: 5, z: 7, c: '#e8e8e8' });
+    // 연병장 + 막사
+    const px0 = cx + 2, py0 = cy + 4; pave(px0, py0, px0 + 12, py0 + 6, TL.PLAZA);
+    for (let k = 0; k < 3; k++) { mk(px0 + k * 4 + 1, py0 - 3, px0 + k * 4 + 3, py0 - 2, 6, 'barracks', '#6d7358'); mk(px0 + k * 4 + 1, py0 + 8, px0 + k * 4 + 3, py0 + 9, 6, 'barracks', '#6d7358'); }
+    // 연료 탱크 · 전차 주차장 · 헬기장
+    const fx = cx + 18, fy = cy + 1; pave(fx, fy, fx + 10, fy + 8);
+    for (const [dx, dy] of [[2, 2], [7, 2], [2, 6], [7, 6]]) if (mk(fx + dx - 1, fy + dy - 1, fx + dx, fy + dy, 6, 'tank', '#b8bcb4')) W.decos.push({ t: 'tankcyl', x: (fx + dx) * T, y: (fy + dy) * T, r: 5, z: 6, c: '#c9ccc4' });
+    const tpx = cx + 32; pave(tpx, cy - 2, tpx + 12, cy + 8);
+    W.helipads = [];
+    for (const k of [0, 1]) { const hx = cx + 4 + k * 8, hy = cy + 16; pave(hx, hy - 3, hx + 5, hy + 2); W.helipads.push({ x: (hx + 3) * T, y: hy * T }); }
+    // 부두 두 개 + 정박한 군함 (동쪽 바다)
+    let ex = cx + rx; while (ex > cx && get(ex, cy + 4) === TL.WATER) ex--;
+    for (const dy of [-2, 10]) { for (let k = 0; k < 26; k++) for (let d = 0; d < 3; d++) if (get(ex + k, cy + dy + d) === TL.WATER) { set(ex + k, cy + dy + d, TL.DOCK); W.dist[tIdx(ex + k, cy + dy + d)] = DIST.BASE; } }
+    const ship = addBuilding(ex + 6, cy + 3, ex + 24, cy + 7, 7, 'ship', '#5d6670'); ship.label = '구축함';
+    W.decos.push({ t: 'spire', x: (ex + 12) * T, y: (cy + 5) * T, z: 7, h: 12, c: '#4a525c' });
+    // 울타리: 안쪽 경계를 따라 (정문 자리는 비운다)
+    const fence = (x, y) => inner(x, y) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !inner(x + dx, y + dy));
+    // 2) 둑길: 섬 가장자리에서 본섬 도로까지
+    let tx = -1, ty = -1, td = 1e9;
+    for (let y = 2; y < MH - 2; y += 2) for (let x = 2; x < MW - 2; x += 2) { const i = tIdx(x, y); if (W.tiles[i] === TL.ROAD && W.roadK[i] >= 1 && W.roadK[i] <= 3 && W.dist[i] !== DIST.BASE) { const d = Math.hypot(x - cx, (y - cy) * 1.2); if (d < td) { td = d; tx = x; ty = y; } } }
+    let gate = null;
+    if (tx >= 0) {
+      const L = Math.hypot(tx - cx, ty - cy), ux = (tx - cx) / L, uy = (ty - cy) / L;
+      for (let s = 0; s < L; s += 0.5) {
+        const x = Math.round(cx + ux * s), y = Math.round(cy + uy * s);
+        if (!gate && !inner(x, y) && shape(x, y)) gate = { x, y };
+        if (s < 6 || inner(x, y)) continue;
+        for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) { const X = x + ox, Y = y + oy, i = tIdx(X, Y); if (W.tiles[i] === TL.ROAD) continue; if (W.tiles[i] === TL.BUILD) continue; set(X, Y, TL.ROAD); W.roadK[i] = 4; }
+      }
+      if (gate) { const gx = gate.x - Math.round(ux * 2), gy = gate.y - Math.round(uy * 2); for (let s = 0; s < 14; s++) { const x = Math.round(gx - ux * s), y = Math.round(gy - uy * s); for (let o = -1; o <= 1; o++) if (inner(x + o, y) || inner(x, y + o)) { set(x + o, y, TL.LOT); set(x, y + o, TL.LOT); } } }
+    }
+    const gP = gate || { x: cx, y: cy + ry };
+    for (let y = cy - ry; y <= cy + ry; y++) { let x = cx - rx; while (x <= cx + rx) { if (!fence(x, y) || Math.hypot(x - gP.x, y - gP.y) < 4 || get(x, y) === TL.LOT || get(x, y) === TL.RUNWAY) { x++; continue; } let x2 = x; while (x2 + 1 <= cx + rx && fence(x2 + 1, y) && Math.hypot(x2 + 1 - gP.x, y - gP.y) >= 4 && get(x2 + 1, y) !== TL.LOT) x2++; addBuilding(x, y, x2, y, 2.8, 'fence', '#6b6f63'); x = x2 + 1; } }
+    // 나무
+    for (let y = cy - ry; y <= cy + ry; y++) for (let x = cx - rx; x <= cx + rx; x++) if (inner(x, y) && get(x, y) === TL.GRASS && hash2(x >> 2, y >> 2) < 0.3 && R() < 0.35) addTree((x + 0.5) * T, (y + 0.5) * T, 'tree');
+    W.base = { rx0: rx0 * T, rx1: (rx1 + 1) * T, x0: (cx - rx) * T, y0: (cy - ry) * T, x1: (cx + rx) * T, y1: (cy + ry) * T, gate: { x: (gP.x + 0.5) * T, y: (gP.y + 0.5) * T }, island: true,
+      spots: {
+        tanks: [{ x: (tpx + 3) * T, y: (cy + 3) * T, a: -Math.PI / 2 }, { x: (tpx + 9) * T, y: (cy + 3) * T, a: -Math.PI / 2 }],
+        helis: W.helipads.map(h => ({ x: h.x, y: h.y, a: 0 })),
+        jets: [{ x: (rx0 + 4) * T, y: (rwy + 1.5) * T, a: 0 }, { x: (rx0 + 4) * T, y: (rwy + 4.5) * T, a: 0 }],
+      },
+      guards: [[-4, 4], [4, 4], [-30, 6], [-10, -3], [14, 12], [30, 0], [-40, -4], [20, -6]].map(([dx, dy]) => ({ x: (cx + dx) * T, y: (cy + dy) * T })),
+    };
+    W.landmarks.push({ name: '포트 네온 기지', x: cx * T, y: cy * T });
+  }
   // 페리의 '근린주구'(Perry, 1929): 동네 한가운데 초등학교 + 공원 (가게는 가장자리 큰길에)
   function buildNeighborhoods() {
     W.schools = [];
@@ -771,6 +850,9 @@ function genWorld(seed) {
     };
   }
 
+  // 6-2b) 군사 섬 (참고: 바다 위 군사 기지 섬 위성 사진) — 본섬 옆 바다에 따로 떨어진 섬, 둑길로 연결
+  buildMilitaryIsland();
+
   // 6-3) 파리처럼: 에투알 광장에서 뻗는 8개의 가로수 대로 + 둥근 그랑 불바르 + 랜드마크
   carveBoulevards();
   buildLandmarks();
@@ -782,6 +864,7 @@ function genWorld(seed) {
     let spot = null;
     for (let r = 0; r < 14 && !spot; r++) for (let dy = -r; dy <= r && !spot; dy++) for (let dx = -r; dx <= r; dx++) { if (get(tx0 + dx, ty0 + dy) === TL.WALK) { spot = { x: (tx0 + dx + 0.5) * T, y: (ty0 + dy + 0.5) * T }; break; } }
     if (!W.base && W.depot) spot = { x: W.depot.door.x, y: W.depot.door.y - 2 * T };
+    if (W.base && W.base.island) spot = sidewalkNearT(W.base.gate.x, W.base.gate.y) || { x: W.base.gate.x + 3 * T, y: W.base.gate.y };
     if (spot) W.places.milgate = { ...spot, label: W.base ? '기지 정문 (국방 후원)' : '국방부 출장소 (국방 후원)' };
   }
   // 7) 특수 장소
@@ -973,6 +1056,12 @@ function buildSpatial() {
 const edgesNear = (x, y, r) => gridQuery(World.edgeGrid, x, y, r + 40);
 const blocksNear = (x, y, r) => gridQuery(World.blockGrid, x, y, r + 40);
 
+// 가까운 인도 (결정적 탐색, 생성 중에 쓴다)
+function sidewalkNearT(x, y) {
+  const cx = Math.floor(x / T), cy = Math.floor(y / T);
+  for (let r = 3; r < 40; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; const X = cx + dx, Y = cy + dy; if (X < 0 || Y < 0 || X >= MW || Y >= MH) continue; if (World.tiles[tIdx(X, Y)] === TL.WALK) return { x: (X + 0.5) * T, y: (Y + 0.5) * T }; }
+  return null;
+}
 function treesNear(x, y) {
   const out = [], cx = Math.floor(x / 8), cy = Math.floor(y / 8);
   for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const l = World.treeGrid.get((cx + a) + ',' + (cy + b)); if (l) out.push(...l); }
