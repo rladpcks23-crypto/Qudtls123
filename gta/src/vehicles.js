@@ -166,7 +166,7 @@ class Car {
       this.damage((v - 5) * 3.2 * (this.type === 'armored' ? 0.4 : 1), other && other.driver === 'player' ? Game.player : null);
       Sfx.crash(this.x, this.y, v);
       for (let i = 0; i < Math.min(12, v); i++) Particles.spark(this.x + rand(-1, 1), this.y + rand(-1, 1));
-      if (this === Game.player.car) Cam.shake = Math.max(Cam.shake, Math.min(0.8, v / 25));
+      if (this === Game.player.car) { Cam.shake = Math.max(Cam.shake, Math.min(0.8, v / 25)); buzz(Math.min(80, v * 4)); }
     }
     if (v > 6 && this.driver === 'ai' && this.ai && this.driverKind === 'civ' && this.ai.mode === 'traffic') {
       if (other && other.driver === 'player') { this.ai.angryT = 3; if (chance(0.5)) this.ai.panic = true; }
@@ -257,6 +257,11 @@ function playerDrive(car, dt) {
   if (keyDown('KeyA', 'ArrowLeft')) st -= 1;
   if (keyDown('KeyD', 'ArrowRight')) st += 1;
   let hb = keyDown('Space');
+  if (Pad.active) {
+    if (Pad.lx) st = Pad.lx;
+    if (Pad.rt > 0.05 || Pad.lt > 0.05) thrKey = Pad.rt - Pad.lt;
+    hb = hb || keyDown('PadRB', 'PadB');
+  }
   if (Input.touch.on) {
     const j = Input.touch;
     if (Math.abs(j.jx) > 0.15) st = clamp(j.jx * 1.3, -1, 1);

@@ -52,6 +52,7 @@ class Ped {
     if (this === Game.player && by && by !== this) amt *= 0.4;
     if (this.armor) { const ab = Math.min(this.armor, amt * 0.8); this.armor -= ab; amt -= ab; }
     this.hp -= amt; this.hitFlash = 0.12;
+    if (this === Game.player && amt > 1) buzz(Math.min(60, 15 + amt));
     this.vx += dx * (kind === 'melee' ? 3 : 1.2); this.vy += dy * (kind === 'melee' ? 3 : 1.2);
     for (let i = 0; i < Math.min(8, amt / 3); i++) Particles.blood(this.x, this.y, dx, dy);
     if (this.hp <= 0) { this.die(by, dx, dy); return; }
@@ -193,6 +194,7 @@ function explode(x, y, radius, dmg, by, source) {
   Decals.scorch(x, y, radius * 0.45);
   const dc = dist(x, y, Cam.x, Cam.y);
   Cam.shake = Math.max(Cam.shake, clamp(1.6 - dc / 60, 0, 1.4));
+  if (dc < 40) buzz(120);
   for (let i = 0; i < 40; i++) Particles.fire(x + rand(-radius, radius) * 0.35, y + rand(-radius, radius) * 0.35, 2);
   for (let i = 0; i < 18; i++) Particles.smoke(x + rand(-2, 2), y + rand(-2, 2), 2.5, '#303030');
   for (let i = 0; i < 16; i++) Particles.debris(x, y);
@@ -531,7 +533,7 @@ function pedCarCollide(p, car) {
 // ---------- 파티클 ----------
 const Particles = {
   list: [],
-  add(o) { if (this.list.length > 900) this.list.shift(); this.list.push(o); },
+  add(o) { if (this.list.length > TUNE.particles) this.list.shift(); this.list.push(o); },
   spark(x, y) { for (let i = 0; i < 3; i++) this.add({ t: 'spark', x, y, vx: rand(-8, 8), vy: rand(-8, 8), life: 0.25, max: 0.25, size: 0.12 }); },
   blood(x, y, dx, dy) { this.add({ t: 'blood', x, y, vx: dx * rand(1, 4) + rand(-1.5, 1.5), vy: dy * rand(1, 4) + rand(-1.5, 1.5), life: 0.5, max: 0.5, size: rand(0.1, 0.22) }); },
   fire(x, y, s = 1) { this.add({ t: 'fire', x, y, vx: rand(-1, 1) * s, vy: rand(-1, 1) * s, life: rand(0.3, 0.7), max: 0.7, size: rand(0.5, 1.2) * s }); },

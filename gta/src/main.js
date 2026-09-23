@@ -23,6 +23,8 @@ const Game = {
     this.player = new PlayerPed(g.x + 3, g.y);
     this.player.hidden = true;
     Cam.x = g.x; Cam.y = g.y;
+    document.body.classList.add(IS_MOBILE ? 'mobile' : 'pc');
+    if (IS_MOBILE) { Input.usingTouch = true; document.body.classList.add('touch'); }
     Menu.init(); Touch.init();
     this.bindMouse();
     this.populate(true);
@@ -58,9 +60,12 @@ const Game = {
     const c = new Car('sedan', sp.x, sp.y, sp.a); this.cars.push(c);
     Menu.hide();
     this.state = 'play';
+    if (IS_MOBILE) mobileEnter();
     if (!sv) {
       UI.big('네온 하버', '1998년, 항구 도시의 밤', 3.5, '#ff5d8f');
-      UI.dialog([['도움말', 'WASD로 이동, 마우스로 조준·사격, F로 차량 탑승. 노란 M 마커에서 첫 의뢰를 받을 수 있다.'], ['도움말', 'M: 지도 · R: 라디오 · Q/E: 무기 교체 · Esc: 일시정지']]);
+      UI.dialog(IS_MOBILE
+        ? [['도움말', '왼쪽 화면을 끌어 이동하고, 발사 버튼은 가까운 적을 자동 조준한다. 탑승 버튼으로 차에 탄다.'], ['도움말', '노란 M 마커로 가면 첫 의뢰를 받을 수 있다. 지도 버튼으로 위치를 확인하자.']]
+        : [['도움말', 'WASD로 이동, 마우스로 조준·사격, F로 차량 탑승. 노란 M 마커에서 첫 의뢰를 받을 수 있다.'], ['도움말', 'M: 지도 · R: 라디오 · Q/E: 무기 교체 · Esc: 일시정지 · 게임패드도 지원한다']]);
     } else UI.toast('저장된 진행 상황을 불러왔다');
   },
   toMenu() { this.state = 'menu'; Menu.show(); this.player.hidden = true; Wanted.reset(); Police.reset(); Missions.active = null; },
@@ -79,23 +84,26 @@ const Game = {
     requestAnimationFrame(t => this.loop(t));
   },
   frame(dt) {
+    Pad.poll();
     const st = this.state;
+    if (st !== this._lastSt) { this._lastSt = st; document.body.classList.toggle('playing', st !== 'menu'); }
     if (st === 'play') {
-      if (keyHit('Escape', 'KeyP')) { this.pause(); }
-      else if (keyHit('KeyM', 'Tab')) { this.state = 'map'; }
+      if (keyHit('Escape', 'KeyP', 'PadStart')) { this.pause(); }
+      else if (keyHit('KeyM', 'Tab', 'PadBack')) { this.state = 'map'; }
       else this.update(dt);
     } else if (st === 'map') {
-      if (keyHit('Escape', 'KeyM', 'Tab') || Input.mouse.clicked) this.state = 'play';
+      if (keyHit('Escape', 'KeyM', 'Tab', 'PadBack', 'PadB', 'PadStart') || Input.mouse.clicked) this.state = 'play';
     } else if (st === 'paused') {
-      if (keyHit('Escape', 'KeyP')) this.resume();
+      if (keyHit('Escape', 'KeyP', 'PadStart', 'PadB')) this.resume();
     } else if (st === 'menu') {
       this.updateAttract(dt);
+      if (keyHit('PadA', 'PadStart')) { Sfx.init(); this.newGame(!!Save.read()); }
     } else if (st === 'wasted' || st === 'busted') {
       this.deathT += dt;
       this.update(dt, true);
       if (this.deathT > 4.2) this.respawn(st);
     } else if (st === 'shop') {
-      if (keyHit('Escape')) Shop.close();
+      if (keyHit('Escape', 'PadB')) Shop.close();
     }
     try { Sfx.update(dt); } catch (e) { /* 오디오 오류는 게임을 멈추지 않게 */ }
     UI.update(st === 'play' || st === 'wasted' || st === 'busted' ? dt : 0);
@@ -125,13 +133,13 @@ const Game = {
     this.time += dt; this.clock = (this.clock + dt) % 1440;
     // 입력
     if (!dead) {
-      if (keyHit('KeyF', 'Enter')) { if (P.car) exitCar(P); else tryEnterCar(P); }
-      if (keyHit('KeyE') || Input.wheel > 0) cycleWeapon(P, 1);
-      if (keyHit('KeyQ') || Input.wheel < 0) cycleWeapon(P, -1);
+      if (keyHit('KeyF', 'Enter', 'PadY')) { if (P.car) exitCar(P); else tryEnterCar(P); }
+      if (keyHit('KeyE') || Input.wheel > 0 || (!P.car && keyHit('PadRB', 'PadRight'))) cycleWeapon(P, 1);
+      if (keyHit('KeyQ') || Input.wheel < 0 || (!P.car && keyHit('PadLB', 'PadLeft'))) cycleWeapon(P, -1);
       for (let i = 1; i <= 8; i++) if (keyHit('Digit' + i)) { const w = WEAPON_ORDER[i - 1]; if (P.inv[w] > 0) { P.weapon = w; UI.weaponFlash = 1; } }
-      if (keyHit('KeyR') && P.car) { Radio.cycle(); }
-      if (keyHit('KeyZ')) Cam.zoomMul = Cam.zoomMul === 1 ? 1.45 : Cam.zoomMul === 1.45 ? 0.8 : 1;
-      if (P.car && P.car.type === 'police' && keyHit('KeyG')) { P.car.siren = !P.car.siren; }
+      if (keyHit('KeyR', 'PadDown') && P.car) { Radio.cycle(); }
+      if (keyHit('KeyZ', 'PadUp')) Cam.zoomMul = Cam.zoomMul === 1 ? 1.45 : Cam.zoomMul === 1.45 ? 0.8 : 1;
+      if (P.car && P.car.type === 'police' && keyHit('KeyG', 'PadLeft')) { P.car.siren = !P.car.siren; }
       if (P.car) updatePlayerInCar(P, dt); else updatePlayerFoot(P, dt);
     }
     this.simulate(dt, false);
@@ -203,7 +211,7 @@ const Game = {
     // 주차된 차량 상태 갱신
     for (const sp of World.parking) { sp.cd -= 0.4; if (sp.car && (dist(sp.car.x, sp.car.y, sp.x, sp.y) > 3 || !this.cars.includes(sp.car))) { sp.car = null; sp.cd = 30; } }
     // 교통 생성
-    const wantCars = night ? 16 : 26;
+    const wantCars = night ? TUNE.cars[1] : TUNE.cars[0];
     let traffic = 0;
     for (const c of this.cars) if (c.driver === 'ai' && dist(c.x, c.y, f.x, f.y) < kill) traffic++;
     let tries = initial ? 60 : 3;
@@ -230,7 +238,7 @@ const Game = {
       this.cars.push(c); sp.car = c;
     }
     // 보행자
-    const wantPeds = night ? 26 : 44;
+    const wantPeds = night ? TUNE.peds[1] : TUNE.peds[0];
     let peds = 0;
     for (const p of this.peds) if (!p.dead && dist(p.x, p.y, f.x, f.y) < kill) peds++;
     tries = initial ? 120 : 6;
@@ -258,7 +266,7 @@ const Game = {
     let tx = P.px, ty = P.py;
     const car = P.car;
     if (car) { tx += clamp(car.vx * 0.55, -22, 22); ty += clamp(car.vy * 0.55, -22, 22); }
-    else if (!Input.usingTouch && this.time - this.lastMouseMove < 3 && WEAPONS[P.weapon] && !WEAPONS[P.weapon].melee) {
+    else if (!Input.usingTouch && !Pad.active && this.time - this.lastMouseMove < 3 && WEAPONS[P.weapon] && !WEAPONS[P.weapon].melee) {
       const [wx, wy] = screenToWorld(Input.mouse.x, Input.mouse.y);
       tx += clamp((wx - P.x) * 0.2, -6, 6); ty += clamp((wy - P.y) * 0.2, -6, 6);
     }
@@ -371,17 +379,22 @@ function updatePlayerFoot(P, dt) {
   if (keyDown('KeyW', 'ArrowUp')) my -= 1; if (keyDown('KeyS', 'ArrowDown')) my += 1;
   if (keyDown('KeyA', 'ArrowLeft')) mx -= 1; if (keyDown('KeyD', 'ArrowRight')) mx += 1;
   let mag = Math.hypot(mx, my);
+  if (Pad.active && (Pad.lx || Pad.ly)) { mx = Pad.lx; my = Pad.ly; mag = Math.hypot(mx, my); }
   if (Input.touch.on) { mx = Input.touch.jx; my = Input.touch.jy; mag = Math.hypot(mx, my); }
   if (mag > 1) { mx /= mag; my /= mag; mag = 1; }
-  const sprint = keyDown('ShiftLeft', 'ShiftRight') || (Input.touch.on && mag > 0.92);
+  const sprint = keyDown('ShiftLeft', 'ShiftRight', 'PadA') || (Input.touch.on && mag > 0.92);
   const speed = P.downT > 0 ? 0 : sprint ? 7.2 : 4.4;
   P.cd -= dt; P.hitFlash -= dt; P.flash -= dt;
   if (P.downT > 0) { P.downT -= dt; P.vx *= Math.exp(-3 * dt); P.vy *= Math.exp(-3 * dt); }
   else { P.vx = smooth(P.vx, mx * speed, 14, dt); P.vy = smooth(P.vy, my * speed, 14, dt); }
   // 조준
   const W = WEAPONS[P.weapon];
-  const firing = Input.mouse.down || Input.touch.fire || keyDown('ControlLeft', 'KeyJ');
-  if (!Input.usingTouch) {
+  const firing = Input.mouse.down || Input.touch.fire || keyDown('ControlLeft', 'KeyJ') || (Pad.active && Pad.rt > 0.4);
+  if (Pad.active) {
+    if (Pad.rx || Pad.ry) P.aim = Math.atan2(Pad.ry, Pad.rx);
+    else if (mag > 0.1) P.aim = Math.atan2(my, mx);
+    if (firing && !(Pad.rx || Pad.ry)) { const t = nearestThreat(P, W.melee ? 3 : Math.min(W.range || 20, 28), 0.9); if (t) P.aim = Math.atan2(t.y - P.y, t.x - P.x); }
+  } else if (!Input.usingTouch) {
     const [wx, wy] = screenToWorld(Input.mouse.x, Input.mouse.y);
     if (!W.melee || firing || Game.time - Game.lastMouseMove < 1.5) P.aim = Math.atan2(wy - P.y, wx - P.x);
     else if (mag > 0.1) P.aim = Math.atan2(my, mx);
@@ -412,10 +425,11 @@ function updatePlayerInCar(P, dt) {
   const c = P.car;
   P.x = c.x; P.y = c.y; P.vx = c.vx; P.vy = c.vy; P.cd -= dt;
   const W = WEAPONS[P.weapon];
-  const firing = Input.mouse.down || Input.touch.fire || keyDown('ControlLeft', 'KeyJ');
+  const firing = Input.mouse.down || Input.touch.fire || keyDown('ControlLeft', 'KeyJ', 'PadX');
   if (firing && P.cd <= 0 && !W.melee && !W.throw && !W.proj && P.inv[P.weapon] > 0) {
     let ang;
-    if (!Input.usingTouch) { const [wx, wy] = screenToWorld(Input.mouse.x, Input.mouse.y); ang = Math.atan2(wy - c.y, wx - c.x); }
+    if (Pad.active) { ang = (Pad.rx || Pad.ry) ? Math.atan2(Pad.ry, Pad.rx) : (() => { const t = nearestThreat({ px: c.x, py: c.y, a: c.a }, 25, 1.4); return t ? Math.atan2(t.y - c.y, t.x - c.x) : c.a; })(); }
+    else if (!Input.usingTouch) { const [wx, wy] = screenToWorld(Input.mouse.x, Input.mouse.y); ang = Math.atan2(wy - c.y, wx - c.x); }
     else { const t = nearestThreat({ px: c.x, py: c.y, a: c.a }, 25, 1.4); ang = t ? Math.atan2(t.y - c.y, t.x - c.x) : c.a; }
     P.cd = W.rate * 1.2; P.inv[P.weapon]--;
     fireWeapon(P, P.weapon, ang, 0.8);
@@ -496,3 +510,14 @@ window.addEventListener('load', () => {
   const start = () => Game.init();
   if (document.fonts && document.fonts.ready) Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 1500))]).then(start); else start();
 });
+
+// 모바일판: 전체화면 + 가로 고정 + 화면 꺼짐 방지 (지원하지 않는 환경에서는 조용히 무시)
+function mobileEnter() {
+  try {
+    const el = document.documentElement;
+    const fs = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (fs) Promise.resolve(fs.call(el)).then(() => { try { screen.orientation.lock('landscape').catch(() => { }); } catch (e) { } }).catch(() => { });
+  } catch (e) { }
+  try { if (navigator.wakeLock) navigator.wakeLock.request('screen').catch(() => { }); } catch (e) { }
+  setTimeout(() => { if (CH > CW * 1.1) UI.toast('휴대폰을 가로로 돌리면 더 넓게 보입니다'); }, 1500);
+}

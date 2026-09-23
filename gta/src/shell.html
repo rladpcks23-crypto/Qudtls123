@@ -23,6 +23,7 @@
   #game { position: fixed; inset: 0; display: block; cursor: crosshair; }
   button { font-family: var(--body); }
   [hidden] { display: none !important; }
+  body.mobile .only-pc, body.pc .only-mobile { display: none !important; }
   .overlay { position: fixed; inset: 0; z-index: 10; display: flex; }
   /* ---------- 시작 메뉴 ---------- */
   #menu { background: linear-gradient(90deg, rgba(8, 10, 20, 0.94) 0%, rgba(8, 10, 20, 0.78) 42%, rgba(8, 10, 20, 0.15) 75%, rgba(8, 10, 20, 0) 100%); overflow-y: auto; }
@@ -60,7 +61,7 @@
   #shop-money { font-family: var(--num); font-size: 26px; color: #8df28d; letter-spacing: 0.04em; }
   /* ---------- 터치 조작 ---------- */
   #touch { display: none; }
-  body.touch #touch { display: block; }
+  body.touch.playing #touch { display: block; }
   body.touch #game { cursor: default; }
   #stick-zone { position: fixed; left: 0; bottom: 0; width: 50%; height: 55%; z-index: 5; }
   #stick { position: fixed; left: 40px; bottom: 40px; width: 120px; height: 120px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.25); background: rgba(255, 255, 255, 0.05); pointer-events: none; z-index: 6; opacity: 0.55; }
@@ -77,6 +78,18 @@
   #t-map, #t-pause { top: calc(118px + env(safe-area-inset-top)); width: 44px; height: 44px; font-size: 12px; }
   #t-map { left: 14px; }
   #t-pause { left: 66px; }
+  @media (orientation: landscape) and (max-height: 520px) {
+    .menu-col { gap: 10px; padding-top: max(14px, env(safe-area-inset-top)); }
+    .logo { font-size: 46px; } .tag { font-size: 13px; } .btn { padding: 10px 16px; font-size: 15px; }
+    #t-map, #t-pause { top: calc(8px + env(safe-area-inset-top)); left: 50%; }
+    #t-map { transform: translateX(-50px); } #t-pause { transform: translateX(6px); }
+    #t-fire { right: calc(20px + env(safe-area-inset-right)); bottom: calc(24px + env(safe-area-inset-bottom)); }
+    #t-hb { right: calc(116px + env(safe-area-inset-right)); bottom: calc(14px + env(safe-area-inset-bottom)); }
+    #t-enter { right: calc(112px + env(safe-area-inset-right)); bottom: calc(92px + env(safe-area-inset-bottom)); }
+    #t-weapon { right: calc(30px + env(safe-area-inset-right)); bottom: calc(122px + env(safe-area-inset-bottom)); }
+    #t-radio { right: calc(100px + env(safe-area-inset-right)); bottom: calc(166px + env(safe-area-inset-bottom)); }
+    #stick:not(.active) { bottom: calc(24px + env(safe-area-inset-bottom)); left: calc(24px + env(safe-area-inset-left)) !important; }
+  }
   @media (max-width: 520px) { .kicker { font-size: 12px; letter-spacing: 0.16em; } .tag { font-size: 14px; } }
   @media (prefers-reduced-motion: reduce) { .btn { transition: none; } .btn:hover { transform: none; } }
 </style>
@@ -98,7 +111,16 @@
       <button data-tab="tab-refs">참고 자료</button>
     </div>
     <div class="tab" id="tab-keys">
-      <dl class="keys">
+      <dl class="keys only-mobile">
+        <dt>왼쪽 화면</dt><dd>손가락을 대고 끌면 이동 / 운전 (끝까지 밀면 전력 질주)</dd>
+        <dt>발사</dt><dd>누르고 있으면 연사 — 가장 가까운 적을 자동 조준</dd>
+        <dt>탑승</dt><dd>차에 타고 내리기 (운전자가 있으면 끌어낸다)</dd>
+        <dt>드리프트</dt><dd>핸드브레이크 — 달리면서 꺾으며 누른다</dd>
+        <dt>무기 · 라디오</dt><dd>무기 교체 · 라디오 채널</dd>
+        <dt>지도 · Ⅱ</dt><dd>전체 지도 · 일시정지</dd>
+      </dl>
+      <p class="only-mobile">휴대폰을 가로로 두고 플레이하는 것을 권장한다. 게임을 시작하면 전체화면으로 바뀐다.</p>
+      <dl class="keys only-pc">
         <dt>W A S D</dt><dd>이동 / 운전 (S는 브레이크·후진)</dd>
         <dt>마우스</dt><dd>조준 · 왼쪽 클릭 사격 (차 안에서는 드라이브바이)</dd>
         <dt>F · ENTER</dt><dd>차량 탑승 / 하차 (운전자가 있으면 끌어내린다)</dd>
@@ -111,7 +133,7 @@
         <dt>Z</dt><dd>카메라 줌 전환</dd>
         <dt>ESC · P</dt><dd>일시정지</dd>
       </dl>
-      <p>모바일: 왼쪽 화면을 끌어 이동/운전, 오른쪽 버튼으로 발사·탑승·드리프트. 발사 시 가까운 적을 자동 조준한다.</p>
+      <p class="only-pc"><b>게임패드</b> — 왼쪽 스틱 이동·조향 · 오른쪽 스틱 조준 · RT 사격/가속 · LT 브레이크 · Y 탑승 · A 질주 · RB 핸드브레이크/무기 · X 드라이브바이 · 십자키 ↓ 라디오 · BACK 지도 · START 일시정지</p>
     </div>
     <div class="tab" id="tab-sys" hidden>
       <p><b>수배 ★</b> — 범죄마다 '열기' 점수가 쌓여 별 1~5개가 된다. 경찰이 직접 보거나, 목격한 시민이 몇 초 뒤 신고한다. 경찰 시야를 벗어나면 별이 깜빡이고 레이더에 붉은 수색 원이 생긴다. 원 밖에서 들키지 않고 버티면 수배가 풀린다. 페인트샵(S)도 방법.</p>

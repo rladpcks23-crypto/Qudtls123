@@ -2,8 +2,33 @@
 
 GTA 1·2 스타일의 탑다운 오픈월드 게임입니다. 브라우저 하나로 실행되고, 외부 이미지나 사운드 파일 없이 모든 것을 코드로 그리고 합성합니다.
 
-- **바로 실행:** `neon-harbor.html`을 브라우저에서 엽니다(더블클릭).
-- **다시 빌드:** `python3 build.py` → `src/*.js`를 묶어 `neon-harbor.html`과 `dist/artifact.html`을 만듭니다.
+## 두 가지 버전
+
+| | PC판 | 모바일판 |
+|---|---|---|
+| 설치 파일 | `release/NeonHarbor-PC.exe` (Windows, 설치 없이 실행) | `release/NeonHarbor-mobile.apk` (Android) |
+| 브라우저용 | `build/neon-harbor-pc.html` | `build/neon-harbor-mobile.html` |
+| 조작 | 키보드 + 마우스, **게임패드**(Xbox/PS 호환) | 가상 조이스틱 + 터치 버튼, 자동 조준 |
+| 화면 | 창 모드 1280×800, F11 전체화면 | 가로 고정 전체화면(APK), 웹은 시작 시 전체화면 요청 |
+| 그래픽 | 고해상도(DPR 2), 조명맵 1/2 해상도, 차량 28·보행자 46 | DPR 1.3, 조명맵 1/3 해상도, 차량 20·보행자 30, 파티클 절반 |
+| 기타 | 조준점, 마우스 방향 카메라 선행 | 피격·충돌·폭발 진동, 화면 꺼짐 방지 |
+
+게임 내용(도시, 미션, 저장 형식)은 두 버전이 같습니다. 코드도 하나이고, `build.py`가 `NH_PLATFORM` 상수만 바꿔 두 번 묶습니다.
+
+### 설치
+- **Windows:** `NeonHarbor-PC.exe`를 받아 더블클릭. 서명되지 않은 exe라 SmartScreen이 뜨면 "추가 정보 → 실행".
+- **Android:** `NeonHarbor-mobile.apk`를 받아 설치("출처를 알 수 없는 앱" 허용 필요). 패키지명 `kr.yechan.neonharbor`라 기존 앱과 따로 설치됩니다.
+
+### 다시 빌드
+```bash
+python3 gta/build.py                        # HTML 두 개 (PC/모바일)
+gta/packaging/build-android.sh              # APK (apktool, zipalign, JDK 필요)
+gta/packaging/desktop/build.sh              # Windows exe (node/npm, wine 불필요)
+```
+APK 서명 키(`packaging/neonharbor.keystore`)는 일부러 커밋해 두었습니다. 같은 키로 서명해야 새 버전이 기존 설치 위에 업데이트됩니다.
+
+### 게임패드 (PC판)
+왼쪽 스틱 이동·조향 · 오른쪽 스틱 조준 · RT 사격/가속 · LT 브레이크/후진 · Y 탑승 · A 질주 · LB/RB 무기(도보) · RB/B 핸드브레이크(차) · X 드라이브바이 · 십자키 ↓ 라디오, ↑ 줌 · BACK 지도 · START 일시정지
 
 ## 게임 내용
 
@@ -66,9 +91,11 @@ GTA 1·2 스타일의 탑다운 오픈월드 게임입니다. 브라우저 하�
 
 ```
 gta/
-├── neon-harbor.html   ← 빌드된 단일 파일 (이것만 있으면 실행)
+├── release/           ← NeonHarbor-PC.exe, NeonHarbor-mobile.apk
+├── build/             ← neon-harbor-pc.html, neon-harbor-mobile.html (단일 파일)
 ├── build.py
-├── dist/artifact.html ← 웹 게시용 본문
+├── dist/              ← 웹 게시용 본문 (PC/모바일)
+├── packaging/         ← 아이콘 생성, APK/EXE 빌드 스크립트
 └── src/
     ├── shell.html     메뉴·일시정지·상점·터치 버튼 마크업과 CSS
     ├── core.js        수학, 입력, Web Audio 효과음·라디오

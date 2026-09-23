@@ -13,11 +13,11 @@ const Cam = { x: 0, y: 0, ppm: 8, vw: 100, vh: 60, shake: 0, sx: 0, sy: 0, H: 15
 let canvas, ctx, lightCanvas, lctx, DPR = 1, CW = 0, CH = 0;
 
 function resize() {
-  DPR = Math.min(window.devicePixelRatio || 1, 1.75);
+  DPR = Math.min(window.devicePixelRatio || 1, TUNE.dpr);
   CW = window.innerWidth; CH = window.innerHeight;
   canvas.width = Math.floor(CW * DPR); canvas.height = Math.floor(CH * DPR);
   canvas.style.width = CW + 'px'; canvas.style.height = CH + 'px';
-  lightCanvas.width = Math.ceil(CW / 2); lightCanvas.height = Math.ceil(CH / 2);
+  lightCanvas.width = Math.ceil(CW * TUNE.light); lightCanvas.height = Math.ceil(CH * TUNE.light);
 }
 const toScreen = (x, y) => [(x - Cam.x) * Cam.ppm + CW / 2 + Cam.sx, (y - Cam.y) * Cam.ppm + CH / 2 + Cam.sy];
 function worldTransform(c = ctx, scale = DPR) {
@@ -408,7 +408,7 @@ function drawMarker(x, y, col, big) {
 function lightPass(amb) {
   const night = 1 - (amb[0] + amb[1] + amb[2]) / 3;
   if (night < 0.03) return;
-  const lc = lctx, s = 0.5;
+  const lc = lctx, s = TUNE.light;
   lc.setTransform(1, 0, 0, 1, 0, 0);
   lc.globalCompositeOperation = 'source-over';
   lc.fillStyle = `rgb(${amb[0] * 255 | 0},${amb[1] * 255 | 0},${amb[2] * 255 | 0})`;
@@ -661,7 +661,7 @@ const Rain = {
   draw(intensity) {
     if (intensity <= 0.01) return;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    const n = Math.floor(260 * intensity);
+    const n = Math.floor(TUNE.rain * intensity);
     while (this.drops.length < n) this.drops.push({ x: Math.random() * CW, y: Math.random() * CH, s: rand(0.6, 1) });
     this.drops.length = n;
     ctx.strokeStyle = 'rgba(190,210,235,0.35)'; ctx.lineWidth = 1; ctx.beginPath();

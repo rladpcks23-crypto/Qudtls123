@@ -98,7 +98,8 @@ function drawHUD(dt) {
   if (m && m.def.title.includes('소탕') && m.stage === 1) { txt(c, `처치 ${m.kills}/15`, x, ty + 4 * s, `${24 * s}px ${FONT_NUM}`, '#4fe38a', 'rgba(0,0,0,0.9)', 4, 'right'); }
 
   // ---- 좌상단: 도움말 박스 ----
-  let hy = Input.usingTouch ? 172 : pad + topInset;
+  const land = CW > CH;
+  let hy = Input.usingTouch ? (land ? 112 : 172) : pad + topInset;
   c.font = `500 ${14 * s}px ${FONT_KR}`;
   for (const t of UI.toasts) {
     const lines = wrapLines(c, t.msg, 300 * s);
@@ -119,7 +120,7 @@ function drawHUD(dt) {
   // ---- 라디오 방송국 ----
   if (UI.stationT > 0 && UI.station) {
     c.globalAlpha = clamp(UI.stationT * 2, 0, 1);
-    const stY = Input.usingTouch ? 250 : pad + 30 * s;
+    const stY = Input.usingTouch ? Math.min(250, CH * 0.36) : pad + 30 * s;
     txt(c, UI.station.name, CW / 2, stY, `${30 * s}px ${FONT_DISP}`, '#ffcf5a', 'rgba(0,0,0,0.9)', 5, 'center');
     if (UI.station.sub) txt(c, UI.station.sub, CW / 2, stY + 22 * s, `500 ${14 * s}px ${FONT_KR}`, '#e6e6e6', 'rgba(0,0,0,0.9)', 3, 'center');
     c.globalAlpha = 1;
@@ -129,16 +130,18 @@ function drawHUD(dt) {
   drawRadar(s);
 
   // ---- 우하단: 지역/차량 이름 ----
-  const bottom = Input.usingTouch ? ty + 36 * s : CH - pad - 6;
-  if (UI.districtT > 0) { c.globalAlpha = clamp(UI.districtT, 0, 1); txt(c, UI.districtName, CW - pad, bottom, `${34 * s}px ${FONT_DISP}`, '#e8f0ff', 'rgba(10,20,40,0.95)', 6, 'right'); c.globalAlpha = 1; }
-  if (UI.carT > 0) { c.globalAlpha = clamp(UI.carT, 0, 1); txt(c, UI.carName, CW - pad, bottom + (Input.usingTouch ? 34 : -42) * s, `${24 * s}px ${FONT_DISP}`, '#b9f0ff', 'rgba(10,20,40,0.95)', 5, 'right'); c.globalAlpha = 1; }
+  const bottom = Input.usingTouch ? (land ? CH * 0.2 : ty + 36 * s) : CH - pad - 6;
+  const dAlign = Input.usingTouch && land ? 'center' : 'right', dX = Input.usingTouch && land ? CW / 2 : CW - pad;
+  if (UI.districtT > 0) { c.globalAlpha = clamp(UI.districtT, 0, 1); txt(c, UI.districtName, dX, bottom, `${34 * s}px ${FONT_DISP}`, '#e8f0ff', 'rgba(10,20,40,0.95)', 6, dAlign); c.globalAlpha = 1; }
+  if (UI.carT > 0) { c.globalAlpha = clamp(UI.carT, 0, 1); txt(c, UI.carName, dX, bottom + (Input.usingTouch ? 34 : -42) * s, `${24 * s}px ${FONT_DISP}`, '#b9f0ff', 'rgba(10,20,40,0.95)', 5, dAlign); c.globalAlpha = 1; }
 
   // ---- 자막 / 목표 ----
-  let subY = Input.usingTouch ? CH - 290 : CH - 120 * s;
+  let subY = Input.usingTouch ? (land ? CH - 64 : CH - 290) : CH - 120 * s;
+  const subW = Input.usingTouch && land ? Math.max(260, CW - 470) : Math.min(CW - 60, 640 * s);
   if (UI.dialogCur) {
     const d = UI.dialogCur;
     c.font = `500 ${18 * s}px ${FONT_KR}`;
-    const lines = wrapLines(c, d.text, Math.min(CW - 60, 640 * s));
+    const lines = wrapLines(c, d.text, subW);
     const who = d.who + ': ';
     lines.forEach((l, i) => {
       const yy = subY - (lines.length - 1 - i) * 26 * s;
@@ -189,7 +192,7 @@ function drawHUD(dt) {
     txt(c, '체포 중! 벗어나라', CW / 2, CH * 0.62 - 8 * s, `700 ${15 * s}px ${FONT_KR}`, '#bcd6ff', 'rgba(0,0,0,0.9)', 3, 'center');
   }
   // 조준점
-  if (!Input.usingTouch && !P.car && Game.state === 'play' && P.weapon !== 'fist') {
+  if (!Input.usingTouch && !Pad.active && !P.car && Game.state === 'play' && P.weapon !== 'fist') {
     c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 1.5;
     const mx = Input.mouse.x, my = Input.mouse.y;
     c.beginPath(); c.arc(mx, my, 9, 0, TAU); c.moveTo(mx - 14, my); c.lineTo(mx - 5, my); c.moveTo(mx + 5, my); c.lineTo(mx + 14, my); c.moveTo(mx, my - 14); c.lineTo(mx, my - 5); c.moveTo(mx, my + 5); c.lineTo(mx, my + 14); c.stroke();

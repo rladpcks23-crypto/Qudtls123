@@ -49,6 +49,15 @@ function tint(hex, amb, f = 0) {
   return `rgb(${(r * amb[0]) | 0},${(g * amb[1]) | 0},${(b * amb[2]) | 0})`;
 }
 
+// ---------- 플랫폼 ----------
+// build.py가 PC판/모바일판을 따로 만들 때 맨 앞에 NH_PLATFORM을 넣는다.
+const PLATFORM = (typeof NH_PLATFORM !== 'undefined') ? NH_PLATFORM : 'pc';
+const IS_MOBILE = PLATFORM === 'mobile';
+const TUNE = IS_MOBILE
+  ? { dpr: 1.3, light: 1 / 3, cars: [20, 12], peds: [30, 18], particles: 450, rain: 140 }
+  : { dpr: 2, light: 1 / 2, cars: [28, 17], peds: [46, 26], particles: 900, rain: 260 };
+function buzz(ms) { if (IS_MOBILE && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { } } }
+
 // ---------- 입력 ----------
 // e.code 기반: 한글 IME 상태에서도 WASD가 동작하도록 한다.
 const Input = {
@@ -69,6 +78,32 @@ addEventListener('keyup', e => { Input.keys[e.code] = false; });
 addEventListener('blur', () => { Input.keys = {}; Input.mouse.down = false; });
 const keyDown = (...ks) => ks.some(k => Input.keys[k]);
 const keyHit = (...ks) => ks.some(k => Input.pressed[k]);
+// ---------- 게임패드 (PC판: Xbox/PlayStation 호환 표준 매핑) ----------
+// 버튼은 가상 키 이름(PadA, PadY, …)으로 Input.keys에 합쳐서 키보드와 같은 경로로 처리한다.
+const Pad = {
+  on: false, lx: 0, ly: 0, rx: 0, ry: 0, rt: 0, lt: 0, lastUse: -1e9, announced: false,
+  poll() {
+    let g = null;
+    try { const gps = navigator.getGamepads ? navigator.getGamepads() : []; for (const x of gps) if (x && x.connected) { g = x; break; } } catch (e) { }
+    if (!g) { this.on = false; return; }
+    this.on = true;
+    const dz = v => Math.abs(v) < 0.18 ? 0 : (v - sign(v) * 0.18) / 0.82;
+    const b = i => (g.buttons[i] ? g.buttons[i].value : 0);
+    this.lx = dz(g.axes[0] || 0); this.ly = dz(g.axes[1] || 0); this.rx = dz(g.axes[2] || 0); this.ry = dz(g.axes[3] || 0);
+    this.rt = b(7); this.lt = b(6);
+    const map = { 0: 'PadA', 1: 'PadB', 2: 'PadX', 3: 'PadY', 4: 'PadLB', 5: 'PadRB', 8: 'PadBack', 9: 'PadStart', 12: 'PadUp', 13: 'PadDown', 14: 'PadLeft', 15: 'PadRight' };
+    let any = this.lx || this.ly || this.rx || this.ry || this.rt > 0.1 || this.lt > 0.1;
+    for (const i in map) {
+      const down = b(+i) > 0.5, k = map[i];
+      if (down && !Input.keys[k]) Input.pressed[k] = true;
+      Input.keys[k] = down; if (down) any = true;
+    }
+    if (any) this.lastUse = performance.now();
+    if (!this.announced && typeof UI !== 'undefined' && Game.state === 'play') { this.announced = true; UI.toast('게임패드 연결됨: 왼쪽 스틱 이동 · RT 사격/가속 · Y 탑승'); }
+  },
+  get active() { return this.on && performance.now() - this.lastUse < 4000; },
+};
+
 function endFrameInput() { Input.pressed = {}; Input.wheel = 0; Input.mouse.clicked = false; }
 
 // ---------- 사운드 ----------
