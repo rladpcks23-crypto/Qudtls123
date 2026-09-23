@@ -80,6 +80,13 @@
   .cz-card { font-style: normal; width: 42px; height: 58px; border-radius: 6px; background: #fafafa; color: #111; display: flex; align-items: center; justify-content: center; font: 700 17px var(--num); }
   .cz-card.red { color: #c0202a; } .cz-card.back { background: repeating-linear-gradient(45deg, #b3202a 0 6px, #7a1420 6px 12px); color: transparent; }
   .cz-result { min-height: 22px; font-weight: 700; font-size: 16px; margin: 6px 0 10px; }
+  #bagui { background: rgba(5, 8, 14, 0.55); align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; }
+  #bagui .card { max-height: calc(100% - 12px); border: 1px solid #f2c14e; width: min(460px, 100%); }
+  #bag-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+  .bag-it { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); }
+  .bag-it canvas { flex: none; } .bag-it div { flex: 1; font-size: 13px; color: #fff; } .bag-it span { display: block; font-size: 11px; color: #aeb8c6; }
+  .bag-it button { flex: none; }
+  @media (max-height: 520px) { #bagui .card { width: min(640px, 100%); padding: 12px 14px; gap: 6px; } #bagui h2 { font-size: 18px; margin: 0; } #bag-list { grid-template-columns: repeat(3, 1fr); gap: 6px; } .bag-it { padding: 4px; gap: 4px; } .bag-it div { font-size: 12px; } }
   #pause, #shop { background: rgba(5, 8, 14, 0.7); align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 22px; width: min(420px, 100%); box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; max-height: 100%; overflow-y: auto; }
   .card h2 { margin: 0; font-family: var(--disp); font-weight: 400; font-size: 34px; color: var(--gold); letter-spacing: 0.02em; }
@@ -124,8 +131,8 @@
   body.touch.playing.driving #drive { display: block; }
   body.driving #stick, body.driving #stick-zone, body.driving #t-weapon { display: none !important; }
   body:not(.driving) #t-hb, body:not(.driving) #t-radio { display: none !important; } /* 걸을 때는 쓸모없는 버튼 */
-  #t-bag { right: 94px; bottom: calc(206px + env(safe-area-inset-bottom)); width: 48px; height: 48px; font-size: 11px; }
-  body.driving #t-bag { display: none !important; }
+  /* 가방: 위쪽 버튼 줄에 항상 (걸을 때·운전 중 모두) */
+  #t-bag { top: calc(118px + env(safe-area-inset-top)); left: 170px; width: 44px; height: 44px; font-size: 12px; background: rgba(70, 50, 20, 0.6); border-color: #f2c14e; }
   /* 전차·헬기·전투기: 라디오 자리에 무기 교체 버튼 */
   body.driving.special #t-radio { display: none !important; }
   body.driving.special #t-weapon { display: flex !important; right: calc(116px + env(safe-area-inset-right)); bottom: calc(198px + env(safe-area-inset-bottom)); width: 54px; height: 54px; }
@@ -166,7 +173,7 @@
     #t-enter { right: calc(112px + env(safe-area-inset-right)); bottom: calc(92px + env(safe-area-inset-bottom)); }
     #t-weapon { right: calc(30px + env(safe-area-inset-right)); bottom: calc(122px + env(safe-area-inset-bottom)); }
     #t-radio { right: calc(100px + env(safe-area-inset-right)); bottom: calc(166px + env(safe-area-inset-bottom)); }
-    #t-bag { right: calc(100px + env(safe-area-inset-right)); bottom: calc(166px + env(safe-area-inset-bottom)); }
+    #t-bag { top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(86px); }
     #t-run { right: calc(196px + env(safe-area-inset-right)); bottom: calc(20px + env(safe-area-inset-bottom)); }
     #t-steal { right: calc(196px + env(safe-area-inset-right)); bottom: calc(96px + env(safe-area-inset-bottom)); }
     #stick:not(.active) { bottom: calc(24px + env(safe-area-inset-bottom)); left: calc(24px + env(safe-area-inset-left)) !important; }
@@ -286,6 +293,7 @@
 </div>
 
 <div id="casino" class="overlay" hidden><div class="card"></div></div>
+<div id="bagui" class="overlay" hidden><div class="card"><h2>가방</h2><div id="bag-stat" class="cz-note"></div><div id="bag-list"></div><div class="cz-row"><button class="btn small primary" id="bag-auto">필요한 것 자동 사용</button><button class="btn" id="bag-close">닫기</button></div></div></div>
 <div id="shop" class="overlay" hidden>
   <div class="card">
     <h2 id="shop-title">총포상</h2>

@@ -23,8 +23,34 @@ const WEAPONS = {
   rifle: { name: '돌격소총', dmg: 24, rate: 0.11, spread: 0.035, range: 60, snd: 'pistol', auto: true, price: 3000, pack: 120 },
   grenade: { name: '수류탄', throw: true, rate: 0.9, price: 700, pack: 5 },
   rocket: { name: '로켓 런처', proj: true, rate: 1.3, snd: 'rocket', price: 6000, pack: 6 },
+  knife: { name: '전투용 칼', melee: true, dmg: 24, rate: 0.32, range: 1.3, price: 150 },
+  katana: { name: '카타나', melee: true, dmg: 48, rate: 0.55, range: 2.0, price: 900 },
+  magnum: { name: '매그넘 리볼버', dmg: 62, rate: 0.55, spread: 0.02, range: 55, snd: 'shotgun', price: 1800, pack: 24 },
+  sniper: { name: '저격총', dmg: 130, rate: 1.4, spread: 0.003, range: 150, snd: 'shotgun', price: 9000, pack: 20 },
+  minigun: { name: '미니건', dmg: 14, rate: 0.035, spread: 0.09, range: 48, snd: 'smg', auto: true, price: 25000, pack: 500 },
+  flamer: { name: '화염방사기', flame: true, rate: 0.06, range: 8, auto: true, price: 12000, pack: 300 },
+  molotov: { name: '화염병', throw: true, molotov: true, rate: 0.9, price: 900, pack: 5 },
 };
-const WEAPON_ORDER = ['fist', 'bat', 'pistol', 'smg', 'shotgun', 'rifle', 'grenade', 'rocket'];
+const WEAPON_ORDER = ['fist', 'knife', 'bat', 'katana', 'pistol', 'magnum', 'smg', 'shotgun', 'rifle', 'minigun', 'sniper', 'flamer', 'grenade', 'molotov', 'rocket'];
+// 불길(화염병·화염방사기): 잠시 남아 들어온 사람·차를 태운다
+const Fires = {
+  list: [],
+  add(x, y, r, t, by) { if (this.list.length > 40) this.list.shift(); this.list.push({ x, y, r, t, by, tick: 0 }); },
+  update(dt) {
+    for (let i = this.list.length - 1; i >= 0; i--) {
+      const f = this.list[i]; f.t -= dt; f.tick -= dt;
+      if (Math.random() < 0.8) Particles.fire(f.x + rand(-f.r, f.r) * 0.7, f.y + rand(-f.r, f.r) * 0.7, 1.2);
+      if (f.tick <= 0) {
+        f.tick = 0.3;
+        const P = Game.player;
+        for (const p of [...Game.peds, P]) if (!p.dead && !p.car && !(p.alt > 1.2) && dist2(p.x, p.y, f.x, f.y) < f.r * f.r) p.damage(p === P ? 6 : 14, f.by, 0, 0, 'fire');
+        for (const c of Game.cars) if (!c.dead && !(c.alt > 1.2) && dist2(c.x, c.y, f.x, f.y) < (f.r + 1.5) ** 2) c.damage(8, f.by === P ? P : null);
+        scarePeds(f.x, f.y, 12);
+      }
+      if (f.t <= 0) this.list.splice(i, 1);
+    }
+  },
+};
 
 class Ped {
   constructor(kind, x, y) {
@@ -51,6 +77,7 @@ class Ped {
     if (this === Game.player) this.lastHurt = Game.time;
     // 난이도: NPC가 플레이어에게 주는 피해는 줄인다(GTA도 플레이어 피격 배율이 낮다)
     if (this === Game.player && by && by !== this) amt *= 0.4;
+    if (this === Game.player && this.guardT > 0) amt *= 0.6; // 진통제
     if (this.armor) { const ab = Math.min(this.armor, amt * 0.8); this.armor -= ab; amt -= ab; }
     this.hp -= amt; this.hitFlash = 0.12;
     if (this === Game.player && amt > 1) buzz(Math.min(60, 15 + amt));
@@ -128,10 +155,21 @@ function fireWeapon(shooter, wname, ang, accuracy = 1) {
     for (const c of Game.cars) if (dist(c.x, c.y, ox, oy) < c.L / 2) { c.damage(W.dmg * 0.1, isPlayer ? shooter : null); }
     return;
   }
+  if (W.flame) { // 화염방사기: 앞쪽 부채꼴을 태운다
+    const P = Game.player;
+    for (let k = 0; k < 3; k++) { const a = ang + rand(-0.18, 0.18), d = rand(1, W.range); Particles.fire(ox + Math.cos(a) * d, oy + Math.sin(a) * d, 1.3); }
+    if (Math.random() < 0.3) Sfx.tone({ x: ox, y: oy, f0: 180, f1: 120, dur: 0.12, type: 'sawtooth', vol: 0.06 });
+    const hitCone = (x, y) => { const d = dist(x, y, ox, oy); return d < W.range && Math.abs(angNorm(Math.atan2(y - oy, x - ox) - ang)) < 0.28 && losClear(ox, oy, x, y); };
+    for (const p of [...Game.peds, P]) if (p !== shooter && !p.dead && !p.car && hitCone(p.x, p.y)) p.damage(p === P ? 1.5 : 5, shooter, Math.cos(ang) * 0.3, Math.sin(ang) * 0.3, 'fire');
+    for (const c of Game.cars) if (c !== shooter.car && !c.dead && hitCone(c.x, c.y)) c.damage(2.5, isPlayer ? shooter : null);
+    if (isPlayer && Math.random() < 0.2) crime('gunfire', ox, oy);
+    if (Math.random() < 0.08) Fires.add(ox + Math.cos(ang) * W.range * 0.7, oy + Math.sin(ang) * W.range * 0.7, 1.6, 2.5, shooter);
+    return;
+  }
   if (W.throw) {
     Sfx.shot(ox, oy, 'throw');
     const sp = 14;
-    Game.projectiles.push({ type: 'grenade', x: ox, y: oy, vx: Math.cos(ang) * sp + (shooter.vx || 0) * 0.5, vy: Math.sin(ang) * sp + (shooter.vy || 0) * 0.5, z: 1, vz: 5, fuse: 2.2, by: shooter });
+    Game.projectiles.push({ type: 'grenade', molotov: !!W.molotov, x: ox, y: oy, vx: Math.cos(ang) * sp + (shooter.vx || 0) * 0.5, vy: Math.sin(ang) * sp + (shooter.vy || 0) * 0.5, z: 1, vz: 5, fuse: W.molotov ? 0.9 : 2.2, by: shooter });
     if (isPlayer) crime('gunfire', ox, oy);
     return;
   }
@@ -148,7 +186,7 @@ function fireWeapon(shooter, wname, ang, accuracy = 1) {
   Particles.shell(ox, oy, ang);
   const pellets = W.pellets || 1;
   for (let k = 0; k < pellets; k++) {
-    const a = ang + gauss() * W.spread * (1 / accuracy);
+    const a = ang + gauss() * W.spread * (1 / (accuracy * (isPlayer ? shooter.aimSkill || 1 : 1)));
     const dx = Math.cos(a), dy = Math.sin(a);
     let maxD = rayWall(ox, oy, dx, dy, W.range);
     let hit = null, hitD = maxD;
@@ -263,7 +301,11 @@ function updateProjectiles(dt) {
       if (solidT(Math.floor(nx / T), Math.floor(p.y / T))) { p.vx = -p.vx * 0.5; nx = p.x; }
       if (solidT(Math.floor(p.x / T), Math.floor(ny / T))) { p.vy = -p.vy * 0.5; ny = p.y; }
       p.x = nx; p.y = ny;
-      if (p.fuse <= 0) { explode(p.x, p.y, 7, 130, p.by, null); arr.splice(i, 1); }
+      if (p.fuse <= 0) {
+        if (p.molotov) { Fires.add(p.x, p.y, 3.2, 5, p.by); Sfx.tone({ x: p.x, y: p.y, f0: 400, f1: 90, dur: 0.4, type: 'sawtooth', vol: 0.2 }); for (let k = 0; k < 20; k++) Particles.fire(p.x + rand(-2, 2), p.y + rand(-2, 2), 1.6); if (p.by === Game.player) crime('explosion', p.x, p.y); }
+        else explode(p.x, p.y, 7, 130, p.by, null);
+        arr.splice(i, 1);
+      }
     }
   }
 }

@@ -61,6 +61,7 @@ const Game = {
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
     this.fleet = sv ? sv.fleet || [] : [];
     this.props = sv ? sv.props || {} : {};
+    if (sv && sv.body) { Object.assign(P, sv.body); P.hp = P.maxHp; }
     placeStaticPickups();
     Military.reset(); AirPatrol.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
     this.waypoint = null; this.noWanted = false;
@@ -137,6 +138,8 @@ const Game = {
       this.deathT += dt;
       this.update(dt, true);
       if (this.deathT > 4.2) this.respawn(st);
+    } else if (st === 'bag') {
+      if (keyHit('Escape', 'KeyB', 'PadB')) Bag.close();
     } else if (st === 'shop') {
       if (keyHit('Escape', 'PadB')) { if (!document.getElementById('jobs').hidden) Jobs.closeBoard(); else if (!document.getElementById('casino').hidden) { if (!Casino.busy) Casino.close(); } else Shop.close(); }
     }
@@ -150,7 +153,7 @@ const Game = {
       drawWorldTexts3D();
       Rain.draw(this.weather.intensity);
     } else renderScene();
-    if (st === 'play' || st === 'wasted' || st === 'busted' || st === 'shop' || st === 'paused') { drawHUD(dt); if (st === 'play') drawLockHUD(); }
+    if (st === 'play' || st === 'wasted' || st === 'busted' || st === 'shop' || st === 'paused' || st === 'bag') { drawHUD(dt); if (st === 'play') drawLockHUD(); }
     if (st === 'wasted' || st === 'busted') drawDeathScreen(st, this.deathT);
     if (st === 'map') drawFullMap();
   },
@@ -190,9 +193,10 @@ const Game = {
       if (keyHit('Equal', 'NumpadAdd')) Zoom.by(1 / 1.15); if (keyHit('Minus', 'NumpadSubtract')) Zoom.by(1.15);
       if (!P.car && keyHit('PadRB')) cycleWeapon(P, 1);
       if (!P.car && keyHit('PadLB')) cycleWeapon(P, -1);
-      for (let i = 1; i <= 8; i++) if (keyHit('Digit' + i)) { const w = WEAPON_ORDER[i - 1]; if (P.inv[w] > 0) { P.weapon = w; UI.weaponFlash = 1; } }
+      // 숫자키 1~9·0: 가진 무기 중 n번째
+      for (let i = 0; i <= 9; i++) if (keyHit('Digit' + i)) { const own = WEAPON_ORDER.filter(w => P.inv[w] > 0), w = own[(i + 9) % 10]; if (w) { P.weapon = w; UI.weaponFlash = 1; } }
       if (keyHit('KeyR', 'PadDown') && P.car) { Radio.cycle(); }
-      if (keyHit('KeyB')) Bag.useBest();
+      if (keyHit('KeyB')) Bag.open();
       if (keyHit('KeyC', 'PadUp')) cycleView();
       if (keyHit('KeyZ')) Zoom.set(Settings.zoom < 0.7 ? 0.75 : Settings.zoom < 1.1 ? 1.4 : 0.55);
       if (P.car && (P.car.type === 'police' || P.car.type === 'ambulance') && keyHit('KeyG', 'PadLeft')) { P.car.siren = !P.car.siren; }
@@ -204,7 +208,7 @@ const Game = {
     Jay.update(dt);
     Missions.update(dt);
     Jobs.update(dt);
-    Military.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update(); Biz.update(dt);
+    Military.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update(); Biz.update(dt); BankRob.update(dt);
     Talk.update(dt); Aim.update(dt); EMS.update(dt); Givers.update(); Vendors.update(dt); GPS.update(dt);
     // 체력 자연 회복: 6초 동안 안 다치면 50까지 천천히 (GTA V)
     if (!P.dead && P.hp < 50 && this.time - (P.lastHurt || 0) > 6) P.hp = Math.min(50, P.hp + 2 * dt);
@@ -244,7 +248,7 @@ const Game = {
       if (!P.car && !menu && !P.dead) pedCarCollide(P, c);
     }
     if (P.alt > 0 && (P.dead || menu)) P.alt = Math.max(0, P.alt - 25 * dt);
-    updateProjectiles(dt);
+    updateProjectiles(dt); Fires.update(dt);
     Particles.update(dt);
     Effects.update(dt);
     // 제거
@@ -372,13 +376,14 @@ const Game = {
       const S = World.places[key]; if (!S || !P.car || P.car.alt > 1.2 || this.sprayCool > 0) continue;
       if (dist(P.car.x, P.car.y, S.x, S.y) < 5 && P.car.speed < 5) {
         this.sprayCool = 12;
-        if (P.money < 100) { UI.toast('페인트샵: $100이 필요하다'); continue; }
+        const sprayCost = Biz.has('biz_auto') ? 0 : 100;
+        if (P.money < sprayCost) { UI.toast('페인트샵: $100이 필요하다'); continue; }
         if (Wanted.stars > 0 && Wanted.seen) { UI.toast('경찰이 보고 있다! 따돌린 뒤 다시 오자'); this.sprayCool = 3; continue; }
-        P.money -= 100; P.car.hp = P.car.maxHp; P.car.burnT = 0;
+        P.money -= sprayCost; P.car.hp = P.car.maxHp; P.car.burnT = 0;
         P.car.color = pick(['#e0262b', '#3c6fb0', '#f2c200', '#1d1d1f', '#e8e8ea', '#4e7a52', '#7a3b8f', '#f07c1b']);
         const had = Wanted.stars > 0;
         Wanted.clear(); Sfx.cash();
-        UI.toast(had ? '새 도색 완료! 수배가 해제됐다 (-$100)' : '수리 및 도색 완료 (-$100)');
+        UI.toast((had ? '새 도색 완료! 수배가 해제됐다' : '수리 및 도색 완료') + (sprayCost ? ' (-$100)' : ' (정비소 소유주 무료)'));
       }
     }
     // 네온 모터스 · 내 차고: 차를 몰고 마당에 세우거나 걸어서 들어가면 화면이 열린다
@@ -391,7 +396,7 @@ const Game = {
     }
     // 상점 · 직업 게시판 (걸어서 문 앞 마커에 들어가면 열림)
     if (!P.car && !(P.alt > 0) && this.shopCool <= 0 && !(Missions.active && Missions.active.def.noShop)) {
-      for (const [k, kind] of [...Object.keys(BUSINESSES).map(b => [b, b]), ['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart']]) {
+      for (const [k, kind] of [...Object.keys(BUSINESSES).map(b => [b, b]), ['ammu3', 'ammu'], ['burger3', 'burger'], ['burger4', 'burger'], ['mart4', 'mart'], ['mart5', 'mart'], ['clothes', 'clothes'], ['clothes2', 'clothes'], ['gym', 'gym'], ['pharmacy', 'pharmacy'], ['pharmacy2', 'pharmacy'], ['bank', 'bank'], ['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart']]) {
         const S = World.places[k]; if (S && dist(P.x, P.y, S.x, S.y) < 1.8) { Shop.open(kind); return; }
       }
       const SH = World.places.safehouse;
@@ -432,7 +437,7 @@ const Game = {
       P.inv = { fist: Infinity }; P.weapon = 'fist';
     }
     const np = new PlayerPed(spot.x, spot.y);
-    Object.assign(np, { money: P.money, displayMoney: P.money, inv: P.inv, weapon: P.weapon in P.inv ? P.weapon : 'fist', bag: kind === 'wasted' ? P.bag : {} });
+    Object.assign(np, { money: P.money, displayMoney: P.money, inv: P.inv, weapon: P.weapon in P.inv ? P.weapon : 'fist', bag: kind === 'wasted' ? P.bag : {}, maxHp: P.maxHp, hp: P.maxHp, endurance: P.endurance, aimSkill: P.aimSkill, shirt: P.shirt, pants: P.pants });
     if (kind === 'wasted') np.inv = P.inv;
     this.player = np;
     Wanted.reset(); Police.reset(); Jay.reset();
@@ -492,7 +497,7 @@ function updatePlayerFoot(P, dt) {
   if (P.exhausted && P.stamina > 0.35) P.exhausted = false;
   const sprint = wantRun && !P.exhausted;
   P.boostT = Math.max(0, P.boostT - dt);
-  if (sprint) { if (P.boostT <= 0) { P.stamina -= dt / 9; if (P.stamina <= 0) { P.stamina = 0; P.exhausted = true; UI.toast('숨이 차다! 잠깐 걸으며 쉬자'); } } }
+  if (sprint) { if (P.boostT <= 0) { P.stamina -= dt / (9 * (P.endurance || 1)); if (P.stamina <= 0) { P.stamina = 0; P.exhausted = true; UI.toast('숨이 차다! 잠깐 걸으며 쉬자'); } } }
   else P.stamina = Math.min(1, P.stamina + dt * (mag > 0.15 ? 0.12 : 0.28));
   P.swim = tileAt(P.x, P.y) === TL.WATER;
   if (P.swim && !P._swimMsg) { P._swimMsg = true; UI.toast('헤엄치는 중 — 총은 쓸 수 없다'); } else if (!P.swim) P._swimMsg = false;

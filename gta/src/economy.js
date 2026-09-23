@@ -13,6 +13,7 @@ const CONSUMABLES = {
   cola: { name: '콜라', stam: 1 }, onigiri: { name: '삼각김밥', hp: 12 }, ramen: { name: '컵라면', hp: 20 },
   energy: { name: '에너지 드링크', stam: 1, boost: 60 }, medkit: { name: '구급상자', hp: 100 },
   vital: { name: '체력 유지제', vital: 90 },
+  bandage: { name: '붕대', hp: 35 }, painkiller: { name: '진통제', guard: 60 },
 };
 
 const Bag = {
@@ -30,6 +31,7 @@ const Bag = {
     if (it.stam) { P.stamina = 1; P.exhausted = false; }
     if (it.boost) P.boostT = it.boost;
     if (it.vital) P.vitalT = it.vital;
+    if (it.guard) P.guardT = it.guard;
     Sfx.tone({ f0: 520, f1: 780, dur: 0.12, type: 'triangle', vol: 0.18 });
   },
   use(id) {
@@ -55,8 +57,34 @@ const Bag = {
     if (b.vital && !(P.vitalT > 0)) { this.use('vital'); return; }
     UI.toast('지금은 먹을 필요가 없다');
   },
+  // 가방 열기: 게임이 잠시 멈추고, 원하는 물건을 골라 바로 쓴다 (언제 어디서나 · 운전 중에도)
+  DESC: { burger: '체력 +25', set: '체력 +60 · 달리기 가득', fries: '체력 +10', cola: '달리기 가득', onigiri: '체력 +12', ramen: '체력 +20', energy: '60초 지치지 않음', medkit: '체력 완전 회복', vital: '90초 체력 계속 회복', bandage: '체력 +35', painkiller: '60초 받는 피해 -40%' },
+  open() {
+    const P = Game.player;
+    if (P.dead || (Game.state !== 'play' && Game.state !== 'bag')) return;
+    if (Game.state === 'bag') { this.close(); return; }
+    Game.state = 'bag'; this.el = document.getElementById('bagui'); this.el.hidden = false;
+    this.render();
+  },
+  close() { if (this.el) this.el.hidden = true; if (Game.state === 'bag') Game.state = 'play'; },
+  render() {
+    const P = Game.player, b = P.bag || {}, L = document.getElementById('bag-list');
+    document.getElementById('bag-stat').textContent = `체력 ${Math.round(P.hp)}/${P.maxHp} · 달리기 ${Math.round(P.stamina * 100)}% · ${this.count()}/${this.MAX}개${P.vitalT > 0 ? ` · 체력 유지 ${Math.ceil(P.vitalT)}초` : ''}`;
+    L.innerHTML = '';
+    const ids = Object.keys(b).filter(k => b[k] > 0);
+    if (!ids.length) L.innerHTML = '<div class="cz-note">비어 있다 — 버거 샷·편의점·약국에서 [가방에]로 사 두자</div>';
+    for (const id of ids) {
+      const row = document.createElement('div'); row.className = 'bag-it';
+      const cv = document.createElement('canvas'); cv.width = 44; cv.height = 34; const g = cv.getContext('2d'); g.translate(22, 17); drawItemIcon(g, id, 22);
+      const info = document.createElement('div'); info.innerHTML = `${CONSUMABLES[id].name} ×${b[id]}<span>${this.DESC[id] || ''}</span>`;
+      const btn = document.createElement('button'); btn.className = 'btn small'; btn.textContent = '사용';
+      btn.onclick = () => { this.use(id); this.render(); };
+      row.append(cv, info, btn); L.append(row);
+    }
+  },
   update(dt) {
     const P = Game.player;
+    if (P.guardT > 0) P.guardT -= dt;
     if (P.vitalT > 0 && !P.dead) {
       P.vitalT -= dt;
       P.hp = Math.min(P.maxHp, P.hp + 6 * dt);
@@ -169,7 +197,7 @@ const Fleet = {
     const c = Dealer.deliver(e.type, World.places.mygarage, e.color); c.fleetId = e.id; e.wrecked = false;
     UI.toast(`${c.V.name}을(를) 꺼냈다`);
   },
-  insurance(e) { return Math.round((VEHICLE_PRICES[e.type] || 3000) * 0.08 / 10) * 10; },
+  insurance(e) { return Math.round((VEHICLE_PRICES[e.type] || 3000) * 0.08 * (Biz.has('biz_auto') ? 0.5 : 1) / 10) * 10; },
 };
 SHOPS.mygarage = {
   title: '내 차고', sub: '산 차량과 보관한 차는 저장된다 · 부서진 차는 보험으로 복구',
@@ -198,6 +226,12 @@ const BUSINESSES = {
   biz_logi: { name: '하버 물류창고', price: 1600000, perMin: 9600, desc: '밀수 운반 보수 +25%' },
   biz_hotel: { name: '스카이라인 호텔', price: 2500000, perMin: 15000, desc: '호텔에서 쉬면 체력·방탄복 가득(은신처처럼 저장)' },
   biz_factory: { name: '아이언 밸리 제철소', price: 3200000, perMin: 19000, desc: '가장 많이 버는 일반 사업체' },
+  biz_mart: { name: '24 편의점 본사', price: 300000, perMin: 1800, desc: '편의점·약국 물건 반값' },
+  biz_gymchain: { name: '파워 피트니스 본사', price: 450000, perMin: 2700, desc: '체육관 훈련 무료' },
+  biz_auto: { name: '네온 정비소', price: 650000, perMin: 3900, desc: '페인트샵 무료 · 내 차고 보험 수리 반값' },
+  biz_cinema: { name: '네온 시네마', price: 900000, perMin: 5400, desc: '다운타운 문화의 중심' },
+  biz_marina: { name: '마리나 요트 클럽', price: 1400000, perMin: 8400, desc: '바다 사업의 큰손' },
+  biz_tower: { name: '네온 방송국', price: 4000000, perMin: 24000, desc: '도시 전체에 광고 — 모든 사업체 수입 +10%' },
   biz_casino: { name: '다이아몬드 카지노', price: 5000000, perMin: 30000, desc: '베팅 한도 10배 · 카지노에서 잃은 돈의 20% 환급' },
 };
 const BIZ_MULT = [1, 1.5, 2.2, 3.1, 4.3];       // 단계별 수입 배율
@@ -207,7 +241,7 @@ const Biz = {
   t: 0,
   owned() { return Game.props || (Game.props = {}); },
   lv(k) { const o = this.owned()[k]; return o ? o.lv || 1 : 0; },
-  perMin(k) { const B = BUSINESSES[k], L = this.lv(k); return L ? Math.round(B.perMin * BIZ_MULT[L - 1]) : 0; },
+  perMin(k) { const B = BUSINESSES[k], L = this.lv(k); return L ? Math.round(B.perMin * BIZ_MULT[L - 1] * (this.has('biz_tower') && k !== 'biz_tower' ? 1.1 : 1)) : 0; },
   total() { return Object.keys(this.owned()).reduce((a, k) => a + (BUSINESSES[k] ? this.perMin(k) : 0), 0); },
   // 실제 플레이 1분마다 소유한 사업체 수입이 바로 입금된다
   update(dt) {

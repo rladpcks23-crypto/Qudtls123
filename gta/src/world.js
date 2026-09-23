@@ -168,7 +168,7 @@ function genWorld(seed) {
   for (const b of W.blocks) {
     const u = (b.x0 + b.x1) / 2 / MW, v = (b.y0 + b.y1) / 2 / MH;
     const dd = Math.hypot(u - 0.52, v - 0.52);
-    b.district = dd < 0.17 ? DIST.DOWNTOWN : u > 0.7 ? DIST.HARBOR : v > 0.68 ? DIST.BEACH : u < 0.36 && v > 0.5 ? DIST.INDUSTRY : u < 0.36 ? DIST.RESID : DIST.MIDTOWN;
+    b.district = dd < 0.17 ? DIST.DOWNTOWN : u > 0.7 ? DIST.HARBOR : v > 0.68 ? DIST.BEACH : u < 0.36 && v > 0.5 ? DIST.INDUSTRY : u < 0.25 ? DIST.RESID : DIST.MIDTOWN; // 주택가는 서쪽 끝만
     b.area = (b.x1 - b.x0 + 1) * (b.y1 - b.y0 + 1);
   }
   // 공원: 가장 큰 미드타운/주택가 블록 + 하나 더
@@ -253,6 +253,8 @@ function genWorld(seed) {
       } else if (b.district === DIST.MIDTOWN) {
         if (R() < 0.25 && w >= 2 && h >= 3) { for (let y = L.y0; y <= L.y1; y++) for (let x = L.x0; x <= L.x1; x++) set(x, y, TL.LOT); L.kind = 'lot'; addParkingRow(L.x0, L.y0, L.x1, L.y1); continue; }
         L.b = addBuilding(L.x0, L.y0, L.x1, L.y1, rr(9, 22), 'mid', rpick(PAL.mid));
+      } else if (b.district === DIST.RESID && R() < 0.35) { // 주택가 속 동네 가게(상가)
+        L.b = addBuilding(L.x0, L.y0, L.x1, L.y1, rr(6, 11), 'mid', rpick(PAL.mid));
       } else if (b.district === DIST.RESID) {
         const x0 = L.x0 + (w > 3 ? 1 : 0), y0 = L.y0 + (h > 3 ? 1 : 0), x1 = L.x1 - (w > 4 ? 1 : 0), y1 = L.y1 - (h > 4 ? 1 : 0);
         L.b = addBuilding(x0, y0, x1, y1, rr(5, 8), 'house', rpick(PAL.house));
@@ -395,6 +397,24 @@ function genWorld(seed) {
   makePlace('biz_surf', choose(edgeLots(DIST.BEACH, L => !L.used && bld('shop')(L)), 0.7, 0.82), 'biz', '#6cc0c4', '서핑·보트 대여점');
   makePlace('biz_logi', choose(edgeLots(DIST.HARBOR, L => !L.used && bld('warehouse')(L)), 0.85, 0.3), 'biz', '#7a7f86', '하버 물류창고');
   makePlace('biz_hotel', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.44, 0.44), 'biz', '#c9b27a', '스카이라인 호텔');
+  makePlace('biz_mart', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.3, 0.45), 'biz', '#dfe8e0', '24 편의점 본사');
+  makePlace('biz_auto', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.3, 0.55), 'biz', '#5f6b72', '네온 정비소');
+  makePlace('biz_cinema', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.55, 0.66), 'biz', '#8a2d4a', '네온 시네마');
+  makePlace('biz_marina', choose(edgeLots(DIST.BEACH, L => !L.used && bld('shop')(L)), 0.85, 0.82), 'biz', '#e7d8b0', '마리나 요트 클럽');
+  makePlace('biz_gymchain', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.62, 0.46), 'biz', '#3b3b3b', '파워 피트니스 본사');
+  makePlace('biz_tower', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.5, 0.52), 'biz', '#1f2f4f', '네온 방송국');
+  // 상호작용 건물: 옷가게 · 체육관 · 약국 · 은행 + 가게 분점
+  makePlace('clothes', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.44, 0.58), 'clothes', '#f4d6e8', '빈티지 부티크');
+  makePlace('clothes2', choose(edgeLots(DIST.BEACH, L => !L.used && bld('shop')(L)), 0.28, 0.82), 'clothes', '#f4d6e8', '비치 웨어');
+  makePlace('gym', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.36, 0.52), 'gym', '#2b2b2b', '체육관');
+  makePlace('pharmacy', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.6, 0.4), 'pharmacy', '#e8fff0', '약국');
+  makePlace('pharmacy2', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.18, 0.68), 'pharmacy', '#e8fff0', '약국');
+  makePlace('bank', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.5, 0.4), 'bank', '#c9b27a', '네온 중앙은행');
+  makePlace('ammu3', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.25, 0.64), 'ammu', '#3b3b3b', '총포상');
+  makePlace('burger3', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.58, 0.44), 'burger', '#f3d9b1', '버거 샷');
+  makePlace('burger4', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.22, 0.56), 'burger', '#f3d9b1', '버거 샷');
+  makePlace('mart4', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.5, 0.3), 'mart', '#dfe8e0', '24 편의점');
+  makePlace('mart5', choose(edgeLots(DIST.BEACH, L => !L.used && bld('shop')(L)), 0.62, 0.8), 'mart', '#dfe8e0', '24 편의점');
   makePlace('biz_casino', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.58, 0.6), 'casino', '#1d1233', '다이아몬드 카지노');
   // 차고형 장소: 필지를 비워 LOT으로 만든다
   const makeLotPlace = (key, L, label) => {

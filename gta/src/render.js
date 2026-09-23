@@ -440,7 +440,7 @@ function drawPed(p, shadow) {
   if (armed) {
     ctx.fillStyle = p.shirt; ctx.fillRect(0, -0.28, 0.35, 0.12); ctx.fillRect(0, 0.16, 0.35, 0.12);
     ctx.fillStyle = '#1a1a1a';
-    const gl = p.weapon === 'rocket' ? 1.2 : p.weapon === 'shotgun' || p.weapon === 'rifle' ? 0.8 : p.weapon === 'smg' ? 0.55 : 0.4;
+    const gl = p.weapon === 'rocket' || p.weapon === 'sniper' || p.weapon === 'minigun' ? 1.2 : p.weapon === 'shotgun' || p.weapon === 'rifle' || p.weapon === 'flamer' ? 0.8 : p.weapon === 'smg' ? 0.55 : 0.4;
     ctx.fillRect(0.3, -0.06, gl, 0.12);
     if (p.weapon === 'rocket') { ctx.fillStyle = '#4b5a3a'; ctx.fillRect(-0.4, -0.12, 1.6, 0.24); }
     if (p.flash > 0) { ctx.fillStyle = '#ffe28a'; ctx.beginPath(); ctx.arc(0.35 + gl + 0.15, 0, 0.22, 0, TAU); ctx.fill(); }
@@ -487,6 +487,13 @@ function drawWeaponIcon(c, w, s, col) {
   else if (w === 'shotgun') { c.fillRect(-0.7, -0.14, 1.4, 0.14); c.fillRect(-0.7, -0.05, 0.35, 0.28); c.fillRect(0.0, 0.0, 0.4, 0.12); }
   else if (w === 'rifle') { c.fillRect(-0.7, -0.16, 1.4, 0.16); c.fillRect(-0.7, -0.05, 0.3, 0.3); c.fillRect(-0.1, 0, 0.14, 0.38); c.fillRect(0.4, -0.3, 0.1, 0.16); }
   else if (w === 'grenade') { c.beginPath(); c.arc(0, 0.08, 0.3, 0, TAU); c.fill(); c.fillRect(-0.08, -0.35, 0.16, 0.2); c.fillRect(0.05, -0.35, 0.25, 0.07); }
+  else if (w === 'knife') { c.fillRect(-0.45, -0.06, 0.35, 0.14); c.beginPath(); c.moveTo(-0.1, -0.1); c.lineTo(0.55, 0); c.lineTo(-0.1, 0.1); c.fill(); }
+  else if (w === 'katana') { c.lineWidth = 0.09; c.lineCap = 'round'; c.beginPath(); c.moveTo(-0.6, 0.3); c.quadraticCurveTo(0.1, -0.05, 0.65, -0.35); c.stroke(); c.fillRect(-0.42, 0.05, 0.08, 0.28); }
+  else if (w === 'magnum') { c.fillRect(-0.45, -0.18, 0.9, 0.16); c.beginPath(); c.arc(-0.05, -0.02, 0.14, 0, TAU); c.fill(); c.fillRect(-0.45, -0.05, 0.2, 0.42); }
+  else if (w === 'sniper') { c.fillRect(-0.85, -0.08, 1.7, 0.1); c.fillRect(-0.85, -0.05, 0.35, 0.26); c.fillRect(-0.15, -0.28, 0.45, 0.12); c.fillRect(0.0, -0.18, 0.06, 0.1); }
+  else if (w === 'minigun') { for (let k = 0; k < 3; k++) c.fillRect(-0.3, -0.24 + k * 0.14, 1.1, 0.08); c.fillRect(-0.7, -0.3, 0.45, 0.5); }
+  else if (w === 'flamer') { c.fillRect(-0.5, -0.1, 1.2, 0.14); c.beginPath(); c.arc(-0.35, 0.18, 0.2, 0, TAU); c.fill(); c.fillStyle = '#ff8a3a'; c.beginPath(); c.moveTo(0.7, -0.03); c.lineTo(0.95, -0.2); c.lineTo(0.95, 0.15); c.fill(); }
+  else if (w === 'molotov') { c.fillRect(-0.18, -0.1, 0.36, 0.5); c.fillRect(-0.07, -0.35, 0.14, 0.26); c.fillStyle = '#ff8a3a'; c.beginPath(); c.arc(0, -0.45, 0.12, 0, TAU); c.fill(); }
   else if (w === 'rocket') { c.fillRect(-0.75, -0.13, 1.5, 0.26); c.fillRect(-0.1, 0.1, 0.15, 0.3); c.beginPath(); c.moveTo(0.75, -0.2); c.lineTo(1.0, 0); c.lineTo(0.75, 0.2); c.fill(); }
   c.restore();
 }
@@ -600,8 +607,8 @@ function drawBuildings(amb) {
   vis.sort((a, b) => b._d - a._d);
   for (const b of vis) drawBuilding(b, amb, night);
 }
-const PLACE_MARK = { safehouse: '#9be15d', ammu: '#ff6b5a', ammu2: '#ff6b5a', burger: '#ffb347', burger2: '#ffb347', mart: '#7ae68f', mart2: '#7ae68f', mart3: '#7ae68f', jobcenter: '#6fb6ff', broker: '#ff5d8f' };
-const SHOP_ROOF = { safehouse: ['#4a7a3f', '#f2fff0'], ammu: ['#b23a2e', '#f2f2f2'], burger: ['#e0572f', '#ffe08a'], mart: ['#2e8b57', '#f2fff4'], jobcenter: ['#2d5d9f', '#ffffff'], broker: ['#3a2346', '#ff5d8f'] };
+const PLACE_MARK = { safehouse: '#9be15d', ammu: '#ff6b5a', ammu2: '#ff6b5a', ammu3: '#ff6b5a', burger: '#ffb347', burger2: '#ffb347', burger3: '#ffb347', burger4: '#ffb347', mart: '#7ae68f', mart2: '#7ae68f', mart3: '#7ae68f', mart4: '#7ae68f', mart5: '#7ae68f', jobcenter: '#6fb6ff', broker: '#ff5d8f', clothes: '#e07aff', clothes2: '#e07aff', gym: '#ff9f43', pharmacy: '#3ee07a', pharmacy2: '#3ee07a', bank: '#ffd700' };
+const SHOP_ROOF = { safehouse: ['#4a7a3f', '#f2fff0'], ammu: ['#b23a2e', '#f2f2f2'], burger: ['#e0572f', '#ffe08a'], mart: ['#2e8b57', '#f2fff4'], jobcenter: ['#2d5d9f', '#ffffff'], broker: ['#3a2346', '#ff5d8f'], clothes: ['#8a3b7a', '#ffe3f6'], gym: ['#222', '#ff9f43'], pharmacy: ['#1f8a4c', '#ffffff'], bank: ['#6b5a2a', '#ffd700'], biz: ['#4a3a14', '#ffd166'], casino: ['#1d1233', '#ff5d8f'] };
 function drawBuilding(b, amb, night) {
   const X0 = b.x0 * T, Y0 = b.y0 * T, X1 = (b.x1 + 1) * T, Y1 = (b.y1 + 1) * T, h = b.h;
   const P = (x, y, z) => proj(x, y, z);

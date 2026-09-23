@@ -80,6 +80,13 @@
   .cz-card { font-style: normal; width: 42px; height: 58px; border-radius: 6px; background: #fafafa; color: #111; display: flex; align-items: center; justify-content: center; font: 700 17px var(--num); }
   .cz-card.red { color: #c0202a; } .cz-card.back { background: repeating-linear-gradient(45deg, #b3202a 0 6px, #7a1420 6px 12px); color: transparent; }
   .cz-result { min-height: 22px; font-weight: 700; font-size: 16px; margin: 6px 0 10px; }
+  #bagui { background: rgba(5, 8, 14, 0.55); align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; }
+  #bagui .card { max-height: calc(100% - 12px); border: 1px solid #f2c14e; width: min(460px, 100%); }
+  #bag-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+  .bag-it { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); }
+  .bag-it canvas { flex: none; } .bag-it div { flex: 1; font-size: 13px; color: #fff; } .bag-it span { display: block; font-size: 11px; color: #aeb8c6; }
+  .bag-it button { flex: none; }
+  @media (max-height: 520px) { #bagui .card { width: min(640px, 100%); padding: 12px 14px; gap: 6px; } #bagui h2 { font-size: 18px; margin: 0; } #bag-list { grid-template-columns: repeat(3, 1fr); gap: 6px; } .bag-it { padding: 4px; gap: 4px; } .bag-it div { font-size: 12px; } }
   #pause, #shop { background: rgba(5, 8, 14, 0.7); align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 22px; width: min(420px, 100%); box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; max-height: 100%; overflow-y: auto; }
   .card h2 { margin: 0; font-family: var(--disp); font-weight: 400; font-size: 34px; color: var(--gold); letter-spacing: 0.02em; }
@@ -124,8 +131,8 @@
   body.touch.playing.driving #drive { display: block; }
   body.driving #stick, body.driving #stick-zone, body.driving #t-weapon { display: none !important; }
   body:not(.driving) #t-hb, body:not(.driving) #t-radio { display: none !important; } /* 걸을 때는 쓸모없는 버튼 */
-  #t-bag { right: 94px; bottom: calc(206px + env(safe-area-inset-bottom)); width: 48px; height: 48px; font-size: 11px; }
-  body.driving #t-bag { display: none !important; }
+  /* 가방: 위쪽 버튼 줄에 항상 (걸을 때·운전 중 모두) */
+  #t-bag { top: calc(118px + env(safe-area-inset-top)); left: 170px; width: 44px; height: 44px; font-size: 12px; background: rgba(70, 50, 20, 0.6); border-color: #f2c14e; }
   /* 전차·헬기·전투기: 라디오 자리에 무기 교체 버튼 */
   body.driving.special #t-radio { display: none !important; }
   body.driving.special #t-weapon { display: flex !important; right: calc(116px + env(safe-area-inset-right)); bottom: calc(198px + env(safe-area-inset-bottom)); width: 54px; height: 54px; }
@@ -166,7 +173,7 @@
     #t-enter { right: calc(112px + env(safe-area-inset-right)); bottom: calc(92px + env(safe-area-inset-bottom)); }
     #t-weapon { right: calc(30px + env(safe-area-inset-right)); bottom: calc(122px + env(safe-area-inset-bottom)); }
     #t-radio { right: calc(100px + env(safe-area-inset-right)); bottom: calc(166px + env(safe-area-inset-bottom)); }
-    #t-bag { right: calc(100px + env(safe-area-inset-right)); bottom: calc(166px + env(safe-area-inset-bottom)); }
+    #t-bag { top: calc(8px + env(safe-area-inset-top)); left: 50%; transform: translateX(86px); }
     #t-run { right: calc(196px + env(safe-area-inset-right)); bottom: calc(20px + env(safe-area-inset-bottom)); }
     #t-steal { right: calc(196px + env(safe-area-inset-right)); bottom: calc(96px + env(safe-area-inset-bottom)); }
     #stick:not(.active) { bottom: calc(24px + env(safe-area-inset-bottom)); left: calc(24px + env(safe-area-inset-left)) !important; }
@@ -286,6 +293,7 @@
 </div>
 
 <div id="casino" class="overlay" hidden><div class="card"></div></div>
+<div id="bagui" class="overlay" hidden><div class="card"><h2>가방</h2><div id="bag-stat" class="cz-note"></div><div id="bag-list"></div><div class="cz-row"><button class="btn small primary" id="bag-auto">필요한 것 자동 사용</button><button class="btn" id="bag-close">닫기</button></div></div></div>
 <div id="shop" class="overlay" hidden>
   <div class="card">
     <h2 id="shop-title">총포상</h2>
@@ -920,7 +928,7 @@ function genWorld(seed) {
   for (const b of W.blocks) {
     const u = (b.x0 + b.x1) / 2 / MW, v = (b.y0 + b.y1) / 2 / MH;
     const dd = Math.hypot(u - 0.52, v - 0.52);
-    b.district = dd < 0.17 ? DIST.DOWNTOWN : u > 0.7 ? DIST.HARBOR : v > 0.68 ? DIST.BEACH : u < 0.36 && v > 0.5 ? DIST.INDUSTRY : u < 0.36 ? DIST.RESID : DIST.MIDTOWN;
+    b.district = dd < 0.17 ? DIST.DOWNTOWN : u > 0.7 ? DIST.HARBOR : v > 0.68 ? DIST.BEACH : u < 0.36 && v > 0.5 ? DIST.INDUSTRY : u < 0.25 ? DIST.RESID : DIST.MIDTOWN; // 주택가는 서쪽 끝만
     b.area = (b.x1 - b.x0 + 1) * (b.y1 - b.y0 + 1);
   }
   // 공원: 가장 큰 미드타운/주택가 블록 + 하나 더
@@ -1005,6 +1013,8 @@ function genWorld(seed) {
       } else if (b.district === DIST.MIDTOWN) {
         if (R() < 0.25 && w >= 2 && h >= 3) { for (let y = L.y0; y <= L.y1; y++) for (let x = L.x0; x <= L.x1; x++) set(x, y, TL.LOT); L.kind = 'lot'; addParkingRow(L.x0, L.y0, L.x1, L.y1); continue; }
         L.b = addBuilding(L.x0, L.y0, L.x1, L.y1, rr(9, 22), 'mid', rpick(PAL.mid));
+      } else if (b.district === DIST.RESID && R() < 0.35) { // 주택가 속 동네 가게(상가)
+        L.b = addBuilding(L.x0, L.y0, L.x1, L.y1, rr(6, 11), 'mid', rpick(PAL.mid));
       } else if (b.district === DIST.RESID) {
         const x0 = L.x0 + (w > 3 ? 1 : 0), y0 = L.y0 + (h > 3 ? 1 : 0), x1 = L.x1 - (w > 4 ? 1 : 0), y1 = L.y1 - (h > 4 ? 1 : 0);
         L.b = addBuilding(x0, y0, x1, y1, rr(5, 8), 'house', rpick(PAL.house));
@@ -1147,6 +1157,24 @@ function genWorld(seed) {
   makePlace('biz_surf', choose(edgeLots(DIST.BEACH, L => !L.used && bld('shop')(L)), 0.7, 0.82), 'biz', '#6cc0c4', '서핑·보트 대여점');
   makePlace('biz_logi', choose(edgeLots(DIST.HARBOR, L => !L.used && bld('warehouse')(L)), 0.85, 0.3), 'biz', '#7a7f86', '하버 물류창고');
   makePlace('biz_hotel', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.44, 0.44), 'biz', '#c9b27a', '스카이라인 호텔');
+  makePlace('biz_mart', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.3, 0.45), 'biz', '#dfe8e0', '24 편의점 본사');
+  makePlace('biz_auto', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.3, 0.55), 'biz', '#5f6b72', '네온 정비소');
+  makePlace('biz_cinema', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.55, 0.66), 'biz', '#8a2d4a', '네온 시네마');
+  makePlace('biz_marina', choose(edgeLots(DIST.BEACH, L => !L.used && bld('shop')(L)), 0.85, 0.82), 'biz', '#e7d8b0', '마리나 요트 클럽');
+  makePlace('biz_gymchain', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.62, 0.46), 'biz', '#3b3b3b', '파워 피트니스 본사');
+  makePlace('biz_tower', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.5, 0.52), 'biz', '#1f2f4f', '네온 방송국');
+  // 상호작용 건물: 옷가게 · 체육관 · 약국 · 은행 + 가게 분점
+  makePlace('clothes', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.44, 0.58), 'clothes', '#f4d6e8', '빈티지 부티크');
+  makePlace('clothes2', choose(edgeLots(DIST.BEACH, L => !L.used && bld('shop')(L)), 0.28, 0.82), 'clothes', '#f4d6e8', '비치 웨어');
+  makePlace('gym', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.36, 0.52), 'gym', '#2b2b2b', '체육관');
+  makePlace('pharmacy', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.6, 0.4), 'pharmacy', '#e8fff0', '약국');
+  makePlace('pharmacy2', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.18, 0.68), 'pharmacy', '#e8fff0', '약국');
+  makePlace('bank', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.5, 0.4), 'bank', '#c9b27a', '네온 중앙은행');
+  makePlace('ammu3', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.25, 0.64), 'ammu', '#3b3b3b', '총포상');
+  makePlace('burger3', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.58, 0.44), 'burger', '#f3d9b1', '버거 샷');
+  makePlace('burger4', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.22, 0.56), 'burger', '#f3d9b1', '버거 샷');
+  makePlace('mart4', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.5, 0.3), 'mart', '#dfe8e0', '24 편의점');
+  makePlace('mart5', choose(edgeLots(DIST.BEACH, L => !L.used && bld('shop')(L)), 0.62, 0.8), 'mart', '#dfe8e0', '24 편의점');
   makePlace('biz_casino', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.58, 0.6), 'casino', '#1d1233', '다이아몬드 카지노');
   // 차고형 장소: 필지를 비워 LOT으로 만든다
   const makeLotPlace = (key, L, label) => {
@@ -1969,8 +1997,34 @@ const WEAPONS = {
   rifle: { name: '돌격소총', dmg: 24, rate: 0.11, spread: 0.035, range: 60, snd: 'pistol', auto: true, price: 3000, pack: 120 },
   grenade: { name: '수류탄', throw: true, rate: 0.9, price: 700, pack: 5 },
   rocket: { name: '로켓 런처', proj: true, rate: 1.3, snd: 'rocket', price: 6000, pack: 6 },
+  knife: { name: '전투용 칼', melee: true, dmg: 24, rate: 0.32, range: 1.3, price: 150 },
+  katana: { name: '카타나', melee: true, dmg: 48, rate: 0.55, range: 2.0, price: 900 },
+  magnum: { name: '매그넘 리볼버', dmg: 62, rate: 0.55, spread: 0.02, range: 55, snd: 'shotgun', price: 1800, pack: 24 },
+  sniper: { name: '저격총', dmg: 130, rate: 1.4, spread: 0.003, range: 150, snd: 'shotgun', price: 9000, pack: 20 },
+  minigun: { name: '미니건', dmg: 14, rate: 0.035, spread: 0.09, range: 48, snd: 'smg', auto: true, price: 25000, pack: 500 },
+  flamer: { name: '화염방사기', flame: true, rate: 0.06, range: 8, auto: true, price: 12000, pack: 300 },
+  molotov: { name: '화염병', throw: true, molotov: true, rate: 0.9, price: 900, pack: 5 },
 };
-const WEAPON_ORDER = ['fist', 'bat', 'pistol', 'smg', 'shotgun', 'rifle', 'grenade', 'rocket'];
+const WEAPON_ORDER = ['fist', 'knife', 'bat', 'katana', 'pistol', 'magnum', 'smg', 'shotgun', 'rifle', 'minigun', 'sniper', 'flamer', 'grenade', 'molotov', 'rocket'];
+// 불길(화염병·화염방사기): 잠시 남아 들어온 사람·차를 태운다
+const Fires = {
+  list: [],
+  add(x, y, r, t, by) { if (this.list.length > 40) this.list.shift(); this.list.push({ x, y, r, t, by, tick: 0 }); },
+  update(dt) {
+    for (let i = this.list.length - 1; i >= 0; i--) {
+      const f = this.list[i]; f.t -= dt; f.tick -= dt;
+      if (Math.random() < 0.8) Particles.fire(f.x + rand(-f.r, f.r) * 0.7, f.y + rand(-f.r, f.r) * 0.7, 1.2);
+      if (f.tick <= 0) {
+        f.tick = 0.3;
+        const P = Game.player;
+        for (const p of [...Game.peds, P]) if (!p.dead && !p.car && !(p.alt > 1.2) && dist2(p.x, p.y, f.x, f.y) < f.r * f.r) p.damage(p === P ? 6 : 14, f.by, 0, 0, 'fire');
+        for (const c of Game.cars) if (!c.dead && !(c.alt > 1.2) && dist2(c.x, c.y, f.x, f.y) < (f.r + 1.5) ** 2) c.damage(8, f.by === P ? P : null);
+        scarePeds(f.x, f.y, 12);
+      }
+      if (f.t <= 0) this.list.splice(i, 1);
+    }
+  },
+};
 
 class Ped {
   constructor(kind, x, y) {
@@ -1997,6 +2051,7 @@ class Ped {
     if (this === Game.player) this.lastHurt = Game.time;
     // 난이도: NPC가 플레이어에게 주는 피해는 줄인다(GTA도 플레이어 피격 배율이 낮다)
     if (this === Game.player && by && by !== this) amt *= 0.4;
+    if (this === Game.player && this.guardT > 0) amt *= 0.6; // 진통제
     if (this.armor) { const ab = Math.min(this.armor, amt * 0.8); this.armor -= ab; amt -= ab; }
     this.hp -= amt; this.hitFlash = 0.12;
     if (this === Game.player && amt > 1) buzz(Math.min(60, 15 + amt));
@@ -2074,10 +2129,21 @@ function fireWeapon(shooter, wname, ang, accuracy = 1) {
     for (const c of Game.cars) if (dist(c.x, c.y, ox, oy) < c.L / 2) { c.damage(W.dmg * 0.1, isPlayer ? shooter : null); }
     return;
   }
+  if (W.flame) { // 화염방사기: 앞쪽 부채꼴을 태운다
+    const P = Game.player;
+    for (let k = 0; k < 3; k++) { const a = ang + rand(-0.18, 0.18), d = rand(1, W.range); Particles.fire(ox + Math.cos(a) * d, oy + Math.sin(a) * d, 1.3); }
+    if (Math.random() < 0.3) Sfx.tone({ x: ox, y: oy, f0: 180, f1: 120, dur: 0.12, type: 'sawtooth', vol: 0.06 });
+    const hitCone = (x, y) => { const d = dist(x, y, ox, oy); return d < W.range && Math.abs(angNorm(Math.atan2(y - oy, x - ox) - ang)) < 0.28 && losClear(ox, oy, x, y); };
+    for (const p of [...Game.peds, P]) if (p !== shooter && !p.dead && !p.car && hitCone(p.x, p.y)) p.damage(p === P ? 1.5 : 5, shooter, Math.cos(ang) * 0.3, Math.sin(ang) * 0.3, 'fire');
+    for (const c of Game.cars) if (c !== shooter.car && !c.dead && hitCone(c.x, c.y)) c.damage(2.5, isPlayer ? shooter : null);
+    if (isPlayer && Math.random() < 0.2) crime('gunfire', ox, oy);
+    if (Math.random() < 0.08) Fires.add(ox + Math.cos(ang) * W.range * 0.7, oy + Math.sin(ang) * W.range * 0.7, 1.6, 2.5, shooter);
+    return;
+  }
   if (W.throw) {
     Sfx.shot(ox, oy, 'throw');
     const sp = 14;
-    Game.projectiles.push({ type: 'grenade', x: ox, y: oy, vx: Math.cos(ang) * sp + (shooter.vx || 0) * 0.5, vy: Math.sin(ang) * sp + (shooter.vy || 0) * 0.5, z: 1, vz: 5, fuse: 2.2, by: shooter });
+    Game.projectiles.push({ type: 'grenade', molotov: !!W.molotov, x: ox, y: oy, vx: Math.cos(ang) * sp + (shooter.vx || 0) * 0.5, vy: Math.sin(ang) * sp + (shooter.vy || 0) * 0.5, z: 1, vz: 5, fuse: W.molotov ? 0.9 : 2.2, by: shooter });
     if (isPlayer) crime('gunfire', ox, oy);
     return;
   }
@@ -2094,7 +2160,7 @@ function fireWeapon(shooter, wname, ang, accuracy = 1) {
   Particles.shell(ox, oy, ang);
   const pellets = W.pellets || 1;
   for (let k = 0; k < pellets; k++) {
-    const a = ang + gauss() * W.spread * (1 / accuracy);
+    const a = ang + gauss() * W.spread * (1 / (accuracy * (isPlayer ? shooter.aimSkill || 1 : 1)));
     const dx = Math.cos(a), dy = Math.sin(a);
     let maxD = rayWall(ox, oy, dx, dy, W.range);
     let hit = null, hitD = maxD;
@@ -2209,7 +2275,11 @@ function updateProjectiles(dt) {
       if (solidT(Math.floor(nx / T), Math.floor(p.y / T))) { p.vx = -p.vx * 0.5; nx = p.x; }
       if (solidT(Math.floor(p.x / T), Math.floor(ny / T))) { p.vy = -p.vy * 0.5; ny = p.y; }
       p.x = nx; p.y = ny;
-      if (p.fuse <= 0) { explode(p.x, p.y, 7, 130, p.by, null); arr.splice(i, 1); }
+      if (p.fuse <= 0) {
+        if (p.molotov) { Fires.add(p.x, p.y, 3.2, 5, p.by); Sfx.tone({ x: p.x, y: p.y, f0: 400, f1: 90, dur: 0.4, type: 'sawtooth', vol: 0.2 }); for (let k = 0; k < 20; k++) Particles.fire(p.x + rand(-2, 2), p.y + rand(-2, 2), 1.6); if (p.by === Game.player) crime('explosion', p.x, p.y); }
+        else explode(p.x, p.y, 7, 130, p.by, null);
+        arr.splice(i, 1);
+      }
     }
   }
 }
@@ -2988,7 +3058,7 @@ const Save = {
     try {
       const P = Game.player;
       const inv = {}; for (const k in P.inv) if (k !== 'fist') inv[k] = P.inv[k] === Infinity ? -1 : P.inv[k];
-      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {} }));
+      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {}, body: { maxHp: P.maxHp, endurance: P.endurance || 1, aimSkill: P.aimSkill || 1, shirt: P.shirt, pants: P.pants } }));
     } catch (e) { /* 저장 불가 환경 */ }
   },
   clear() { try { localStorage.removeItem(this.key); } catch (e) { } },
@@ -5242,7 +5312,7 @@ function drawPed(p, shadow) {
   if (armed) {
     ctx.fillStyle = p.shirt; ctx.fillRect(0, -0.28, 0.35, 0.12); ctx.fillRect(0, 0.16, 0.35, 0.12);
     ctx.fillStyle = '#1a1a1a';
-    const gl = p.weapon === 'rocket' ? 1.2 : p.weapon === 'shotgun' || p.weapon === 'rifle' ? 0.8 : p.weapon === 'smg' ? 0.55 : 0.4;
+    const gl = p.weapon === 'rocket' || p.weapon === 'sniper' || p.weapon === 'minigun' ? 1.2 : p.weapon === 'shotgun' || p.weapon === 'rifle' || p.weapon === 'flamer' ? 0.8 : p.weapon === 'smg' ? 0.55 : 0.4;
     ctx.fillRect(0.3, -0.06, gl, 0.12);
     if (p.weapon === 'rocket') { ctx.fillStyle = '#4b5a3a'; ctx.fillRect(-0.4, -0.12, 1.6, 0.24); }
     if (p.flash > 0) { ctx.fillStyle = '#ffe28a'; ctx.beginPath(); ctx.arc(0.35 + gl + 0.15, 0, 0.22, 0, TAU); ctx.fill(); }
@@ -5289,6 +5359,13 @@ function drawWeaponIcon(c, w, s, col) {
   else if (w === 'shotgun') { c.fillRect(-0.7, -0.14, 1.4, 0.14); c.fillRect(-0.7, -0.05, 0.35, 0.28); c.fillRect(0.0, 0.0, 0.4, 0.12); }
   else if (w === 'rifle') { c.fillRect(-0.7, -0.16, 1.4, 0.16); c.fillRect(-0.7, -0.05, 0.3, 0.3); c.fillRect(-0.1, 0, 0.14, 0.38); c.fillRect(0.4, -0.3, 0.1, 0.16); }
   else if (w === 'grenade') { c.beginPath(); c.arc(0, 0.08, 0.3, 0, TAU); c.fill(); c.fillRect(-0.08, -0.35, 0.16, 0.2); c.fillRect(0.05, -0.35, 0.25, 0.07); }
+  else if (w === 'knife') { c.fillRect(-0.45, -0.06, 0.35, 0.14); c.beginPath(); c.moveTo(-0.1, -0.1); c.lineTo(0.55, 0); c.lineTo(-0.1, 0.1); c.fill(); }
+  else if (w === 'katana') { c.lineWidth = 0.09; c.lineCap = 'round'; c.beginPath(); c.moveTo(-0.6, 0.3); c.quadraticCurveTo(0.1, -0.05, 0.65, -0.35); c.stroke(); c.fillRect(-0.42, 0.05, 0.08, 0.28); }
+  else if (w === 'magnum') { c.fillRect(-0.45, -0.18, 0.9, 0.16); c.beginPath(); c.arc(-0.05, -0.02, 0.14, 0, TAU); c.fill(); c.fillRect(-0.45, -0.05, 0.2, 0.42); }
+  else if (w === 'sniper') { c.fillRect(-0.85, -0.08, 1.7, 0.1); c.fillRect(-0.85, -0.05, 0.35, 0.26); c.fillRect(-0.15, -0.28, 0.45, 0.12); c.fillRect(0.0, -0.18, 0.06, 0.1); }
+  else if (w === 'minigun') { for (let k = 0; k < 3; k++) c.fillRect(-0.3, -0.24 + k * 0.14, 1.1, 0.08); c.fillRect(-0.7, -0.3, 0.45, 0.5); }
+  else if (w === 'flamer') { c.fillRect(-0.5, -0.1, 1.2, 0.14); c.beginPath(); c.arc(-0.35, 0.18, 0.2, 0, TAU); c.fill(); c.fillStyle = '#ff8a3a'; c.beginPath(); c.moveTo(0.7, -0.03); c.lineTo(0.95, -0.2); c.lineTo(0.95, 0.15); c.fill(); }
+  else if (w === 'molotov') { c.fillRect(-0.18, -0.1, 0.36, 0.5); c.fillRect(-0.07, -0.35, 0.14, 0.26); c.fillStyle = '#ff8a3a'; c.beginPath(); c.arc(0, -0.45, 0.12, 0, TAU); c.fill(); }
   else if (w === 'rocket') { c.fillRect(-0.75, -0.13, 1.5, 0.26); c.fillRect(-0.1, 0.1, 0.15, 0.3); c.beginPath(); c.moveTo(0.75, -0.2); c.lineTo(1.0, 0); c.lineTo(0.75, 0.2); c.fill(); }
   c.restore();
 }
@@ -5402,8 +5479,8 @@ function drawBuildings(amb) {
   vis.sort((a, b) => b._d - a._d);
   for (const b of vis) drawBuilding(b, amb, night);
 }
-const PLACE_MARK = { safehouse: '#9be15d', ammu: '#ff6b5a', ammu2: '#ff6b5a', burger: '#ffb347', burger2: '#ffb347', mart: '#7ae68f', mart2: '#7ae68f', mart3: '#7ae68f', jobcenter: '#6fb6ff', broker: '#ff5d8f' };
-const SHOP_ROOF = { safehouse: ['#4a7a3f', '#f2fff0'], ammu: ['#b23a2e', '#f2f2f2'], burger: ['#e0572f', '#ffe08a'], mart: ['#2e8b57', '#f2fff4'], jobcenter: ['#2d5d9f', '#ffffff'], broker: ['#3a2346', '#ff5d8f'] };
+const PLACE_MARK = { safehouse: '#9be15d', ammu: '#ff6b5a', ammu2: '#ff6b5a', ammu3: '#ff6b5a', burger: '#ffb347', burger2: '#ffb347', burger3: '#ffb347', burger4: '#ffb347', mart: '#7ae68f', mart2: '#7ae68f', mart3: '#7ae68f', mart4: '#7ae68f', mart5: '#7ae68f', jobcenter: '#6fb6ff', broker: '#ff5d8f', clothes: '#e07aff', clothes2: '#e07aff', gym: '#ff9f43', pharmacy: '#3ee07a', pharmacy2: '#3ee07a', bank: '#ffd700' };
+const SHOP_ROOF = { safehouse: ['#4a7a3f', '#f2fff0'], ammu: ['#b23a2e', '#f2f2f2'], burger: ['#e0572f', '#ffe08a'], mart: ['#2e8b57', '#f2fff4'], jobcenter: ['#2d5d9f', '#ffffff'], broker: ['#3a2346', '#ff5d8f'], clothes: ['#8a3b7a', '#ffe3f6'], gym: ['#222', '#ff9f43'], pharmacy: ['#1f8a4c', '#ffffff'], bank: ['#6b5a2a', '#ffd700'], biz: ['#4a3a14', '#ffd166'], casino: ['#1d1233', '#ff5d8f'] };
 function drawBuilding(b, amb, night) {
   const X0 = b.x0 * T, Y0 = b.y0 * T, X1 = (b.x1 + 1) * T, Y1 = (b.y1 + 1) * T, h = b.h;
   const P = (x, y, z) => proj(x, y, z);
@@ -6405,6 +6482,7 @@ function placeIcons() {
   for (const m of World.marinas || []) out.push({ x: m.x, y: m.y, ch: '배', c: '#4fc3f7', label: '마리나(보트)' });
   if (pl.mygarage) out.push({ x: pl.mygarage.x, y: pl.mygarage.y, ch: '차', c: '#9be15d', label: '내 차고' });
   if (pl.dealer) out.push({ x: pl.dealer.x, y: pl.dealer.y, ch: 'D', c: '#c77dff', label: '네온 모터스(차량 매매)' });
+  for (const [k, ch, c, l] of [['ammu3', '총', '#ff6b5a', '총포상'], ['burger3', '버', '#ffb347', '버거 샷'], ['burger4', '버', '#ffb347', '버거 샷'], ['mart4', '편', '#7ae68f', '편의점'], ['mart5', '편', '#7ae68f', '편의점'], ['clothes', '옷', '#e07aff', '옷가게'], ['clothes2', '옷', '#e07aff', '옷가게'], ['gym', '체', '#ff9f43', '체육관'], ['pharmacy', '약', '#3ee07a', '약국'], ['pharmacy2', '약', '#3ee07a', '약국'], ['bank', '은', '#ffd700', '은행']]) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch, c, label: l });
   if (pl.ammu2) out.push({ x: pl.ammu2.x, y: pl.ammu2.y, ch: '총', c: '#ff6b5a', label: '총포상' });
   for (const k of ['burger', 'burger2']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '버', c: '#ffb347', label: '버거 샷' });
   for (const k of ['mart', 'mart2', 'mart3']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '편', c: '#7ae68f', label: '편의점' });
@@ -6499,7 +6577,7 @@ function drawFullMap() {
   const c = ctx, P = Game.player;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
   c.fillStyle = 'rgba(6,10,18,0.92)'; c.fillRect(0, 0, CW, CH);
-  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  군사 기지 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)'], ['#9be15d', '차  내 차고 (산 차량 보관·저장)'], ['#4fc3f7', '배  마리나 (제트스키·보트)'], ['#ffd166', '₩  사업체 (사면 1분마다 수입, 초록 = 소유)'], ['#ff5d8f', '♦  다이아몬드 카지노']];
+  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  군사 기지 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)'], ['#9be15d', '차  내 차고 (산 차량 보관·저장)'], ['#4fc3f7', '배  마리나 (제트스키·보트)'], ['#ffd166', '₩  사업체 (사면 1분마다 수입, 초록 = 소유)'], ['#ff5d8f', '♦  다이아몬드 카지노'], ['#e07aff', '옷  옷가게 (변장)'], ['#ff9f43', '체  체육관'], ['#3ee07a', '약  약국'], ['#ffd700', '은  은행 (털 수 있다)']];
   // 범례 줄 수를 먼저 재서 지도 크기를 정한다 (글자가 지도·도움말과 겹치지 않게)
   const lf = `500 ${12 * UI.s}px ${FONT_KR}`, lh = 18 * Math.max(1, UI.s);
   c.font = lf;
@@ -6600,6 +6678,9 @@ const Menu = {
       document.querySelectorAll('.tab').forEach(t => t.hidden = t.id !== b.dataset.tab);
     });
     document.getElementById('shop-close').onclick = () => Shop.close();
+    document.getElementById('bag-close').onclick = () => Bag.close();
+    document.getElementById('bag-auto').onclick = () => { Bag.useBest(); Bag.render(); };
+    document.getElementById('bagui').addEventListener('click', e => { if (e.target.id === 'bagui') Bag.close(); });
   },
   show() { this.el.hidden = false; const cont = document.getElementById('btn-continue'); cont.hidden = !Save.read(); },
   hide() { this.el.hidden = true; },
@@ -6612,6 +6693,8 @@ function drawItemIcon(g, id, S) {
   g.save(); g.scale(S, S);
   const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
   switch (id) {
+    case 'bandage': R(-0.45, -0.18, 0.9, 0.36, '#f4ece0'); R(-0.1, -0.18, 0.2, 0.36, '#e0d4c0'); break;
+    case 'painkiller': R(-0.4, -0.15, 0.4, 0.3, '#e0443e'); R(0, -0.15, 0.4, 0.3, '#f2f2f2'); break;
     case 'vital': R(-0.22, -0.5, 0.44, 0.95, '#2fbf71'); R(-0.14, -0.62, 0.28, 0.14, '#f2f2f2'); R(-0.22, -0.1, 0.44, 0.18, '#f2f2f2'); R(-0.05, -0.16, 0.1, 0.3, '#e0443e'); R(-0.15, -0.06, 0.3, 0.1, '#e0443e'); break;
     case 'burger': R(-0.6, -0.35, 1.2, 0.25, '#d99a4e'); R(-0.62, -0.1, 1.24, 0.12, '#4b8f3a'); R(-0.62, 0.02, 1.24, 0.16, '#6b3a22'); R(-0.62, 0.18, 1.24, 0.08, '#f2c14e'); R(-0.58, 0.26, 1.16, 0.18, '#d99a4e'); break;
     case 'set': R(-0.75, -0.2, 0.8, 0.18, '#d99a4e'); R(-0.76, -0.02, 0.82, 0.14, '#6b3a22'); R(-0.72, 0.12, 0.74, 0.16, '#d99a4e'); R(0.15, -0.45, 0.45, 0.8, '#c7302a'); R(0.22, -0.6, 0.06, 0.2, '#f2c14e'); R(0.34, -0.62, 0.06, 0.22, '#f2c14e'); break;
@@ -6629,8 +6712,9 @@ function drawItemIcon(g, id, S) {
 }
 const SHOPS = {
   ammu: { title: '총포상', sub: '무기와 탄약', items: () => [
-    ...['pistol', 'smg', 'shotgun', 'rifle', 'grenade', 'rocket'].map(w => ({ id: w, name: WEAPONS[w].name, price: WEAPONS[w].price, desc: `탄약 ${WEAPONS[w].pack}발` })),
-    { id: 'armor', name: '방탄복', price: 500, desc: '피해 흡수 100' }, { id: 'bat', name: '야구방망이', price: 100, desc: '근접 무기' }] },
+    ...['pistol', 'magnum', 'smg', 'shotgun', 'rifle', 'sniper', 'minigun', 'flamer', 'grenade', 'molotov', 'rocket'].map(w => ({ id: w, name: WEAPONS[w].name, price: WEAPONS[w].price, desc: `탄약 ${WEAPONS[w].pack}발${w === 'sniper' ? ' · 사거리 150m' : w === 'minigun' ? ' · 초당 28발' : w === 'flamer' ? ' · 앞쪽 8m를 태운다' : w === 'molotov' ? ' · 떨어진 곳이 5초간 불탄다' : w === 'magnum' ? ' · 한 방이 강하다' : ''}` })),
+    { id: 'armor', name: '방탄복', price: 500, desc: '피해 흡수 100' },
+    ...['bat', 'knife', 'katana'].map(w => ({ id: w, name: WEAPONS[w].name, price: w === 'bat' ? 100 : WEAPONS[w].price, desc: '근접 무기' }))] },
   burger: { title: '버거 샷', sub: '든든하게 먹고 체력을 채우자', items: () => [
     { id: 'burger', name: '치즈 버거', price: 12, desc: '체력 +25', hp: 25 },
     { id: 'set', name: '더블 버거 세트', price: 30, desc: '체력 +60, 달리기 체력 가득', hp: 60, stam: 1 },
@@ -6643,7 +6727,43 @@ const SHOPS = {
     { id: 'medkit', name: '구급상자', price: 120, desc: '체력 완전 회복', hp: 100 },
     { id: 'vital', name: '체력 유지제', price: 80, desc: '90초 동안 체력이 계속 차오르고 지치지 않는다', vital: 90 },
     { id: 'lvest', name: '경량 방탄조끼', price: 300, desc: '방어 +50', armor: 50 },
+    { id: 'bandage', name: '붕대', price: 25, desc: '체력 +35', hp: 35 },
     { id: 'lotto', name: '즉석 복권', price: 10, desc: '5% 확률 $500, 1% 확률 $5,000', lotto: true }] },
+};
+// 옷가게 · 체육관 · 약국 · 은행
+const OUTFITS = [['정장', '#2b2d42', '#1b1b1f', 1200], ['가죽 재킷', '#3b2618', '#1e1e1e', 900], ['하와이안 셔츠', '#ff8fab', '#f4f1de', 400], ['트레이닝복', '#1f6f9b', '#1f6f9b', 350], ['흰 티', '#f2f2f2', '#34495e', 150], ['네온 파티룩', '#ff5d8f', '#111', 2500], ['작업복', '#c8871f', '#3b4a6b', 300], ['검은 후드', '#1d1d1f', '#2b2f3a', 600]];
+SHOPS.clothes = { title: '옷가게', sub: '갈아입으면 수배 중이라도 경찰이 못 알아볼 수 있다 (경찰 시야 밖일 때 ★ -1)', items: () => OUTFITS.map(([n, sh, pa, pr]) => ({ id: 'outfit', name: n, price: pr, desc: '갈아입기', ok: () => true, fn: () => {
+  const P = Game.player; if (P.money < pr) return; P.money -= pr; P.shirt = sh; P.pants = pa; Sfx.cash();
+  if (Wanted.stars > 0 && !Wanted.seen) { Wanted.drop(1); UI.toast(`${n}(으)로 갈아입었다 — 변장으로 수배 ★ -1`); } else UI.toast(`${n}(으)로 갈아입었다`);
+  Save.write(); } })) };
+SHOPS.gym = { title: '체육관', sub: '몸을 단련하면 영원히 남는다', items: () => { const P = Game.player, free = Biz.has('biz_gymchain'); return [
+  { id: 'gym_str', name: `근력 운동 (최대 체력 ${P.maxHp} → ${Math.min(200, P.maxHp + 10)})`, price: free ? 0 : 2000, desc: '최대 체력 +10, 최대 200' + (free ? ' · 체인 소유주 무료' : ''), ok: () => P.maxHp < 200, fn: () => { const c = free ? 0 : 2000; if (P.money < c || P.maxHp >= 200) return; P.money -= c; P.maxHp += 10; P.hp = P.maxHp; Sfx.passed(); UI.toast(`최대 체력 ${P.maxHp}`); Save.write(); Shop.open('gym'); } },
+  { id: 'gym_end', name: `지구력 운동 (달리기 ${Math.round((P.endurance || 1) * 100)}%)`, price: free ? 0 : 1500, desc: '달리기 체력이 덜 줄어든다, 최대 250%', ok: () => (P.endurance || 1) < 2.5, fn: () => { const c = free ? 0 : 1500; if (P.money < c) return; P.money -= c; P.endurance = Math.min(2.5, (P.endurance || 1) + 0.15); Sfx.passed(); Save.write(); Shop.open('gym'); } },
+  { id: 'gym_shoot', name: `사격 훈련 (명중률 ${Math.round((P.aimSkill || 1) * 100)}%)`, price: free ? 0 : 3000, desc: '총알이 덜 퍼진다, 최대 200%', ok: () => (P.aimSkill || 1) < 2, fn: () => { const c = free ? 0 : 3000; if (P.money < c) return; P.money -= c; P.aimSkill = Math.min(2, (P.aimSkill || 1) + 0.1); Sfx.passed(); Save.write(); Shop.open('gym'); } }]; } };
+SHOPS.pharmacy = { title: '약국', sub: '가방에 넣어 두면 언제든 꺼내 쓴다', items: () => [
+  { id: 'bandage', name: '붕대', price: 25, desc: '체력 +35', hp: 35 },
+  { id: 'medkit', name: '구급상자', price: 100, desc: '체력 완전 회복', hp: 100 },
+  { id: 'vital', name: '체력 유지제', price: 70, desc: '90초 동안 체력이 계속 차오른다', vital: 90 },
+  { id: 'painkiller', name: '진통제', price: 150, desc: '60초 동안 받는 피해 -40%' },
+  { id: 'energy', name: '에너지 드링크', price: 15, desc: '60초 동안 지치지 않고 달리기', stam: 1, boost: 60 }] };
+SHOPS.bank = { title: '네온 중앙은행', sub: '금고에는 늘 현금이 가득하다…', items: () => {
+  const P = Game.player, gun = !WEAPONS[P.weapon].melee && !WEAPONS[P.weapon].throw, cool = Math.max(0, Math.ceil(((Game.bankCool || 0) - Game.time) / 60));
+  return [{ id: 'rob', name: '은행 털기 — 총을 겨누고 금고를 연다', price: 0, btn: '털기', desc: cool ? `경계가 삼엄하다 (${cool}분 뒤 가능)` : gun ? '12초 동안 은행 안에서 버티면 $25,000~$60,000 · 곧바로 수배 ★★★ → ★★★★★' : '총을 들고 와야 한다', ok: () => gun && !cool && !Missions.active, fn: () => { Shop.close(); BankRob.start(); } }];
+} };
+const BankRob = {
+  on: false, t: 0,
+  start() { const B = World.places.bank; this.on = true; this.t = 0; Wanted.set(Math.max(3, Wanted.stars)); UI.big('은행 강도!', '12초 동안 금고 앞을 지켜라', 2, '#ff4d4d'); scarePeds(B.x, B.y, 40); },
+  update(dt) {
+    if (!this.on) return;
+    const P = Game.player, B = World.places.bank;
+    if (P.dead || P.car || dist(P.x, P.y, B.x, B.y) > 7) { this.on = false; UI.objective(''); UI.toast('은행에서 벗어나 강도가 실패했다'); return; }
+    this.t += dt; UI.objective(`금고 여는 중… ${Math.min(100, Math.round(this.t / 12 * 100))}% — 은행 앞을 벗어나지 마라`);
+    if (this.t >= 12) {
+      this.on = false; UI.objective(''); Game.bankCool = Game.time + 600;
+      const amt = randi(25000, 60000); P.money += amt; Sfx.passed(); Wanted.set(5);
+      UI.big('금고 털기 성공!', `+$${amt.toLocaleString()} — 수배 ★★★★★, 달아나라!`, 3, '#8df28d');
+    }
+  },
 };
 const Shop = {
   kind: null,
@@ -6658,6 +6778,7 @@ const Shop = {
     const items = S.items();
     // 사업체 혜택: 버거 샷 가맹점 → 버거 반값
     if (kind === 'burger' && Biz.has('biz_burger')) for (const it of items) { it.price = Math.ceil(it.price / 2); it.desc += ' (가맹점주 반값)'; }
+    if ((kind === 'mart' || kind === 'pharmacy') && Biz.has('biz_mart')) for (const it of items) if (it.price) { it.price = Math.ceil(it.price / 2); it.desc += ' (본사 반값)'; }
     const buttons = [], bagBtns = [];
     const food = it => !!CONSUMABLES[it.id];
     // 체력이 가득해도 음식은 살 수 있다 (가방에 넣는다)
@@ -6767,7 +6888,7 @@ const Touch = {
     tap('t-steal', () => { if (Pick.target) Pick.attempt(); });
     tap('t-enter', () => { Input.pressed['KeyF'] = true; });
     tap('t-weapon', () => { Input.pressed['KeyE'] = true; });
-    tap('t-bag', () => Bag.useBest());
+    tap('t-bag', () => Bag.open());
     tap('t-radio', () => { Input.pressed['KeyR'] = true; });
     tap('t-map', () => { Input.pressed['KeyM'] = true; });
     tap('t-pause', () => { Input.pressed['Escape'] = true; });
@@ -6846,6 +6967,7 @@ const CONSUMABLES = {
   cola: { name: '콜라', stam: 1 }, onigiri: { name: '삼각김밥', hp: 12 }, ramen: { name: '컵라면', hp: 20 },
   energy: { name: '에너지 드링크', stam: 1, boost: 60 }, medkit: { name: '구급상자', hp: 100 },
   vital: { name: '체력 유지제', vital: 90 },
+  bandage: { name: '붕대', hp: 35 }, painkiller: { name: '진통제', guard: 60 },
 };
 
 const Bag = {
@@ -6863,6 +6985,7 @@ const Bag = {
     if (it.stam) { P.stamina = 1; P.exhausted = false; }
     if (it.boost) P.boostT = it.boost;
     if (it.vital) P.vitalT = it.vital;
+    if (it.guard) P.guardT = it.guard;
     Sfx.tone({ f0: 520, f1: 780, dur: 0.12, type: 'triangle', vol: 0.18 });
   },
   use(id) {
@@ -6888,8 +7011,34 @@ const Bag = {
     if (b.vital && !(P.vitalT > 0)) { this.use('vital'); return; }
     UI.toast('지금은 먹을 필요가 없다');
   },
+  // 가방 열기: 게임이 잠시 멈추고, 원하는 물건을 골라 바로 쓴다 (언제 어디서나 · 운전 중에도)
+  DESC: { burger: '체력 +25', set: '체력 +60 · 달리기 가득', fries: '체력 +10', cola: '달리기 가득', onigiri: '체력 +12', ramen: '체력 +20', energy: '60초 지치지 않음', medkit: '체력 완전 회복', vital: '90초 체력 계속 회복', bandage: '체력 +35', painkiller: '60초 받는 피해 -40%' },
+  open() {
+    const P = Game.player;
+    if (P.dead || (Game.state !== 'play' && Game.state !== 'bag')) return;
+    if (Game.state === 'bag') { this.close(); return; }
+    Game.state = 'bag'; this.el = document.getElementById('bagui'); this.el.hidden = false;
+    this.render();
+  },
+  close() { if (this.el) this.el.hidden = true; if (Game.state === 'bag') Game.state = 'play'; },
+  render() {
+    const P = Game.player, b = P.bag || {}, L = document.getElementById('bag-list');
+    document.getElementById('bag-stat').textContent = `체력 ${Math.round(P.hp)}/${P.maxHp} · 달리기 ${Math.round(P.stamina * 100)}% · ${this.count()}/${this.MAX}개${P.vitalT > 0 ? ` · 체력 유지 ${Math.ceil(P.vitalT)}초` : ''}`;
+    L.innerHTML = '';
+    const ids = Object.keys(b).filter(k => b[k] > 0);
+    if (!ids.length) L.innerHTML = '<div class="cz-note">비어 있다 — 버거 샷·편의점·약국에서 [가방에]로 사 두자</div>';
+    for (const id of ids) {
+      const row = document.createElement('div'); row.className = 'bag-it';
+      const cv = document.createElement('canvas'); cv.width = 44; cv.height = 34; const g = cv.getContext('2d'); g.translate(22, 17); drawItemIcon(g, id, 22);
+      const info = document.createElement('div'); info.innerHTML = `${CONSUMABLES[id].name} ×${b[id]}<span>${this.DESC[id] || ''}</span>`;
+      const btn = document.createElement('button'); btn.className = 'btn small'; btn.textContent = '사용';
+      btn.onclick = () => { this.use(id); this.render(); };
+      row.append(cv, info, btn); L.append(row);
+    }
+  },
   update(dt) {
     const P = Game.player;
+    if (P.guardT > 0) P.guardT -= dt;
     if (P.vitalT > 0 && !P.dead) {
       P.vitalT -= dt;
       P.hp = Math.min(P.maxHp, P.hp + 6 * dt);
@@ -7002,7 +7151,7 @@ const Fleet = {
     const c = Dealer.deliver(e.type, World.places.mygarage, e.color); c.fleetId = e.id; e.wrecked = false;
     UI.toast(`${c.V.name}을(를) 꺼냈다`);
   },
-  insurance(e) { return Math.round((VEHICLE_PRICES[e.type] || 3000) * 0.08 / 10) * 10; },
+  insurance(e) { return Math.round((VEHICLE_PRICES[e.type] || 3000) * 0.08 * (Biz.has('biz_auto') ? 0.5 : 1) / 10) * 10; },
 };
 SHOPS.mygarage = {
   title: '내 차고', sub: '산 차량과 보관한 차는 저장된다 · 부서진 차는 보험으로 복구',
@@ -7031,6 +7180,12 @@ const BUSINESSES = {
   biz_logi: { name: '하버 물류창고', price: 1600000, perMin: 9600, desc: '밀수 운반 보수 +25%' },
   biz_hotel: { name: '스카이라인 호텔', price: 2500000, perMin: 15000, desc: '호텔에서 쉬면 체력·방탄복 가득(은신처처럼 저장)' },
   biz_factory: { name: '아이언 밸리 제철소', price: 3200000, perMin: 19000, desc: '가장 많이 버는 일반 사업체' },
+  biz_mart: { name: '24 편의점 본사', price: 300000, perMin: 1800, desc: '편의점·약국 물건 반값' },
+  biz_gymchain: { name: '파워 피트니스 본사', price: 450000, perMin: 2700, desc: '체육관 훈련 무료' },
+  biz_auto: { name: '네온 정비소', price: 650000, perMin: 3900, desc: '페인트샵 무료 · 내 차고 보험 수리 반값' },
+  biz_cinema: { name: '네온 시네마', price: 900000, perMin: 5400, desc: '다운타운 문화의 중심' },
+  biz_marina: { name: '마리나 요트 클럽', price: 1400000, perMin: 8400, desc: '바다 사업의 큰손' },
+  biz_tower: { name: '네온 방송국', price: 4000000, perMin: 24000, desc: '도시 전체에 광고 — 모든 사업체 수입 +10%' },
   biz_casino: { name: '다이아몬드 카지노', price: 5000000, perMin: 30000, desc: '베팅 한도 10배 · 카지노에서 잃은 돈의 20% 환급' },
 };
 const BIZ_MULT = [1, 1.5, 2.2, 3.1, 4.3];       // 단계별 수입 배율
@@ -7040,7 +7195,7 @@ const Biz = {
   t: 0,
   owned() { return Game.props || (Game.props = {}); },
   lv(k) { const o = this.owned()[k]; return o ? o.lv || 1 : 0; },
-  perMin(k) { const B = BUSINESSES[k], L = this.lv(k); return L ? Math.round(B.perMin * BIZ_MULT[L - 1]) : 0; },
+  perMin(k) { const B = BUSINESSES[k], L = this.lv(k); return L ? Math.round(B.perMin * BIZ_MULT[L - 1] * (this.has('biz_tower') && k !== 'biz_tower' ? 1.1 : 1)) : 0; },
   total() { return Object.keys(this.owned()).reduce((a, k) => a + (BUSINESSES[k] ? this.perMin(k) : 0), 0); },
   // 실제 플레이 1분마다 소유한 사업체 수입이 바로 입금된다
   update(dt) {
@@ -7305,6 +7460,7 @@ const Game = {
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
     this.fleet = sv ? sv.fleet || [] : [];
     this.props = sv ? sv.props || {} : {};
+    if (sv && sv.body) { Object.assign(P, sv.body); P.hp = P.maxHp; }
     placeStaticPickups();
     Military.reset(); AirPatrol.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
     this.waypoint = null; this.noWanted = false;
@@ -7381,6 +7537,8 @@ const Game = {
       this.deathT += dt;
       this.update(dt, true);
       if (this.deathT > 4.2) this.respawn(st);
+    } else if (st === 'bag') {
+      if (keyHit('Escape', 'KeyB', 'PadB')) Bag.close();
     } else if (st === 'shop') {
       if (keyHit('Escape', 'PadB')) { if (!document.getElementById('jobs').hidden) Jobs.closeBoard(); else if (!document.getElementById('casino').hidden) { if (!Casino.busy) Casino.close(); } else Shop.close(); }
     }
@@ -7394,7 +7552,7 @@ const Game = {
       drawWorldTexts3D();
       Rain.draw(this.weather.intensity);
     } else renderScene();
-    if (st === 'play' || st === 'wasted' || st === 'busted' || st === 'shop' || st === 'paused') { drawHUD(dt); if (st === 'play') drawLockHUD(); }
+    if (st === 'play' || st === 'wasted' || st === 'busted' || st === 'shop' || st === 'paused' || st === 'bag') { drawHUD(dt); if (st === 'play') drawLockHUD(); }
     if (st === 'wasted' || st === 'busted') drawDeathScreen(st, this.deathT);
     if (st === 'map') drawFullMap();
   },
@@ -7434,9 +7592,10 @@ const Game = {
       if (keyHit('Equal', 'NumpadAdd')) Zoom.by(1 / 1.15); if (keyHit('Minus', 'NumpadSubtract')) Zoom.by(1.15);
       if (!P.car && keyHit('PadRB')) cycleWeapon(P, 1);
       if (!P.car && keyHit('PadLB')) cycleWeapon(P, -1);
-      for (let i = 1; i <= 8; i++) if (keyHit('Digit' + i)) { const w = WEAPON_ORDER[i - 1]; if (P.inv[w] > 0) { P.weapon = w; UI.weaponFlash = 1; } }
+      // 숫자키 1~9·0: 가진 무기 중 n번째
+      for (let i = 0; i <= 9; i++) if (keyHit('Digit' + i)) { const own = WEAPON_ORDER.filter(w => P.inv[w] > 0), w = own[(i + 9) % 10]; if (w) { P.weapon = w; UI.weaponFlash = 1; } }
       if (keyHit('KeyR', 'PadDown') && P.car) { Radio.cycle(); }
-      if (keyHit('KeyB')) Bag.useBest();
+      if (keyHit('KeyB')) Bag.open();
       if (keyHit('KeyC', 'PadUp')) cycleView();
       if (keyHit('KeyZ')) Zoom.set(Settings.zoom < 0.7 ? 0.75 : Settings.zoom < 1.1 ? 1.4 : 0.55);
       if (P.car && (P.car.type === 'police' || P.car.type === 'ambulance') && keyHit('KeyG', 'PadLeft')) { P.car.siren = !P.car.siren; }
@@ -7448,7 +7607,7 @@ const Game = {
     Jay.update(dt);
     Missions.update(dt);
     Jobs.update(dt);
-    Military.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update(); Biz.update(dt);
+    Military.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update(); Biz.update(dt); BankRob.update(dt);
     Talk.update(dt); Aim.update(dt); EMS.update(dt); Givers.update(); Vendors.update(dt); GPS.update(dt);
     // 체력 자연 회복: 6초 동안 안 다치면 50까지 천천히 (GTA V)
     if (!P.dead && P.hp < 50 && this.time - (P.lastHurt || 0) > 6) P.hp = Math.min(50, P.hp + 2 * dt);
@@ -7488,7 +7647,7 @@ const Game = {
       if (!P.car && !menu && !P.dead) pedCarCollide(P, c);
     }
     if (P.alt > 0 && (P.dead || menu)) P.alt = Math.max(0, P.alt - 25 * dt);
-    updateProjectiles(dt);
+    updateProjectiles(dt); Fires.update(dt);
     Particles.update(dt);
     Effects.update(dt);
     // 제거
@@ -7616,13 +7775,14 @@ const Game = {
       const S = World.places[key]; if (!S || !P.car || P.car.alt > 1.2 || this.sprayCool > 0) continue;
       if (dist(P.car.x, P.car.y, S.x, S.y) < 5 && P.car.speed < 5) {
         this.sprayCool = 12;
-        if (P.money < 100) { UI.toast('페인트샵: $100이 필요하다'); continue; }
+        const sprayCost = Biz.has('biz_auto') ? 0 : 100;
+        if (P.money < sprayCost) { UI.toast('페인트샵: $100이 필요하다'); continue; }
         if (Wanted.stars > 0 && Wanted.seen) { UI.toast('경찰이 보고 있다! 따돌린 뒤 다시 오자'); this.sprayCool = 3; continue; }
-        P.money -= 100; P.car.hp = P.car.maxHp; P.car.burnT = 0;
+        P.money -= sprayCost; P.car.hp = P.car.maxHp; P.car.burnT = 0;
         P.car.color = pick(['#e0262b', '#3c6fb0', '#f2c200', '#1d1d1f', '#e8e8ea', '#4e7a52', '#7a3b8f', '#f07c1b']);
         const had = Wanted.stars > 0;
         Wanted.clear(); Sfx.cash();
-        UI.toast(had ? '새 도색 완료! 수배가 해제됐다 (-$100)' : '수리 및 도색 완료 (-$100)');
+        UI.toast((had ? '새 도색 완료! 수배가 해제됐다' : '수리 및 도색 완료') + (sprayCost ? ' (-$100)' : ' (정비소 소유주 무료)'));
       }
     }
     // 네온 모터스 · 내 차고: 차를 몰고 마당에 세우거나 걸어서 들어가면 화면이 열린다
@@ -7635,7 +7795,7 @@ const Game = {
     }
     // 상점 · 직업 게시판 (걸어서 문 앞 마커에 들어가면 열림)
     if (!P.car && !(P.alt > 0) && this.shopCool <= 0 && !(Missions.active && Missions.active.def.noShop)) {
-      for (const [k, kind] of [...Object.keys(BUSINESSES).map(b => [b, b]), ['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart']]) {
+      for (const [k, kind] of [...Object.keys(BUSINESSES).map(b => [b, b]), ['ammu3', 'ammu'], ['burger3', 'burger'], ['burger4', 'burger'], ['mart4', 'mart'], ['mart5', 'mart'], ['clothes', 'clothes'], ['clothes2', 'clothes'], ['gym', 'gym'], ['pharmacy', 'pharmacy'], ['pharmacy2', 'pharmacy'], ['bank', 'bank'], ['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart']]) {
         const S = World.places[k]; if (S && dist(P.x, P.y, S.x, S.y) < 1.8) { Shop.open(kind); return; }
       }
       const SH = World.places.safehouse;
@@ -7676,7 +7836,7 @@ const Game = {
       P.inv = { fist: Infinity }; P.weapon = 'fist';
     }
     const np = new PlayerPed(spot.x, spot.y);
-    Object.assign(np, { money: P.money, displayMoney: P.money, inv: P.inv, weapon: P.weapon in P.inv ? P.weapon : 'fist', bag: kind === 'wasted' ? P.bag : {} });
+    Object.assign(np, { money: P.money, displayMoney: P.money, inv: P.inv, weapon: P.weapon in P.inv ? P.weapon : 'fist', bag: kind === 'wasted' ? P.bag : {}, maxHp: P.maxHp, hp: P.maxHp, endurance: P.endurance, aimSkill: P.aimSkill, shirt: P.shirt, pants: P.pants });
     if (kind === 'wasted') np.inv = P.inv;
     this.player = np;
     Wanted.reset(); Police.reset(); Jay.reset();
@@ -7736,7 +7896,7 @@ function updatePlayerFoot(P, dt) {
   if (P.exhausted && P.stamina > 0.35) P.exhausted = false;
   const sprint = wantRun && !P.exhausted;
   P.boostT = Math.max(0, P.boostT - dt);
-  if (sprint) { if (P.boostT <= 0) { P.stamina -= dt / 9; if (P.stamina <= 0) { P.stamina = 0; P.exhausted = true; UI.toast('숨이 차다! 잠깐 걸으며 쉬자'); } } }
+  if (sprint) { if (P.boostT <= 0) { P.stamina -= dt / (9 * (P.endurance || 1)); if (P.stamina <= 0) { P.stamina = 0; P.exhausted = true; UI.toast('숨이 차다! 잠깐 걸으며 쉬자'); } } }
   else P.stamina = Math.min(1, P.stamina + dt * (mag > 0.15 ? 0.12 : 0.28));
   P.swim = tileAt(P.x, P.y) === TL.WATER;
   if (P.swim && !P._swimMsg) { P._swimMsg = true; UI.toast('헤엄치는 중 — 총은 쓸 수 없다'); } else if (!P.swim) P._swimMsg = false;

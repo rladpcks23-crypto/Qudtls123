@@ -256,6 +256,7 @@ function placeIcons() {
   for (const m of World.marinas || []) out.push({ x: m.x, y: m.y, ch: '배', c: '#4fc3f7', label: '마리나(보트)' });
   if (pl.mygarage) out.push({ x: pl.mygarage.x, y: pl.mygarage.y, ch: '차', c: '#9be15d', label: '내 차고' });
   if (pl.dealer) out.push({ x: pl.dealer.x, y: pl.dealer.y, ch: 'D', c: '#c77dff', label: '네온 모터스(차량 매매)' });
+  for (const [k, ch, c, l] of [['ammu3', '총', '#ff6b5a', '총포상'], ['burger3', '버', '#ffb347', '버거 샷'], ['burger4', '버', '#ffb347', '버거 샷'], ['mart4', '편', '#7ae68f', '편의점'], ['mart5', '편', '#7ae68f', '편의점'], ['clothes', '옷', '#e07aff', '옷가게'], ['clothes2', '옷', '#e07aff', '옷가게'], ['gym', '체', '#ff9f43', '체육관'], ['pharmacy', '약', '#3ee07a', '약국'], ['pharmacy2', '약', '#3ee07a', '약국'], ['bank', '은', '#ffd700', '은행']]) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch, c, label: l });
   if (pl.ammu2) out.push({ x: pl.ammu2.x, y: pl.ammu2.y, ch: '총', c: '#ff6b5a', label: '총포상' });
   for (const k of ['burger', 'burger2']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '버', c: '#ffb347', label: '버거 샷' });
   for (const k of ['mart', 'mart2', 'mart3']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '편', c: '#7ae68f', label: '편의점' });
@@ -350,7 +351,7 @@ function drawFullMap() {
   const c = ctx, P = Game.player;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
   c.fillStyle = 'rgba(6,10,18,0.92)'; c.fillRect(0, 0, CW, CH);
-  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  군사 기지 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)'], ['#9be15d', '차  내 차고 (산 차량 보관·저장)'], ['#4fc3f7', '배  마리나 (제트스키·보트)'], ['#ffd166', '₩  사업체 (사면 1분마다 수입, 초록 = 소유)'], ['#ff5d8f', '♦  다이아몬드 카지노']];
+  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  군사 기지 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)'], ['#9be15d', '차  내 차고 (산 차량 보관·저장)'], ['#4fc3f7', '배  마리나 (제트스키·보트)'], ['#ffd166', '₩  사업체 (사면 1분마다 수입, 초록 = 소유)'], ['#ff5d8f', '♦  다이아몬드 카지노'], ['#e07aff', '옷  옷가게 (변장)'], ['#ff9f43', '체  체육관'], ['#3ee07a', '약  약국'], ['#ffd700', '은  은행 (털 수 있다)']];
   // 범례 줄 수를 먼저 재서 지도 크기를 정한다 (글자가 지도·도움말과 겹치지 않게)
   const lf = `500 ${12 * UI.s}px ${FONT_KR}`, lh = 18 * Math.max(1, UI.s);
   c.font = lf;
@@ -451,6 +452,9 @@ const Menu = {
       document.querySelectorAll('.tab').forEach(t => t.hidden = t.id !== b.dataset.tab);
     });
     document.getElementById('shop-close').onclick = () => Shop.close();
+    document.getElementById('bag-close').onclick = () => Bag.close();
+    document.getElementById('bag-auto').onclick = () => { Bag.useBest(); Bag.render(); };
+    document.getElementById('bagui').addEventListener('click', e => { if (e.target.id === 'bagui') Bag.close(); });
   },
   show() { this.el.hidden = false; const cont = document.getElementById('btn-continue'); cont.hidden = !Save.read(); },
   hide() { this.el.hidden = true; },
@@ -463,6 +467,8 @@ function drawItemIcon(g, id, S) {
   g.save(); g.scale(S, S);
   const R = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
   switch (id) {
+    case 'bandage': R(-0.45, -0.18, 0.9, 0.36, '#f4ece0'); R(-0.1, -0.18, 0.2, 0.36, '#e0d4c0'); break;
+    case 'painkiller': R(-0.4, -0.15, 0.4, 0.3, '#e0443e'); R(0, -0.15, 0.4, 0.3, '#f2f2f2'); break;
     case 'vital': R(-0.22, -0.5, 0.44, 0.95, '#2fbf71'); R(-0.14, -0.62, 0.28, 0.14, '#f2f2f2'); R(-0.22, -0.1, 0.44, 0.18, '#f2f2f2'); R(-0.05, -0.16, 0.1, 0.3, '#e0443e'); R(-0.15, -0.06, 0.3, 0.1, '#e0443e'); break;
     case 'burger': R(-0.6, -0.35, 1.2, 0.25, '#d99a4e'); R(-0.62, -0.1, 1.24, 0.12, '#4b8f3a'); R(-0.62, 0.02, 1.24, 0.16, '#6b3a22'); R(-0.62, 0.18, 1.24, 0.08, '#f2c14e'); R(-0.58, 0.26, 1.16, 0.18, '#d99a4e'); break;
     case 'set': R(-0.75, -0.2, 0.8, 0.18, '#d99a4e'); R(-0.76, -0.02, 0.82, 0.14, '#6b3a22'); R(-0.72, 0.12, 0.74, 0.16, '#d99a4e'); R(0.15, -0.45, 0.45, 0.8, '#c7302a'); R(0.22, -0.6, 0.06, 0.2, '#f2c14e'); R(0.34, -0.62, 0.06, 0.22, '#f2c14e'); break;
@@ -480,8 +486,9 @@ function drawItemIcon(g, id, S) {
 }
 const SHOPS = {
   ammu: { title: '총포상', sub: '무기와 탄약', items: () => [
-    ...['pistol', 'smg', 'shotgun', 'rifle', 'grenade', 'rocket'].map(w => ({ id: w, name: WEAPONS[w].name, price: WEAPONS[w].price, desc: `탄약 ${WEAPONS[w].pack}발` })),
-    { id: 'armor', name: '방탄복', price: 500, desc: '피해 흡수 100' }, { id: 'bat', name: '야구방망이', price: 100, desc: '근접 무기' }] },
+    ...['pistol', 'magnum', 'smg', 'shotgun', 'rifle', 'sniper', 'minigun', 'flamer', 'grenade', 'molotov', 'rocket'].map(w => ({ id: w, name: WEAPONS[w].name, price: WEAPONS[w].price, desc: `탄약 ${WEAPONS[w].pack}발${w === 'sniper' ? ' · 사거리 150m' : w === 'minigun' ? ' · 초당 28발' : w === 'flamer' ? ' · 앞쪽 8m를 태운다' : w === 'molotov' ? ' · 떨어진 곳이 5초간 불탄다' : w === 'magnum' ? ' · 한 방이 강하다' : ''}` })),
+    { id: 'armor', name: '방탄복', price: 500, desc: '피해 흡수 100' },
+    ...['bat', 'knife', 'katana'].map(w => ({ id: w, name: WEAPONS[w].name, price: w === 'bat' ? 100 : WEAPONS[w].price, desc: '근접 무기' }))] },
   burger: { title: '버거 샷', sub: '든든하게 먹고 체력을 채우자', items: () => [
     { id: 'burger', name: '치즈 버거', price: 12, desc: '체력 +25', hp: 25 },
     { id: 'set', name: '더블 버거 세트', price: 30, desc: '체력 +60, 달리기 체력 가득', hp: 60, stam: 1 },
@@ -494,7 +501,43 @@ const SHOPS = {
     { id: 'medkit', name: '구급상자', price: 120, desc: '체력 완전 회복', hp: 100 },
     { id: 'vital', name: '체력 유지제', price: 80, desc: '90초 동안 체력이 계속 차오르고 지치지 않는다', vital: 90 },
     { id: 'lvest', name: '경량 방탄조끼', price: 300, desc: '방어 +50', armor: 50 },
+    { id: 'bandage', name: '붕대', price: 25, desc: '체력 +35', hp: 35 },
     { id: 'lotto', name: '즉석 복권', price: 10, desc: '5% 확률 $500, 1% 확률 $5,000', lotto: true }] },
+};
+// 옷가게 · 체육관 · 약국 · 은행
+const OUTFITS = [['정장', '#2b2d42', '#1b1b1f', 1200], ['가죽 재킷', '#3b2618', '#1e1e1e', 900], ['하와이안 셔츠', '#ff8fab', '#f4f1de', 400], ['트레이닝복', '#1f6f9b', '#1f6f9b', 350], ['흰 티', '#f2f2f2', '#34495e', 150], ['네온 파티룩', '#ff5d8f', '#111', 2500], ['작업복', '#c8871f', '#3b4a6b', 300], ['검은 후드', '#1d1d1f', '#2b2f3a', 600]];
+SHOPS.clothes = { title: '옷가게', sub: '갈아입으면 수배 중이라도 경찰이 못 알아볼 수 있다 (경찰 시야 밖일 때 ★ -1)', items: () => OUTFITS.map(([n, sh, pa, pr]) => ({ id: 'outfit', name: n, price: pr, desc: '갈아입기', ok: () => true, fn: () => {
+  const P = Game.player; if (P.money < pr) return; P.money -= pr; P.shirt = sh; P.pants = pa; Sfx.cash();
+  if (Wanted.stars > 0 && !Wanted.seen) { Wanted.drop(1); UI.toast(`${n}(으)로 갈아입었다 — 변장으로 수배 ★ -1`); } else UI.toast(`${n}(으)로 갈아입었다`);
+  Save.write(); } })) };
+SHOPS.gym = { title: '체육관', sub: '몸을 단련하면 영원히 남는다', items: () => { const P = Game.player, free = Biz.has('biz_gymchain'); return [
+  { id: 'gym_str', name: `근력 운동 (최대 체력 ${P.maxHp} → ${Math.min(200, P.maxHp + 10)})`, price: free ? 0 : 2000, desc: '최대 체력 +10, 최대 200' + (free ? ' · 체인 소유주 무료' : ''), ok: () => P.maxHp < 200, fn: () => { const c = free ? 0 : 2000; if (P.money < c || P.maxHp >= 200) return; P.money -= c; P.maxHp += 10; P.hp = P.maxHp; Sfx.passed(); UI.toast(`최대 체력 ${P.maxHp}`); Save.write(); Shop.open('gym'); } },
+  { id: 'gym_end', name: `지구력 운동 (달리기 ${Math.round((P.endurance || 1) * 100)}%)`, price: free ? 0 : 1500, desc: '달리기 체력이 덜 줄어든다, 최대 250%', ok: () => (P.endurance || 1) < 2.5, fn: () => { const c = free ? 0 : 1500; if (P.money < c) return; P.money -= c; P.endurance = Math.min(2.5, (P.endurance || 1) + 0.15); Sfx.passed(); Save.write(); Shop.open('gym'); } },
+  { id: 'gym_shoot', name: `사격 훈련 (명중률 ${Math.round((P.aimSkill || 1) * 100)}%)`, price: free ? 0 : 3000, desc: '총알이 덜 퍼진다, 최대 200%', ok: () => (P.aimSkill || 1) < 2, fn: () => { const c = free ? 0 : 3000; if (P.money < c) return; P.money -= c; P.aimSkill = Math.min(2, (P.aimSkill || 1) + 0.1); Sfx.passed(); Save.write(); Shop.open('gym'); } }]; } };
+SHOPS.pharmacy = { title: '약국', sub: '가방에 넣어 두면 언제든 꺼내 쓴다', items: () => [
+  { id: 'bandage', name: '붕대', price: 25, desc: '체력 +35', hp: 35 },
+  { id: 'medkit', name: '구급상자', price: 100, desc: '체력 완전 회복', hp: 100 },
+  { id: 'vital', name: '체력 유지제', price: 70, desc: '90초 동안 체력이 계속 차오른다', vital: 90 },
+  { id: 'painkiller', name: '진통제', price: 150, desc: '60초 동안 받는 피해 -40%' },
+  { id: 'energy', name: '에너지 드링크', price: 15, desc: '60초 동안 지치지 않고 달리기', stam: 1, boost: 60 }] };
+SHOPS.bank = { title: '네온 중앙은행', sub: '금고에는 늘 현금이 가득하다…', items: () => {
+  const P = Game.player, gun = !WEAPONS[P.weapon].melee && !WEAPONS[P.weapon].throw, cool = Math.max(0, Math.ceil(((Game.bankCool || 0) - Game.time) / 60));
+  return [{ id: 'rob', name: '은행 털기 — 총을 겨누고 금고를 연다', price: 0, btn: '털기', desc: cool ? `경계가 삼엄하다 (${cool}분 뒤 가능)` : gun ? '12초 동안 은행 안에서 버티면 $25,000~$60,000 · 곧바로 수배 ★★★ → ★★★★★' : '총을 들고 와야 한다', ok: () => gun && !cool && !Missions.active, fn: () => { Shop.close(); BankRob.start(); } }];
+} };
+const BankRob = {
+  on: false, t: 0,
+  start() { const B = World.places.bank; this.on = true; this.t = 0; Wanted.set(Math.max(3, Wanted.stars)); UI.big('은행 강도!', '12초 동안 금고 앞을 지켜라', 2, '#ff4d4d'); scarePeds(B.x, B.y, 40); },
+  update(dt) {
+    if (!this.on) return;
+    const P = Game.player, B = World.places.bank;
+    if (P.dead || P.car || dist(P.x, P.y, B.x, B.y) > 7) { this.on = false; UI.objective(''); UI.toast('은행에서 벗어나 강도가 실패했다'); return; }
+    this.t += dt; UI.objective(`금고 여는 중… ${Math.min(100, Math.round(this.t / 12 * 100))}% — 은행 앞을 벗어나지 마라`);
+    if (this.t >= 12) {
+      this.on = false; UI.objective(''); Game.bankCool = Game.time + 600;
+      const amt = randi(25000, 60000); P.money += amt; Sfx.passed(); Wanted.set(5);
+      UI.big('금고 털기 성공!', `+$${amt.toLocaleString()} — 수배 ★★★★★, 달아나라!`, 3, '#8df28d');
+    }
+  },
 };
 const Shop = {
   kind: null,
@@ -509,6 +552,7 @@ const Shop = {
     const items = S.items();
     // 사업체 혜택: 버거 샷 가맹점 → 버거 반값
     if (kind === 'burger' && Biz.has('biz_burger')) for (const it of items) { it.price = Math.ceil(it.price / 2); it.desc += ' (가맹점주 반값)'; }
+    if ((kind === 'mart' || kind === 'pharmacy') && Biz.has('biz_mart')) for (const it of items) if (it.price) { it.price = Math.ceil(it.price / 2); it.desc += ' (본사 반값)'; }
     const buttons = [], bagBtns = [];
     const food = it => !!CONSUMABLES[it.id];
     // 체력이 가득해도 음식은 살 수 있다 (가방에 넣는다)
@@ -618,7 +662,7 @@ const Touch = {
     tap('t-steal', () => { if (Pick.target) Pick.attempt(); });
     tap('t-enter', () => { Input.pressed['KeyF'] = true; });
     tap('t-weapon', () => { Input.pressed['KeyE'] = true; });
-    tap('t-bag', () => Bag.useBest());
+    tap('t-bag', () => Bag.open());
     tap('t-radio', () => { Input.pressed['KeyR'] = true; });
     tap('t-map', () => { Input.pressed['KeyM'] = true; });
     tap('t-pause', () => { Input.pressed['Escape'] = true; });
