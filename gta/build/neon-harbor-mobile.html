@@ -225,6 +225,7 @@
       <p><b>직업</b> — 고용센터(J): 택시 기사 · 구급대원 · 음식 배달 · 자경단 · 버스 기사 / 브로커($): 차량 수출 · 밀수 운반 · 현금수송차 습격 · 소매치기. 반복할수록 보수가 오른다. 스토리 미션 중에 일을 시작하면 미션은 잠시 내려놓는다(마커에서 다시 받기).</p>
       <p><b>가방</b> — 음식·약은 체력이 가득해도 사서 가방에 넣어 둘 수 있다(최대 10개). PC <b>B</b>, 모바일 [가방] 버튼 = 지금 필요한 것을 꺼내 먹는다. <b>체력 유지제</b>(편의점): 90초 동안 체력이 계속 차오르고 지치지 않는다.</p>
       <p><b>네온 모터스(D)</b> — 아이언 밸리의 차량 매매상. 타고 온 차를 팔고(훔친 차는 싸게, 산 차는 60%), 새 차·슈퍼카·현금수송 트럭·전차·공격 헬기·전투기를 산다. 산 차량은 사라지지 않는다.</p>
+      <p><b>내 차고(차)</b> — 산 차량·보관한 차는 저장된다. 부서지면 보험 수리 후 다시 꺼낸다. <b>마리나(배)</b> — 제트스키·보트, 물에 들어가면 헤엄친다(차는 가라앉는다). <b>사업체(₩)</b> — 사 두면 매일 금고에 돈이 쌓인다. <b>그래픽</b> — 일시정지 메뉴에서 FPS 표시·성능 절약 모드.</p>
       <p><b>탑승 무기</b> — 전차: 주포·기관총 / 헬기: 기관포·로켓·유도탄 / 전투기: 기관포·유도탄·로켓. Q/E(모바일 [무기])로 바꾸고, 스페이스(모바일 [유도탄])는 유도 미사일. 목표를 조준선에 0.8초 겨누면 LOCK — 유도탄이 따라간다. 적 미사일은 급선회로 피할 수 있다.</p>
       <p><b>사람들</b> — 회사원·조깅하는 사람·관광객·노인·통화 중인 사람·개 산책(개도 따라다님)·핫도그 노점·버스커. 부딪히면 항의하고, 총을 겨누면 손을 들고, 계속 겨누면 지갑을 떨어뜨린다. 쓰러진 사람에게는 구급차가 와서 되살린다. 청룡파(초록)와 파도파(주황)는 마주치면 싸운다.</p>
       <p><b>편의 기능</b> — 전체 지도를 눌러 웨이포인트를 찍으면 레이더에 GPS 경로가 뜬다. 은신처(집)에서 저장하고 6시간 잔다. 6초 동안 안 다치면 체력이 50까지 차오른다. 일시정지 메뉴에 치트 입력칸이 있다.</p>
@@ -1106,6 +1107,12 @@ function genWorld(seed) {
   makePlace('safehouse', choose(edgeLots(DIST.RESID, bld('house')), 0.3, 0.38), 'safehouse', '#e8d9b0', '집');
   makePlace('jobcenter', choose(edgeLots(DIST.MIDTOWN, bld('mid')), 0.48, 0.5), 'jobcenter', '#c9d6e8', '고용센터');
   makePlace('broker', choose(edgeLots(DIST.HARBOR, bld('warehouse')), 0.76, 0.45), 'broker', '#2d2433', '브로커');
+  // 살 수 있는 사업체 (economy.js의 BUSINESSES)
+  makePlace('biz_club', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.55, 0.5), 'biz', '#2a1f3d', '네온 나이트클럽');
+  makePlace('biz_wash', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.62, 0.3), 'biz', '#cfe3f0', '스파클 세차장');
+  makePlace('biz_taxi', choose(edgeLots(DIST.HARBOR, L => !L.used && bld('warehouse')(L)), 0.82, 0.55), 'biz', '#f2c14e', '하버 택시 회사');
+  makePlace('biz_bar', choose(edgeLots(DIST.BEACH, L => !L.used && bld('shop')(L)), 0.4, 0.8), 'biz', '#e0a96d', '선셋 비치 바');
+  makePlace('biz_factory', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.2, 0.6), 'biz', '#8b5a44', '아이언 밸리 공장');
   // 차고형 장소: 필지를 비워 LOT으로 만든다
   const makeLotPlace = (key, L, label) => {
     if (!L) return;
@@ -2946,7 +2953,7 @@ const Save = {
     try {
       const P = Game.player;
       const inv = {}; for (const k in P.inv) if (k !== 'fist') inv[k] = P.inv[k] === Infinity ? -1 : P.inv[k];
-      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [] }));
+      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {} }));
     } catch (e) { /* 저장 불가 환경 */ }
   },
   clear() { try { localStorage.removeItem(this.key); } catch (e) { } },
@@ -3627,7 +3634,7 @@ const Jobs = {
       this.obj(j, '손님을 목적지에 내려줘라');
       if (this.stopped(c, j.dest, 7)) {
         const tip = Math.max(0, Math.round(j.timer)) * 2, hurt = c.hp / c.maxHp < 0.5 ? 0.6 : 1;
-        this.pay(j, (20 + j.fdist * 0.25 + tip) * hurt + j.streak * 10, '택시 요금');
+        this.pay(j, ((20 + j.fdist * 0.25 + tip) * hurt + j.streak * 10) * (Biz.owned().biz_taxi ? 1.25 : 1), '택시 요금');
         j.streak++; j.timer = null; j.stage = 'find';
       }
     }
@@ -6358,6 +6365,7 @@ function placeIcons() {
   if (pl.spray) out.push({ x: pl.spray.x, y: pl.spray.y, ch: 'S', c: '#6fe0ff', label: '페인트샵' });
   if (pl.spray2) out.push({ x: pl.spray2.x, y: pl.spray2.y, ch: 'S', c: '#6fe0ff', label: '페인트샵' });
   if (pl.garage) out.push({ x: pl.garage.x, y: pl.garage.y, ch: 'G', c: '#f2c14e', label: '차고' });
+  for (const k of Object.keys(BUSINESSES)) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '₩', c: Biz.owned()[k] ? '#7ae68f' : '#ffd166', label: BUSINESSES[k].name });
   for (const m of World.marinas || []) out.push({ x: m.x, y: m.y, ch: '배', c: '#4fc3f7', label: '마리나(보트)' });
   if (pl.mygarage) out.push({ x: pl.mygarage.x, y: pl.mygarage.y, ch: '차', c: '#9be15d', label: '내 차고' });
   if (pl.dealer) out.push({ x: pl.dealer.x, y: pl.dealer.y, ch: 'D', c: '#c77dff', label: '네온 모터스(차량 매매)' });
@@ -6455,7 +6463,7 @@ function drawFullMap() {
   const c = ctx, P = Game.player;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
   c.fillStyle = 'rgba(6,10,18,0.92)'; c.fillRect(0, 0, CW, CH);
-  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  군사 기지 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)'], ['#9be15d', '차  내 차고 (산 차량 보관·저장)'], ['#4fc3f7', '배  마리나 (제트스키·보트)']];
+  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  군사 기지 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)'], ['#9be15d', '차  내 차고 (산 차량 보관·저장)'], ['#4fc3f7', '배  마리나 (제트스키·보트)'], ['#ffd166', '₩  사업체 (사면 매일 수입)']];
   // 범례 줄 수를 먼저 재서 지도 크기를 정한다 (글자가 지도·도움말과 겹치지 않게)
   const lf = `500 ${12 * UI.s}px ${FONT_KR}`, lh = 18 * Math.max(1, UI.s);
   c.font = lf;
@@ -6627,7 +6635,7 @@ const Shop = {
       btn.textContent = it.sellPrice !== undefined ? `+$${it.sellPrice.toLocaleString()}` : `$${it.price.toLocaleString()}`;
       btn.onclick = () => {
         if (!can(it)) return;
-        if (it.fn) { P.money -= it.price; it.fn(); if (Game.state === 'shop') refresh(); return; }
+        if (it.fn) { it.fn(); if (Game.state === 'shop') refresh(); return; } // fn이 직접 돈을 처리한다 (이중 결제 방지)
         P.money -= it.price; Sfx.cash();
         if (food(it)) {
           if (this.useful(it)) Bag.apply(it.id);
@@ -6941,12 +6949,56 @@ SHOPS.mygarage = {
       const out_ = Fleet.carOf(e), ins = Fleet.insurance(e);
       out.push({ id: 'fleet_' + e.id, veh: e.type, name: `${VTYPES[e.type].name}${e.wrecked ? ' (폐차)' : out_ ? ' (밖에 있음)' : ''}`, price: e.wrecked ? ins : 0,
         desc: e.wrecked ? `보험 수리 $${ins.toLocaleString()} 후 꺼내기` : out_ ? '지도에 위치 표시' : '꺼내기',
-        ok: () => true, fn: () => { Fleet.takeOut(e); Shop.close(); Save.write(); } });
+        ok: () => true, fn: () => { if (e.wrecked) { if (P.money < ins) return; P.money -= ins; Sfx.cash(); } Fleet.takeOut(e); Shop.close(); Save.write(); } });
     }
     if (!out.length) out.push({ id: 'none', name: '비어 있다', price: 0, desc: '네온 모터스에서 차를 사거나, 아무 차나 몰고 와서 보관하자', ok: () => false });
     return out;
   },
 };
+
+// ---------- 사업체: 사 두면 금고에 돈이 쌓인다 (GTA 바이스시티식 부동산) ----------
+const BUSINESSES = {
+  biz_club: { name: '네온 나이트클럽', price: 60000, daily: 2600, desc: '다운타운의 밤을 책임지는 클럽' },
+  biz_wash: { name: '스파클 세차장', price: 25000, daily: 1000, desc: '작지만 꾸준한 현금 장사' },
+  biz_taxi: { name: '하버 택시 회사', price: 40000, daily: 1700, desc: '택시 기사 일 보수 +25%' },
+  biz_bar: { name: '선셋 비치 바', price: 30000, daily: 1300, desc: '해변 손님이 끊이지 않는다' },
+  biz_factory: { name: '아이언 밸리 공장', price: 90000, daily: 4000, desc: '가장 비싸지만 가장 많이 번다' },
+};
+const Biz = {
+  owned() { return Game.props || (Game.props = {}); },
+  // 게임 시간 하루(1440분 = 24분) 동안 daily만큼 쌓인다. 최대 5일치
+  update(dt) {
+    const O = this.owned();
+    for (const k in O) { const B = BUSINESSES[k]; if (B) O[k].safe = Math.min(B.daily * 5, (O[k].safe || 0) + B.daily / 1440 * dt); }
+    const h = Math.floor(Game.clock / 60);
+    if (h !== this.lastH) { if (h === 9 && this.lastH !== undefined) { const tot = Object.values(O).reduce((a, o) => a + (o.safe || 0), 0); if (tot > 50) UI.toast(`사업체 금고에 $${Math.round(tot).toLocaleString()}이 쌓였다 — 찾아가서 수령하자`); } this.lastH = h; }
+  },
+  collect(k) {
+    const o = this.owned()[k]; if (!o) return 0;
+    const amt = Math.floor(o.safe || 0); if (amt <= 0) return 0;
+    o.safe -= amt; Game.player.money += amt; Sfx.cash(); UI.toast(`${BUSINESSES[k].name} 금고 수령 +$${amt.toLocaleString()}`);
+    return amt;
+  },
+  buy(k) {
+    const B = BUSINESSES[k], P = Game.player;
+    if (this.owned()[k] || P.money < B.price) return;
+    P.money -= B.price; this.owned()[k] = { safe: 0 }; Sfx.passed();
+    UI.big('사업체 구입!', `${B.name} — 하루 $${B.daily.toLocaleString()}`, 3, '#ffd166'); Save.write();
+  },
+  total() { return Object.keys(this.owned()).reduce((a, k) => a + (BUSINESSES[k] ? BUSINESSES[k].daily : 0), 0); },
+};
+for (const [k, B] of Object.entries(BUSINESSES)) {
+  PLACE_MARK[k] = '#ffd166';
+  SHOPS[k] = {
+    title: B.name, sub: B.desc,
+    items: () => {
+      const o = Biz.owned()[k];
+      if (!o) return [{ id: 'buybiz', veh: null, name: `${B.name} 구입`, price: B.price, desc: `하루(게임 24분) $${B.daily.toLocaleString()} 수입 · 금고는 5일치까지 쌓인다`, ok: () => true, fn: () => { Biz.buy(k); Shop.close(); } }];
+      return [{ id: 'collect', name: '금고 수령', price: 0, sellPrice: Math.floor(o.safe || 0), desc: `소유 중 · 하루 $${B.daily.toLocaleString()} · 금고 최대 $${(B.daily * 5).toLocaleString()}`, ok: () => (o.safe || 0) >= 1, fn: () => { Biz.collect(k); Shop.close(); Save.write(); } },
+        { id: 'info', name: `내 사업체 ${Object.keys(Biz.owned()).length}곳 · 하루 총 $${Biz.total().toLocaleString()}`, price: 0, desc: '지도에 금색 ₩ 표시', ok: () => false }];
+    },
+  };
+}
 
 // 가게 목록 아이콘: 차종 실루엣
 function drawVehIcon(g, type) {
@@ -7020,6 +7072,7 @@ const Game = {
     if (sv) { for (const k in sv.inv) P.inv[k] = sv.inv[k] === -1 ? Infinity : sv.inv[k]; this.clock = sv.time || this.clock; P.armor = sv.armor || 0; if (sv.weapon && P.inv[sv.weapon] > 0) P.weapon = sv.weapon; P.bag = sv.bag || {}; }
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
     this.fleet = sv ? sv.fleet || [] : [];
+    this.props = sv ? sv.props || {} : {};
     placeStaticPickups();
     Military.reset(); AirPatrol.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
     this.waypoint = null; this.noWanted = false;
@@ -7160,7 +7213,7 @@ const Game = {
     Jay.update(dt);
     Missions.update(dt);
     Jobs.update(dt);
-    Military.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update();
+    Military.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update(); Biz.update(dt);
     Talk.update(dt); Aim.update(dt); EMS.update(dt); Givers.update(); Vendors.update(dt); GPS.update(dt);
     // 체력 자연 회복: 6초 동안 안 다치면 50까지 천천히 (GTA V)
     if (!P.dead && P.hp < 50 && this.time - (P.lastHurt || 0) > 6) P.hp = Math.min(50, P.hp + 2 * dt);
@@ -7347,7 +7400,7 @@ const Game = {
     }
     // 상점 · 직업 게시판 (걸어서 문 앞 마커에 들어가면 열림)
     if (!P.car && !(P.alt > 0) && this.shopCool <= 0 && !(Missions.active && Missions.active.def.noShop)) {
-      for (const [k, kind] of [['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart']]) {
+      for (const [k, kind] of [...Object.keys(BUSINESSES).map(b => [b, b]), ['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart']]) {
         const S = World.places[k]; if (S && dist(P.x, P.y, S.x, S.y) < 1.8) { Shop.open(kind); return; }
       }
       const SH = World.places.safehouse;

@@ -385,6 +385,12 @@ function genWorld(seed) {
   makePlace('safehouse', choose(edgeLots(DIST.RESID, bld('house')), 0.3, 0.38), 'safehouse', '#e8d9b0', '집');
   makePlace('jobcenter', choose(edgeLots(DIST.MIDTOWN, bld('mid')), 0.48, 0.5), 'jobcenter', '#c9d6e8', '고용센터');
   makePlace('broker', choose(edgeLots(DIST.HARBOR, bld('warehouse')), 0.76, 0.45), 'broker', '#2d2433', '브로커');
+  // 살 수 있는 사업체 (economy.js의 BUSINESSES)
+  makePlace('biz_club', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.55, 0.5), 'biz', '#2a1f3d', '네온 나이트클럽');
+  makePlace('biz_wash', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.62, 0.3), 'biz', '#cfe3f0', '스파클 세차장');
+  makePlace('biz_taxi', choose(edgeLots(DIST.HARBOR, L => !L.used && bld('warehouse')(L)), 0.82, 0.55), 'biz', '#f2c14e', '하버 택시 회사');
+  makePlace('biz_bar', choose(edgeLots(DIST.BEACH, L => !L.used && bld('shop')(L)), 0.4, 0.8), 'biz', '#e0a96d', '선셋 비치 바');
+  makePlace('biz_factory', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.2, 0.6), 'biz', '#8b5a44', '아이언 밸리 공장');
   // 차고형 장소: 필지를 비워 LOT으로 만든다
   const makeLotPlace = (key, L, label) => {
     if (!L) return;

@@ -179,12 +179,56 @@ SHOPS.mygarage = {
       const out_ = Fleet.carOf(e), ins = Fleet.insurance(e);
       out.push({ id: 'fleet_' + e.id, veh: e.type, name: `${VTYPES[e.type].name}${e.wrecked ? ' (폐차)' : out_ ? ' (밖에 있음)' : ''}`, price: e.wrecked ? ins : 0,
         desc: e.wrecked ? `보험 수리 $${ins.toLocaleString()} 후 꺼내기` : out_ ? '지도에 위치 표시' : '꺼내기',
-        ok: () => true, fn: () => { Fleet.takeOut(e); Shop.close(); Save.write(); } });
+        ok: () => true, fn: () => { if (e.wrecked) { if (P.money < ins) return; P.money -= ins; Sfx.cash(); } Fleet.takeOut(e); Shop.close(); Save.write(); } });
     }
     if (!out.length) out.push({ id: 'none', name: '비어 있다', price: 0, desc: '네온 모터스에서 차를 사거나, 아무 차나 몰고 와서 보관하자', ok: () => false });
     return out;
   },
 };
+
+// ---------- 사업체: 사 두면 금고에 돈이 쌓인다 (GTA 바이스시티식 부동산) ----------
+const BUSINESSES = {
+  biz_club: { name: '네온 나이트클럽', price: 60000, daily: 2600, desc: '다운타운의 밤을 책임지는 클럽' },
+  biz_wash: { name: '스파클 세차장', price: 25000, daily: 1000, desc: '작지만 꾸준한 현금 장사' },
+  biz_taxi: { name: '하버 택시 회사', price: 40000, daily: 1700, desc: '택시 기사 일 보수 +25%' },
+  biz_bar: { name: '선셋 비치 바', price: 30000, daily: 1300, desc: '해변 손님이 끊이지 않는다' },
+  biz_factory: { name: '아이언 밸리 공장', price: 90000, daily: 4000, desc: '가장 비싸지만 가장 많이 번다' },
+};
+const Biz = {
+  owned() { return Game.props || (Game.props = {}); },
+  // 게임 시간 하루(1440분 = 24분) 동안 daily만큼 쌓인다. 최대 5일치
+  update(dt) {
+    const O = this.owned();
+    for (const k in O) { const B = BUSINESSES[k]; if (B) O[k].safe = Math.min(B.daily * 5, (O[k].safe || 0) + B.daily / 1440 * dt); }
+    const h = Math.floor(Game.clock / 60);
+    if (h !== this.lastH) { if (h === 9 && this.lastH !== undefined) { const tot = Object.values(O).reduce((a, o) => a + (o.safe || 0), 0); if (tot > 50) UI.toast(`사업체 금고에 $${Math.round(tot).toLocaleString()}이 쌓였다 — 찾아가서 수령하자`); } this.lastH = h; }
+  },
+  collect(k) {
+    const o = this.owned()[k]; if (!o) return 0;
+    const amt = Math.floor(o.safe || 0); if (amt <= 0) return 0;
+    o.safe -= amt; Game.player.money += amt; Sfx.cash(); UI.toast(`${BUSINESSES[k].name} 금고 수령 +$${amt.toLocaleString()}`);
+    return amt;
+  },
+  buy(k) {
+    const B = BUSINESSES[k], P = Game.player;
+    if (this.owned()[k] || P.money < B.price) return;
+    P.money -= B.price; this.owned()[k] = { safe: 0 }; Sfx.passed();
+    UI.big('사업체 구입!', `${B.name} — 하루 $${B.daily.toLocaleString()}`, 3, '#ffd166'); Save.write();
+  },
+  total() { return Object.keys(this.owned()).reduce((a, k) => a + (BUSINESSES[k] ? BUSINESSES[k].daily : 0), 0); },
+};
+for (const [k, B] of Object.entries(BUSINESSES)) {
+  PLACE_MARK[k] = '#ffd166';
+  SHOPS[k] = {
+    title: B.name, sub: B.desc,
+    items: () => {
+      const o = Biz.owned()[k];
+      if (!o) return [{ id: 'buybiz', veh: null, name: `${B.name} 구입`, price: B.price, desc: `하루(게임 24분) $${B.daily.toLocaleString()} 수입 · 금고는 5일치까지 쌓인다`, ok: () => true, fn: () => { Biz.buy(k); Shop.close(); } }];
+      return [{ id: 'collect', name: '금고 수령', price: 0, sellPrice: Math.floor(o.safe || 0), desc: `소유 중 · 하루 $${B.daily.toLocaleString()} · 금고 최대 $${(B.daily * 5).toLocaleString()}`, ok: () => (o.safe || 0) >= 1, fn: () => { Biz.collect(k); Shop.close(); Save.write(); } },
+        { id: 'info', name: `내 사업체 ${Object.keys(Biz.owned()).length}곳 · 하루 총 $${Biz.total().toLocaleString()}`, price: 0, desc: '지도에 금색 ₩ 표시', ok: () => false }];
+    },
+  };
+}
 
 // 가게 목록 아이콘: 차종 실루엣
 function drawVehIcon(g, type) {

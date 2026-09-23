@@ -149,7 +149,7 @@ const Jobs = {
       this.obj(j, '손님을 목적지에 내려줘라');
       if (this.stopped(c, j.dest, 7)) {
         const tip = Math.max(0, Math.round(j.timer)) * 2, hurt = c.hp / c.maxHp < 0.5 ? 0.6 : 1;
-        this.pay(j, (20 + j.fdist * 0.25 + tip) * hurt + j.streak * 10, '택시 요금');
+        this.pay(j, ((20 + j.fdist * 0.25 + tip) * hurt + j.streak * 10) * (Biz.owned().biz_taxi ? 1.25 : 1), '택시 요금');
         j.streak++; j.timer = null; j.stage = 'find';
       }
     }
