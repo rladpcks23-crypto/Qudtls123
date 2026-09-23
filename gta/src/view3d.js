@@ -122,7 +122,7 @@ const View3D = {
       const SOLID = [[0.02, 0.98], [0.03, 0.98], [0.03, 0.97], [0.02, 0.97]];
       for (const b of bk.b) {
         const X0 = b.x0 * T, Z0 = b.y0 * T, X1 = (b.x1 + 1) * T, Z1 = (b.y1 + 1) * T, H = b.h;
-        if (b.kind === 'eiffel') continue; // 탑은 addDeco에서 따로 만든다
+        if (b.kind === 'eiffel' || b.kind === 'terminal' || b.label === '관제탑') continue; // 탑·공항 터미널은 addDeco에서 따로 만든다
         const hasWin = !['container', 'house', 'warehouse', 'fence', 'arch', 'church', 'arena'].includes(b.kind) && H > 5;
         const wallUV = (len) => hasWin ? [[0, 0], [len / 3, 0], [len / 3, H / 3.4], [0, H / 3.4]] : SOLID;
         const base = color.set(b.color).clone();
@@ -191,6 +191,36 @@ const View3D = {
     else if (d.t === 'spire') add(new THREE.ConeGeometry(2.2, d.h, 8), d.x, d.z + d.h / 2, d.y);
     else if (d.t === 'vault') { const len = d.x1 - d.x0, r = (d.y1 - d.y0) / 2; const o = add(new THREE.CylinderGeometry(r, r, len, 16, 1, false, 0, Math.PI), (d.x0 + d.x1) / 2, d.z, (d.y0 + d.y1) / 2); o.rotation.set(0, 0, Math.PI / 2); o.scale.set(1, 1, 0.45); o.rotation.y = 0; o.rotation.x = -Math.PI / 2; o.rotation.z = Math.PI / 2; }
     else if (d.t === 'cab') { add(new THREE.CylinderGeometry(3.2, 2.4, 3.2, 10), d.x, d.z + 1.6, d.y); add(new THREE.CylinderGeometry(3.6, 3.6, 0.5, 10), d.x, d.z + 3.4, d.y); }
+    else if (d.t === 'glass') this.addGlass(G, d);
+    else if (d.t === 'tower2') {
+      const wm = this.mat('#e8ecef'), H = d.h;
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2.6, H, 16), wm); shaft.position.set(d.x, H / 2, d.y); G.add(shaft);
+      const deck = new THREE.Mesh(new THREE.CylinderGeometry(5.2, 3.2, 1.6, 16), wm); deck.position.set(d.x, H + 0.4, d.y); G.add(deck);
+      const cab = new THREE.Mesh(new THREE.CylinderGeometry(5.6, 4.6, 4, 16), this.glassMat()); cab.position.set(d.x, H + 3.2, d.y); G.add(cab);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(3, 6, 1.2, 16), this.mat('#b8c2cc')); cap.position.set(d.x, H + 5.8, d.y); G.add(cap);
+      const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 7, 6), this.mat('#d33')); ant.position.set(d.x, H + 9.8, d.y); G.add(ant);
+    }
+    else if (d.t === 'jetbridge') { // 탑승교: 기둥 위의 긴 통로
+      const dx = d.x1 - d.x0, dy = d.y1 - d.y0, L = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+      const tube = new THREE.Mesh(new THREE.BoxGeometry(L, 2.8, 2.6), this.mat('#c9ced6')); tube.position.set((d.x0 + d.x1) / 2, 4.6, (d.y0 + d.y1) / 2); tube.rotation.y = -a; G.add(tube);
+      const win = new THREE.Mesh(new THREE.BoxGeometry(L * 0.9, 0.8, 2.7), this.glassMat()); win.position.set((d.x0 + d.x1) / 2, 5.1, (d.y0 + d.y1) / 2); win.rotation.y = -a; G.add(win);
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.6, 3.4, 0.6), this.mat('#6b7280')); leg.position.set(d.x0 + dx * 0.75, 1.7, d.y0 + dy * 0.75); G.add(leg);
+    }
+    else if (d.t === 'gse') { // 지상 조업 차량 (견인차 + 수하물 카트)
+      const car = new THREE.Mesh(new THREE.BoxGeometry(3, 1.4, 1.8), this.mat('#f2c14e')); car.position.set(d.x, 0.8, d.y); G.add(car);
+      for (let k = 1; k <= 3; k++) { const c = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 1.4), this.mat('#8a929c')); c.position.set(d.x - k * 2.6, 0.6, d.y); G.add(c); }
+    }
+    else if (d.t === 'mast') { // 계류장 조명탑
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.4, d.h, 6), this.mat('#9aa3ad')); p.position.set(d.x, d.h / 2, d.y); G.add(p);
+      const l = new THREE.Mesh(new THREE.BoxGeometry(3, 0.8, 1.2), this.lampMat); l.position.set(d.x, d.h, d.y); G.add(l);
+    }
+    else if (d.t === 'rlights') { // 활주로 등화: 가장자리 흰색, 시작 초록, 끝 빨강 (밤에 빛난다)
+      const pos = [], col = [], cc = [[1, 0.95, 0.8], [0.2, 1, 0.3], [1, 0.2, 0.2]];
+      for (const [x, y, k] of d.pts) { pos.push(x, 0.25, y); col.push(...cc[k]); }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      const pm = this.rlMat = this.rlMat || new THREE.PointsMaterial({ size: 0.9, vertexColors: true, transparent: true, opacity: 0.9 });
+      const pts = new THREE.Points(geo, pm); pts.frustumCulled = false; G.add(pts);
+    }
     else if (d.t === 'tankcyl') add(new THREE.CylinderGeometry(d.r, d.r, d.z + 1, 16), d.x, (d.z + 1) / 2, d.y);
     else if (d.t === 'eiffel') {
       // 네 다리(기울어진 기둥) + 층층이 좁아지는 몸통 + 첨탑. 밤에는 금빛으로 빛난다
@@ -201,6 +231,33 @@ const View3D = {
       for (let k = 0; k < 6; k++) { const t0 = k / 6, w = 9 * (1 - t0) + 1.6; add(new THREE.BoxGeometry(w, (H * 0.55) / 6 * 0.9, w), d.x, legH + (k + 0.5) * (H * 0.55) / 6, d.y); }
       add(new THREE.BoxGeometry(5, 1.2, 5), d.x, legH + H * 0.28, d.y);
       add(new THREE.CylinderGeometry(0.25, 0.9, H * 0.15, 6), d.x, H * 0.925, d.y);
+    }
+  },
+  glassMat() { return this._glass = this._glass || new THREE.MeshPhongMaterial({ color: '#5d8fb8', specular: '#e8f4ff', shininess: 90, emissive: '#10263a' }); }, // 불투명 반사 유리 (비쳐 보이면 바다처럼 보인다)
+  // 현대식 유리 건물: 유리 벽 + 세로 멀리언(창틀) + 지붕 (wave = 물결 곡면 지붕, tube = 둥근 지붕의 탑승동)
+  addGlass(G, d) {
+    const w = d.x1 - d.x0, l = d.y1 - d.y0, H = d.h, cx = (d.x0 + d.x1) / 2, cz = (d.y0 + d.y1) / 2, gm = this.glassMat();
+    const core = new THREE.Mesh(new THREE.BoxGeometry(w - 0.6, H * 0.92, l - 0.6), gm); core.position.set(cx, H * 0.46, cz); G.add(core);
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(w, 0.5, l), this.mat('#e3e7ea')); floor.position.set(cx, H * 0.45, cz); G.add(floor);
+    const mul = this.mat('#dfe4e8'), step = 4;
+    const along = w >= l, len = along ? w : l, n = Math.floor(len / step);
+    const mg = new THREE.BoxGeometry(along ? 0.25 : l + 0.1, H * 0.92, along ? l + 0.1 : 0.25);
+    const inst = new THREE.InstancedMesh(mg, mul, n + 1); const m4 = new THREE.Matrix4();
+    for (let k = 0; k <= n; k++) { const t = -len / 2 + k * len / n; m4.makeTranslation(along ? cx + t : cx, H * 0.46, along ? cz : cz + t); inst.setMatrixAt(k, m4); }
+    inst.frustumCulled = false; G.add(inst);
+    if (d.roof === 'wave') { // 물결 지붕: 얇은 판을 사인 곡선으로 기울여 이어 붙인다 + 넓은 처마
+      const segs = 18, rm = this.mat('#f4f6f8');
+      for (let k = 0; k < segs; k++) {
+        const t0 = k / segs, t1 = (k + 1) / segs, y0 = H + 2.2 * Math.sin(t0 * Math.PI * 2), y1 = H + 2.2 * Math.sin(t1 * Math.PI * 2);
+        const sw = (w + 8) / segs, pl = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(sw, y1 - y0) + 0.05, 0.5, l + 8), rm);
+        pl.position.set(d.x0 - 4 + (k + 0.5) * sw, (y0 + y1) / 2, cz); pl.rotation.z = Math.atan2(y1 - y0, sw); G.add(pl);
+      }
+      for (const s of [-1, 1]) for (let k = 0; k <= 6; k++) { const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, H + 1, 6), this.mat('#c9ced6')); col.position.set(d.x0 - 2 + k * (w + 4) / 6, (H + 1) / 2, cz + s * (l / 2 + 2.5)); G.add(col); }
+    } else { // 탑승동: 반원 지붕
+      const r = (along ? l : w) / 2 + 0.3, geo = new THREE.CylinderGeometry(r, r, len, 12, 1, false, 0, Math.PI);
+      geo.rotateZ(Math.PI / 2); geo.scale(1, 0.45, 1); if (!along) geo.rotateY(Math.PI / 2); // 축을 길이 방향으로, 반원이 위로
+      const roof = new THREE.Mesh(geo, this.mat('#eef1f4')); roof.position.set(cx, H * 0.92, cz);
+      G.add(roof);
     }
   },
   disposeChunk(ch) {
@@ -516,6 +573,8 @@ const View3D = {
     this.hemi.color.setRGB(amb[0], amb[1], amb[2]);
     this.bmat.emissiveIntensity = night > 0.35 ? night * 0.9 : 0;
     this.lampMat.color.setScalar(night > 0.3 ? 1 : 0.55);
+    if (this._glass) this._glass.emissive.setRGB(0.05 + night * 0.62, 0.1 + night * 0.48, 0.16 + night * 0.2);
+    if (this.rlMat) this.rlMat.opacity = night > 0.3 ? 1 : 0.35;
     if (this.eiffelMat) this.eiffelMat.emissive.setRGB(0.23 + night * 0.6, 0.16 + night * 0.4, 0.06 + night * 0.08);
     // 신호등
     if (!this.tlT || Game.time - this.tlT > 0.4) {

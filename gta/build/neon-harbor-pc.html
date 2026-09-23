@@ -1056,7 +1056,7 @@ function genWorld(seed) {
     // 매립지 해안선: 한쪽이 길쭉하게 튀어나온 불규칙한 모양 (인천공항 영종도처럼)
     const shape = (x, y) => { const a = Math.atan2((y - cy) / ry, (x - cx) / rx); const r = 1 + 0.07 * Math.sin(a * 2 + ph2) + 0.05 * Math.sin(a * 5 + ph2 * 2) + 0.025 * Math.sin(a * 11); return ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 < r * r; };
     const inner = (x, y) => shape(x, y) && shape(x + 3, y) && shape(x - 3, y) && shape(x, y + 3) && shape(x, y - 3);
-    W.airport = { cx, cy, rx, ry, shape, inner, bx0: cx - rx - 8, bx1: cx + rx + 8, by0: cy - ry - 8, by1: cy + ry + 8 };
+    W.airport = { marks: [], cx, cy, rx, ry, shape, inner, bx0: cx - rx - 8, bx1: cx + rx + 8, by0: cy - ry - 8, by1: cy + ry + 8 };
   }
   function buildAirportIsland() {
     const A = W.airport; if (!A) return;
@@ -1070,7 +1070,7 @@ function genWorld(seed) {
       const [a0, a1] = span(ry0 + 2), x0 = Math.max(a0, span(ry0)[0], span(ry0 + 5)[0]) + 4, x1 = Math.min(a1, span(ry0)[1], span(ry0 + 5)[1]) - 4;
       pv(x0, ry0, x1, ry0 + 5, TL.RUNWAY); W.runways.push({ x0: x0 * T, y0: ry0 * T, x1: (x1 + 1) * T, y1: (ry0 + 6) * T });
       const ty = ry0 < cy ? ry0 + 9 : ry0 - 5;
-      pv(x0 + 4, ty, x1 - 4, ty + 1, TL.LOT);
+      pv(x0 + 4, ty, x1 - 4, ty + 1, TL.LOT); A.marks.push([(x0 + 4) * T, (ty + 1) * T, (x1 - 3) * T, (ty + 1) * T]);
       for (let x = x0 + 8; x < x1 - 6; x += 24) { const y0 = Math.min(ry0 + 6, ty + 2), y1 = Math.max(ry0 - 1, ty - 1); pv(x, Math.min(y0, y1), x + 1, Math.max(y0, y1), TL.LOT); }
       for (let k = 0; k < 7; k++) { pv(Math.round((x0 + x1) / 2) + (ry0 < cy ? k : -k) * 2, ry0 < cy ? ry0 + 6 + k : ry0 - 1 - k, Math.round((x0 + x1) / 2) + (ry0 < cy ? k : -k) * 2 + 2, ry0 < cy ? ry0 + 6 + k : ry0 - 1 - k, TL.LOT); }
       if (ry0 === rA) A.takeoff = { x: (x0 + 3) * T, y: (ry0 + 3) * T, a: 0 };
@@ -1079,20 +1079,39 @@ function genWorld(seed) {
     const ay0 = rA + 13, ay1 = rB - 9, my = Math.round((ay0 + ay1) / 2), mx = cx, arx = Math.round(rx * 0.55), ary = Math.round((ay1 - ay0) / 2);
     for (let y = ay0; y <= ay1; y++) for (let x = mx - arx; x <= mx + arx; x++) if (((x - mx) / arx) ** 2 + ((y - my) / (ary + 0.5)) ** 2 < 1 && inner(x, y)) set(x, y, TL.LOT);
     const tw = Math.round(arx * 0.3), th = Math.max(3, Math.round(ary * 0.28));
-    const term = addBuilding(mx - tw, my - th, mx + tw, my + th, 18, 'terminal', '#c9d3dc'); term.label = '네온 국제공항';
-    W.decos.push({ t: 'vault', x0: (mx - tw) * T, y0: (my - th) * T, x1: (mx + tw + 1) * T, y1: (my + th + 1) * T, z: 18, c: '#8fb3c9' });
-    for (const s of [-1, 1]) addBuilding(s < 0 ? mx - tw - 14 : mx + tw + 1, my - 1, s < 0 ? mx - tw - 1 : mx + tw + 14, my + 1, 10, 'terminal', '#b8c4cf');
+    // 현대식 터미널: 건물(충돌·2D 지붕)은 상자지만 3D는 유리 벽 + 물결 지붕 + 기둥 (View3D.addDeco 'glass')
+    const glass = (x0, y0, x1, y1, h, roof) => W.decos.push({ t: 'glass', x0: x0 * T, y0: y0 * T, x1: (x1 + 1) * T, y1: (y1 + 1) * T, h, roof });
+    const term = addBuilding(mx - tw, my - th, mx + tw, my + th, 18, 'terminal', '#dfe6ec'); term.label = '네온 국제공항'; glass(mx - tw, my - th, mx + tw, my + th, 18, 'wave');
+    for (const s of [-1, 1]) { const x0 = s < 0 ? mx - tw - 14 : mx + tw + 1, x1 = s < 0 ? mx - tw - 1 : mx + tw + 14; addBuilding(x0, my - 1, x1, my + 1, 10, 'terminal', '#d3dce4'); glass(x0, my - 1, x1, my + 1, 10, 'tube'); }
     const cA = my - th - Math.max(5, Math.round((ary - th) / 2)), cB = my + th + Math.max(5, Math.round((ary - th) / 2));
-    for (const c of [cA, cB]) { addBuilding(mx - Math.round(tw * 1.2), c - 1, mx + Math.round(tw * 1.2), c + 1, 10, 'terminal', '#b8c4cf'); addBuilding(mx - 1, Math.min(c, my) + 2, mx + 1, Math.max(c, my) - 2, 7, 'terminal', '#aab6c1'); }
-    const ct = addBuilding(mx + arx + 4, my - 1, mx + arx + 5, my, 40, 'ctower', '#9aa3ad'); ct.label = '관제탑';
-    W.decos.push({ t: 'cab', x: (mx + arx + 5) * T, y: (my + 0.5) * T, z: 40, c: '#2b4a5a' });
+    const cw = Math.round(tw * 1.3);
+    for (const c of [cA, cB]) {
+      addBuilding(mx - cw, c - 1, mx + cw, c + 1, 10, 'terminal', '#d3dce4'); glass(mx - cw, c - 1, mx + cw, c + 1, 10, 'tube');
+      const y0 = Math.min(c, my) + 2, y1 = Math.max(c, my) - 2; if (y1 >= y0) { addBuilding(mx - 1, y0, mx + 1, y1, 7, 'terminal', '#c9d3dc'); glass(mx - 1, y0, mx + 1, y1, 7, 'tube'); }
+    }
+    // 관제탑: 가는 원통 기둥 + 유리 관제실
+    const ct = addBuilding(mx + arx + 4, my - 1, mx + arx + 5, my, 44, 'ctower', '#e8ecef'); ct.label = '관제탑';
+    W.decos.push({ t: 'tower2', x: (mx + arx + 5) * T, y: my * T, h: 44 });
     addBuilding(mx + arx + 9, my - 8, mx + arx + 18, my - 2, 12, 'warehouse', '#9aa3ad').label = '화물 청사';
     pv(mx + arx + 8, my - 9, mx + arx + 19, my + 6, TL.LOT);
-    for (let k = 0; k < 3; k++) { const hx = mx - arx - 14 - k * 11; pv(hx - 1, my - 5, hx + 9, my + 5, TL.LOT); addBuilding(hx, my - 3, hx + 7, my + 3, 10, 'hangar', '#7a8290'); W.decos.push({ t: 'vault', x0: hx * T, y0: (my - 3) * T, x1: (hx + 8) * T, y1: (my + 4) * T, z: 10, c: '#6b7480' }); }
-    // 여객기 게이트
+    for (let k = 0; k < 3; k++) { const hx = mx - arx - 14 - k * 11; pv(hx - 1, my - 5, hx + 9, my + 5, TL.LOT); addBuilding(hx, my - 3, hx + 7, my + 3, 10, 'hangar', '#7a8290'); W.decos.push({ t: 'vault', x0: hx * T, y0: (my - 3) * T, x1: (hx + 8) * T, y1: (my + 4) * T, z: 10, c: '#b8c0c8' }); }
+    // 게이트 (탑승동 바깥쪽에 4개씩 + 날개 끝 2개) · 탑승교 · 유도선(노란 선) · 지상 조업 차량
     A.gates = [];
-    for (const [gx, gy, a] of [[mx - 10, cA - 6, Math.PI / 2], [mx + 10, cA - 6, Math.PI / 2], [mx - 10, cB + 6, -Math.PI / 2], [mx + 10, cB + 6, -Math.PI / 2], [mx - tw - 8, my - 6, Math.PI / 2], [mx + tw + 8, my + 6, -Math.PI / 2]])
+    const addGate = (gx, gy, a, bx, by) => {
       A.gates.push({ x: (gx + 0.5) * T, y: (gy + 0.5) * T, a, car: null, cd: 0 });
+      W.decos.push({ t: 'jetbridge', x0: (bx + 0.5) * T, y0: by * T, x1: (gx + 0.5) * T + Math.cos(a) * 9, y1: (gy + 0.5) * T + Math.sin(a) * 9 });
+      A.marks.push([(gx + 0.5) * T, (gy + 0.5) * T - Math.sin(a) * 40, (gx + 0.5) * T, (gy + 0.5) * T + Math.sin(a) * 16]);
+      W.decos.push({ t: 'gse', x: (gx + 0.5) * T + 7, y: (gy + 0.5) * T + Math.sin(a) * 12 });
+    };
+    for (let k = 0; k < 4; k++) { const gx = mx - cw + Math.round((k + 0.5) * cw * 2 / 4); addGate(gx, cA - 8, Math.PI / 2, gx, cA - 1); addGate(gx, cB + 8, -Math.PI / 2, gx, cB + 2); }
+    addGate(mx - tw - 10, my - 8, Math.PI / 2, mx - tw - 10, my - 1); addGate(mx + tw + 10, my + 8, -Math.PI / 2, mx + tw + 10, my + 2);
+    // 계류장 조명탑 · 활주로 등화
+    for (let k = -2; k <= 2; k++) W.decos.push({ t: 'mast', x: (mx + k * Math.round(arx * 0.4)) * T, y: (my + (k % 2 ? -ary + 2 : ary - 2)) * T, h: 26 });
+    for (const r of W.runways.slice(-2)) {
+      const pts = []; for (let x = r.x0; x <= r.x1; x += 30) { pts.push([x, r.y0 + 0.4, 0]); pts.push([x, r.y1 - 0.4, 0]); }
+      for (let y = r.y0 + 2; y < r.y1 - 1; y += 3) { pts.push([r.x0 + 0.5, y, 1]); pts.push([r.x1 - 0.5, y, 2]); }
+      W.decos.push({ t: 'rlights', x: (r.x0 + r.x1) / 2, y: (r.y0 + r.y1) / 2, pts });
+    }
     // 공항 안 도로(섬 둘레를 도는 순환로) · 나무
     for (let a = 0; a < TAU; a += 0.003) { const x = Math.round(cx + Math.cos(a) * (rx - 7)), y = Math.round(cy + Math.sin(a) * (ry - 5)); if (inner(x, y) && get(x, y) === TL.GRASS) { set(x, y, TL.LOT); if (get(x, y + 1) === TL.GRASS) set(x, y + 1, TL.LOT); } }
     for (let k = 0; k < 90; k++) { const x = cx - rx + Math.floor(R() * rx * 2), y = cy - ry + Math.floor(R() * ry * 2); if (inner(x, y) && get(x, y) === TL.GRASS && get(x + 1, y) === TL.GRASS && get(x, y + 1) === TL.GRASS) addTree((x + 0.5) * T, (y + 0.5) * T, 'tree'); }
@@ -1874,10 +1893,9 @@ function buildMinimap() {
   const bm = World.boulevardMask, E = World.etoile;
   for (let i = 0; i < MW * MH; i++) {
     let col = MINI_COL[World.tiles[i]];
-    if (bm && bm[i] === 1 && World.tiles[i] === TL.ROAD) col = '#e8d59c'; // 방사형 대로 · 그랑 불바르
-    else if (bm && bm[i] === 2) col = '#9ea3ab'; // 골목
-    else if (World.tiles[i] === TL.ROAD && World.roadK[i] >= 6) col = '#f6d365'; // 고속도로
-    else if (World.tiles[i] === TL.ROAD && (World.hwLine && World.hwLine[i])) col = '#f6d365';
+    // 지도 색: 옛길·해안도로·방사로·골목은 일반 도로와 같은 색 계열(골목은 조금 어둡게), 고속도로만 주황
+    if (bm && bm[i] === 2) col = '#aeb2b9';
+    else if (World.tiles[i] === TL.ROAD && (World.roadK[i] >= 6 || (World.hwLine && World.hwLine[i]))) col = '#f0a04b';
     if (E && E.R && Math.hypot(i % MW + 0.5 - E.cx, Math.floor(i / MW) + 0.5 - E.cy) < E.R && World.tiles[i] === TL.PLAZA) col = '#f2e6bf';
     const n = parseInt(col.slice(1), 16);
     img.data[i * 4] = (n >> 16) & 255; img.data[i * 4 + 1] = (n >> 8) & 255; img.data[i * 4 + 2] = n & 255; img.data[i * 4 + 3] = 255;
@@ -5726,6 +5744,14 @@ function drawGround(amb) {
       if (hash2(tx, ty) < 0.08) { ctx.fillStyle = 'rgba(40,30,20,0.25)'; ctx.beginPath(); ctx.arc(tx * T + 2, ty * T + 2, 1.1, 0, TAU); ctx.fill(); }
     }
   }
+  // 공항 유도선 (노란 선): 유도로 중앙선 · 게이트 진입선 + 정지선
+  if (World.airport && World.airport.marks) {
+    ctx.strokeStyle = 'rgba(242,193,78,0.9)'; ctx.lineWidth = 0.3; ctx.beginPath();
+    for (const [x0, y0, x1, y1] of World.airport.marks) { if (Math.max(x0, x1) < Cam.x - Cam.vw / 2 - 10 || Math.min(x0, x1) > Cam.x + Cam.vw / 2 + 10 || Math.max(y0, y1) < Cam.y - Cam.vh / 2 - 10 || Math.min(y0, y1) > Cam.y + Cam.vh / 2 + 10) continue; ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(242,193,78,0.9)';
+    for (const g of World.airport.gates || []) ctx.fillRect(g.x - 3, g.y + Math.sin(g.a) * 15 - 0.2, 6, 0.4);
+  }
   // 활주로 표시 (기지·공항) · 헬기 착륙장
   for (const r of World.runways || []) {
     if (r.x1 < Cam.x - Cam.vw / 2 - 20 || r.x0 > Cam.x + Cam.vw / 2 + 20 || r.y1 < Cam.y - Cam.vh / 2 - 20 || r.y0 > Cam.y + Cam.vh / 2 + 20) continue;
@@ -6563,7 +6589,7 @@ const View3D = {
       const SOLID = [[0.02, 0.98], [0.03, 0.98], [0.03, 0.97], [0.02, 0.97]];
       for (const b of bk.b) {
         const X0 = b.x0 * T, Z0 = b.y0 * T, X1 = (b.x1 + 1) * T, Z1 = (b.y1 + 1) * T, H = b.h;
-        if (b.kind === 'eiffel') continue; // 탑은 addDeco에서 따로 만든다
+        if (b.kind === 'eiffel' || b.kind === 'terminal' || b.label === '관제탑') continue; // 탑·공항 터미널은 addDeco에서 따로 만든다
         const hasWin = !['container', 'house', 'warehouse', 'fence', 'arch', 'church', 'arena'].includes(b.kind) && H > 5;
         const wallUV = (len) => hasWin ? [[0, 0], [len / 3, 0], [len / 3, H / 3.4], [0, H / 3.4]] : SOLID;
         const base = color.set(b.color).clone();
@@ -6632,6 +6658,36 @@ const View3D = {
     else if (d.t === 'spire') add(new THREE.ConeGeometry(2.2, d.h, 8), d.x, d.z + d.h / 2, d.y);
     else if (d.t === 'vault') { const len = d.x1 - d.x0, r = (d.y1 - d.y0) / 2; const o = add(new THREE.CylinderGeometry(r, r, len, 16, 1, false, 0, Math.PI), (d.x0 + d.x1) / 2, d.z, (d.y0 + d.y1) / 2); o.rotation.set(0, 0, Math.PI / 2); o.scale.set(1, 1, 0.45); o.rotation.y = 0; o.rotation.x = -Math.PI / 2; o.rotation.z = Math.PI / 2; }
     else if (d.t === 'cab') { add(new THREE.CylinderGeometry(3.2, 2.4, 3.2, 10), d.x, d.z + 1.6, d.y); add(new THREE.CylinderGeometry(3.6, 3.6, 0.5, 10), d.x, d.z + 3.4, d.y); }
+    else if (d.t === 'glass') this.addGlass(G, d);
+    else if (d.t === 'tower2') {
+      const wm = this.mat('#e8ecef'), H = d.h;
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2.6, H, 16), wm); shaft.position.set(d.x, H / 2, d.y); G.add(shaft);
+      const deck = new THREE.Mesh(new THREE.CylinderGeometry(5.2, 3.2, 1.6, 16), wm); deck.position.set(d.x, H + 0.4, d.y); G.add(deck);
+      const cab = new THREE.Mesh(new THREE.CylinderGeometry(5.6, 4.6, 4, 16), this.glassMat()); cab.position.set(d.x, H + 3.2, d.y); G.add(cab);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(3, 6, 1.2, 16), this.mat('#b8c2cc')); cap.position.set(d.x, H + 5.8, d.y); G.add(cap);
+      const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.2, 7, 6), this.mat('#d33')); ant.position.set(d.x, H + 9.8, d.y); G.add(ant);
+    }
+    else if (d.t === 'jetbridge') { // 탑승교: 기둥 위의 긴 통로
+      const dx = d.x1 - d.x0, dy = d.y1 - d.y0, L = Math.hypot(dx, dy), a = Math.atan2(dy, dx);
+      const tube = new THREE.Mesh(new THREE.BoxGeometry(L, 2.8, 2.6), this.mat('#c9ced6')); tube.position.set((d.x0 + d.x1) / 2, 4.6, (d.y0 + d.y1) / 2); tube.rotation.y = -a; G.add(tube);
+      const win = new THREE.Mesh(new THREE.BoxGeometry(L * 0.9, 0.8, 2.7), this.glassMat()); win.position.set((d.x0 + d.x1) / 2, 5.1, (d.y0 + d.y1) / 2); win.rotation.y = -a; G.add(win);
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.6, 3.4, 0.6), this.mat('#6b7280')); leg.position.set(d.x0 + dx * 0.75, 1.7, d.y0 + dy * 0.75); G.add(leg);
+    }
+    else if (d.t === 'gse') { // 지상 조업 차량 (견인차 + 수하물 카트)
+      const car = new THREE.Mesh(new THREE.BoxGeometry(3, 1.4, 1.8), this.mat('#f2c14e')); car.position.set(d.x, 0.8, d.y); G.add(car);
+      for (let k = 1; k <= 3; k++) { const c = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 1.4), this.mat('#8a929c')); c.position.set(d.x - k * 2.6, 0.6, d.y); G.add(c); }
+    }
+    else if (d.t === 'mast') { // 계류장 조명탑
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.4, d.h, 6), this.mat('#9aa3ad')); p.position.set(d.x, d.h / 2, d.y); G.add(p);
+      const l = new THREE.Mesh(new THREE.BoxGeometry(3, 0.8, 1.2), this.lampMat); l.position.set(d.x, d.h, d.y); G.add(l);
+    }
+    else if (d.t === 'rlights') { // 활주로 등화: 가장자리 흰색, 시작 초록, 끝 빨강 (밤에 빛난다)
+      const pos = [], col = [], cc = [[1, 0.95, 0.8], [0.2, 1, 0.3], [1, 0.2, 0.2]];
+      for (const [x, y, k] of d.pts) { pos.push(x, 0.25, y); col.push(...cc[k]); }
+      const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      const pm = this.rlMat = this.rlMat || new THREE.PointsMaterial({ size: 0.9, vertexColors: true, transparent: true, opacity: 0.9 });
+      const pts = new THREE.Points(geo, pm); pts.frustumCulled = false; G.add(pts);
+    }
     else if (d.t === 'tankcyl') add(new THREE.CylinderGeometry(d.r, d.r, d.z + 1, 16), d.x, (d.z + 1) / 2, d.y);
     else if (d.t === 'eiffel') {
       // 네 다리(기울어진 기둥) + 층층이 좁아지는 몸통 + 첨탑. 밤에는 금빛으로 빛난다
@@ -6642,6 +6698,33 @@ const View3D = {
       for (let k = 0; k < 6; k++) { const t0 = k / 6, w = 9 * (1 - t0) + 1.6; add(new THREE.BoxGeometry(w, (H * 0.55) / 6 * 0.9, w), d.x, legH + (k + 0.5) * (H * 0.55) / 6, d.y); }
       add(new THREE.BoxGeometry(5, 1.2, 5), d.x, legH + H * 0.28, d.y);
       add(new THREE.CylinderGeometry(0.25, 0.9, H * 0.15, 6), d.x, H * 0.925, d.y);
+    }
+  },
+  glassMat() { return this._glass = this._glass || new THREE.MeshPhongMaterial({ color: '#5d8fb8', specular: '#e8f4ff', shininess: 90, emissive: '#10263a' }); }, // 불투명 반사 유리 (비쳐 보이면 바다처럼 보인다)
+  // 현대식 유리 건물: 유리 벽 + 세로 멀리언(창틀) + 지붕 (wave = 물결 곡면 지붕, tube = 둥근 지붕의 탑승동)
+  addGlass(G, d) {
+    const w = d.x1 - d.x0, l = d.y1 - d.y0, H = d.h, cx = (d.x0 + d.x1) / 2, cz = (d.y0 + d.y1) / 2, gm = this.glassMat();
+    const core = new THREE.Mesh(new THREE.BoxGeometry(w - 0.6, H * 0.92, l - 0.6), gm); core.position.set(cx, H * 0.46, cz); G.add(core);
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(w, 0.5, l), this.mat('#e3e7ea')); floor.position.set(cx, H * 0.45, cz); G.add(floor);
+    const mul = this.mat('#dfe4e8'), step = 4;
+    const along = w >= l, len = along ? w : l, n = Math.floor(len / step);
+    const mg = new THREE.BoxGeometry(along ? 0.25 : l + 0.1, H * 0.92, along ? l + 0.1 : 0.25);
+    const inst = new THREE.InstancedMesh(mg, mul, n + 1); const m4 = new THREE.Matrix4();
+    for (let k = 0; k <= n; k++) { const t = -len / 2 + k * len / n; m4.makeTranslation(along ? cx + t : cx, H * 0.46, along ? cz : cz + t); inst.setMatrixAt(k, m4); }
+    inst.frustumCulled = false; G.add(inst);
+    if (d.roof === 'wave') { // 물결 지붕: 얇은 판을 사인 곡선으로 기울여 이어 붙인다 + 넓은 처마
+      const segs = 18, rm = this.mat('#f4f6f8');
+      for (let k = 0; k < segs; k++) {
+        const t0 = k / segs, t1 = (k + 1) / segs, y0 = H + 2.2 * Math.sin(t0 * Math.PI * 2), y1 = H + 2.2 * Math.sin(t1 * Math.PI * 2);
+        const sw = (w + 8) / segs, pl = new THREE.Mesh(new THREE.BoxGeometry(Math.hypot(sw, y1 - y0) + 0.05, 0.5, l + 8), rm);
+        pl.position.set(d.x0 - 4 + (k + 0.5) * sw, (y0 + y1) / 2, cz); pl.rotation.z = Math.atan2(y1 - y0, sw); G.add(pl);
+      }
+      for (const s of [-1, 1]) for (let k = 0; k <= 6; k++) { const col = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, H + 1, 6), this.mat('#c9ced6')); col.position.set(d.x0 - 2 + k * (w + 4) / 6, (H + 1) / 2, cz + s * (l / 2 + 2.5)); G.add(col); }
+    } else { // 탑승동: 반원 지붕
+      const r = (along ? l : w) / 2 + 0.3, geo = new THREE.CylinderGeometry(r, r, len, 12, 1, false, 0, Math.PI);
+      geo.rotateZ(Math.PI / 2); geo.scale(1, 0.45, 1); if (!along) geo.rotateY(Math.PI / 2); // 축을 길이 방향으로, 반원이 위로
+      const roof = new THREE.Mesh(geo, this.mat('#eef1f4')); roof.position.set(cx, H * 0.92, cz);
+      G.add(roof);
     }
   },
   disposeChunk(ch) {
@@ -6957,6 +7040,8 @@ const View3D = {
     this.hemi.color.setRGB(amb[0], amb[1], amb[2]);
     this.bmat.emissiveIntensity = night > 0.35 ? night * 0.9 : 0;
     this.lampMat.color.setScalar(night > 0.3 ? 1 : 0.55);
+    if (this._glass) this._glass.emissive.setRGB(0.05 + night * 0.62, 0.1 + night * 0.48, 0.16 + night * 0.2);
+    if (this.rlMat) this.rlMat.opacity = night > 0.3 ? 1 : 0.35;
     if (this.eiffelMat) this.eiffelMat.emissive.setRGB(0.23 + night * 0.6, 0.16 + night * 0.4, 0.06 + night * 0.08);
     // 신호등
     if (!this.tlT || Game.time - this.tlT > 0.4) {

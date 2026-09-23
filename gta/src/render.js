@@ -160,6 +160,14 @@ function drawGround(amb) {
       if (hash2(tx, ty) < 0.08) { ctx.fillStyle = 'rgba(40,30,20,0.25)'; ctx.beginPath(); ctx.arc(tx * T + 2, ty * T + 2, 1.1, 0, TAU); ctx.fill(); }
     }
   }
+  // 공항 유도선 (노란 선): 유도로 중앙선 · 게이트 진입선 + 정지선
+  if (World.airport && World.airport.marks) {
+    ctx.strokeStyle = 'rgba(242,193,78,0.9)'; ctx.lineWidth = 0.3; ctx.beginPath();
+    for (const [x0, y0, x1, y1] of World.airport.marks) { if (Math.max(x0, x1) < Cam.x - Cam.vw / 2 - 10 || Math.min(x0, x1) > Cam.x + Cam.vw / 2 + 10 || Math.max(y0, y1) < Cam.y - Cam.vh / 2 - 10 || Math.min(y0, y1) > Cam.y + Cam.vh / 2 + 10) continue; ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); }
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(242,193,78,0.9)';
+    for (const g of World.airport.gates || []) ctx.fillRect(g.x - 3, g.y + Math.sin(g.a) * 15 - 0.2, 6, 0.4);
+  }
   // 활주로 표시 (기지·공항) · 헬기 착륙장
   for (const r of World.runways || []) {
     if (r.x1 < Cam.x - Cam.vw / 2 - 20 || r.x0 > Cam.x + Cam.vw / 2 + 20 || r.y1 < Cam.y - Cam.vh / 2 - 20 || r.y0 > Cam.y + Cam.vh / 2 + 20) continue;
