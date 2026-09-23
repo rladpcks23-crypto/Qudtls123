@@ -83,7 +83,8 @@ const Jobs = {
   farSpot(x, y, minD, maxD) {
     for (let k = 0; k < 30; k++) {
       const a = rand(0, TAU), r = rand(minD, maxD);
-      const px = clamp(x + Math.cos(a) * r, 40, MW * T - 60), py = clamp(y + Math.sin(a) * r, 40, MH * T - 60);
+      const py0 = World.base ? World.base.y1 + 16 : 40; // 군사 기지 안에 목적지를 만들지 않는다
+      const px = clamp(x + Math.cos(a) * r, 40, MW * T - 60), py = clamp(y + Math.sin(a) * r, py0, MH * T - 60);
       const s = sidewalkNear(px, py);
       const d = dist(s.x, s.y, x, y);
       if (d > minD * 0.8 && d < maxD * 1.2) return s;

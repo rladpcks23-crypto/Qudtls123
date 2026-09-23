@@ -1181,7 +1181,18 @@ function sidewalkNear(x, y, minD = 0) {
     const px = (tx + 0.5) * T, py = (ty + 0.5) * T, d = dist2(px, py, x, y);
     if (d >= minD * minD && d < bd) { bd = d; best = { x: px, y: py }; }
   }
-  return best || { x, y };
+  if (best) return best;
+  // 근처에 인도가 없으면(기지·바다 쪽) 링을 넓혀 가며 가장 가까운 인도를 찾는다 — 제자리를 돌려주면 기지 안에 목표가 생긴다
+  const cx = clamp(Math.floor(x / T), 0, MW - 1), cy = clamp(Math.floor(y / T), 0, MH - 1);
+  for (let r = 1; r < MW; r++) {
+    for (let k = -r; k <= r; k++) for (const [tx, ty] of [[cx + k, cy - r], [cx + k, cy + r], [cx - r, cy + k], [cx + r, cy + k]]) {
+      if (tx < 0 || ty < 0 || tx >= MW || ty >= MH || World.tiles[tIdx(tx, ty)] !== TL.WALK) continue;
+      const px = (tx + 0.5) * T, py = (ty + 0.5) * T, d = dist2(px, py, x, y);
+      if (d >= minD * minD && d < bd) { bd = d; best = { x: px, y: py }; }
+    }
+    if (best) return best;
+  }
+  return { x, y };
 }
 // 차선 위 임의 지점 (스폰용): 구간, 방향, 위치 반환
 function laneSpot(edge, forward, s) {
@@ -3387,7 +3398,8 @@ const Jobs = {
   farSpot(x, y, minD, maxD) {
     for (let k = 0; k < 30; k++) {
       const a = rand(0, TAU), r = rand(minD, maxD);
-      const px = clamp(x + Math.cos(a) * r, 40, MW * T - 60), py = clamp(y + Math.sin(a) * r, 40, MH * T - 60);
+      const py0 = World.base ? World.base.y1 + 16 : 40; // 군사 기지 안에 목적지를 만들지 않는다
+      const px = clamp(x + Math.cos(a) * r, 40, MW * T - 60), py = clamp(y + Math.sin(a) * r, py0, MH * T - 60);
       const s = sidewalkNear(px, py);
       const d = dist(s.x, s.y, x, y);
       if (d > minD * 0.8 && d < maxD * 1.2) return s;
