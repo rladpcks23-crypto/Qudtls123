@@ -36,6 +36,7 @@ const Game = {
     addEventListener('mouseup', e => { if (e.button === 0) Input.mouse.down = false; });
     canvas.addEventListener('wheel', e => { Input.wheel += sign(e.deltaY); e.preventDefault(); }, { passive: false });
     canvas.addEventListener('contextmenu', e => e.preventDefault());
+    canvas.addEventListener('click', e => { if (this.state === 'map') this.mapClick(e.clientX, e.clientY); });
   },
 
   newGame(cont) {
@@ -54,6 +55,8 @@ const Game = {
     if (sv) { for (const k in sv.inv) P.inv[k] = sv.inv[k] === -1 ? Infinity : sv.inv[k]; this.clock = sv.time || this.clock; }
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
     placeStaticPickups();
+    Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
+    this.waypoint = null; this.noWanted = false;
     Cam.x = P.x; Cam.y = P.y;
     this.populate(true);
     // 시작 차량 하나
@@ -70,6 +73,14 @@ const Game = {
     } else UI.toast('저장된 진행 상황을 불러왔다');
   },
   toMenu() { this.state = 'menu'; Menu.show(); this.player.hidden = true; Wanted.reset(); Police.reset(); Missions.active = null; },
+  // 전체 지도 클릭 = 웨이포인트 지정/해제 (지도 밖을 누르면 닫기)
+  mapClick(sx, sy) {
+    const r = this.mapRect; if (!r) return;
+    if (sx < r.ox || sy < r.oy || sx > r.ox + r.size || sy > r.oy + r.size) { this.state = 'play'; return; }
+    const x = (sx - r.ox) / r.k, y = (sy - r.oy) / r.k;
+    if (this.waypoint && dist(x, y, this.waypoint.x, this.waypoint.y) < 25) { this.waypoint = null; UI.toast('웨이포인트 해제'); }
+    else { this.waypoint = { x, y }; Sfx.pickup(); }
+  },
   pause() { if (this.state !== 'play') return; this.state = 'paused'; Menu.showPause(); },
   resume() { Menu.hidePause(); this.state = 'play'; },
 
@@ -87,7 +98,7 @@ const Game = {
   frame(dt) {
     Pad.poll();
     const st = this.state;
-    if (st !== this._lastSt) { this._lastSt = st; document.body.classList.toggle('playing', st !== 'menu'); }
+    if (st !== this._lastSt) { this._lastSt = st; document.body.classList.toggle('playing', st !== 'menu'); document.body.classList.toggle('mapopen', st === 'map'); }
     const drv = st !== 'menu' && !!(this.player && this.player.car);
     if (drv !== this._lastDrv) {
       this._lastDrv = drv; document.body.classList.toggle('driving', drv);
@@ -100,7 +111,7 @@ const Game = {
       else if (keyHit('KeyM', 'Tab', 'PadBack')) { this.state = 'map'; }
       else this.update(dt);
     } else if (st === 'map') {
-      if (keyHit('Escape', 'KeyM', 'Tab', 'PadBack', 'PadB', 'PadStart') || Input.mouse.clicked) this.state = 'play';
+      if (keyHit('Escape', 'KeyM', 'Tab', 'PadBack', 'PadB', 'PadStart')) this.state = 'play';
     } else if (st === 'paused') {
       if (keyHit('Escape', 'KeyP', 'PadStart', 'PadB')) this.resume();
     } else if (st === 'menu') {
@@ -162,6 +173,10 @@ const Game = {
     Jay.update(dt);
     Missions.update(dt);
     Jobs.update(dt);
+    Talk.update(dt); Aim.update(dt); EMS.update(dt); Givers.update(); Vendors.update(dt); GPS.update(dt);
+    // 체력 자연 회복: 6초 동안 안 다치면 50까지 천천히 (GTA V)
+    if (!P.dead && P.hp < 50 && this.time - (P.lastHurt || 0) > 6) P.hp = Math.min(50, P.hp + 2 * dt);
+    if (P.car && keyHit('KeyH')) for (const q of this.peds) if (q.kind === 'civ' && !q.dead && dist2(q.x, q.y, P.px, P.py) < 144 && chance(0.4)) Talk.line(q, 'honk');
     Pick.scan();
     if (Pick.target !== this._lastPick) { this._lastPick = Pick.target; document.body.classList.toggle('cansteal', !!Pick.target); }
     updatePickups(dt);
@@ -252,7 +267,7 @@ const Game = {
       if (d < inner || d > outer || (!initial && onScreen(sp.x, sp.y, 4))) continue;
       sp.cd = 60;
       if (!chance(0.55)) continue;
-      const c = new Car(pick(['sedan', 'compact', 'sports', 'muscle', 'van', 'sedan', 'compact']), sp.x, sp.y, sp.a + (chance(0.5) ? Math.PI : 0));
+      const c = new Car(pick(['sedan', 'compact', 'sports', 'muscle', 'van', 'sedan', 'compact', 'bike', 'bike']), sp.x, sp.y, sp.a + (chance(0.5) ? Math.PI : 0));
       this.cars.push(c); sp.car = c;
     }
     // 보행자
@@ -266,13 +281,14 @@ const Game = {
       const d = dist(x, y, f.x, f.y);
       if (d < inner || d > outer || (!initial && onScreen(x, y, 3))) continue;
       const dist_ = b.district;
-      if (dist_ === DIST.HARBOR && chance(0.35)) {
-        const n = randi(2, 3);
-        for (let i = 0; i < n; i++) { const g = spawnPed('gang', x + rand(-1.5, 1.5), y + rand(-1.5, 1.5)); g.homeX = g.x; g.homeY = g.y; peds++; }
+      if ((dist_ === DIST.HARBOR && chance(0.35)) || (dist_ === DIST.BEACH && chance(0.22))) {
+        const n = randi(2, 3), gang = dist_ === DIST.BEACH ? 'wave' : 'dragon';
+        for (let i = 0; i < n; i++) { const g = spawnPed('gang', x + rand(-1.5, 1.5), y + rand(-1.5, 1.5)); setGang(g, gang); g.homeX = g.x; g.homeY = g.y; peds++; }
         continue;
       }
       const p = spawnPed(chance(0.06) ? 'cop' : 'civ', x, y);
       p.block = b; p.s = s; p.state = 'walk'; p.seg = -1;
+      if (p.kind === 'civ') { dressArch(p, pickArch(dist_)); if (p.dog) { p.dog.x = x - 1; p.dog.y = y; } }
       if (dist_ === DIST.BEACH && chance(0.5)) { p.shirt = pick(['#ff8fab', '#ffd166', '#06d6a0', '#118ab2', '#f4f1de']); p.pants = pick(['#f4a261', '#2a9d8f', '#e9c46a']); }
       if (dist_ === DIST.DOWNTOWN && chance(0.5)) { p.shirt = pick(['#2b2d42', '#3d405b', '#1b263b', '#6c757d']); p.pants = '#1b1b1f'; }
       peds++;
@@ -324,6 +340,8 @@ const Game = {
       for (const [k, kind] of [['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart']]) {
         const S = World.places[k]; if (S && dist(P.x, P.y, S.x, S.y) < 1.8) { Shop.open(kind); return; }
       }
+      const SH = World.places.safehouse;
+      if (SH && dist(P.x, P.y, SH.x, SH.y) < 1.8) { Safehouse.use(); return; }
       const JC = World.places.jobcenter, BR = World.places.broker;
       if (JC && dist(P.x, P.y, JC.x, JC.y) < 1.8) Jobs.openBoard(true);
       else if (BR && dist(P.x, P.y, BR.x, BR.y) < 1.8) Jobs.openBoard(false);
@@ -455,7 +473,7 @@ function updatePlayerFoot(P, dt) {
   for (const q of Game.peds) {
     if (q.dead || q.car) continue;
     const dx = P.x - q.x, dy = P.y - q.y, d2 = dx * dx + dy * dy;
-    if (d2 < 0.5 && d2 > 1e-6) { const d = Math.sqrt(d2), push = (0.72 - d) * 0.5; P.x += dx / d * push; P.y += dy / d * push; q.x -= dx / d * push; q.y -= dy / d * push; if (sprint && q.kind === 'civ' && chance(0.02)) q.downT = 0.8; }
+    if (d2 < 0.5 && d2 > 1e-6) { const d = Math.sqrt(d2), push = (0.72 - d) * 0.5; P.x += dx / d * push; P.y += dy / d * push; q.x -= dx / d * push; q.y -= dy / d * push; if (sprint && q.kind === 'civ' && chance(0.02)) q.downT = 0.8; if (q.kind === 'civ' && chance(0.03)) Talk.line(q, 'bump'); }
   }
   pedStatic(P);
 }
@@ -494,6 +512,8 @@ function tryEnterCar(P) {
     }
     crime(c.type === 'police' || kind === 'cop' ? 'stealCop' : 'carjack', c.x, c.y);
   } else if (c.type === 'police' || c.type === 'swat') crime('stealCop', c.x, c.y);
+  else if (!c.everDriven && !c.persistent && c.type !== 'bike' && chance(0.3)) { c.alarmT = 9; UI.toast('도난 경보가 울린다!'); crime('carjack', c.x, c.y); }
+  c.everDriven = true;
   P.car = c; c.driver = 'player'; c.ai = null; c.driverKind = null; c.siren = false;
   if (c.type === 'police') c.sirenMode = 1;
   Sfx.tone({ x: c.x, y: c.y, f0: 180, f1: 90, dur: 0.1, type: 'square', vol: 0.3 });

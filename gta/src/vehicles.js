@@ -23,10 +23,11 @@ const VTYPES = {
   truck: { name: '뮬 트럭', L: 7.2, W: 2.4, mass: 4200, Fe: 15000, vmax: 30, grip: 0.95, cs: 4.4, steer: 0.45, hp: 240, colors: ['#e0e0e0', '#b0452f', '#2f5fb0'], style: 'truck' },
   police: { name: '경찰 순찰차', L: 4.8, W: 1.95, mass: 1450, Fe: 10500, vmax: 50, grip: 1.35, cs: 5.4, steer: 0.58, hp: 140, colors: ['#f4f4f4'], style: 'police' },
   swat: { name: 'SWAT 장갑차', L: 5.8, W: 2.3, mass: 3200, Fe: 14500, vmax: 40, grip: 1.1, cs: 5.0, steer: 0.5, hp: 320, colors: ['#1f2328'], style: 'swat' },
+  bike: { name: 'PCJ-600', L: 2.2, W: 0.8, mass: 230, Fe: 3300, vmax: 56, grip: 1.3, cs: 6, steer: 0.7, hp: 60, colors: ['#e0262b', '#1d1d1f', '#f2c200', '#2e7dd1', '#e8e8ea'], style: 'bike' },
   ambulance: { name: '구급차', L: 5.4, W: 2.1, mass: 2300, Fe: 10000, vmax: 42, grip: 1.12, cs: 5.0, steer: 0.54, hp: 180, colors: ['#f4f4f4'], style: 'ambulance' },
   armored: { name: '현금수송 트럭', L: 6.4, W: 2.4, mass: 5000, Fe: 16000, vmax: 30, grip: 1.0, cs: 4.6, steer: 0.45, hp: 700, colors: ['#3d4a3a'], style: 'armored' },
 };
-const TRAFFIC_MIX = ['sedan', 'sedan', 'sedan', 'compact', 'compact', 'taxi', 'van', 'muscle', 'sports', 'truck', 'sedan', 'compact'];
+const TRAFFIC_MIX = ['sedan', 'sedan', 'sedan', 'compact', 'compact', 'taxi', 'van', 'muscle', 'sports', 'truck', 'sedan', 'compact', 'bike'];
 
 let _eid = 1;
 class Car {
@@ -170,7 +171,13 @@ class Car {
       if (this === Game.player.car) { Cam.shake = Math.max(Cam.shake, Math.min(0.8, v / 25)); buzz(Math.min(80, v * 4)); }
     }
     if (v > 6 && this.driver === 'ai' && this.ai && this.driverKind === 'civ' && this.ai.mode === 'traffic') {
-      if (other && other.driver === 'player') { this.ai.angryT = 3; if (chance(0.5)) this.ai.panic = true; }
+      if (other && other.driver === 'player') { this.ai.angryT = 3; if (chance(0.3) && this.type !== 'bike') this.ai.rageT = 1.2; else if (chance(0.5)) this.ai.panic = true; }
+    }
+    // 오토바이: 세게 부딪히면 운전자가 튕겨 나간다 (GTA)
+    if (this.type === 'bike' && v > 8.5 && this.driver) {
+      const vx = this.vx, vy = this.vy;
+      if (this.driver === 'player') { const P = Game.player; exitCar(P, true); P.vx = vx * 0.7; P.vy = vy * 0.7; P.downT = 1.4; P.damage(Math.min(40, (v - 7) * 3.5), null, 0, 0, 'fall'); UI.toast('오토바이에서 튕겨 나갔다!'); }
+      else if (this.driver === 'ai') { const p = bailOut(this, true); if (p) { p.vx = vx * 0.7; p.vy = vy * 0.7; p.downT = 1.5; p.damage((v - 7) * 4, null, 0, 0, 'fall'); } }
     }
   }
   damage(amt, by) {
@@ -200,7 +207,9 @@ class Car {
     else if (this.driver === 'ai' && this.ai && !this.dead && this.burnT <= 0) aiDrive(this, dt);
     else if (!this.dead) { this.in.thr = 0; this.in.st = 0; this.in.brk = this.driver ? 0 : 0.6; this.in.hb = false; }
     this.brakeLight = (this.in.brk > 0.1 || (this.in.thr < 0 && this.vf > 0.5)) ? 1 : 0;
-    const sub = 2, h = dt / sub;
+    const sub = this.type === 'bike' ? 3 : 2, h = dt / sub;
+    // 도난 경보
+    if (this.alarmT > 0) { const b0 = Math.floor(this.alarmT * 2.5); this.alarmT -= dt; if (Math.floor(this.alarmT * 2.5) !== b0) Sfx.tone({ x: this.x, y: this.y, f0: 560, f1: 560, dur: 0.22, type: 'square', vol: 0.22 }); }
     const moving = this.speed > 0.01 || Math.abs(this.w) > 0.01 || this.in.thr !== 0;
     if (moving) for (let i = 0; i < sub; i++) { this.step(h); this.collideStatic(); }
     // 스키드 마크
@@ -294,6 +303,7 @@ function planTurn(car) {
   if (!exits.length) exits = [(d + 2) % 4];
   let e;
   if (ai.forceDir !== undefined && exits.includes(ai.forceDir)) e = ai.forceDir;
+  else if (ai.goalD) { e = exits.slice().sort((x, y) => ai.goalD[B.adj[x]] - ai.goalD[B.adj[y]])[0]; } // 목적지 쪽으로 (구급차)
   else {
     const wts = exits.map(x => x === d ? 2.2 : 1);
     let r = Math.random() * wts.reduce((a, b) => a + b, 0); e = exits[0];
@@ -328,6 +338,13 @@ function trafficFromHere(car, mode = 'traffic') {
   const s = forward ? E.s : E.L - E.s;
   car.ai = { mode, route: [], from: A.id, to: B.id, dir: d, cruise: rand(11, 15), stuckT: 0, waitT: 0, revT: 0, ignoreT: 0, honkT: 0 };
   pushLane(car.ai.route, A, B, d, s + 6, 99);
+}
+
+// 노드 그래프 BFS 거리 (목적지 노드 기준)
+function bfsDist(goalId) {
+  const d = new Int32Array(World.nodes.length).fill(1e6), q = [goalId]; d[goalId] = 0;
+  for (let h = 0; h < q.length; h++) { const c = q[h]; for (const n of World.nodes[c].adj) if (n >= 0 && d[n] > d[c] + 1) { d[n] = d[c] + 1; q.push(n); } }
+  return d;
 }
 
 // 전방 장애물(IDM 선행차) 탐색
@@ -383,6 +400,13 @@ function aiDrive(car, dt) {
   ai.ignoreT -= dt; ai.honkT -= dt;
   if (ai.mode === 'chase' || ai.mode === 'block') return policeDrive(car, dt);
   if (ai.mode === 'hunt') return huntDrive(car, dt);
+  if (ai.mode === 'ems' && EMS.body && dist2(car.x, car.y, EMS.body.x, EMS.body.y) < 14 * 14) { car.in.thr = 0; car.in.brk = 1; car.in.st = 0; car.in.hb = false; return; }
+  // 보복 운전: 멈춰 서서 운전자가 내려 싸우러 온다
+  if (ai.rageT > 0) {
+    ai.rageT -= dt; car.in.thr = 0; car.in.brk = 1; car.in.st = 0;
+    if (ai.rageT <= 0 && car.speed < 3 && dist2(car.x, car.y, Game.player.px, Game.player.py) < 30 * 30) { const p = bailOut(car, false); if (p) { p.state = 'fight'; p.cd = 0.8; Talk.say(p, pick(LINES.rage), 2.5, true); } }
+    return;
+  }
   if (ai.mode === 'parked') { car.in.thr = 0; car.in.brk = 1; car.in.st = 0; return; }
   if (!ai.route || !ai.route.length) { trafficFromHere(car, ai.mode); if (!car.ai.route.length) return; }
   const r = car.ai.route;
@@ -404,7 +428,7 @@ function aiDrive(car, dt) {
   pursuitSteer(car, tgt.x, tgt.y);
   car.in.hb = false;
   // 목표 속도
-  const panic = ai.mode === 'flee' || ai.panic;
+  const panic = ai.mode === 'flee' || ai.mode === 'ems' || ai.panic;
   let v0 = panic ? (ai.cruiseFlee || 22) : ai.cruise;
   if (Game.weather.rain) v0 *= 0.85;
   let along = 0, px = car.x, py = car.y;

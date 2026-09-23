@@ -272,7 +272,8 @@ function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w
 function drawCar(c, shadow) {
   const L = c.L, W = c.W, st = c.V.style;
   ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a);
-  if (shadow) { ctx.fillStyle = 'rgba(0,0,0,0.32)'; rr(ctx, -L / 2 + shadow[0] * 1.2, -W / 2 + shadow[1] * 1.2, L, W, 0.5); ctx.fill(); }
+  if (shadow) { ctx.fillStyle = 'rgba(0,0,0,0.32)'; rr(ctx, -L / 2 + shadow[0] * 1.2, -W / 2 + shadow[1] * 1.2, L, W, st === 'bike' ? 0.35 : 0.5); ctx.fill(); }
+  if (st === 'bike') { drawBike(c); ctx.restore(); return; }
   // 바퀴
   ctx.fillStyle = '#111';
   const wx = L * 0.3, wy = W / 2 - 0.12;
@@ -337,6 +338,7 @@ function drawCar(c, shadow) {
     ctx.fillStyle = '#fff7d6'; ctx.fillRect(L / 2 - 0.18, -W / 2 + 0.18, 0.16, 0.38); ctx.fillRect(L / 2 - 0.18, W / 2 - 0.56, 0.16, 0.38);
     ctx.fillStyle = c.brakeLight ? '#ff2a2a' : '#8a1a1a'; ctx.fillRect(-L / 2 + 0.02, -W / 2 + 0.16, 0.14, 0.4); ctx.fillRect(-L / 2 + 0.02, W / 2 - 0.56, 0.14, 0.4);
   }
+  if (c.alarmT > 0 && !c.dead && Math.floor(Game.time * 5) % 2) { ctx.fillStyle = '#ffb020'; for (const [x, y] of [[L / 2 - 0.2, -W / 2 + 0.15], [L / 2 - 0.2, W / 2 - 0.15], [-L / 2 + 0.2, -W / 2 + 0.15], [-L / 2 + 0.2, W / 2 - 0.15]]) { ctx.beginPath(); ctx.arc(x, y, 0.22, 0, TAU); ctx.fill(); } }
   // 손상
   const dmg = 1 - c.hp / c.maxHp;
   if (!c.dead && dmg > 0.3) {
@@ -348,8 +350,30 @@ function drawCar(c, shadow) {
   ctx.restore();
 }
 
+function drawBike(c) {
+  const col = c.dead ? '#26272a' : c.color;
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.ellipse(-0.72, 0, 0.36, 0.11, 0, 0, TAU); ctx.fill();
+  ctx.save(); ctx.translate(0.72, 0); ctx.rotate(c.steer); ctx.beginPath(); ctx.ellipse(0, 0, 0.34, 0.1, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#9aa3ad'; ctx.lineWidth = 0.06; ctx.beginPath(); ctx.moveTo(-0.15, -0.38); ctx.lineTo(-0.15, 0.38); ctx.stroke(); ctx.restore();
+  ctx.fillStyle = '#2b2d31'; ctx.fillRect(-0.8, -0.1, 1.5, 0.2);
+  ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(0.2, 0, 0.36, 0.2, 0, 0, TAU); ctx.fill(); ctx.fillRect(-0.9, -0.12, 0.35, 0.24);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(0.05, -0.05, 0.35, 0.05);
+  ctx.fillStyle = '#141414'; ctx.fillRect(-0.55, -0.14, 0.5, 0.28);
+  if (!c.dead) { ctx.fillStyle = '#fff7d6'; ctx.fillRect(1.0, -0.06, 0.08, 0.12); ctx.fillStyle = c.brakeLight ? '#ff2a2a' : '#8a1a1a'; ctx.fillRect(-1.08, -0.06, 0.06, 0.12); }
+  if (c.driver) {
+    const P = Game.player, isP = c.driver === 'player';
+    const jacket = isP ? P.shirt : (c.riderCol || (c.riderCol = pick(['#2b2d42', '#6e1414', '#3b4a6b', '#1d1d1d'])));
+    ctx.fillStyle = jacket; ctx.beginPath(); ctx.ellipse(-0.25, 0, 0.22, 0.3, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = jacket; ctx.lineWidth = 0.1; ctx.beginPath(); ctx.moveTo(-0.15, -0.22); ctx.lineTo(0.55, -0.34 + c.steer * 0.2); ctx.moveTo(-0.15, 0.22); ctx.lineTo(0.55, 0.34 + c.steer * 0.2); ctx.stroke();
+    ctx.fillStyle = isP ? '#101418' : (c.helmet || (c.helmet = pick(['#f2f2f2', '#e0262b', '#111', '#f2c200']))); ctx.beginPath(); ctx.arc(-0.12, 0, 0.18, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(120,180,255,0.5)'; ctx.fillRect(-0.02, -0.1, 0.07, 0.2);
+  }
+}
+
 // ---------- 보행자 ----------
 function drawPed(p, shadow) {
+  if (p.kind === 'dog') { drawDog(p); return; }
   ctx.save(); ctx.translate(p.x, p.y);
   if (p.dead) {
     ctx.rotate(p.a + Math.PI / 2 * ((p.id % 2) ? 1 : -1));
@@ -386,12 +410,13 @@ function drawPed(p, shadow) {
   ctx.fillStyle = p.hitFlash > 0 ? '#ffffff' : p.shirt;
   ctx.beginPath(); ctx.ellipse(0, 0, 0.2, 0.36, 0, 0, TAU); ctx.fill();
   if (p.kind === 'cop') { ctx.fillStyle = '#e8c547'; ctx.fillRect(0.02, -0.2, 0.08, 0.08); }
+  drawArchProps(p);
   if (p.armor > 0 || p.kind === 'swat') { ctx.fillStyle = 'rgba(40,50,60,0.6)'; ctx.fillRect(-0.12, -0.25, 0.24, 0.5); }
   // 머리
   ctx.fillStyle = p.skin; ctx.beginPath(); ctx.arc(0.04, 0, 0.16, 0, TAU); ctx.fill();
   ctx.fillStyle = p.hair; ctx.beginPath(); ctx.arc(-0.01, 0, 0.155, Math.PI * 0.5, Math.PI * 1.5); ctx.fill();
   if (p.kind === 'cop' || p.kind === 'swat') { ctx.fillStyle = p.kind === 'cop' ? '#15213f' : '#1b1f24'; ctx.beginPath(); ctx.arc(0.02, 0, 0.17, 0, TAU); ctx.fill(); ctx.fillRect(0.1, -0.12, 0.12, 0.24); }
-  if (p.kind === 'gang') { ctx.fillStyle = '#1f8a4c'; ctx.beginPath(); ctx.arc(0.0, 0, 0.165, Math.PI * 0.4, Math.PI * 1.6); ctx.fill(); }
+  drawArchHead(p);
   ctx.restore();
 }
 
@@ -516,8 +541,8 @@ function drawBuildings(amb) {
   vis.sort((a, b) => b._d - a._d);
   for (const b of vis) drawBuilding(b, amb, night);
 }
-const PLACE_MARK = { ammu: '#ff6b5a', ammu2: '#ff6b5a', burger: '#ffb347', burger2: '#ffb347', mart: '#7ae68f', mart2: '#7ae68f', mart3: '#7ae68f', jobcenter: '#6fb6ff', broker: '#ff5d8f' };
-const SHOP_ROOF = { ammu: ['#b23a2e', '#f2f2f2'], burger: ['#e0572f', '#ffe08a'], mart: ['#2e8b57', '#f2fff4'], jobcenter: ['#2d5d9f', '#ffffff'], broker: ['#3a2346', '#ff5d8f'] };
+const PLACE_MARK = { safehouse: '#9be15d', ammu: '#ff6b5a', ammu2: '#ff6b5a', burger: '#ffb347', burger2: '#ffb347', mart: '#7ae68f', mart2: '#7ae68f', mart3: '#7ae68f', jobcenter: '#6fb6ff', broker: '#ff5d8f' };
+const SHOP_ROOF = { safehouse: ['#4a7a3f', '#f2fff0'], ammu: ['#b23a2e', '#f2f2f2'], burger: ['#e0572f', '#ffe08a'], mart: ['#2e8b57', '#f2fff4'], jobcenter: ['#2d5d9f', '#ffffff'], broker: ['#3a2346', '#ff5d8f'] };
 function drawBuilding(b, amb, night) {
   const X0 = b.x0 * T, Y0 = b.y0 * T, X1 = (b.x1 + 1) * T, Y1 = (b.y1 + 1) * T, h = b.h;
   const P = (x, y, z) => proj(x, y, z);
@@ -736,6 +761,7 @@ function renderScene() {
   for (const m of allTargets()) drawMarker(m.x, m.y, m.c, m.big || m.giver);
   for (const [k, pl] of Object.entries(World.places)) { const col = PLACE_MARK[k]; if (col && pl) drawMarker(pl.x, pl.y, col, false); }
   drawParticles(true);
+  for (const v of Vendors.list) if (Math.abs(v.x - Cam.x) < Cam.vw / 2 + 4 && Math.abs(v.y - Cam.y) < Cam.vh / 2 + 4) drawVendorCart(v);
   // 보행자(시체 먼저)
   for (const p of Game.peds) if (p.dead && Math.abs(p.x - Cam.x) < Cam.vw / 2 + 2 && Math.abs(p.y - Cam.y) < Cam.vh / 2 + 2) drawPed(p);
   for (const p of Game.peds) if (!p.dead && Math.abs(p.x - Cam.x) < Cam.vw / 2 + 2 && Math.abs(p.y - Cam.y) < Cam.vh / 2 + 2) drawPed(p, shadowV);
@@ -755,5 +781,6 @@ function renderScene() {
   ctx.textAlign = 'center'; ctx.font = '700 15px "Noto Sans KR", sans-serif';
   for (const t of Effects.texts) { const [sx, sy] = toScreen(t.x, t.y); ctx.globalAlpha = t.life / t.max; ctx.fillStyle = '#000'; ctx.fillText(t.s, sx + 1, sy + 1); ctx.fillStyle = t.c; ctx.fillText(t.s, sx, sy); }
   ctx.globalAlpha = 1;
+  Talk.draw();
   Rain.draw(wet);
 }

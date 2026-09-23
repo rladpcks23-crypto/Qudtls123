@@ -58,6 +58,8 @@
   .shop-row { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
   .shop-info { display: flex; flex-direction: column; font-size: 14px; }
   .shop-info span { color: var(--muted); font-size: 12px; }
+  .cheat { display: flex; gap: 8px; } .cheat input { flex: 1; min-width: 0; background: rgba(255,255,255,0.06); border: 1px solid var(--line); color: var(--text); border-radius: 4px; padding: 8px 10px; font-family: var(--num); font-size: 18px; letter-spacing: .12em; }
+  body.mapopen #stick-zone, body.mapopen #stick, body.mapopen .tb:not(#t-map), body.mapopen #drive { display: none !important; }
   .job-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
   .job-row b { display: block; font-size: 15px; } .job-row span { color: var(--muted); font-size: 12.5px; line-height: 1.5; display: block; } .job-row i { color: var(--gold); font-style: normal; font-size: 12px; }
   #pause .card, #jobs .card, #shop .card { max-height: calc(100% - 16px); }
@@ -185,6 +187,8 @@
       <p><b>도시</b> — 다운타운 · 미드타운 · 웨스트 힐즈 · 하버 포인트(청룡파 구역) · 선셋 비치 · 센트럴 파크. 1초 = 게임 속 1분으로 낮과 밤이 돌고, 가끔 비가 와 노면이 미끄러워진다.</p>
       <p><b>상점</b> — 총포상(총): 무기·방탄복 · 버거 샷(버): 버거·세트·콜라 · 24 편의점(편): 간식, 에너지 드링크, 구급상자, 복권. 문 앞 마커로 걸어 들어가면 열린다.</p>
       <p><b>직업</b> — 고용센터(J): 택시 기사 · 구급대원 · 음식 배달 / 브로커($): 차량 수출 · 밀수 운반 · 소매치기. 반복할수록 보수가 오른다.</p>
+      <p><b>사람들</b> — 회사원·조깅하는 사람·관광객·노인·통화 중인 사람·개 산책(개도 따라다님)·핫도그 노점·버스커. 부딪히면 항의하고, 총을 겨누면 손을 들고, 계속 겨누면 지갑을 떨어뜨린다. 쓰러진 사람에게는 구급차가 와서 되살린다. 청룡파(초록)와 파도파(주황)는 마주치면 싸운다.</p>
+      <p><b>편의 기능</b> — 전체 지도를 눌러 웨이포인트를 찍으면 레이더에 GPS 경로가 뜬다. 은신처(집)에서 저장하고 6시간 잔다. 6초 동안 안 다치면 체력이 50까지 차오른다. 일시정지 메뉴에 치트 입력칸이 있다.</p>
       <p><b>무단횡단</b> — 횡단보도가 아닌 곳이나 빨간 보행 신호에 건너면 경찰이 딱지를 뗀다.</p>
       <p><b>수집</b> — 숨겨진 꾸러미 10개(개당 $1,000), 뇌물 별(수배 −1), 곳곳의 무기·체력·방탄복.</p>
     </div>
@@ -211,6 +215,7 @@
     <button class="btn" id="btn-sound">소리 끄기</button>
     <button class="btn" id="btn-camrot">운전 시점: 차 방향으로 회전</button>
     <button class="btn" id="btn-quitjob" hidden>하던 일 그만두기</button>
+    <div class="cheat"><input id="cheat-input" type="text" placeholder="치트 코드" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn small" id="cheat-go">입력</button></div>
     <button class="btn" id="btn-quit">메인 메뉴로</button>
     <p>진행 상황은 미션을 완료할 때마다 이 브라우저에 자동 저장된다.</p>
   </div>
@@ -330,8 +335,8 @@ function tint(hex, amb, f = 0) {
 const PLATFORM = (typeof NH_PLATFORM !== 'undefined') ? NH_PLATFORM : 'pc';
 const IS_MOBILE = PLATFORM === 'mobile';
 const TUNE = IS_MOBILE
-  ? { dpr: 1.3, light: 1 / 3, cars: [20, 12], peds: [30, 18], particles: 450, rain: 140 }
-  : { dpr: 2, light: 1 / 2, cars: [28, 17], peds: [46, 26], particles: 900, rain: 260 };
+  ? { dpr: 1.3, light: 1 / 3, cars: [20, 12], peds: [34, 20], particles: 450, rain: 140 }
+  : { dpr: 2, light: 1 / 2, cars: [28, 17], peds: [54, 30], particles: 900, rain: 260 };
 // 사용자 설정 (브라우저에 저장)
 const Settings = {
   camRot: true, // 운전 중 화면을 차 방향으로 회전
@@ -933,6 +938,7 @@ function genWorld(seed) {
   makePlace('mart', choose(edgeLots(DIST.RESID, bld('house')), 0.25, 0.45), 'mart', '#dfe8e0', '24 편의점');
   makePlace('mart2', choose(edgeLots(DIST.DOWNTOWN, bld('tower')), 0.6, 0.36), 'mart', '#dfe8e0', '24 편의점');
   makePlace('mart3', choose(edgeLots(DIST.HARBOR, bld('warehouse')), 0.8, 0.62), 'mart', '#dfe8e0', '24 편의점');
+  makePlace('safehouse', choose(edgeLots(DIST.RESID, bld('house')), 0.3, 0.38), 'safehouse', '#e8d9b0', '집');
   makePlace('jobcenter', choose(edgeLots(DIST.MIDTOWN, bld('mid')), 0.48, 0.5), 'jobcenter', '#c9d6e8', '고용센터');
   makePlace('broker', choose(edgeLots(DIST.HARBOR, bld('warehouse')), 0.76, 0.45), 'broker', '#2d2433', '브로커');
   // 차고형 장소: 필지를 비워 LOT으로 만든다
@@ -1125,10 +1131,11 @@ const VTYPES = {
   truck: { name: '뮬 트럭', L: 7.2, W: 2.4, mass: 4200, Fe: 15000, vmax: 30, grip: 0.95, cs: 4.4, steer: 0.45, hp: 240, colors: ['#e0e0e0', '#b0452f', '#2f5fb0'], style: 'truck' },
   police: { name: '경찰 순찰차', L: 4.8, W: 1.95, mass: 1450, Fe: 10500, vmax: 50, grip: 1.35, cs: 5.4, steer: 0.58, hp: 140, colors: ['#f4f4f4'], style: 'police' },
   swat: { name: 'SWAT 장갑차', L: 5.8, W: 2.3, mass: 3200, Fe: 14500, vmax: 40, grip: 1.1, cs: 5.0, steer: 0.5, hp: 320, colors: ['#1f2328'], style: 'swat' },
+  bike: { name: 'PCJ-600', L: 2.2, W: 0.8, mass: 230, Fe: 3300, vmax: 56, grip: 1.3, cs: 6, steer: 0.7, hp: 60, colors: ['#e0262b', '#1d1d1f', '#f2c200', '#2e7dd1', '#e8e8ea'], style: 'bike' },
   ambulance: { name: '구급차', L: 5.4, W: 2.1, mass: 2300, Fe: 10000, vmax: 42, grip: 1.12, cs: 5.0, steer: 0.54, hp: 180, colors: ['#f4f4f4'], style: 'ambulance' },
   armored: { name: '현금수송 트럭', L: 6.4, W: 2.4, mass: 5000, Fe: 16000, vmax: 30, grip: 1.0, cs: 4.6, steer: 0.45, hp: 700, colors: ['#3d4a3a'], style: 'armored' },
 };
-const TRAFFIC_MIX = ['sedan', 'sedan', 'sedan', 'compact', 'compact', 'taxi', 'van', 'muscle', 'sports', 'truck', 'sedan', 'compact'];
+const TRAFFIC_MIX = ['sedan', 'sedan', 'sedan', 'compact', 'compact', 'taxi', 'van', 'muscle', 'sports', 'truck', 'sedan', 'compact', 'bike'];
 
 let _eid = 1;
 class Car {
@@ -1272,7 +1279,13 @@ class Car {
       if (this === Game.player.car) { Cam.shake = Math.max(Cam.shake, Math.min(0.8, v / 25)); buzz(Math.min(80, v * 4)); }
     }
     if (v > 6 && this.driver === 'ai' && this.ai && this.driverKind === 'civ' && this.ai.mode === 'traffic') {
-      if (other && other.driver === 'player') { this.ai.angryT = 3; if (chance(0.5)) this.ai.panic = true; }
+      if (other && other.driver === 'player') { this.ai.angryT = 3; if (chance(0.3) && this.type !== 'bike') this.ai.rageT = 1.2; else if (chance(0.5)) this.ai.panic = true; }
+    }
+    // 오토바이: 세게 부딪히면 운전자가 튕겨 나간다 (GTA)
+    if (this.type === 'bike' && v > 8.5 && this.driver) {
+      const vx = this.vx, vy = this.vy;
+      if (this.driver === 'player') { const P = Game.player; exitCar(P, true); P.vx = vx * 0.7; P.vy = vy * 0.7; P.downT = 1.4; P.damage(Math.min(40, (v - 7) * 3.5), null, 0, 0, 'fall'); UI.toast('오토바이에서 튕겨 나갔다!'); }
+      else if (this.driver === 'ai') { const p = bailOut(this, true); if (p) { p.vx = vx * 0.7; p.vy = vy * 0.7; p.downT = 1.5; p.damage((v - 7) * 4, null, 0, 0, 'fall'); } }
     }
   }
   damage(amt, by) {
@@ -1302,7 +1315,9 @@ class Car {
     else if (this.driver === 'ai' && this.ai && !this.dead && this.burnT <= 0) aiDrive(this, dt);
     else if (!this.dead) { this.in.thr = 0; this.in.st = 0; this.in.brk = this.driver ? 0 : 0.6; this.in.hb = false; }
     this.brakeLight = (this.in.brk > 0.1 || (this.in.thr < 0 && this.vf > 0.5)) ? 1 : 0;
-    const sub = 2, h = dt / sub;
+    const sub = this.type === 'bike' ? 3 : 2, h = dt / sub;
+    // 도난 경보
+    if (this.alarmT > 0) { const b0 = Math.floor(this.alarmT * 2.5); this.alarmT -= dt; if (Math.floor(this.alarmT * 2.5) !== b0) Sfx.tone({ x: this.x, y: this.y, f0: 560, f1: 560, dur: 0.22, type: 'square', vol: 0.22 }); }
     const moving = this.speed > 0.01 || Math.abs(this.w) > 0.01 || this.in.thr !== 0;
     if (moving) for (let i = 0; i < sub; i++) { this.step(h); this.collideStatic(); }
     // 스키드 마크
@@ -1396,6 +1411,7 @@ function planTurn(car) {
   if (!exits.length) exits = [(d + 2) % 4];
   let e;
   if (ai.forceDir !== undefined && exits.includes(ai.forceDir)) e = ai.forceDir;
+  else if (ai.goalD) { e = exits.slice().sort((x, y) => ai.goalD[B.adj[x]] - ai.goalD[B.adj[y]])[0]; } // 목적지 쪽으로 (구급차)
   else {
     const wts = exits.map(x => x === d ? 2.2 : 1);
     let r = Math.random() * wts.reduce((a, b) => a + b, 0); e = exits[0];
@@ -1430,6 +1446,13 @@ function trafficFromHere(car, mode = 'traffic') {
   const s = forward ? E.s : E.L - E.s;
   car.ai = { mode, route: [], from: A.id, to: B.id, dir: d, cruise: rand(11, 15), stuckT: 0, waitT: 0, revT: 0, ignoreT: 0, honkT: 0 };
   pushLane(car.ai.route, A, B, d, s + 6, 99);
+}
+
+// 노드 그래프 BFS 거리 (목적지 노드 기준)
+function bfsDist(goalId) {
+  const d = new Int32Array(World.nodes.length).fill(1e6), q = [goalId]; d[goalId] = 0;
+  for (let h = 0; h < q.length; h++) { const c = q[h]; for (const n of World.nodes[c].adj) if (n >= 0 && d[n] > d[c] + 1) { d[n] = d[c] + 1; q.push(n); } }
+  return d;
 }
 
 // 전방 장애물(IDM 선행차) 탐색
@@ -1485,6 +1508,13 @@ function aiDrive(car, dt) {
   ai.ignoreT -= dt; ai.honkT -= dt;
   if (ai.mode === 'chase' || ai.mode === 'block') return policeDrive(car, dt);
   if (ai.mode === 'hunt') return huntDrive(car, dt);
+  if (ai.mode === 'ems' && EMS.body && dist2(car.x, car.y, EMS.body.x, EMS.body.y) < 14 * 14) { car.in.thr = 0; car.in.brk = 1; car.in.st = 0; car.in.hb = false; return; }
+  // 보복 운전: 멈춰 서서 운전자가 내려 싸우러 온다
+  if (ai.rageT > 0) {
+    ai.rageT -= dt; car.in.thr = 0; car.in.brk = 1; car.in.st = 0;
+    if (ai.rageT <= 0 && car.speed < 3 && dist2(car.x, car.y, Game.player.px, Game.player.py) < 30 * 30) { const p = bailOut(car, false); if (p) { p.state = 'fight'; p.cd = 0.8; Talk.say(p, pick(LINES.rage), 2.5, true); } }
+    return;
+  }
   if (ai.mode === 'parked') { car.in.thr = 0; car.in.brk = 1; car.in.st = 0; return; }
   if (!ai.route || !ai.route.length) { trafficFromHere(car, ai.mode); if (!car.ai.route.length) return; }
   const r = car.ai.route;
@@ -1506,7 +1536,7 @@ function aiDrive(car, dt) {
   pursuitSteer(car, tgt.x, tgt.y);
   car.in.hb = false;
   // 목표 속도
-  const panic = ai.mode === 'flee' || ai.panic;
+  const panic = ai.mode === 'flee' || ai.mode === 'ems' || ai.panic;
   let v0 = panic ? (ai.cruiseFlee || 22) : ai.cruise;
   if (Game.weather.rain) v0 *= 0.85;
   let along = 0, px = car.x, py = car.y;
@@ -1686,7 +1716,7 @@ class Ped {
     this.hp = 60; this.aimT = 0; this.flash = 0; this.hitFlash = 0;
     if (kind === 'cop') { this.hp = 100; this.shirt = '#1f3b73'; this.pants = '#16223d'; this.hair = '#101010'; this.weapon = 'pistol'; this.walkSpeed = 1.3; }
     if (kind === 'swat') { this.hp = 160; this.shirt = '#20252b'; this.pants = '#15181c'; this.hair = '#20252b'; this.weapon = 'rifle'; }
-    if (kind === 'gang') { this.hp = 80; this.shirt = '#1f8a4c'; this.pants = '#1a1a1a'; this.weapon = chance(0.35) ? 'smg' : chance(0.5) ? 'pistol' : 'bat'; this.state = 'idle'; }
+    if (kind === 'gang') { this.gang = 'dragon'; this.hp = 80; this.shirt = '#1f8a4c'; this.pants = '#1a1a1a'; this.weapon = chance(0.35) ? 'smg' : chance(0.5) ? 'pistol' : 'bat'; this.state = 'idle'; }
     if (kind === 'target') { this.hp = 120; this.shirt = '#f2f2f2'; this.pants = '#111'; this.weapon = 'pistol'; this.state = 'idle'; }
     this.maxHp = this.hp;
   }
@@ -1695,7 +1725,8 @@ class Ped {
   get alive() { return !this.dead; }
 
   damage(amt, by, dx = 0, dy = 0, kind = 'bullet') {
-    if (this.dead) return;
+    if (this.dead || this.invuln) return;
+    if (this === Game.player) this.lastHurt = Game.time;
     // 난이도: NPC가 플레이어에게 주는 피해는 줄인다(GTA도 플레이어 피격 배율이 낮다)
     if (this === Game.player && by && by !== this) amt *= 0.4;
     if (this.armor) { const ab = Math.min(this.armor, amt * 0.8); this.armor -= ab; amt -= ab; }
@@ -1709,7 +1740,7 @@ class Ped {
     const byPlayer = by === Game.player;
     if (this.kind === 'civ') { this.state = 'flee'; this.fleeT = 10; this.fearX = by ? by.px : this.x - dx; this.fearY = by ? by.py : this.y - dy; if (byPlayer) crime('assault', this.x, this.y); if (byPlayer && chance(0.12) && this.hp > 20) { this.state = 'fight'; } }
     else if (this.kind === 'cop' || this.kind === 'swat') { this.state = 'chase'; if (byPlayer) crime('hitCop', this.x, this.y); }
-    else if (this.kind === 'gang' || this.kind === 'guard' || this.kind === 'target') { if (byPlayer) aggroGang(this.x, this.y, this.kind); }
+    else if (this.kind === 'gang' || this.kind === 'guard' || this.kind === 'target') { if (byPlayer) aggroGang(this.x, this.y, this.kind, this.gang); }
   }
   die(by, dx, dy) {
     this.dead = true; this.hp = 0; this.deadT = 0;
@@ -1902,12 +1933,13 @@ function updateProjectiles(dt) {
 function scarePeds(x, y, r) {
   for (const p of Game.peds) {
     if (p.dead || p.car) continue;
-    if (p.kind === 'civ' && dist2(p.x, p.y, x, y) < r * r && p.state !== 'fight') { p.state = 'flee'; p.fleeT = rand(6, 11); p.fearX = x; p.fearY = y; }
+    if (p.kind === 'civ' && !p.invuln && dist2(p.x, p.y, x, y) < r * r && p.state !== 'fight') { if (p.state !== 'flee' && chance(0.3)) Talk.line(p, 'scream'); p.state = 'flee'; p.fleeT = rand(6, 11); p.fearX = x; p.fearY = y; }
   }
 }
-function aggroGang(x, y, kind) {
+function aggroGang(x, y, kind, gang) {
   for (const p of Game.peds) {
     if (p.dead) continue;
+    if (p.kind === 'gang' && gang && p.gang !== gang) continue;
     if ((p.kind === 'gang' || p.kind === 'guard' || (p.kind === 'target' && kind !== 'gang')) && dist2(p.x, p.y, x, y) < 45 * 45) { if (p.kind === 'target' && p.mission && p.mission.onAlert) p.mission.onAlert(); else p.state = 'chase'; }
   }
 }
@@ -2039,13 +2071,18 @@ function updatePed(p, dt) {
       if (p.fleeT <= 0) { if (p.kind === 'civ') returnToWalk(p); else p.state = p.kind === 'cop' ? 'patrol' : 'idle'; }
       break;
     }
+    case 'dog': updateDog(p, dt); return;
+    case 'handsup': Aim.updatePed(p, dt); break;
+    case 'feud': feudAI(p, dt); break;
     case 'idle': {
       if (p.homeX === undefined) { p.homeX = p.x; p.homeY = p.y; }
+      if (p.stay) { pedSeek(p, p.homeX, p.homeY, 1, dt); if (!P.dead && dist2(p.x, p.y, P.px, P.py) < 100) p.a = Math.atan2(P.py - p.y, P.px - p.x); break; }
+      if (p.kind === 'gang') gangLook(p, dt);
       if (!p.wt || p.wt <= 0) { p.wt = rand(2, 5); p.wx = p.homeX + rand(-3, 3); p.wy = p.homeY + rand(-3, 3); if (solidT(Math.floor(p.wx / T), Math.floor(p.wy / T))) { p.wx = p.homeX; p.wy = p.homeY; } }
       p.wt -= dt;
       pedSeek(p, p.wx, p.wy, 0.9, dt);
       dodgeCars(p);
-      if ((p.kind === 'gang' || p.kind === 'guard') && !P.dead && dist2(p.x, p.y, P.px, P.py) < 8 * 8 && WEAPONS[P.weapon] && !WEAPONS[P.weapon].melee && !P.car && chance(dt * 0.5)) aggroGang(p.x, p.y, 'gang');
+      if ((p.kind === 'gang' || p.kind === 'guard') && !P.dead && dist2(p.x, p.y, P.px, P.py) < 8 * 8 && WEAPONS[P.weapon] && !WEAPONS[P.weapon].melee && !P.car && chance(dt * 0.5)) { aggroGang(p.x, p.y, 'gang', p.gang); Talk.line(p, 'gang'); }
       break;
     }
     case 'patrol': {
@@ -2099,6 +2136,7 @@ function combatAI(p, dt) {
   const see = d < 34 && losClear(p.x, p.y, P.px, P.py) && (!isCop || Wanted.seen);
   const mayShoot = !W.melee && see && d < range && (!isCop || Wanted.stars >= 2 || P.car && Wanted.stars >= 2);
   if (see) p.a = Math.atan2(P.py - p.y, P.px - p.x);
+  if (see && chance(dt * 0.15)) Talk.line(p, isCop ? 'cop' : p.kind === 'civ' ? 'rage' : 'gang');
   if (mayShoot) {
     // 사격 자세: 약간 옆걸음
     p.strafe = (p.strafe || (chance(0.5) ? 1 : -1));
@@ -2144,6 +2182,7 @@ function dodgeCars(p) {
     if (cx * cx + cy * cy < 2.2 * 2.2) {
       const l = Math.hypot(cx, cy) || 1, nx = cx / l || -c.vy / sp, ny = cy / l || c.vx / sp;
       if (chance(0.7)) { p.vx += nx * 6; p.vy += ny * 6; }
+      if (p.kind === 'civ') Talk.line(p, 'near');
       if (p.kind === 'civ') { p.state = 'flee'; p.fleeT = 3; p.fearX = c.x; p.fearY = c.y; }
       return;
     }
@@ -2311,6 +2350,7 @@ const Wanted = {
   get radius() { return 40 + this.stars * 22; },
   reset() { this.heat = 0; this.stars = 0; this.reports = []; this.evadeT = 0; this.seen = false; this.bustT = 0; },
   add(heat, min) {
+    if (Game.noWanted) return;
     const before = this.stars;
     this.heat = Math.max(this.heat + heat, HEAT_STARS[min] || 0);
     let s = 0; for (let i = 1; i < HEAT_STARS.length; i++) if (this.heat >= HEAT_STARS[i]) s = i;
@@ -3407,6 +3447,455 @@ const Pick = {
 
 'use strict';
 /* =====================================================================
+ * npc.js — NPC 확장과 "GTA에는 있는데 우리에겐 없던 것" 보강
+ *
+ *  · 시민 유형: 회사원·조깅하는 사람·관광객·노인·통화 중·개 산책(+개)·핫도그 노점·버스커
+ *  · 말풍선: 부딪히면 항의, 차가 스치면 비명, 총을 겨누면 애원, 한가할 땐 잡담
+ *  · 손 들어!: 총을 겨누면 손을 들고, 계속 겨누면 지갑을 떨어뜨린다(GTA V 강도 시늉)
+ *  · 구급대: 쓰러진 시민에게 구급차가 와서 되살린다(GTA III~SA의 파라메딕)
+ *  · 두 조직(청룡파/파도파)의 구역 다툼, 미션 의뢰인 캐릭터, 노점 음식
+ *  · 도로 위 분노(보복 운전자), 도난 경보, GPS 경로·웨이포인트, 은신처 저장, 체력 자연 회복, 치트
+ * ===================================================================== */
+
+// ---------- 시민 유형 ----------
+const ARCH_W = {
+  [DIST.DOWNTOWN]: { normal: 3, business: 4, phone: 2, jogger: 0.6, tourist: 1, elder: 0.4, dogwalker: 0.4 },
+  [DIST.MIDTOWN]: { normal: 4, business: 2, phone: 1.5, jogger: 1, tourist: 1, elder: 1, dogwalker: 1 },
+  [DIST.RESID]: { normal: 4, business: 0.6, phone: 1, jogger: 1.5, tourist: 0.3, elder: 2, dogwalker: 2.2 },
+  [DIST.HARBOR]: { normal: 5, business: 0.4, phone: 1, jogger: 0.3, tourist: 0.3, elder: 0.6, dogwalker: 0.3 },
+  [DIST.BEACH]: { normal: 3, business: 0.3, phone: 1, jogger: 2.2, tourist: 3, elder: 0.8, dogwalker: 1.2 },
+  [DIST.PARK]: { normal: 3, business: 0.5, phone: 1, jogger: 3, tourist: 1, elder: 1.5, dogwalker: 2.5 },
+  [DIST.COAST]: { normal: 3, business: 0.5, phone: 1, jogger: 2, tourist: 1, elder: 1, dogwalker: 1.5 },
+};
+function pickArch(district) {
+  const w = ARCH_W[district] || ARCH_W[DIST.MIDTOWN];
+  let r = Math.random() * Object.values(w).reduce((a, b) => a + b, 0);
+  for (const [k, v] of Object.entries(w)) { r -= v; if (r <= 0) return k; }
+  return 'normal';
+}
+function dressArch(p, arch) {
+  p.arch = arch;
+  if (arch === 'business') { p.shirt = pick(['#2b2d42', '#1b263b', '#3d405b', '#343a40']); p.pants = '#15161a'; p.walkSpeed = rand(1.4, 1.7); }
+  else if (arch === 'jogger') { p.shirt = pick(['#ff4d6d', '#00c2ff', '#b8ff3d', '#ffb703']); p.pants = '#1d1d1d'; p.walkSpeed = rand(2.8, 3.4); p.band = pick(['#ffffff', '#ff4d6d', '#111']); }
+  else if (arch === 'tourist') { p.shirt = pick(['#ff9f1c', '#2ec4b6', '#e71d36', '#ffbf69']); p.pants = pick(['#e9c46a', '#f4f1de']); p.walkSpeed = rand(0.9, 1.2); p.hat = '#f4e3b1'; }
+  else if (arch === 'elder') { p.hair = pick(['#d9d2c5', '#bdbdbd', '#eeeeee']); p.walkSpeed = rand(0.6, 0.9); }
+  else if (arch === 'dogwalker') { p.walkSpeed = rand(1.0, 1.3); spawnDog(p); }
+}
+
+// ---------- 개 ----------
+const DOG_COATS = ['#c8a26b', '#3b2a1e', '#f2f2f2', '#8a6a4a', '#1d1d1d', '#d9b27c'];
+function spawnDog(owner) {
+  const d = spawnPed('dog', owner.x - 1, owner.y);
+  Object.assign(d, { owner, r: 0.26, hp: 30, maxHp: 30, state: 'dog', coat: pick(DOG_COATS), walkSpeed: 3 });
+  owner.dog = d;
+  return d;
+}
+function updateDog(d, dt) {
+  const o = d.owner, P = Game.player;
+  if (o && !o.dead && Game.peds.includes(o) && o.state !== 'flee') {
+    const bx = o.x - Math.cos(o.a) * 1.3 + Math.cos(o.a + 1.5) * 0.5, by = o.y - Math.sin(o.a) * 1.3 + Math.sin(o.a + 1.5) * 0.5;
+    pedSeek(d, bx, by, Math.max(1.2, Math.hypot(o.vx, o.vy) + 1), dt, 10);
+    if (!P.dead && !P.car && dist2(d.x, d.y, P.x, P.y) < 9 && chance(dt * 0.6)) { Talk.say(d, pick(['멍!', '멍멍!', '왈왈!']), 1.2, true); d.a = Math.atan2(P.y - d.y, P.x - d.x); }
+  } else {
+    // 주인을 잃으면 겁먹고 달아난다
+    const fx = d.x - P.px, fy = d.y - P.py, l = Math.hypot(fx, fy) || 1;
+    pedSeek(d, d.x + fx / l * 4, d.y + fy / l * 4, 5, dt, 10);
+    if (chance(dt * 0.3)) Talk.say(d, '깨갱!', 1, true);
+    if (!onScreen(d.x, d.y, 20)) d.remove = true;
+  }
+  d.x += d.vx * dt; d.y += d.vy * dt;
+  const sp = Math.hypot(d.vx, d.vy); d.moving = sp; d.anim += sp * dt * 3;
+  if (sp > 0.3) d.a = Math.atan2(d.vy, d.vx);
+  pedStatic(d);
+}
+function drawDog(d) {
+  ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.a);
+  if (d.dead) { ctx.fillStyle = d.coat; ctx.beginPath(); ctx.ellipse(0, 0, 0.42, 0.2, 0.5, 0, TAU); ctx.fill(); ctx.restore(); return; }
+  const leg = Math.sin(d.anim * 4) * 0.08 * Math.min(1, d.moving);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(0.1, 0.1, 0.4, 0.2, 0, 0, TAU); ctx.fill();
+  ctx.fillStyle = shade(d.coat, -0.3);
+  for (const [x, y] of [[0.18, 0.14], [0.18, -0.14], [-0.2, 0.14], [-0.2, -0.14]]) ctx.fillRect(x + (y > 0 ? leg : -leg) - 0.04, y - 0.04, 0.08, 0.08);
+  ctx.fillStyle = d.coat; ctx.beginPath(); ctx.ellipse(0, 0, 0.32, 0.14, 0, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(0.34, 0, 0.12, 0, TAU); ctx.fill();
+  ctx.fillStyle = shade(d.coat, -0.35); ctx.beginPath(); ctx.ellipse(0.32, 0.1, 0.06, 0.04, 0, 0, TAU); ctx.ellipse(0.32, -0.1, 0.06, 0.04, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = d.coat; ctx.lineWidth = 0.05; ctx.beginPath(); ctx.moveTo(-0.3, 0); ctx.lineTo(-0.45, Math.sin(Game.time * 12) * 0.08); ctx.stroke();
+  // 목줄
+  const o = d.owner;
+  ctx.restore();
+  if (o && !o.dead && Game.peds.includes(o) && o.state !== 'flee' && dist2(o.x, o.y, d.x, d.y) < 9) {
+    ctx.strokeStyle = 'rgba(200,40,40,0.8)'; ctx.lineWidth = 0.04; ctx.beginPath(); ctx.moveTo(d.x + Math.cos(d.a) * 0.3, d.y + Math.sin(d.a) * 0.3); ctx.lineTo(o.x, o.y); ctx.stroke();
+  }
+}
+// 사람 소품 (drawPed 안에서, 보행자 좌표계)
+function drawArchProps(p) {
+  const a = p.arch;
+  if (p.state === 'handsup') { ctx.fillStyle = p.skin; ctx.beginPath(); ctx.arc(0.02, -0.34, 0.09, 0, TAU); ctx.arc(0.02, 0.34, 0.09, 0, TAU); ctx.fill(); }
+  if (a === 'business') { ctx.fillStyle = '#3b2a1e'; ctx.fillRect(-0.1, 0.38, 0.34, 0.1); }
+  else if (a === 'tourist') { ctx.fillStyle = '#111'; ctx.fillRect(0.2, -0.08, 0.14, 0.16); }
+  else if (a === 'elder') { ctx.strokeStyle = '#6b4a2a'; ctx.lineWidth = 0.05; ctx.beginPath(); ctx.moveTo(0.1, 0.36); ctx.lineTo(0.4, 0.42); ctx.stroke(); }
+  else if (a === 'phone' && p.state === 'walk') { ctx.fillStyle = p.skin; ctx.beginPath(); ctx.arc(0.08, -0.2, 0.08, 0, TAU); ctx.fill(); ctx.fillStyle = '#111'; ctx.fillRect(0.12, -0.24, 0.08, 0.1); }
+  else if (a === 'busker') { ctx.fillStyle = '#8a5a2b'; ctx.beginPath(); ctx.ellipse(0.28, 0.05, 0.2, 0.13, 0.3, 0, TAU); ctx.fill(); ctx.fillStyle = '#3b2a1e'; ctx.fillRect(0.3, -0.35, 0.05, 0.4); }
+}
+function drawArchHead(p) {
+  if (p.arch === 'jogger' && p.band) { ctx.strokeStyle = p.band; ctx.lineWidth = 0.05; ctx.beginPath(); ctx.arc(0.04, 0, 0.15, 0, TAU); ctx.stroke(); }
+  if (p.hat) { ctx.fillStyle = p.hat; ctx.beginPath(); ctx.arc(0.02, 0, 0.21, 0, TAU); ctx.fill(); ctx.fillStyle = shade(p.hat, -0.2); ctx.beginPath(); ctx.arc(0.02, 0, 0.12, 0, TAU); ctx.fill(); }
+  if (p.kind === 'gang') { ctx.fillStyle = (GANGS[p.gang] || GANGS.dragon).band; ctx.beginPath(); ctx.arc(0, 0, 0.165, Math.PI * 0.4, Math.PI * 1.6); ctx.fill(); }
+  if (p.medic) { ctx.fillStyle = '#d7262e'; ctx.fillRect(-0.05, -0.12, 0.1, 0.24); ctx.fillRect(-0.12, -0.05, 0.24, 0.1); }
+}
+
+// ---------- 말풍선 ----------
+const LINES = {
+  chat: ['오늘 날씨 좋네', '버거 샷 신메뉴 먹어봤어?', '청룡파가 요즘 설친대', '택시가 안 잡히네...', '월급날까지 사흘...', '복권 또 꽝이야', '어제 항구에서 총소리 들었어?', '이 동네 집값 미쳤어'],
+  business: ['회의에 늦겠어', '주가가 또 떨어졌네', '이번 분기 실적이...', '넥타이 괜찮나?'],
+  jogger: ['헉... 헉...', '오늘 10km!', '조금만 더!'],
+  tourist: ['사진 한 장만요!', '여기가 그 유명한 네온 하버구나', '해변이 어느 쪽이죠?'],
+  elder: ['요즘 젊은 것들은...', '에구 허리야', '옛날엔 여기 다 논이었지'],
+  phone: ['응, 지금 가는 중이야', '여보세요? 안 들려!', '엄마, 나중에 전화할게', '그 얘기 진짜야?'],
+  bump: ['조심해요!', '어이, 눈 좀 뜨고 다녀!', '뭐야?', '아야!', '밀지 마세요!'],
+  near: ['미쳤어?!', '천천히 좀 달려!', '으악!', '면허 어디서 샀냐!'],
+  beg: ['제발 쏘지 마세요!', '돈 드릴게요!', '살려주세요!', '아이가 있어요!'],
+  mugged: ['다 가져가세요!', '여기요, 지갑이요!'],
+  scream: ['꺄악!', '총이다!', '도망쳐!', '경찰 불러!'],
+  cop: ['멈춰!', '경찰이다!', '손 들어!', '포위됐다!'],
+  gang: ['우리 구역이다!', '죽고 싶냐?', '형님들한테 연락해!'],
+  rage: ['내 차!!', '너 이리 와!', '보험 들었냐?!', '내려!'],
+  honk: ['빵빵거리지 마!', '알았어 알았어!', '시끄러워!'],
+  revive: ['으... 살았다...', '여긴 어디...', '고마워요 선생님'],
+  medic: ['환자 발견!', '맥박 확인!', '괜찮으세요?'],
+};
+const Talk = {
+  chatT: 2,
+  say(p, text, dur = 2.6, force = false) {
+    if (!p || p.dead || (!force && p.sayCD > Game.time)) return;
+    if (!force && Game.peds.filter(q => q.sayT > 0).length > 4) return;
+    p.sayT = dur; p.sayText = text; p.sayCD = Game.time + dur + rand(4, 8);
+  },
+  line(p, key) { this.say(p, pick(LINES[key])); },
+  update(dt) {
+    for (const p of Game.peds) if (p.sayT > 0) p.sayT -= dt;
+    this.chatT -= dt;
+    if (this.chatT > 0) return;
+    this.chatT = rand(1.5, 3);
+    const P = Game.player;
+    const near = Game.peds.filter(p => p.kind === 'civ' && !p.dead && p.state === 'walk' && dist2(p.x, p.y, P.px, P.py) < 20 * 20 && !(p.sayT > 0));
+    if (near.length && chance(0.5)) { const p = pick(near); this.line(p, LINES[p.arch] && chance(0.6) ? p.arch : 'chat'); }
+  },
+  draw() {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const P = Game.player;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const p of Game.peds) {
+      if (p.dead) continue;
+      const [sx, sy] = toScreen(p.x, p.y);
+      if (sx < -40 || sy < -40 || sx > CW + 40 || sy > CH + 40) continue;
+      if (p.nameTag && dist2(p.x, p.y, P.px, P.py) < 30 * 30) {
+        ctx.font = `700 ${12}px ${FONT_KR}`;
+        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.strokeText(p.nameTag, sx, sy - 18); ctx.fillStyle = '#f2c14e'; ctx.fillText(p.nameTag, sx, sy - 18);
+      }
+      if (!(p.sayT > 0)) continue;
+      ctx.font = `600 ${12.5}px ${FONT_KR}`;
+      const w = ctx.measureText(p.sayText).width + 16, h = 22, bx = sx - w / 2, by = sy - (p.nameTag ? 50 : 38);
+      ctx.globalAlpha = clamp(p.sayT * 3, 0, 1);
+      ctx.fillStyle = 'rgba(255,255,255,0.94)'; roundRect(ctx, bx, by, w, h, 8); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(sx - 5, by + h); ctx.lineTo(sx + 5, by + h); ctx.lineTo(sx, by + h + 6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = p.kind === 'cop' ? '#1f3b73' : p.kind === 'gang' ? '#8a1f1f' : '#1a1d22'; ctx.fillText(p.sayText, sx, by + h / 2 + 0.5);
+      ctx.globalAlpha = 1;
+    }
+  },
+};
+
+// ---------- 손 들어! (총 겨누기) ----------
+const Aim = {
+  target: null, t: 0,
+  update(dt) {
+    const P = Game.player, W = WEAPONS[P.weapon];
+    let tgt = null;
+    if (!P.car && !P.dead && W && !W.melee && !W.throw) {
+      let best = 13;
+      for (const p of Game.peds) {
+        if (p.dead || p.kind !== 'civ' || p.invuln || p.medic) continue;
+        const d = dist(p.x, p.y, P.x, P.y); if (d > best) continue;
+        const da = Math.abs(angNorm(Math.atan2(p.y - P.y, p.x - P.x) - P.aim));
+        if (da < 0.2 + 0.4 / Math.max(1, d) && losClear(P.x, P.y, p.x, p.y)) { best = d; tgt = p; }
+      }
+    }
+    if (tgt !== this.target) { this.target = tgt; this.t = 0; } else this.t += dt;
+    if (tgt && this.t > 0.35 && tgt.state !== 'handsup' && tgt.state !== 'flee' && !tgt.vendor) {
+      tgt.state = 'handsup'; tgt.handsT = 0; tgt.freeT = 0; Talk.say(tgt, pick(LINES.beg), 2.5, true);
+    }
+  },
+  updatePed(p, dt) { // updatePed의 'handsup' 상태
+    const P = Game.player;
+    p.vx *= 0.7; p.vy *= 0.7; p.a = Math.atan2(P.y - p.y, P.x - p.x);
+    if (this.target === p) { p.handsT += dt; p.freeT = 0; } else p.freeT += dt;
+    if (p.handsT > 2.2 && !p.mugged) {
+      p.mugged = true;
+      addPickup('cash', p.x + Math.cos(p.a) * 0.8, p.y + Math.sin(p.a) * 0.8, { amount: p.arch === 'business' ? randi(60, 200) : randi(10, 70), temp: 30 });
+      Talk.say(p, pick(LINES.mugged), 2, true);
+      crime('theft', p.x, p.y);
+    }
+    if (p.freeT > 1.8 || p.handsT > 6) { p.state = 'flee'; p.fleeT = 8; p.fearX = P.x; p.fearY = P.y; Talk.line(p, 'scream'); }
+  },
+};
+
+// ---------- 두 조직 ----------
+const GANGS = {
+  dragon: { name: '청룡파', shirt: '#1f8a4c', band: '#1f8a4c' },
+  wave: { name: '파도파', shirt: '#e07a1f', band: '#1b4f9c' },
+};
+function setGang(p, g) { p.gang = g; p.shirt = GANGS[g].shirt; if (g === 'wave') { p.pants = '#2b3a55'; p.weapon = chance(0.4) ? 'pistol' : chance(0.5) ? 'smg' : 'bat'; } }
+function feudAI(p, dt) {
+  const f = p.foe;
+  if (!f || f.dead || !Game.peds.includes(f) || dist2(p.x, p.y, f.x, f.y) > 40 * 40) { p.foe = null; p.state = 'idle'; return; }
+  const d = dist(p.x, p.y, f.x, f.y), W = WEAPONS[p.weapon];
+  p.a = Math.atan2(f.y - p.y, f.x - p.x);
+  if (W.melee) {
+    if (d > 1.1) pedSeek(p, f.x, f.y, 4.5, dt, 12);
+    else if (p.cd <= 0) { p.cd = W.rate + 0.4; fireWeapon(p, p.weapon, p.a); }
+    return;
+  }
+  const see = losClear(p.x, p.y, f.x, f.y);
+  if (!see || d > 22) { pedSeek(p, f.x, f.y, 4.2, dt, 12); return; }
+  p.strafe = p.strafe || (chance(0.5) ? 1 : -1);
+  pedSeek(p, p.x - Math.sin(p.a) * p.strafe, p.y + Math.cos(p.a) * p.strafe, 1.8, dt);
+  if (p.cd <= 0) { p.cd = W.rate + rand(0.5, 1.2); fireWeapon(p, p.weapon, p.a + gauss() * 0.12, 0.5); }
+}
+function gangLook(p, dt) { // idle 상태의 조직원이 라이벌을 찾는다
+  if (!chance(dt * 1.5)) return;
+  for (const q of Game.peds) {
+    if (q.dead || q.kind !== 'gang' || q.gang === p.gang || dist2(p.x, p.y, q.x, q.y) > 16 * 16) continue;
+    if (!losClear(p.x, p.y, q.x, q.y)) continue;
+    p.foe = q; p.state = 'feud'; if (q.state === 'idle') { q.foe = p; q.state = 'feud'; }
+    Talk.say(p, pick(LINES.gang), 2, true);
+    return;
+  }
+}
+
+// ---------- 구급대 (쓰러진 시민 소생) ----------
+const EMS = {
+  car: null, body: null, medics: [], stage: '', t: 4, st: 0,
+  reset() {
+    if (this.car && Game.cars.includes(this.car)) { this.car.persistent = false; this.car.siren = false; if (this.car.driver === 'ai') { this.car.ai = { mode: 'traffic', route: [] }; trafficFromHere(this.car); } }
+    for (const m of this.medics) { m.persistent = false; if (!m.dead) returnToWalk(m); }
+    this.car = null; this.body = null; this.medics = []; this.stage = ''; this.t = 8;
+  },
+  update(dt) {
+    const P = Game.player;
+    this.t -= dt;
+    if (!this.car) {
+      if (this.t > 0) return; this.t = 6;
+      const body = Game.peds.find(p => p.dead && !p.emsDone && (p.kind === 'civ' || p.kind === 'cop') && p.deadT > 5 && p.deadT < 30 && dist2(p.x, p.y, P.px, P.py) < 90 * 90 && !p.mission);
+      if (!body) return;
+      const sp = offscreenLaneSpot(60, 120); if (!sp) return;
+      const c = new Car('ambulance', sp.x, sp.y, sp.a, { persistent: true });
+      c.driver = 'ai'; c.driverKind = 'medic'; c.siren = true;
+      trafficFromHere(c, 'ems'); c.ai.goalD = bfsDist(nearestNode(body.x, body.y).id); c.ai.cruiseFlee = 17;
+      Game.cars.push(c);
+      body.emsDone = true; this.car = c; this.body = body; this.stage = 'drive'; this.st = 0;
+      return;
+    }
+    const c = this.car, b = this.body;
+    this.st += dt;
+    if (c.dead || c.burnT > 0 || c.driver === 'player' || !Game.cars.includes(c) || !Game.peds.includes(b)) { this.reset(); return; }
+    if (this.stage === 'drive') {
+      if (dist(c.x, c.y, b.x, b.y) < 15 || this.st > 50) {
+        c.ai = { mode: 'parked' };
+        for (const side of [-1, 1]) {
+          const [x, y] = c.doorPos(side);
+          const m = spawnPed('civ', x, y); Object.assign(m, { medic: true, persistent: true, shirt: '#f4f4f4', pants: '#2b3a55', state: 'goto', tx: b.x + side * 0.7, ty: b.y, runSpeed: 3.2, onArrive: mm => { mm.state = 'idle'; mm.homeX = mm.x; mm.homeY = mm.y; mm.stay = true; } });
+          this.medics.push(m);
+        }
+        Talk.say(this.medics[0], pick(LINES.medic), 2, true);
+        this.stage = 'treat'; this.st = 0;
+      }
+    } else if (this.stage === 'treat') {
+      const ok = this.medics.filter(m => !m.dead && m.stay && dist2(m.x, m.y, b.x, b.y) < 4);
+      if (this.medics.every(m => m.dead || m.state === 'flee')) { this.reset(); return; }
+      if (ok.length) { for (const m of ok) m.a = Math.atan2(b.y - m.y, b.x - m.x); this.tr = (this.tr || 0) + dt; }
+      if ((this.tr || 0) > 3.5 || this.st > 25) {
+        this.tr = 0;
+        if (b.dead) {
+          b.dead = false; b.hp = 35; b.downT = 1.2; b.persistent = false;
+          if (b.kind === 'cop') { b.state = 'walk'; returnToWalk(b); } else returnToWalk(b);
+          Talk.say(b, pick(LINES.revive), 2.5, true);
+        }
+        for (const m of this.medics) if (!m.dead) { m.stay = false; const [x, y] = c.doorPos(1); m.state = 'goto'; m.tx = x; m.ty = y; m.onArrive = mm => { mm.remove = true; }; }
+        this.stage = 'leave'; this.st = 0;
+      }
+    } else if (this.stage === 'leave') {
+      if (this.medics.every(m => m.remove || m.dead || !Game.peds.includes(m)) || this.st > 15) {
+        for (const m of this.medics) if (!m.dead) m.remove = true;
+        c.ai = { mode: 'traffic', route: [] }; trafficFromHere(c); c.siren = false; c.persistent = false;
+        this.car = null; this.medics = []; this.stage = ''; this.t = 10;
+      }
+    }
+  },
+};
+// 경로 따라 목표 지점까지 (구급차 등)
+function pathDrive(car, tx, ty, dt, vmax) {
+  const ai = car.ai;
+  ai.repath = (ai.repath || 0) - dt;
+  if (!ai.path || ai.repath <= 0) {
+    ai.repath = 2;
+    const from = nearestNode(car.x + car.vx * 0.5, car.y + car.vy * 0.5), to = nearestNode(tx, ty);
+    ai.path = (nodePath(from.id, to.id) || [from.id]).map(id => ({ x: World.nodes[id].x, y: World.nodes[id].y }));
+    ai.path.push({ x: tx, y: ty });
+  }
+  while (ai.path.length > 1 && dist2(ai.path[0].x, ai.path[0].y, car.x, car.y) < 49) ai.path.shift();
+  const p0 = ai.path[0]; let v0 = vmax;
+  if (ai.path.length > 1 && Math.abs(angNorm(Math.atan2(ai.path[1].y - p0.y, ai.path[1].x - p0.x) - car.a)) > 0.5) v0 = Math.min(v0, 8 + dist(car.x, car.y, p0.x, p0.y) * 0.6);
+  if (ai.path.length === 1) v0 = Math.min(v0, dist(car.x, car.y, tx, ty) * 0.8);
+  pursuitSteer(car, p0.x, p0.y); car.in.hb = false;
+  const L = findLeader(car, 10 + car.speed * 1.2, true, true);
+  applyAccel(car, idmAccel(Math.max(0, car.vf), v0, L.s, L.v, 3.5, 5, 1.5, 0.6));
+  if (car.speed < 0.4 && car.in.thr > 0.4) { ai.stuckT = (ai.stuckT || 0) + dt; if (ai.stuckT > 2) { ai.stuckT = 0; ai.revT = 1.2; ai.revSt = car.in.st || 1; } } else ai.stuckT = 0;
+}
+function emsDrive(car, dt) {
+  const ai = car.ai;
+  if (ai.revT > 0) { ai.revT -= dt; car.in.thr = -0.8; car.in.brk = 0; car.in.st = -ai.revSt; return; }
+  const b = EMS.body; if (!b) { car.in.thr = 0; car.in.brk = 1; return; }
+  pathDrive(car, b.x, b.y, dt, 18);
+}
+
+// ---------- 미션 의뢰인 캐릭터 ----------
+const CHAR_LOOK = {
+  '마담 윤': { shirt: '#8b1e3f', pants: '#1a1a1a', hair: '#15110f', skin: '#f3cfb1' },
+  '조니 박': { shirt: '#3b2f2a', pants: '#2b3a55', hair: '#6d4a2a', skin: '#e2b08a' },
+};
+const Givers = {
+  npc: null, idx: -1,
+  update() {
+    const want = !Missions.active && !Missions.done ? Missions.idx : -1;
+    if (want !== this.idx || (this.npc && (this.npc.dead || !Game.peds.includes(this.npc)))) {
+      if (this.npc) { this.npc.remove = true; this.npc = null; }
+      this.idx = want;
+      if (want < 0) return;
+      const def = Missions.defs[want], g = Missions.givers[want];
+      const who = def.intro[0][0];
+      const p = spawnPed('civ', g.x + 1.4, g.y + 0.4);
+      Object.assign(p, CHAR_LOOK[who] || {}, { persistent: true, invuln: true, stay: true, state: 'idle', homeX: g.x + 1.4, homeY: g.y + 0.4, nameTag: who, arch: 'giver' });
+      this.npc = p;
+    }
+    const n = this.npc, P = Game.player;
+    if (n && !P.dead && dist2(n.x, n.y, P.px, P.py) < 12 * 12 && chance(0.004)) Talk.say(n, pick(['어이, 이리 와 봐', '일감이 있어', '시간 있어?']), 2);
+  },
+};
+
+// ---------- 노점상 · 버스커 ----------
+const Vendors = {
+  list: [],
+  place() {
+    this.list = [];
+    const plazas = [];
+    for (let ty = 4; ty < MH - 4; ty++) for (let tx = 4; tx < MW - 4; tx++) if (World.tiles[tIdx(tx, ty)] === TL.PLAZA) plazas.push([tx, ty]);
+    const R = mulberry32(4242), picked = [];
+    for (let k = 0; k < 3000 && picked.length < 5 && plazas.length; k++) {
+      const s = plazas[Math.floor(R() * plazas.length)];
+      if (picked.every(q => Math.hypot(q[0] - s[0], q[1] - s[1]) > 25)) picked.push(s);
+    }
+    picked.forEach(([tx, ty], i) => {
+      const x = (tx + 0.5) * T, y = (ty + 0.5) * T;
+      const busker = i === picked.length - 1;
+      const p = spawnPed('civ', x, y);
+      Object.assign(p, { persistent: true, stay: true, state: 'idle', homeX: x, homeY: y, arch: busker ? 'busker' : 'vendor', vendor: !busker, nameTag: busker ? '버스커' : '핫도그', shirt: busker ? '#6b4a8a' : '#f4f4f4', pants: busker ? '#1d1d1d' : '#c7302a' });
+      this.list.push(p);
+    });
+  },
+  update(dt) {
+    const P = Game.player;
+    for (const v of this.list) {
+      if (v.dead) continue;
+      if (v.arch === 'busker' && chance(dt * 0.7) && dist2(v.x, v.y, P.px, P.py) < 30 * 30) Effects.text(v.x + rand(-0.5, 0.5), v.y - 0.8, pick(['♪', '♫', '♬']), '#e9d5ff');
+      if (v.vendor && !P.car && Game.shopCool <= 0 && dist2(v.x, v.y, P.x, P.y) < 2.2 * 2.2) {
+        Game.shopCool = 4;
+        if (P.money < 5) { Talk.say(v, '돈이 모자라네요', 2, true); continue; }
+        if (P.hp >= P.maxHp && P.stamina > 0.95) { Talk.say(v, '핫도그 하나 어때요? $5!', 2, true); continue; }
+        P.money -= 5; P.hp = Math.min(P.maxHp, P.hp + 20); P.stamina = Math.min(1, P.stamina + 0.3);
+        Sfx.cash(); Talk.say(v, '맛있게 드세요!', 2, true); UI.toast('핫도그 -$5 · 체력 +20');
+      }
+    }
+  },
+};
+function drawVendorCart(p) {
+  if (p.arch !== 'vendor' || p.dead) return;
+  const cx = p.homeX + 1.1, cy = p.homeY;
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(cx - 0.6, cy - 0.35, 1.3, 0.8);
+  ctx.fillStyle = '#c9ced6'; ctx.fillRect(cx - 0.7, cy - 0.45, 1.3, 0.8);
+  ctx.fillStyle = '#2b2d31'; ctx.fillRect(cx - 0.6, cy - 0.35, 1.1, 0.25);
+  // 파라솔
+  for (let i = 0; i < 8; i++) { ctx.fillStyle = i % 2 ? '#f4f4f4' : '#d7262e'; ctx.beginPath(); ctx.moveTo(cx - 0.05, cy - 0.05); ctx.arc(cx - 0.05, cy - 0.05, 1.05, i * TAU / 8, (i + 1) * TAU / 8); ctx.closePath(); ctx.globalAlpha = 0.85; ctx.fill(); }
+  ctx.globalAlpha = 1;
+}
+
+// ---------- 은신처 ----------
+const Safehouse = {
+  use() {
+    const P = Game.player;
+    Game.shopCool = 8;
+    if (Wanted.stars > 0) { UI.toast('수배 중에는 쉴 수 없다'); return; }
+    P.hp = P.maxHp; P.stamina = 1; P.exhausted = false;
+    Game.clock = (Game.clock + 360) % 1440;
+    Save.write();
+    UI.big('저장 완료', '6시간 푹 잤다 — 체력 회복', 2.6, '#9be15d');
+  },
+};
+
+// ---------- GPS 경로 · 웨이포인트 ----------
+const GPS = {
+  pts: null, col: '#f2c14e', t: 0, lastKey: '',
+  update(dt) {
+    const P = Game.player;
+    if (Game.waypoint && dist(P.px, P.py, Game.waypoint.x, Game.waypoint.y) < 14) { Game.waypoint = null; UI.toast('목적지 도착'); }
+    const tg = Game.waypoint || allTargets()[0];
+    if (!tg) { this.pts = null; return; }
+    this.col = Game.waypoint ? '#c77dff' : tg.c;
+    this.t -= dt;
+    const key = `${Math.round(tg.x)},${Math.round(tg.y)}`;
+    if (this.t > 0 && key === this.lastKey && this.pts) { this.pts[0] = { x: P.px, y: P.py }; return; }
+    this.t = 1; this.lastKey = key;
+    if (dist(P.px, P.py, tg.x, tg.y) < 30) { this.pts = [{ x: P.px, y: P.py }, { x: tg.x, y: tg.y }]; return; }
+    const v = P.car ? [P.car.vx, P.car.vy] : [0, 0];
+    const from = nearestNode(P.px + v[0] * 0.6, P.py + v[1] * 0.6), to = nearestNode(tg.x, tg.y);
+    const path = nodePath(from.id, to.id) || [];
+    this.pts = [{ x: P.px, y: P.py }, ...path.map(id => ({ x: World.nodes[id].x, y: World.nodes[id].y })), { x: tg.x, y: tg.y }];
+  },
+  draw(c, k, ox, oy, width) { // 월드 → (x-ox)*k 좌표계에 경로 그리기
+    if (!this.pts || this.pts.length < 2) return;
+    c.lineJoin = 'round'; c.lineCap = 'round';
+    c.strokeStyle = 'rgba(0,0,0,0.6)'; c.lineWidth = width + 2.5;
+    c.beginPath(); this.pts.forEach((p, i) => { const x = (p.x - ox) * k, y = (p.y - oy) * k; if (i) c.lineTo(x, y); else c.moveTo(x, y); }); c.stroke();
+    c.strokeStyle = this.col; c.lineWidth = width; c.stroke();
+  },
+};
+
+// ---------- 치트 (GTA 산안드레아스 코드) ----------
+const Cheats = {
+  buf: '',
+  list: {
+    HESOYAM: ['체력·방탄 가득, 차 수리, +$250,000', () => { const P = Game.player; P.hp = P.maxHp; P.armor = 100; P.money += 250000; if (P.car) { P.car.hp = P.car.maxHp; P.car.burnT = 0; } }],
+    AEZAKMI: ['수배 받지 않기 (켜기/끄기)', () => { Game.noWanted = !Game.noWanted; if (Game.noWanted) Wanted.clear(); UI.toast(Game.noWanted ? '이제 경찰이 신경 쓰지 않는다' : '수배 면제 해제'); }],
+    TURNUPTHEHEAT: ['수배 +2', () => { Game.noWanted = false; Wanted.set(Math.min(5, Wanted.stars + 2)); }],
+    LXGIWYL: ['무기 세트', () => { const P = Game.player; for (const w of ['bat', 'pistol', 'smg', 'shotgun', 'grenade']) giveWeapon(P, w, WEAPONS[w].pack || 1); }],
+    UZUMYMW: ['중화기 세트', () => { const P = Game.player; for (const w of ['rifle', 'rocket', 'grenade']) giveWeapon(P, w, WEAPONS[w].pack * 2); }],
+    CPKTNWT: ['주변 차량 전부 폭파', () => { const P = Game.player; for (const c of Game.cars) if (c !== P.car && !c.dead && dist(c.x, c.y, P.px, P.py) < 70) { c.hp = 0; c.burnT = rand(0.1, 1.5); } }],
+    OHDUDE: ['PCJ-600 오토바이 소환', () => { const P = Game.player; const c = new Car('bike', P.px + 3, P.py, 0); Game.cars.push(c); }],
+  },
+  key(code) {
+    if (!code.startsWith('Key')) return;
+    this.buf = (this.buf + code.slice(3)).slice(-16);
+    for (const name in this.list) if (this.buf.endsWith(name)) { this.apply(name); this.buf = ''; }
+  },
+  apply(name) {
+    const c = this.list[name.toUpperCase()];
+    if (!c) { UI.toast('알 수 없는 치트'); return false; }
+    c[1](); Sfx.passed(); UI.big('치트 활성화', c[0], 2, '#6fe0ff');
+    return true;
+  },
+};
+addEventListener('keydown', e => { if (typeof Game !== 'undefined' && Game.state === 'play') Cheats.key(e.code); });
+
+'use strict';
+/* =====================================================================
  * render.js — 탑다운 렌더링
  *
  * GTA 1/2 스타일의 '의사 3D' 건물: 카메라가 도시 위 높이 H에 있다고 보고
@@ -3679,7 +4168,8 @@ function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w
 function drawCar(c, shadow) {
   const L = c.L, W = c.W, st = c.V.style;
   ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a);
-  if (shadow) { ctx.fillStyle = 'rgba(0,0,0,0.32)'; rr(ctx, -L / 2 + shadow[0] * 1.2, -W / 2 + shadow[1] * 1.2, L, W, 0.5); ctx.fill(); }
+  if (shadow) { ctx.fillStyle = 'rgba(0,0,0,0.32)'; rr(ctx, -L / 2 + shadow[0] * 1.2, -W / 2 + shadow[1] * 1.2, L, W, st === 'bike' ? 0.35 : 0.5); ctx.fill(); }
+  if (st === 'bike') { drawBike(c); ctx.restore(); return; }
   // 바퀴
   ctx.fillStyle = '#111';
   const wx = L * 0.3, wy = W / 2 - 0.12;
@@ -3744,6 +4234,7 @@ function drawCar(c, shadow) {
     ctx.fillStyle = '#fff7d6'; ctx.fillRect(L / 2 - 0.18, -W / 2 + 0.18, 0.16, 0.38); ctx.fillRect(L / 2 - 0.18, W / 2 - 0.56, 0.16, 0.38);
     ctx.fillStyle = c.brakeLight ? '#ff2a2a' : '#8a1a1a'; ctx.fillRect(-L / 2 + 0.02, -W / 2 + 0.16, 0.14, 0.4); ctx.fillRect(-L / 2 + 0.02, W / 2 - 0.56, 0.14, 0.4);
   }
+  if (c.alarmT > 0 && !c.dead && Math.floor(Game.time * 5) % 2) { ctx.fillStyle = '#ffb020'; for (const [x, y] of [[L / 2 - 0.2, -W / 2 + 0.15], [L / 2 - 0.2, W / 2 - 0.15], [-L / 2 + 0.2, -W / 2 + 0.15], [-L / 2 + 0.2, W / 2 - 0.15]]) { ctx.beginPath(); ctx.arc(x, y, 0.22, 0, TAU); ctx.fill(); } }
   // 손상
   const dmg = 1 - c.hp / c.maxHp;
   if (!c.dead && dmg > 0.3) {
@@ -3755,8 +4246,30 @@ function drawCar(c, shadow) {
   ctx.restore();
 }
 
+function drawBike(c) {
+  const col = c.dead ? '#26272a' : c.color;
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.ellipse(-0.72, 0, 0.36, 0.11, 0, 0, TAU); ctx.fill();
+  ctx.save(); ctx.translate(0.72, 0); ctx.rotate(c.steer); ctx.beginPath(); ctx.ellipse(0, 0, 0.34, 0.1, 0, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#9aa3ad'; ctx.lineWidth = 0.06; ctx.beginPath(); ctx.moveTo(-0.15, -0.38); ctx.lineTo(-0.15, 0.38); ctx.stroke(); ctx.restore();
+  ctx.fillStyle = '#2b2d31'; ctx.fillRect(-0.8, -0.1, 1.5, 0.2);
+  ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(0.2, 0, 0.36, 0.2, 0, 0, TAU); ctx.fill(); ctx.fillRect(-0.9, -0.12, 0.35, 0.24);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.fillRect(0.05, -0.05, 0.35, 0.05);
+  ctx.fillStyle = '#141414'; ctx.fillRect(-0.55, -0.14, 0.5, 0.28);
+  if (!c.dead) { ctx.fillStyle = '#fff7d6'; ctx.fillRect(1.0, -0.06, 0.08, 0.12); ctx.fillStyle = c.brakeLight ? '#ff2a2a' : '#8a1a1a'; ctx.fillRect(-1.08, -0.06, 0.06, 0.12); }
+  if (c.driver) {
+    const P = Game.player, isP = c.driver === 'player';
+    const jacket = isP ? P.shirt : (c.riderCol || (c.riderCol = pick(['#2b2d42', '#6e1414', '#3b4a6b', '#1d1d1d'])));
+    ctx.fillStyle = jacket; ctx.beginPath(); ctx.ellipse(-0.25, 0, 0.22, 0.3, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = jacket; ctx.lineWidth = 0.1; ctx.beginPath(); ctx.moveTo(-0.15, -0.22); ctx.lineTo(0.55, -0.34 + c.steer * 0.2); ctx.moveTo(-0.15, 0.22); ctx.lineTo(0.55, 0.34 + c.steer * 0.2); ctx.stroke();
+    ctx.fillStyle = isP ? '#101418' : (c.helmet || (c.helmet = pick(['#f2f2f2', '#e0262b', '#111', '#f2c200']))); ctx.beginPath(); ctx.arc(-0.12, 0, 0.18, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(120,180,255,0.5)'; ctx.fillRect(-0.02, -0.1, 0.07, 0.2);
+  }
+}
+
 // ---------- 보행자 ----------
 function drawPed(p, shadow) {
+  if (p.kind === 'dog') { drawDog(p); return; }
   ctx.save(); ctx.translate(p.x, p.y);
   if (p.dead) {
     ctx.rotate(p.a + Math.PI / 2 * ((p.id % 2) ? 1 : -1));
@@ -3793,12 +4306,13 @@ function drawPed(p, shadow) {
   ctx.fillStyle = p.hitFlash > 0 ? '#ffffff' : p.shirt;
   ctx.beginPath(); ctx.ellipse(0, 0, 0.2, 0.36, 0, 0, TAU); ctx.fill();
   if (p.kind === 'cop') { ctx.fillStyle = '#e8c547'; ctx.fillRect(0.02, -0.2, 0.08, 0.08); }
+  drawArchProps(p);
   if (p.armor > 0 || p.kind === 'swat') { ctx.fillStyle = 'rgba(40,50,60,0.6)'; ctx.fillRect(-0.12, -0.25, 0.24, 0.5); }
   // 머리
   ctx.fillStyle = p.skin; ctx.beginPath(); ctx.arc(0.04, 0, 0.16, 0, TAU); ctx.fill();
   ctx.fillStyle = p.hair; ctx.beginPath(); ctx.arc(-0.01, 0, 0.155, Math.PI * 0.5, Math.PI * 1.5); ctx.fill();
   if (p.kind === 'cop' || p.kind === 'swat') { ctx.fillStyle = p.kind === 'cop' ? '#15213f' : '#1b1f24'; ctx.beginPath(); ctx.arc(0.02, 0, 0.17, 0, TAU); ctx.fill(); ctx.fillRect(0.1, -0.12, 0.12, 0.24); }
-  if (p.kind === 'gang') { ctx.fillStyle = '#1f8a4c'; ctx.beginPath(); ctx.arc(0.0, 0, 0.165, Math.PI * 0.4, Math.PI * 1.6); ctx.fill(); }
+  drawArchHead(p);
   ctx.restore();
 }
 
@@ -3923,8 +4437,8 @@ function drawBuildings(amb) {
   vis.sort((a, b) => b._d - a._d);
   for (const b of vis) drawBuilding(b, amb, night);
 }
-const PLACE_MARK = { ammu: '#ff6b5a', ammu2: '#ff6b5a', burger: '#ffb347', burger2: '#ffb347', mart: '#7ae68f', mart2: '#7ae68f', mart3: '#7ae68f', jobcenter: '#6fb6ff', broker: '#ff5d8f' };
-const SHOP_ROOF = { ammu: ['#b23a2e', '#f2f2f2'], burger: ['#e0572f', '#ffe08a'], mart: ['#2e8b57', '#f2fff4'], jobcenter: ['#2d5d9f', '#ffffff'], broker: ['#3a2346', '#ff5d8f'] };
+const PLACE_MARK = { safehouse: '#9be15d', ammu: '#ff6b5a', ammu2: '#ff6b5a', burger: '#ffb347', burger2: '#ffb347', mart: '#7ae68f', mart2: '#7ae68f', mart3: '#7ae68f', jobcenter: '#6fb6ff', broker: '#ff5d8f' };
+const SHOP_ROOF = { safehouse: ['#4a7a3f', '#f2fff0'], ammu: ['#b23a2e', '#f2f2f2'], burger: ['#e0572f', '#ffe08a'], mart: ['#2e8b57', '#f2fff4'], jobcenter: ['#2d5d9f', '#ffffff'], broker: ['#3a2346', '#ff5d8f'] };
 function drawBuilding(b, amb, night) {
   const X0 = b.x0 * T, Y0 = b.y0 * T, X1 = (b.x1 + 1) * T, Y1 = (b.y1 + 1) * T, h = b.h;
   const P = (x, y, z) => proj(x, y, z);
@@ -4143,6 +4657,7 @@ function renderScene() {
   for (const m of allTargets()) drawMarker(m.x, m.y, m.c, m.big || m.giver);
   for (const [k, pl] of Object.entries(World.places)) { const col = PLACE_MARK[k]; if (col && pl) drawMarker(pl.x, pl.y, col, false); }
   drawParticles(true);
+  for (const v of Vendors.list) if (Math.abs(v.x - Cam.x) < Cam.vw / 2 + 4 && Math.abs(v.y - Cam.y) < Cam.vh / 2 + 4) drawVendorCart(v);
   // 보행자(시체 먼저)
   for (const p of Game.peds) if (p.dead && Math.abs(p.x - Cam.x) < Cam.vw / 2 + 2 && Math.abs(p.y - Cam.y) < Cam.vh / 2 + 2) drawPed(p);
   for (const p of Game.peds) if (!p.dead && Math.abs(p.x - Cam.x) < Cam.vw / 2 + 2 && Math.abs(p.y - Cam.y) < Cam.vh / 2 + 2) drawPed(p, shadowV);
@@ -4162,6 +4677,7 @@ function renderScene() {
   ctx.textAlign = 'center'; ctx.font = '700 15px "Noto Sans KR", sans-serif';
   for (const t of Effects.texts) { const [sx, sy] = toScreen(t.x, t.y); ctx.globalAlpha = t.life / t.max; ctx.fillStyle = '#000'; ctx.fillText(t.s, sx + 1, sy + 1); ctx.fillStyle = t.c; ctx.fillText(t.s, sx, sy); }
   ctx.globalAlpha = 1;
+  Talk.draw();
   Rain.draw(wet);
 }
 
@@ -4402,6 +4918,7 @@ function placeIcons() {
   if (pl.ammu2) out.push({ x: pl.ammu2.x, y: pl.ammu2.y, ch: '총', c: '#ff6b5a', label: '총포상' });
   for (const k of ['burger', 'burger2']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '버', c: '#ffb347', label: '버거 샷' });
   for (const k of ['mart', 'mart2', 'mart3']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '편', c: '#7ae68f', label: '편의점' });
+  if (pl.safehouse) out.push({ x: pl.safehouse.x, y: pl.safehouse.y, ch: '집', c: '#9be15d', label: '은신처(저장)' });
   if (pl.jobcenter) out.push({ x: pl.jobcenter.x, y: pl.jobcenter.y, ch: 'J', c: '#6fb6ff', label: '고용센터' });
   if (pl.broker) out.push({ x: pl.broker.x, y: pl.broker.y, ch: '$', c: '#ff5d8f', label: '브로커' });
   return out;
@@ -4429,6 +4946,7 @@ function drawRadar(s) {
     c.fillStyle = 'rgba(224,68,62,0.22)'; c.strokeStyle = 'rgba(255,90,80,0.8)'; c.lineWidth = 1.5;
     c.beginPath(); c.arc((Wanted.lkpX - P.px) * k, (Wanted.lkpY - P.py) * k, Wanted.radius * k, 0, TAU); c.fill(); c.stroke();
   }
+  GPS.draw(c, k, P.px, P.py, 3.2 * s);
   c.restore();
   const rc = Math.cos(Cam.rot), rs = Math.sin(Cam.rot);
   const put = (x, y, fn, clampEdge) => {
@@ -4448,6 +4966,7 @@ function drawRadar(s) {
     c.fillStyle = 'rgba(0,0,0,0.75)'; c.beginPath(); c.arc(x, y, 7 * s, 0, TAU); c.fill();
     c.fillStyle = ic.c; c.font = `bold ${9 * s}px ${FONT_KR}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(ic.ch, x, y + 0.5);
   });
+  if (Game.waypoint) put(Game.waypoint.x, Game.waypoint.y, (x, y) => { c.fillStyle = '#c77dff'; c.strokeStyle = '#000'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x, y + 2); c.lineTo(x - 5 * s, y - 8 * s); c.lineTo(x + 5 * s, y - 8 * s); c.closePath(); c.fill(); c.stroke(); }, true);
   // 미션 목표
   for (const t of allTargets()) put(t.x, t.y, (x, y) => {
     c.fillStyle = 'rgba(0,0,0,0.8)'; c.beginPath(); c.arc(x, y, 6.5 * s, 0, TAU); c.fill();
@@ -4486,6 +5005,7 @@ function drawFullMap() {
   c.fillStyle = 'rgba(6,10,18,0.92)'; c.fillRect(0, 0, CW, CH);
   const size = Math.min(CW - 40, CH - 110);
   const k = size / (MW * T), ox = (CW - size) / 2, oy = 64;
+  Game.mapRect = { ox, oy, size, k };
   c.imageSmoothingEnabled = false;
   c.drawImage(World.mini, ox, oy, size, size);
   c.imageSmoothingEnabled = true;
@@ -4503,11 +5023,14 @@ function drawFullMap() {
   }
   for (const t of allTargets()) { const x = ox + t.x * k, y = oy + t.y * k; c.fillStyle = '#000'; c.beginPath(); c.arc(x, y, 8, 0, TAU); c.fill(); c.fillStyle = t.c; c.beginPath(); c.arc(x, y, 6, 0, TAU); c.fill(); }
   if (Wanted.stars > 0) { c.strokeStyle = 'rgba(255,90,80,0.9)'; c.beginPath(); c.arc(ox + Wanted.lkpX * k, oy + Wanted.lkpY * k, Wanted.radius * k, 0, TAU); c.stroke(); }
+  c.save(); c.translate(ox, oy); GPS.draw(c, k, 0, 0, 3); c.restore();
+  if (Game.waypoint) { const wx = ox + Game.waypoint.x * k, wy = oy + Game.waypoint.y * k; c.fillStyle = '#c77dff'; c.strokeStyle = '#000'; c.lineWidth = 2; c.beginPath(); c.moveTo(wx, wy); c.lineTo(wx - 7, wy - 16); c.lineTo(wx + 7, wy - 16); c.closePath(); c.fill(); c.stroke(); }
+  txt(c, Input.usingTouch ? '지도를 눌러 웨이포인트 지정 · 지도 버튼으로 닫기' : '클릭: 웨이포인트 지정/해제 · 지도 밖 클릭/M: 닫기', CW / 2, oy - 4 + size + 44, `500 ${12 * UI.s}px ${FONT_KR}`, '#c7b8ff', null, 0, 'center');
   const px = ox + P.px * k, py = oy + P.py * k;
   c.save(); c.translate(px, py); c.rotate(P.car ? P.car.a : P.a); c.fillStyle = '#fff'; c.strokeStyle = '#000'; c.lineWidth = 2;
   c.beginPath(); c.moveTo(10, 0); c.lineTo(-6, -7); c.lineTo(-3, 0); c.lineTo(-6, 7); c.closePath(); c.stroke(); c.fill(); c.restore();
   // 범례
-  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)']];
+  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트']];
   let lx = ox, ly = oy + size + 22;
   c.font = `500 ${12 * UI.s}px ${FONT_KR}`;
   for (const [col, l] of legend) { c.fillStyle = col; c.fillRect(lx, ly - 9, 10, 10); txt(c, l, lx + 15, ly, `500 ${12 * UI.s}px ${FONT_KR}`, '#dfe6ee', null); lx += c.measureText(l).width + 34; if (lx > ox + size - 80) { lx = ox; ly += 18; } }
@@ -4546,6 +5069,8 @@ const Menu = {
     this.camLabel = camLabel;
     document.getElementById('btn-quitjob').onclick = () => { Jobs.stop('일을 그만뒀다'); this.hidePause(); Game.state = 'play'; };
     document.getElementById('jobs-close').onclick = () => Jobs.closeBoard();
+    const ci = document.getElementById('cheat-input');
+    document.getElementById('cheat-go').onclick = () => { const v = ci.value.trim().toUpperCase(); if (!v) return; ci.value = ''; this.hidePause(); Game.state = 'play'; Cheats.apply(v); };
     document.getElementById('btn-quit').onclick = () => { this.hidePause(); Game.toMenu(); };
     document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => {
       document.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('on', x === b));
@@ -4762,6 +5287,7 @@ const Game = {
     addEventListener('mouseup', e => { if (e.button === 0) Input.mouse.down = false; });
     canvas.addEventListener('wheel', e => { Input.wheel += sign(e.deltaY); e.preventDefault(); }, { passive: false });
     canvas.addEventListener('contextmenu', e => e.preventDefault());
+    canvas.addEventListener('click', e => { if (this.state === 'map') this.mapClick(e.clientX, e.clientY); });
   },
 
   newGame(cont) {
@@ -4780,6 +5306,8 @@ const Game = {
     if (sv) { for (const k in sv.inv) P.inv[k] = sv.inv[k] === -1 ? Infinity : sv.inv[k]; this.clock = sv.time || this.clock; }
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
     placeStaticPickups();
+    Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
+    this.waypoint = null; this.noWanted = false;
     Cam.x = P.x; Cam.y = P.y;
     this.populate(true);
     // 시작 차량 하나
@@ -4796,6 +5324,14 @@ const Game = {
     } else UI.toast('저장된 진행 상황을 불러왔다');
   },
   toMenu() { this.state = 'menu'; Menu.show(); this.player.hidden = true; Wanted.reset(); Police.reset(); Missions.active = null; },
+  // 전체 지도 클릭 = 웨이포인트 지정/해제 (지도 밖을 누르면 닫기)
+  mapClick(sx, sy) {
+    const r = this.mapRect; if (!r) return;
+    if (sx < r.ox || sy < r.oy || sx > r.ox + r.size || sy > r.oy + r.size) { this.state = 'play'; return; }
+    const x = (sx - r.ox) / r.k, y = (sy - r.oy) / r.k;
+    if (this.waypoint && dist(x, y, this.waypoint.x, this.waypoint.y) < 25) { this.waypoint = null; UI.toast('웨이포인트 해제'); }
+    else { this.waypoint = { x, y }; Sfx.pickup(); }
+  },
   pause() { if (this.state !== 'play') return; this.state = 'paused'; Menu.showPause(); },
   resume() { Menu.hidePause(); this.state = 'play'; },
 
@@ -4813,7 +5349,7 @@ const Game = {
   frame(dt) {
     Pad.poll();
     const st = this.state;
-    if (st !== this._lastSt) { this._lastSt = st; document.body.classList.toggle('playing', st !== 'menu'); }
+    if (st !== this._lastSt) { this._lastSt = st; document.body.classList.toggle('playing', st !== 'menu'); document.body.classList.toggle('mapopen', st === 'map'); }
     const drv = st !== 'menu' && !!(this.player && this.player.car);
     if (drv !== this._lastDrv) {
       this._lastDrv = drv; document.body.classList.toggle('driving', drv);
@@ -4826,7 +5362,7 @@ const Game = {
       else if (keyHit('KeyM', 'Tab', 'PadBack')) { this.state = 'map'; }
       else this.update(dt);
     } else if (st === 'map') {
-      if (keyHit('Escape', 'KeyM', 'Tab', 'PadBack', 'PadB', 'PadStart') || Input.mouse.clicked) this.state = 'play';
+      if (keyHit('Escape', 'KeyM', 'Tab', 'PadBack', 'PadB', 'PadStart')) this.state = 'play';
     } else if (st === 'paused') {
       if (keyHit('Escape', 'KeyP', 'PadStart', 'PadB')) this.resume();
     } else if (st === 'menu') {
@@ -4888,6 +5424,10 @@ const Game = {
     Jay.update(dt);
     Missions.update(dt);
     Jobs.update(dt);
+    Talk.update(dt); Aim.update(dt); EMS.update(dt); Givers.update(); Vendors.update(dt); GPS.update(dt);
+    // 체력 자연 회복: 6초 동안 안 다치면 50까지 천천히 (GTA V)
+    if (!P.dead && P.hp < 50 && this.time - (P.lastHurt || 0) > 6) P.hp = Math.min(50, P.hp + 2 * dt);
+    if (P.car && keyHit('KeyH')) for (const q of this.peds) if (q.kind === 'civ' && !q.dead && dist2(q.x, q.y, P.px, P.py) < 144 && chance(0.4)) Talk.line(q, 'honk');
     Pick.scan();
     if (Pick.target !== this._lastPick) { this._lastPick = Pick.target; document.body.classList.toggle('cansteal', !!Pick.target); }
     updatePickups(dt);
@@ -4978,7 +5518,7 @@ const Game = {
       if (d < inner || d > outer || (!initial && onScreen(sp.x, sp.y, 4))) continue;
       sp.cd = 60;
       if (!chance(0.55)) continue;
-      const c = new Car(pick(['sedan', 'compact', 'sports', 'muscle', 'van', 'sedan', 'compact']), sp.x, sp.y, sp.a + (chance(0.5) ? Math.PI : 0));
+      const c = new Car(pick(['sedan', 'compact', 'sports', 'muscle', 'van', 'sedan', 'compact', 'bike', 'bike']), sp.x, sp.y, sp.a + (chance(0.5) ? Math.PI : 0));
       this.cars.push(c); sp.car = c;
     }
     // 보행자
@@ -4992,13 +5532,14 @@ const Game = {
       const d = dist(x, y, f.x, f.y);
       if (d < inner || d > outer || (!initial && onScreen(x, y, 3))) continue;
       const dist_ = b.district;
-      if (dist_ === DIST.HARBOR && chance(0.35)) {
-        const n = randi(2, 3);
-        for (let i = 0; i < n; i++) { const g = spawnPed('gang', x + rand(-1.5, 1.5), y + rand(-1.5, 1.5)); g.homeX = g.x; g.homeY = g.y; peds++; }
+      if ((dist_ === DIST.HARBOR && chance(0.35)) || (dist_ === DIST.BEACH && chance(0.22))) {
+        const n = randi(2, 3), gang = dist_ === DIST.BEACH ? 'wave' : 'dragon';
+        for (let i = 0; i < n; i++) { const g = spawnPed('gang', x + rand(-1.5, 1.5), y + rand(-1.5, 1.5)); setGang(g, gang); g.homeX = g.x; g.homeY = g.y; peds++; }
         continue;
       }
       const p = spawnPed(chance(0.06) ? 'cop' : 'civ', x, y);
       p.block = b; p.s = s; p.state = 'walk'; p.seg = -1;
+      if (p.kind === 'civ') { dressArch(p, pickArch(dist_)); if (p.dog) { p.dog.x = x - 1; p.dog.y = y; } }
       if (dist_ === DIST.BEACH && chance(0.5)) { p.shirt = pick(['#ff8fab', '#ffd166', '#06d6a0', '#118ab2', '#f4f1de']); p.pants = pick(['#f4a261', '#2a9d8f', '#e9c46a']); }
       if (dist_ === DIST.DOWNTOWN && chance(0.5)) { p.shirt = pick(['#2b2d42', '#3d405b', '#1b263b', '#6c757d']); p.pants = '#1b1b1f'; }
       peds++;
@@ -5050,6 +5591,8 @@ const Game = {
       for (const [k, kind] of [['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart']]) {
         const S = World.places[k]; if (S && dist(P.x, P.y, S.x, S.y) < 1.8) { Shop.open(kind); return; }
       }
+      const SH = World.places.safehouse;
+      if (SH && dist(P.x, P.y, SH.x, SH.y) < 1.8) { Safehouse.use(); return; }
       const JC = World.places.jobcenter, BR = World.places.broker;
       if (JC && dist(P.x, P.y, JC.x, JC.y) < 1.8) Jobs.openBoard(true);
       else if (BR && dist(P.x, P.y, BR.x, BR.y) < 1.8) Jobs.openBoard(false);
@@ -5181,7 +5724,7 @@ function updatePlayerFoot(P, dt) {
   for (const q of Game.peds) {
     if (q.dead || q.car) continue;
     const dx = P.x - q.x, dy = P.y - q.y, d2 = dx * dx + dy * dy;
-    if (d2 < 0.5 && d2 > 1e-6) { const d = Math.sqrt(d2), push = (0.72 - d) * 0.5; P.x += dx / d * push; P.y += dy / d * push; q.x -= dx / d * push; q.y -= dy / d * push; if (sprint && q.kind === 'civ' && chance(0.02)) q.downT = 0.8; }
+    if (d2 < 0.5 && d2 > 1e-6) { const d = Math.sqrt(d2), push = (0.72 - d) * 0.5; P.x += dx / d * push; P.y += dy / d * push; q.x -= dx / d * push; q.y -= dy / d * push; if (sprint && q.kind === 'civ' && chance(0.02)) q.downT = 0.8; if (q.kind === 'civ' && chance(0.03)) Talk.line(q, 'bump'); }
   }
   pedStatic(P);
 }
@@ -5220,6 +5763,8 @@ function tryEnterCar(P) {
     }
     crime(c.type === 'police' || kind === 'cop' ? 'stealCop' : 'carjack', c.x, c.y);
   } else if (c.type === 'police' || c.type === 'swat') crime('stealCop', c.x, c.y);
+  else if (!c.everDriven && !c.persistent && c.type !== 'bike' && chance(0.3)) { c.alarmT = 9; UI.toast('도난 경보가 울린다!'); crime('carjack', c.x, c.y); }
+  c.everDriven = true;
   P.car = c; c.driver = 'player'; c.ai = null; c.driverKind = null; c.siren = false;
   if (c.type === 'police') c.sirenMode = 1;
   Sfx.tone({ x: c.x, y: c.y, f0: 180, f1: 90, dur: 0.1, type: 'square', vol: 0.3 });

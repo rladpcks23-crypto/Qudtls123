@@ -10,7 +10,7 @@
 """
 import os
 ROOT = os.path.dirname(os.path.abspath(__file__))
-ORDER = ['core', 'world', 'vehicles', 'peds', 'police', 'missions', 'jobs', 'render', 'ui', 'main']
+ORDER = ['core', 'world', 'vehicles', 'peds', 'police', 'missions', 'jobs', 'npc', 'render', 'ui', 'main']
 JS = '\n'.join(open(os.path.join(ROOT, 'src', f + '.js'), encoding='utf-8').read() for f in ORDER)
 SHELL = open(os.path.join(ROOT, 'src', 'shell.html'), encoding='utf-8').read()
 TITLES = {'pc': '네온 하버 PC', 'mobile': '네온 하버 모바일'}

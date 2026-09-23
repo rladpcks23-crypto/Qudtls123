@@ -54,8 +54,8 @@ function tint(hex, amb, f = 0) {
 const PLATFORM = (typeof NH_PLATFORM !== 'undefined') ? NH_PLATFORM : 'pc';
 const IS_MOBILE = PLATFORM === 'mobile';
 const TUNE = IS_MOBILE
-  ? { dpr: 1.3, light: 1 / 3, cars: [20, 12], peds: [30, 18], particles: 450, rain: 140 }
-  : { dpr: 2, light: 1 / 2, cars: [28, 17], peds: [46, 26], particles: 900, rain: 260 };
+  ? { dpr: 1.3, light: 1 / 3, cars: [20, 12], peds: [34, 20], particles: 450, rain: 140 }
+  : { dpr: 2, light: 1 / 2, cars: [28, 17], peds: [54, 30], particles: 900, rain: 260 };
 // 사용자 설정 (브라우저에 저장)
 const Settings = {
   camRot: true, // 운전 중 화면을 차 방향으로 회전

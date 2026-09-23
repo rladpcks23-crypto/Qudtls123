@@ -38,7 +38,7 @@ class Ped {
     this.hp = 60; this.aimT = 0; this.flash = 0; this.hitFlash = 0;
     if (kind === 'cop') { this.hp = 100; this.shirt = '#1f3b73'; this.pants = '#16223d'; this.hair = '#101010'; this.weapon = 'pistol'; this.walkSpeed = 1.3; }
     if (kind === 'swat') { this.hp = 160; this.shirt = '#20252b'; this.pants = '#15181c'; this.hair = '#20252b'; this.weapon = 'rifle'; }
-    if (kind === 'gang') { this.hp = 80; this.shirt = '#1f8a4c'; this.pants = '#1a1a1a'; this.weapon = chance(0.35) ? 'smg' : chance(0.5) ? 'pistol' : 'bat'; this.state = 'idle'; }
+    if (kind === 'gang') { this.gang = 'dragon'; this.hp = 80; this.shirt = '#1f8a4c'; this.pants = '#1a1a1a'; this.weapon = chance(0.35) ? 'smg' : chance(0.5) ? 'pistol' : 'bat'; this.state = 'idle'; }
     if (kind === 'target') { this.hp = 120; this.shirt = '#f2f2f2'; this.pants = '#111'; this.weapon = 'pistol'; this.state = 'idle'; }
     this.maxHp = this.hp;
   }
@@ -47,7 +47,8 @@ class Ped {
   get alive() { return !this.dead; }
 
   damage(amt, by, dx = 0, dy = 0, kind = 'bullet') {
-    if (this.dead) return;
+    if (this.dead || this.invuln) return;
+    if (this === Game.player) this.lastHurt = Game.time;
     // 난이도: NPC가 플레이어에게 주는 피해는 줄인다(GTA도 플레이어 피격 배율이 낮다)
     if (this === Game.player && by && by !== this) amt *= 0.4;
     if (this.armor) { const ab = Math.min(this.armor, amt * 0.8); this.armor -= ab; amt -= ab; }
@@ -61,7 +62,7 @@ class Ped {
     const byPlayer = by === Game.player;
     if (this.kind === 'civ') { this.state = 'flee'; this.fleeT = 10; this.fearX = by ? by.px : this.x - dx; this.fearY = by ? by.py : this.y - dy; if (byPlayer) crime('assault', this.x, this.y); if (byPlayer && chance(0.12) && this.hp > 20) { this.state = 'fight'; } }
     else if (this.kind === 'cop' || this.kind === 'swat') { this.state = 'chase'; if (byPlayer) crime('hitCop', this.x, this.y); }
-    else if (this.kind === 'gang' || this.kind === 'guard' || this.kind === 'target') { if (byPlayer) aggroGang(this.x, this.y, this.kind); }
+    else if (this.kind === 'gang' || this.kind === 'guard' || this.kind === 'target') { if (byPlayer) aggroGang(this.x, this.y, this.kind, this.gang); }
   }
   die(by, dx, dy) {
     this.dead = true; this.hp = 0; this.deadT = 0;
@@ -254,12 +255,13 @@ function updateProjectiles(dt) {
 function scarePeds(x, y, r) {
   for (const p of Game.peds) {
     if (p.dead || p.car) continue;
-    if (p.kind === 'civ' && dist2(p.x, p.y, x, y) < r * r && p.state !== 'fight') { p.state = 'flee'; p.fleeT = rand(6, 11); p.fearX = x; p.fearY = y; }
+    if (p.kind === 'civ' && !p.invuln && dist2(p.x, p.y, x, y) < r * r && p.state !== 'fight') { if (p.state !== 'flee' && chance(0.3)) Talk.line(p, 'scream'); p.state = 'flee'; p.fleeT = rand(6, 11); p.fearX = x; p.fearY = y; }
   }
 }
-function aggroGang(x, y, kind) {
+function aggroGang(x, y, kind, gang) {
   for (const p of Game.peds) {
     if (p.dead) continue;
+    if (p.kind === 'gang' && gang && p.gang !== gang) continue;
     if ((p.kind === 'gang' || p.kind === 'guard' || (p.kind === 'target' && kind !== 'gang')) && dist2(p.x, p.y, x, y) < 45 * 45) { if (p.kind === 'target' && p.mission && p.mission.onAlert) p.mission.onAlert(); else p.state = 'chase'; }
   }
 }
@@ -391,13 +393,18 @@ function updatePed(p, dt) {
       if (p.fleeT <= 0) { if (p.kind === 'civ') returnToWalk(p); else p.state = p.kind === 'cop' ? 'patrol' : 'idle'; }
       break;
     }
+    case 'dog': updateDog(p, dt); return;
+    case 'handsup': Aim.updatePed(p, dt); break;
+    case 'feud': feudAI(p, dt); break;
     case 'idle': {
       if (p.homeX === undefined) { p.homeX = p.x; p.homeY = p.y; }
+      if (p.stay) { pedSeek(p, p.homeX, p.homeY, 1, dt); if (!P.dead && dist2(p.x, p.y, P.px, P.py) < 100) p.a = Math.atan2(P.py - p.y, P.px - p.x); break; }
+      if (p.kind === 'gang') gangLook(p, dt);
       if (!p.wt || p.wt <= 0) { p.wt = rand(2, 5); p.wx = p.homeX + rand(-3, 3); p.wy = p.homeY + rand(-3, 3); if (solidT(Math.floor(p.wx / T), Math.floor(p.wy / T))) { p.wx = p.homeX; p.wy = p.homeY; } }
       p.wt -= dt;
       pedSeek(p, p.wx, p.wy, 0.9, dt);
       dodgeCars(p);
-      if ((p.kind === 'gang' || p.kind === 'guard') && !P.dead && dist2(p.x, p.y, P.px, P.py) < 8 * 8 && WEAPONS[P.weapon] && !WEAPONS[P.weapon].melee && !P.car && chance(dt * 0.5)) aggroGang(p.x, p.y, 'gang');
+      if ((p.kind === 'gang' || p.kind === 'guard') && !P.dead && dist2(p.x, p.y, P.px, P.py) < 8 * 8 && WEAPONS[P.weapon] && !WEAPONS[P.weapon].melee && !P.car && chance(dt * 0.5)) { aggroGang(p.x, p.y, 'gang', p.gang); Talk.line(p, 'gang'); }
       break;
     }
     case 'patrol': {
@@ -451,6 +458,7 @@ function combatAI(p, dt) {
   const see = d < 34 && losClear(p.x, p.y, P.px, P.py) && (!isCop || Wanted.seen);
   const mayShoot = !W.melee && see && d < range && (!isCop || Wanted.stars >= 2 || P.car && Wanted.stars >= 2);
   if (see) p.a = Math.atan2(P.py - p.y, P.px - p.x);
+  if (see && chance(dt * 0.15)) Talk.line(p, isCop ? 'cop' : p.kind === 'civ' ? 'rage' : 'gang');
   if (mayShoot) {
     // 사격 자세: 약간 옆걸음
     p.strafe = (p.strafe || (chance(0.5) ? 1 : -1));
@@ -496,6 +504,7 @@ function dodgeCars(p) {
     if (cx * cx + cy * cy < 2.2 * 2.2) {
       const l = Math.hypot(cx, cy) || 1, nx = cx / l || -c.vy / sp, ny = cy / l || c.vx / sp;
       if (chance(0.7)) { p.vx += nx * 6; p.vy += ny * 6; }
+      if (p.kind === 'civ') Talk.line(p, 'near');
       if (p.kind === 'civ') { p.state = 'flee'; p.fleeT = 3; p.fearX = c.x; p.fearY = c.y; }
       return;
     }

@@ -34,6 +34,7 @@ const Wanted = {
   get radius() { return 40 + this.stars * 22; },
   reset() { this.heat = 0; this.stars = 0; this.reports = []; this.evadeT = 0; this.seen = false; this.bustT = 0; },
   add(heat, min) {
+    if (Game.noWanted) return;
     const before = this.stars;
     this.heat = Math.max(this.heat + heat, HEAT_STARS[min] || 0);
     let s = 0; for (let i = 1; i < HEAT_STARS.length; i++) if (this.heat >= HEAT_STARS[i]) s = i;

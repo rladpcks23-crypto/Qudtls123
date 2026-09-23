@@ -58,6 +58,8 @@
   .shop-row { display: grid; grid-template-columns: 64px 1fr auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
   .shop-info { display: flex; flex-direction: column; font-size: 14px; }
   .shop-info span { color: var(--muted); font-size: 12px; }
+  .cheat { display: flex; gap: 8px; } .cheat input { flex: 1; min-width: 0; background: rgba(255,255,255,0.06); border: 1px solid var(--line); color: var(--text); border-radius: 4px; padding: 8px 10px; font-family: var(--num); font-size: 18px; letter-spacing: .12em; }
+  body.mapopen #stick-zone, body.mapopen #stick, body.mapopen .tb:not(#t-map), body.mapopen #drive { display: none !important; }
   .job-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
   .job-row b { display: block; font-size: 15px; } .job-row span { color: var(--muted); font-size: 12.5px; line-height: 1.5; display: block; } .job-row i { color: var(--gold); font-style: normal; font-size: 12px; }
   #pause .card, #jobs .card, #shop .card { max-height: calc(100% - 16px); }
@@ -185,6 +187,8 @@
       <p><b>도시</b> — 다운타운 · 미드타운 · 웨스트 힐즈 · 하버 포인트(청룡파 구역) · 선셋 비치 · 센트럴 파크. 1초 = 게임 속 1분으로 낮과 밤이 돌고, 가끔 비가 와 노면이 미끄러워진다.</p>
       <p><b>상점</b> — 총포상(총): 무기·방탄복 · 버거 샷(버): 버거·세트·콜라 · 24 편의점(편): 간식, 에너지 드링크, 구급상자, 복권. 문 앞 마커로 걸어 들어가면 열린다.</p>
       <p><b>직업</b> — 고용센터(J): 택시 기사 · 구급대원 · 음식 배달 / 브로커($): 차량 수출 · 밀수 운반 · 소매치기. 반복할수록 보수가 오른다.</p>
+      <p><b>사람들</b> — 회사원·조깅하는 사람·관광객·노인·통화 중인 사람·개 산책(개도 따라다님)·핫도그 노점·버스커. 부딪히면 항의하고, 총을 겨누면 손을 들고, 계속 겨누면 지갑을 떨어뜨린다. 쓰러진 사람에게는 구급차가 와서 되살린다. 청룡파(초록)와 파도파(주황)는 마주치면 싸운다.</p>
+      <p><b>편의 기능</b> — 전체 지도를 눌러 웨이포인트를 찍으면 레이더에 GPS 경로가 뜬다. 은신처(집)에서 저장하고 6시간 잔다. 6초 동안 안 다치면 체력이 50까지 차오른다. 일시정지 메뉴에 치트 입력칸이 있다.</p>
       <p><b>무단횡단</b> — 횡단보도가 아닌 곳이나 빨간 보행 신호에 건너면 경찰이 딱지를 뗀다.</p>
       <p><b>수집</b> — 숨겨진 꾸러미 10개(개당 $1,000), 뇌물 별(수배 −1), 곳곳의 무기·체력·방탄복.</p>
     </div>
@@ -211,6 +215,7 @@
     <button class="btn" id="btn-sound">소리 끄기</button>
     <button class="btn" id="btn-camrot">운전 시점: 차 방향으로 회전</button>
     <button class="btn" id="btn-quitjob" hidden>하던 일 그만두기</button>
+    <div class="cheat"><input id="cheat-input" type="text" placeholder="치트 코드" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn small" id="cheat-go">입력</button></div>
     <button class="btn" id="btn-quit">메인 메뉴로</button>
     <p>진행 상황은 미션을 완료할 때마다 이 브라우저에 자동 저장된다.</p>
   </div>
