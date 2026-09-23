@@ -128,7 +128,7 @@ const Police = {
     }
     // 체포(BUSTED): 별 1~3개에서 경찰이 붙잡으면
     let near = false;
-    if (Wanted.stars <= 3) for (const p of Game.peds) {
+    if (Wanted.stars <= 3 && !(P.car && P.car.alt > 1.2) && !(P.alt > 1.2)) for (const p of Game.peds) { // 공중에 있으면 체포 불가
       if (p.dead || p.downT > 0 || (p.kind !== 'cop' && p.kind !== 'swat')) continue;
       const d = dist(p.x, p.y, P.px, P.py);
       if (!P.car && d < 1.5 && Math.hypot(P.vx, P.vy) < 3) near = true;

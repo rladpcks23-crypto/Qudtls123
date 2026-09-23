@@ -546,6 +546,17 @@ function tryEnterCar(P) {
   if (c.type === 'police') c.sirenMode = 1;
   Sfx.tone({ x: c.x, y: c.y, f0: 180, f1: 90, dur: 0.1, type: 'square', vol: 0.3 });
   UI.car(c.label || c.V.name);
+  // 특수 차량 첫 탑승: 조작법 안내 (차종마다 한 번)
+  const sp = c.V.special; Game.hinted = Game.hinted || {};
+  if (sp && !Game.hinted[sp]) {
+    Game.hinted[sp] = true;
+    const M = IS_MOBILE;
+    UI.dialog([['도움말', {
+      tank: M ? '전차: 가속/브레이크 페달로 전진·후진, 핸들로 제자리 회전. 주포 버튼으로 포탄 — 포탑은 가까운 적을 자동으로 겨눈다.' : '전차: W/S 전진·후진, A/D 제자리 회전. 마우스로 포탑 조준, 클릭 또는 스페이스로 주포.',
+      heli: M ? '헬기: 가속 페달 = 이륙·전진, 브레이크 = 후진, 핸들 = 방향. 기관포·미사일 버튼으로 공격. 하차 한 번 = 착륙, 곧바로 한 번 더 = 낙하산.' : '헬기: W 이륙·전진, S 후진, A/D 방향. 클릭 = 기관포, 스페이스 = 미사일. F 한 번 = 착륙, 곧바로 한 번 더 = 낙하산 탈출.',
+      jet: M ? '전투기: 가속 페달로 활주로를 달려 약 120km/h에서 이륙. 너무 느려지면 떨어진다. 기관포·미사일은 기수 방향. 하차 = 착륙 접근, 두 번 = 낙하산.' : '전투기: W로 활주로를 달려 약 120km/h에서 이륙, 너무 느려지면 고도가 떨어진다. 클릭 = 기관포, 스페이스 = 미사일(기수 방향). F = 착륙 접근, 두 번 = 낙하산.',
+    }[sp]]]);
+  }
   for (const sp of World.parking) if (sp.car === c) { sp.car = null; sp.cd = 60; }
 }
 function exitCar(P, force) {
