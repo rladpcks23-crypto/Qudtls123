@@ -1,6 +1,6 @@
 {
   "name": "neon-harbor",
-  "version": "2.11.1",
+  "version": "2.12.0",
   "private": true,
   "description": "네온 하버 — GTA 스타일 탑뷰 오픈월드 (순수 JS + Canvas, 번들러 없음)",
   "scripts": {
