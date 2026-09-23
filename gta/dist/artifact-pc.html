@@ -518,7 +518,7 @@ const Input = {
   touch: { on: false, jx: 0, jy: 0, fire: false, hb: false, run: false, look: false, stickId: null, sx: 0, sy: 0 },
   usingTouch: false,
 };
-const GAME_KEYS = ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'];
+const GAME_KEYS = ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'F1'];
 addEventListener('keydown', e => {
   if (e.target && (e.target.tagName === 'INPUT')) return;
   if (!Input.keys[e.code]) Input.pressed[e.code] = true;
@@ -7277,6 +7277,36 @@ function wrapLines(c, s, maxW) {
   return out;
 }
 
+// 화면 오른쪽에 작은 흰 글씨로 지금 쓸 수 있는 키를 보여 준다
+const KEYHELP = { off: (() => { try { return localStorage.getItem('nh.keyhelp') === '0'; } catch (e) { return false; } })() };
+function toggleKeyHelp() { KEYHELP.off = !KEYHELP.off; try { localStorage.setItem('nh.keyhelp', KEYHELP.off ? '0' : '1'); } catch (e) { } }
+function drawKeyHelp(c, s, top, pad) {
+  const fs = Math.max(10, 11 * s), lh = fs + 4, x = CW - pad;
+  if (KEYHELP.off) { txt(c, 'F1  키 안내', x, CH * 0.5, `500 ${fs}px ${FONT_KR}`, 'rgba(255,255,255,0.7)', 'rgba(0,0,0,0.85)', 3, 'right'); return; }
+  const P = Game.player, car = P.car, rows = [];
+  if (car) {
+    rows.push(['W/S', '가속 · 후진'], ['A/D', '방향'], ['Space', '핸드브레이크'], ['F', '내리기'], ['R', '라디오'], ['H', '경적'], ['V', '운전 시점']);
+    if (hasVW(car)) rows.push(['클릭/Ctrl', '탑승 무기 발사'], ['Q/E', '탑승 무기 바꾸기']);
+    if (car.type === 'police' || car.type === 'ambulance') rows.push(['G', '사이렌']);
+  } else {
+    rows.push(['WASD', '이동'], ['Shift', '달리기'], ['클릭/Ctrl', '공격'], ['Q/E · 1~0', '무기 바꾸기'], ['F', '차 타기'], ['T', '소매치기']);
+  }
+  rows.push(['B', '가방'], ['K', '부하 부르기'], ['C', '시점 바꾸기'], ['Z · +/−', '화면 거리']);
+  if (Jobs.active) rows.push(['X', '일 그만두기']);
+  rows.push(['M', '지도 (G 구역 · V 사업체)'], ['P/Esc', '일시정지 · 저장'], ['F1', '이 안내 숨기기']);
+  let y = Math.max(top + 24 * s, CH * 0.5 - rows.length * lh / 2);
+  if (y + rows.length * lh > CH - 130 * s) y = Math.max(top + 10 * s, CH - 130 * s - rows.length * lh);
+  const kf = `700 ${fs}px ${FONT_KR}`, df = `500 ${fs}px ${FONT_KR}`;
+  c.font = kf; const kw = Math.max(...rows.map(r => c.measureText(r[0]).width));
+  c.font = df; const dw = Math.max(...rows.map(r => c.measureText(r[1]).width));
+  const kx = x - dw - 10 * s - kw, dx = x - dw;
+  for (const [k, d] of rows) {
+    txt(c, k, kx, y, kf, '#fff', 'rgba(0,0,0,0.9)', 3, 'left');
+    txt(c, d, dx, y, df, 'rgba(255,255,255,0.88)', 'rgba(0,0,0,0.85)', 3, 'left');
+    y += lh;
+  }
+}
+
 function drawHUD(dt) {
   const c = ctx, P = Game.player;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -7377,6 +7407,9 @@ function drawHUD(dt) {
     c.fillStyle = 'rgba(8,10,16,0.55)'; roundRect(c, pad, hy, w, 26 * s, 6 * s); c.fill();
     txt(c, '▸ ' + m.objective, pad + 10 * s, hy + 18 * s, `600 ${13 * s}px ${FONT_KR}`, '#f5d77a', null);
   }
+
+  // ---- 우측: 키 안내 (F1로 숨기기/보이기) ----
+  if (!Input.usingTouch) drawKeyHelp(c, s, ty, pad);
 
   // ---- 라디오 방송국 ----
   if (UI.stationT > 0 && UI.station) {
@@ -9813,6 +9846,7 @@ const Game = {
       for (let i = 0; i <= 9; i++) if (keyHit('Digit' + i)) { const own = WEAPON_ORDER.filter(w => P.inv[w] > 0), w = own[(i + 9) % 10]; if (w) { P.weapon = w; UI.weaponFlash = 1; } }
       if (keyHit('KeyR', 'PadDown') && P.car) { Radio.cycle(); }
       if (keyHit('KeyB')) Bag.open();
+      if (keyHit('F1')) toggleKeyHelp();
       if (keyHit('KeyK')) Gangs.callBackup();
       if (keyHit('KeyC', 'PadUp')) cycleView();
       if (keyHit('KeyZ')) Zoom.set(Settings.zoom < 0.7 ? 0.75 : Settings.zoom < 1.1 ? 1.4 : 0.55);

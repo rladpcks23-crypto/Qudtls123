@@ -111,7 +111,7 @@ const Input = {
   touch: { on: false, jx: 0, jy: 0, fire: false, hb: false, run: false, look: false, stickId: null, sx: 0, sy: 0 },
   usingTouch: false,
 };
-const GAME_KEYS = ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'];
+const GAME_KEYS = ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'F1'];
 addEventListener('keydown', e => {
   if (e.target && (e.target.tagName === 'INPUT')) return;
   if (!Input.keys[e.code]) Input.pressed[e.code] = true;
