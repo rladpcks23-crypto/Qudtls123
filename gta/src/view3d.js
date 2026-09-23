@@ -183,7 +183,37 @@ const View3D = {
     const bodyMat = new THREE.MeshLambertMaterial({ color: c.color });
     g.userData.bodyMat = bodyMat;
     const glass = this.mat('#1b2735');
-    if (st === 'bike') {
+    if (st === 'tank') {
+      const dark = this.mat('#1c1e21');
+      for (const z of [-W / 2 + 0.4, W / 2 - 0.4]) add(dark, L, 1.1, 0.8, 0, 0.55, z);
+      add(bodyMat, L * 0.92, 0.8, W - 1.5, 0, 1.0, 0);
+      add(bodyMat, L * 0.96, 0.18, W * 1.02, 0, 1.2, 0);
+      const tur = new THREE.Group(); tur.position.set(-0.3, 1.4, 0); g.add(tur);
+      const tb = new THREE.Mesh(box, bodyMat); tb.scale.set(3.4, 0.9, 2.5); tb.position.set(0, 0.45, 0); tur.add(tb);
+      const gun = new THREE.Mesh(box, this.mat('#2f3a26')); gun.scale.set(4.6, 0.3, 0.3); gun.position.set(3.8, 0.5, 0); tur.add(gun);
+      g.userData.turret = tur;
+    } else if (st === 'milheli') {
+      add(bodyMat, 4.8, 1.5, 1.4, 0.4, 1.4, 0);
+      add(glass, 1.6, 0.9, 1.2, 2.5, 1.5, 0);
+      add(bodyMat, 4.4, 0.5, 0.5, -3.6, 1.7, 0);
+      add(bodyMat, 0.5, 1.5, 0.15, -5.6, 2.2, 0);
+      add(this.mat('#2f3a26'), 1.0, 0.4, 3.8, 0, 1.2, 0);
+      for (const z of [-0.8, 0.8]) add(this.mat('#222'), 3.6, 0.1, 0.1, 0.2, 0.2, z);
+      add(this.mat('#222'), 0.4, 0.5, 0.4, 0.3, 2.4, 0);
+      const rot = new THREE.Mesh(box, this.mat('#222')); rot.scale.set(11, 0.08, 0.4); rot.position.set(0.3, 2.7, 0); g.add(rot);
+      const rot2 = new THREE.Mesh(box, this.mat('#222')); rot2.scale.set(0.4, 0.08, 11); rot2.position.set(0.3, 2.7, 0); g.add(rot2);
+      g.userData.rotor = [rot, rot2];
+    } else if (st === 'jet') {
+      add(bodyMat, L * 0.85, 1.2, 1.3, -0.3, 1.5, 0);
+      add(bodyMat, 1.6, 0.8, 0.9, L * 0.45, 1.5, 0);
+      add(glass, 2.4, 0.6, 0.8, L * 0.2, 2.3, 0);
+      add(bodyMat, 3.0, 0.15, 9.2, -1.4, 1.4, 0);
+      add(bodyMat, 1.4, 0.12, 4.0, -L * 0.42, 1.6, 0);
+      for (const z of [-0.8, 0.8]) add(bodyMat, 1.6, 1.8, 0.12, -L * 0.4, 2.6, z);
+      add(new THREE.MeshBasicMaterial({ color: 0xff9a40 }), 0.2, 0.7, 0.7, -L * 0.5 - 0.3, 1.5, 0).name = 'flame';
+      for (const [x, z] of [[L * 0.3, 0], [-1.5, 1.2], [-1.5, -1.2]]) add(this.mat('#111'), 0.5, 0.8, 0.3, x, 0.4, z);
+      g.userData.flame = g.getObjectByName('flame');
+    } else if (st === 'bike') {
       add(this.mat('#2b2d31'), L * 0.9, 0.3, 0.22, 0, 0.55, 0);
       add(bodyMat, 0.8, 0.35, 0.4, 0.2, 0.85, 0);
       for (const x of [-L * 0.33, L * 0.33]) { const w = new THREE.Mesh(this.geo.wheel, this.mat('#111')); w.rotation.x = Math.PI / 2; w.scale.set(1, 0.4, 1); w.position.set(x, 0.34, 0); g.add(w); }
@@ -288,23 +318,25 @@ const View3D = {
       let ex = tx, ey = ty, eh = 1.62;
       if (car) { const c = Math.cos(car.a), s = Math.sin(car.a); ex = car.x + c * (car.type === 'bike' ? 0 : 0.1) + s * (car.type === 'bike' ? 0 : 0.36); ey = car.y + s * 0.1 - c * (car.type === 'bike' ? 0 : 0.36); eh = car.type === 'bike' ? 1.75 : ['truck', 'armored', 'van', 'swat', 'ambulance'].includes(car.V.style) ? 1.6 : 1.2; }
       else { ex += fx * 0.18; ey += fy * 0.18; }
+      if (car && car.V.special) eh = (car.type === 'tank' ? 3.0 : 2.3) + (car.alt || 0);
       cam.position.set(ex, eh, ey);
       cam.lookAt(ex + fx * 10, eh + Math.tan(this.pitch) * 10 - (car ? 0.1 : 0), ey + fy * 10);
       cam.fov = car ? 70 : 72;
     } else {
       const back = car ? (v === 'front' ? -1 : 1) * (6.5 + car.L * 0.8 + Math.min(car.speed, 30) * 0.08) : (v === 'front' ? -4.2 : 4.6);
-      const up = car ? 2.6 + car.L * 0.25 : 2.3;
+      const alt = car ? car.alt || 0 : 0;
+      const up = (car ? 2.6 + car.L * 0.25 : 2.3) + alt;
       let dist_ = Math.abs(back);
       const dx = -fx * sign(back), dy = -fy * sign(back);
       // 벽에 가리면 카메라를 당긴다
       const hit = rayWall(tx, ty, dx, dy, dist_);
-      if (hit < dist_) dist_ = Math.max(1.2, hit - 0.4);
+      if (hit < dist_ && alt < 1.2) dist_ = Math.max(1.2, hit - 0.4);
       const cx = tx + dx * dist_, cy = ty + dy * dist_;
       const k = 1 - Math.exp(-10 * dt);
       const cp = cam.position;
       if (!this.camInit) { cp.set(cx, up, cy); this.camInit = true; }
       cp.set(lerp(cp.x, cx, k), lerp(cp.y, up + Math.max(0, -this.pitch) * 3, k), lerp(cp.z, cy, k));
-      const lookH = car ? 1.2 : 1.45;
+      const lookH = (car ? 1.2 : 1.45) + alt - (alt > 1.2 ? 5 : 0);
       cam.lookAt(tx + fx * (v === 'front' ? 0 : 3), lookH + this.pitch * 4, ty + fy * (v === 'front' ? 0 : 3));
       cam.fov = car ? 65 + Math.min(12, car.speed * 0.35) : 60;
     }
@@ -324,7 +356,7 @@ const View3D = {
     const sky = new THREE.Color(lerp(0.62, 0.04, night) * (1 - 0.3 * wet), lerp(0.78, 0.06, night) * (1 - 0.25 * wet), lerp(0.91, 0.14, night) * (1 - 0.1 * wet));
     if (amb[0] > amb[2] + 0.1) sky.lerp(new THREE.Color(0.95, 0.55, 0.35), 0.45);
     this.renderer.setClearColor(sky); S.fog.color.copy(sky);
-    S.fog.far = 170 - wet * 50;
+    S.fog.far = 170 - wet * 50 + (P.car && P.car.alt || 0) * 2.5;
     this.hemi.intensity = 0.25 + (1 - night) * 0.75; this.sun.intensity = 0.1 + (1 - night) * 0.8;
     this.hemi.color.setRGB(amb[0], amb[1], amb[2]);
     this.bmat.emissiveIntensity = night > 0.35 ? night * 0.9 : 0;
@@ -343,7 +375,14 @@ const View3D = {
       seen.add(c.id);
       let g = this.cars.get(c.id);
       if (!g) { g = this.makeCar(c); this.cars.set(c.id, g); }
-      g.position.set(c.x, 0, c.y); g.rotation.y = -c.a;
+      g.position.set(c.x, c.alt || 0, c.y); g.rotation.order = 'YXZ'; g.rotation.set(0, -c.a, 0);
+      if (c.V.special) {
+        const U = g.userData;
+        if (U.turret) U.turret.rotation.y = -angNorm((c.turret ?? c.a) - c.a);
+        if (U.rotor) { U.rotor[0].rotation.y = U.rotor[1].rotation.y = c.rotor || 0; }
+        if (c.V.special === 'heli' && c.alt > 3) g.rotation.z = -clamp(c.vf / 36, -1, 1) * 0.25, g.rotation.x = -(c.in.st || 0) * 0.2;
+        if (c.V.special === 'jet') { g.rotation.x = c.bank || 0; if (U.flame) U.flame.visible = (c.spd || 0) > 20 && !c.dead; }
+      }
       const bm = g.userData.bodyMat, col = c.dead ? '#26272a' : c.color;
       if (g.userData.col !== col) { bm.color.set(col); g.userData.col = col; }
       if (c.burnT > 0 && !c.dead) bm.emissive.setRGB(0.5 + Math.random() * 0.3, 0.2, 0); else bm.emissive.setRGB(0, 0, 0);

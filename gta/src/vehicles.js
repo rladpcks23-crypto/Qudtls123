@@ -64,6 +64,7 @@ class Car {
   }
 
   step(dt) {
+    if (this.V.special) return specialStep(this, dt);
     const V = this.V, inp = this.in;
     const cs = Math.cos(this.a), sn = Math.sin(this.a);
     let vf = this.vx * cs + this.vy * sn, vl = -this.vx * sn + this.vy * cs;
@@ -73,7 +74,7 @@ class Car {
     const d = this.steer, a = this.L * 0.3, b = this.L * 0.3, wb = a + b;
     const load = this.m * 9.81 * 0.5;
     const wet = Game.weather.wet;
-    const gripF = V.grip * wet, gripR = V.grip * wet * (inp.hb ? 0.42 : 1.12);
+    const gripF = V.grip * wet, gripR = V.grip * wet * (inp.hb ? 0.42 : 1.3);
     let FyF = 0, FyR = 0;
     const avf = Math.abs(vf);
     if (avf > 0.3) {
@@ -114,19 +115,20 @@ class Car {
     if (!inp.hb && speed > 2 && !this.dead) {
       const vfN = this.vx * cs + this.vy * sn, vlN = -this.vx * sn + this.vy * cs;
       const aMax = V.grip * wet * 9.81 * 1.05, wLim = aMax / Math.max(2, Math.abs(vfN)); // 타이어 그립으로 낼 수 있는 만큼만
-      const wWant = clamp(vfN * Math.tan(d) / wb, -wLim, wLim), assist = this.driver === 'player' ? 3.2 : 2;
+      const wWant = clamp(vfN * Math.tan(d) / wb, -wLim, wLim), assist = this.driver === 'player' ? 5 : 2;
       this.w += (wWant - this.w) * (1 - Math.exp(-assist * dt));
-      const vl2 = vlN * Math.exp(-(this.driver === 'player' ? 1.6 : 1) * dt);
+      const vl2 = vlN * Math.exp(-(this.driver === 'player' ? 4 : 1) * dt);
       this.vx = vfN * cs - vl2 * sn; this.vy = vfN * sn + vl2 * cs;
     }
     this.x += this.vx * dt; this.y += this.vy * dt; this.a = angNorm(this.a + this.w * dt);
     this.vf = this.vx * Math.cos(this.a) + this.vy * Math.sin(this.a);
     this.vl = -this.vx * Math.sin(this.a) + this.vy * Math.cos(this.a);
-    this.skid = !this.dead && ((Math.abs(this.vl) > 2.6 && speed > 5) || (inp.hb && speed > 4) || (inp.brk > 0.7 && speed > 9));
+    this.skid = !this.dead && ((Math.abs(this.vl) > 3.5 && speed > 6) || (inp.hb && speed > 4) || (inp.brk > 0.95 && speed > 16));
   }
 
   // 정적 충돌(건물, 물, 나무)
   collideStatic() {
+    if (this.alt > 1.2) return;
     const r = this.r;
     let impact = 0;
     const cs = Math.cos(this.a), sn = Math.sin(this.a);
@@ -191,6 +193,7 @@ class Car {
   }
   damage(amt, by) {
     if (this.dead) return;
+    amt *= this.V.armor || 1;
     this.hp -= amt;
     if (by) this.lastHitBy = by;
     if (this.hp <= 0 && this.burnT <= 0) {
@@ -204,6 +207,7 @@ class Car {
     if (this.dead) { this.in.thr = 0; this.in.brk = 1; this.in.st = 0; this.in.hb = false; this.wreckT += dt; }
     else if (this.burnT > 0) {
       this.burnT -= dt;
+      if (this.alt > 0) { this.alt = Math.max(0, this.alt - 18 * dt); this.a += dt * 3; if (this.alt <= 0) this.burnT = Math.min(this.burnT, 0.01); }
       if (Math.random() < 0.6) Particles.fire(this.x + rand(-1, 1), this.y + rand(-1, 1));
       if (Math.random() < 0.3) Particles.smoke(this.x, this.y, 1.5);
       if (this.burnT <= 0) { this.dead = true; explode(this.x, this.y, 7, 120, this.lastHitBy, this); this.siren = false; }
@@ -219,7 +223,7 @@ class Car {
     const sub = this.type === 'bike' ? 3 : 2, h = dt / sub;
     // 도난 경보
     if (this.alarmT > 0) { const b0 = Math.floor(this.alarmT * 2.5); this.alarmT -= dt; if (Math.floor(this.alarmT * 2.5) !== b0) Sfx.tone({ x: this.x, y: this.y, f0: 560, f1: 560, dur: 0.22, type: 'square', vol: 0.22 }); }
-    const moving = this.speed > 0.01 || Math.abs(this.w) > 0.01 || this.in.thr !== 0;
+    const moving = this.speed > 0.01 || Math.abs(this.w) > 0.01 || this.in.thr !== 0 || (this.V.special && (this.driver || this.alt > 0));
     if (moving) for (let i = 0; i < sub; i++) { this.step(h); this.collideStatic(); }
     // 스키드 마크
     if (this.skid) {
@@ -235,6 +239,7 @@ class Car {
 
 // ---------- 차량 간 충돌 (원 근사 + 충격량) ----------
 function collideCarPair(A, B) {
+  if (A.alt > 1.2 || B.alt > 1.2) return;
   const R = A.brad + B.brad;
   if (dist2(A.x, A.y, B.x, B.y) > R * R) return;
   const ca = A.circles(), cb = B.circles(), ra = A.r, rb = B.r;
@@ -258,6 +263,7 @@ function collideCarPair(A, B) {
     const imp = -vn;
     if (imp > 3) {
       A.onImpact(imp * Math.min(1, B.m / A.m * 1.2), B); B.onImpact(imp * Math.min(1, A.m / B.m * 1.2), A);
+      if ((A.type === 'tank') !== (B.type === 'tank')) { const v = A.type === 'tank' ? B : A, t = v === A ? B : A; v.damage(imp * 14, t.driver === 'player' ? Game.player : null); }
       // 경찰차 들이받기 = 범죄
       if ((A.driver === 'player' && B.type === 'police') || (B.driver === 'player' && A.type === 'police')) crime('hitCop', px, py);
       if (imp > 8 && (A.driver === 'player' || B.driver === 'player')) {
@@ -290,6 +296,8 @@ function playerDrive(car, dt) {
     if (Math.abs(j.jy) > 0.2) thrKey = clamp(-j.jy * 1.4, -1, 1);
     hb = hb || j.hb;
   }
+  car.in.raw = thrKey;
+  if (car.V.special) { car.in.st = clamp(st, -1, 1); car.in.up = thrKey > 0; car.in.hb = hb; return; }
   const vf = car.vf;
   const analog = (Pad.active && Pad.lx) || (Input.usingTouch && (document.body.classList.contains('driving') || Input.touch.on));
   if (!analog) {
@@ -379,7 +387,7 @@ function findLeader(car, range, peds = true, carsToo = true) {
     const gap = lx - car.L / 2 - projL;
     if (gap < bestS) { bestS = gap; bestV = ovx * c + ovy * s; what = obj; }
   };
-  if (carsToo) for (const o of Game.cars) { if (o === car || dist2(o.x, o.y, car.x, car.y) > (range + 6) ** 2) continue; test(o.x, o.y, o.vx, o.vy, o.L / 2, o.W / 2, o.a, o); }
+  if (carsToo) for (const o of Game.cars) { if (o === car || o.alt > 1.2 || dist2(o.x, o.y, car.x, car.y) > (range + 6) ** 2) continue; test(o.x, o.y, o.vx, o.vy, o.L / 2, o.W / 2, o.a, o); }
   if (peds) {
     for (const p of Game.peds) { if (p.dead || p.car || dist2(p.x, p.y, car.x, car.y) > range * range) continue; test(p.x, p.y, 0, 0, 0.4, 0.4, 0, p); }
     const P = Game.player; if (!P.car && !P.dead) test(P.x, P.y, 0, 0, 0.4, 0.4, 0, P);

@@ -58,7 +58,7 @@ const Game = {
     if (sv) { for (const k in sv.inv) P.inv[k] = sv.inv[k] === -1 ? Infinity : sv.inv[k]; this.clock = sv.time || this.clock; }
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
     placeStaticPickups();
-    Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
+    Military.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
     this.waypoint = null; this.noWanted = false;
     Cam.x = P.x; Cam.y = P.y;
     this.populate(true);
@@ -107,6 +107,13 @@ const Game = {
       this._lastDrv = drv; document.body.classList.toggle('driving', drv);
       Input.touch.on = false; Input.touch.jx = Input.touch.jy = 0; Input.touch.stickId = null; Drive.reset();
       const b = document.getElementById('t-enter'); if (b) b.textContent = drv ? '하차' : '탑승';
+    }
+    const sp = drv && this.player.car.V.special || '';
+    if (sp !== this._lastSp) {
+      this._lastSp = sp;
+      const L = { tank: ['주포', '주포'], heli: ['기관포', '미사일'], jet: ['기관포', '미사일'] }[sp] || ['발사', '드리프트'];
+      const f = document.getElementById('t-fire'), h = document.getElementById('t-hb');
+      if (f) f.textContent = L[0]; if (h) h.textContent = L[1];
     }
     Drive.update(dt);
     if (st === 'play') {
@@ -184,6 +191,7 @@ const Game = {
     Jay.update(dt);
     Missions.update(dt);
     Jobs.update(dt);
+    Military.update(dt);
     Talk.update(dt); Aim.update(dt); EMS.update(dt); Givers.update(); Vendors.update(dt); GPS.update(dt);
     // 체력 자연 회복: 6초 동안 안 다치면 50까지 천천히 (GTA V)
     if (!P.dead && P.hp < 50 && this.time - (P.lastHurt || 0) > 6) P.hp = Math.min(50, P.hp + 2 * dt);
@@ -208,7 +216,7 @@ const Game = {
     W.nextT -= dt;
     if (W.nextT <= 0) { W.rain = !W.rain; W.nextT = W.rain ? rand(60, 130) : rand(150, 320); }
     W.intensity = smooth(W.intensity, W.rain ? 1 : 0, 0.3, dt);
-    W.wet = 1 - 0.22 * W.intensity;
+    W.wet = 1 - 0.12 * W.intensity;
     this.wind = Math.sin(this.time * 0.05) * 0.8;
     // 차량
     for (const c of this.cars) c.update(dt);
@@ -324,8 +332,8 @@ const Game = {
       tx += clamp((wx - P.x) * 0.2, -6, 6); ty += clamp((wy - P.y) * 0.2, -6, 6);
     }
     Cam.x = smooth(Cam.x, tx, car ? 4 : 5, dt); Cam.y = smooth(Cam.y, ty, car ? 4 : 5, dt);
-    const span = (car ? 56 + car.speed * 1.05 : 38) * Cam.zoomMul;
-    Cam.ppm = smooth(Cam.ppm, Math.min(CW, CH) / Math.min(130, span), 1.6, dt);
+    const span = (car ? 56 + car.speed * 1.05 + (car.alt || 0) * 1.6 : 38) * Cam.zoomMul;
+    Cam.ppm = smooth(Cam.ppm, Math.min(CW, CH) / Math.min(car && car.alt > 1.2 ? 220 : 130, span), 1.6, dt);
     camSetView();
     Cam.shake = Math.max(0, Cam.shake - dt * 1.6);
     Cam.sx = (Math.random() - 0.5) * Cam.shake * 14; Cam.sy = (Math.random() - 0.5) * Cam.shake * 14;
@@ -496,6 +504,7 @@ function updatePlayerInCar(P, dt) {
   P.x = c.x; P.y = c.y; P.vx = c.vx; P.vy = c.vy; P.cd -= dt;
   const W = WEAPONS[P.weapon];
   const firing = Input.mouse.down || Input.touch.fire || keyDown('ControlLeft', 'KeyJ', 'PadX');
+  if (c.V.special) { MilFire.update(c, dt, firing, keyDown('Space', 'PadRB', 'PadB') || Input.touch.hb); return; }
   if (firing && P.cd <= 0 && !W.melee && !W.throw && !W.proj && P.inv[P.weapon] > 0) {
     let ang;
     if (this_view3d()) ang = View3D.aimAngle();
@@ -537,7 +546,8 @@ function tryEnterCar(P) {
 }
 function exitCar(P, force) {
   const c = P.car; if (!c) return;
-  const fast = c.speed > 9;
+  if (isAir(c) && c.alt > 1 && !force) { c.landing = true; UI.toast(c.V.special === 'jet' ? '착륙 접근 중… 고도를 낮춘다' : '착륙 중…'); return; }
+  const fast = c.speed > 9 && !c.V.special;
   let door = c.doorPos(-1);
   if (solidT(Math.floor(door[0] / T), Math.floor(door[1] / T))) door = c.doorPos(1);
   if (solidT(Math.floor(door[0] / T), Math.floor(door[1] / T))) { if (!force) { UI.toast('문이 막혀 내릴 수 없다'); return; } door = [c.x, c.y]; }

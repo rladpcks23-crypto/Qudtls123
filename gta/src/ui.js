@@ -251,7 +251,7 @@ function drawRadar(s) {
   const R = (Input.usingTouch ? 62 : 80) * s;
   const pad = 16 * s + 4;
   const cx = pad + R, cy = Input.usingTouch ? pad + R + 8 : CH - pad - R;
-  const span = P.car ? 230 + P.car.speed * 3 : 190; // 레이더 지름(m)
+  const span = P.car ? 230 + P.car.speed * 3 + (P.car.alt || 0) * 5 : 190; // 레이더 지름(m)
   const k = (R * 2) / span;
   c.save();
   c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.closePath();
@@ -314,6 +314,7 @@ function drawRadar(s) {
     txt(c, 'km/h', sx + kmW + 5 * s, sy, `${14 * s}px ${FONT_NUM}`, '#cfd6e0', 'rgba(0,0,0,0.9)', 3, 'left');
     const rev = P.car.vf < -0.3;
     txt(c, rev ? 'R' : 'D', sx + kmW + 40 * s, sy, `${22 * s}px ${FONT_NUM}`, rev ? '#ff8a80' : '#7ae68f', 'rgba(0,0,0,0.9)', 3, 'left');
+    if (isAir(P.car)) txt(c, `고도 ${Math.round(P.car.alt || 0)}m`, sx, sy - 34 * s, `${16 * s}px ${FONT_NUM}`, '#9fd8ff', 'rgba(0,0,0,0.9)', 3, 'left');
     const hw = 70 * s; c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(sx, sy + 6 * s, hw, 5 * s);
     const hpk = P.car.hp / P.car.maxHp; c.fillStyle = hpk > 0.5 ? '#7ad67a' : hpk > 0.25 ? '#f2c14e' : '#e0443e'; c.fillRect(sx, sy + 6 * s, hw * hpk, 5 * s);
     if (Radio.station > 0) txt(c, Radio.stations[Radio.station].name, sx, sy - 34 * s, `600 ${11 * s}px ${FONT_KR}`, '#ffcf5a', 'rgba(0,0,0,0.9)', 3, 'left');

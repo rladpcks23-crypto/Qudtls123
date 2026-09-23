@@ -233,12 +233,12 @@ function updateProjectiles(dt) {
       const nx = p.x + p.vx * dt, ny = p.y + p.vy * dt;
       Particles.smoke(p.x, p.y, 0.8, '#d0d0d0'); if (Math.random() < 0.7) Particles.fire(p.x, p.y, 0.6);
       let boom = p.life <= 0 || solidT(Math.floor(nx / T), Math.floor(ny / T)) && tileAt(nx, ny) === TL.BUILD;
-      if (!boom) for (const c of Game.cars) { if (c === (p.by.car || null)) continue; if (dist2(c.x, c.y, nx, ny) < (c.L / 2 + 0.3) ** 2) { boom = true; break; } }
+      if (!boom) for (const c of Game.cars) { if (c === (p.by.car || null) || c.alt > 1.2) continue; if (dist2(c.x, c.y, nx, ny) < (c.L / 2 + 0.3) ** 2) { boom = true; break; } }
       if (!boom) for (const q of Game.peds) { if (!q.dead && q !== p.by && !q.car && dist2(q.x, q.y, nx, ny) < 0.8) { boom = true; break; } }
       if (!boom && p.by !== Game.player && !Game.player.car && dist2(Game.player.x, Game.player.y, nx, ny) < 0.8) boom = true;
       const H = Police.heli; if (!boom && H && !H.dead && p.by === Game.player && dist2(H.x, H.y, nx, ny) < 12) boom = true;
       p.x = nx; p.y = ny;
-      if (boom) { explode(p.x, p.y, 7, 150, p.by, null); arr.splice(i, 1); }
+      if (boom) { explode(p.x, p.y, p.big || 7, p.dmg || 150, p.by, null); arr.splice(i, 1); }
     } else if (p.type === 'grenade') {
       p.fuse -= dt;
       p.vz -= 18 * dt; p.z += p.vz * dt; if (p.z < 0) { p.z = 0; p.vz = -p.vz * 0.4; p.vx *= 0.7; p.vy *= 0.7; }
@@ -449,7 +449,7 @@ function combatAI(p, dt) {
   const P = Game.player;
   if (P.dead) { p.state = p.kind === 'civ' ? 'flee' : 'idle'; if (p.kind === 'cop') returnToWalk(p); return; }
   const isCop = p.kind === 'cop' || p.kind === 'swat';
-  if (isCop && Wanted.stars === 0) { returnToWalk(p); return; }
+  if (isCop && Wanted.stars === 0) { if (p.soldier) p.state = 'idle'; else returnToWalk(p); return; }
   let tx = P.px, ty = P.py;
   if (isCop && !Wanted.seen) { tx = Wanted.searchX; ty = Wanted.searchY; }
   const d = dist(p.x, p.y, tx, ty);
@@ -538,7 +538,7 @@ function pedStatic(p) {
 
 // 보행자-차량 충돌 (치임)
 function pedCarCollide(p, car) {
-  if (p.car || dist2(p.x, p.y, car.x, car.y) > (car.brad + 0.6) ** 2) return;
+  if (car.alt > 1.2 || p.car || dist2(p.x, p.y, car.x, car.y) > (car.brad + 0.6) ** 2) return;
   for (const [cx, cy] of car.circles()) {
     const dx = p.x - cx, dy = p.y - cy, d2 = dx * dx + dy * dy, rs = car.r + p.r;
     if (d2 >= rs * rs || d2 < 1e-8) continue;
@@ -547,6 +547,7 @@ function pedCarCollide(p, car) {
     const rx = cx - car.x, ry = cy - car.y;
     const cvx = car.vx - car.w * ry, cvy = car.vy + car.w * rx;
     const vn = (cvx - p.vx) * nx + (cvy - p.vy) * ny;
+    if (car.type === 'tank' && vn > 0.8 && !p.dead && p !== Game.player) { p.damage(300, car.driver === 'player' ? Game.player : null, nx, ny, 'car'); continue; }
     if (vn > 4.5 && !p.dead) {
       const by = car.driver === 'player' ? Game.player : null;
       p.vx = cvx * 0.8 + nx * 3; p.vy = cvy * 0.8 + ny * 3;

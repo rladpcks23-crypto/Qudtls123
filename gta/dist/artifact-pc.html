@@ -649,9 +649,9 @@ const Radio = {
 
 const T = 4;               // 타일 한 칸 = 4m (차선 폭)
 const MW = 150, MH = 150;  // 타일 수 → 600m × 600m 도시
-const TL = { WATER: 0, ROAD: 1, WALK: 2, BUILD: 3, GRASS: 4, SAND: 5, LOT: 6, PLAZA: 7, DOCK: 8 };
-const DIST = { DOWNTOWN: 0, MIDTOWN: 1, RESID: 2, HARBOR: 3, BEACH: 4, PARK: 5, COAST: 6 };
-const DIST_NAMES = ['다운타운', '미드타운', '웨스트 힐즈', '하버 포인트', '선셋 비치', '센트럴 파크', '해안 산책로'];
+const TL = { WATER: 0, ROAD: 1, WALK: 2, BUILD: 3, GRASS: 4, SAND: 5, LOT: 6, PLAZA: 7, DOCK: 8, RUNWAY: 9 };
+const DIST = { DOWNTOWN: 0, MIDTOWN: 1, RESID: 2, HARBOR: 3, BEACH: 4, PARK: 5, COAST: 6, BASE: 7 };
+const DIST_NAMES = ['다운타운', '미드타운', '웨스트 힐즈', '하버 포인트', '선셋 비치', '센트럴 파크', '해안 산책로', '포트 네온 기지'];
 const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // 동 남 서 북 (화면 좌표, y 아래로)
 const rightOf = d => [-DIRS[d][1], DIRS[d][0]];   // 우측통행: 진행 방향의 오른쪽 차선
 const LIGHT_CYCLE = 23;
@@ -726,7 +726,7 @@ function genWorld(seed) {
   // 2) 도로선 (블록 폭 9~14타일, 도로 2타일)
   W.VX = []; W.HY = [];
   for (let x = 7; x + 2 <= MW - 17; x += 2 + ri(9, 14)) W.VX.push(x);
-  for (let y = 7; y + 2 <= MH - 19; y += 2 + ri(9, 14)) W.HY.push(y);
+  for (let y = 34; y + 2 <= MH - 19; y += 2 + ri(9, 14)) W.HY.push(y); // 북쪽 y<32는 군사 기지
   const NX = W.NX = W.VX.length, NY = W.NY = W.HY.length;
 
   // 3) 도로 그래프: 모든 구간으로 시작 → 일부 제거(슈퍼블록)
@@ -744,7 +744,7 @@ function genWorld(seed) {
     const a = `${i},${j}`, b = t === 'h' ? `${i + 1},${j}` : `${i},${j + 1}`;
     if (touched.has(a) || touched.has(b)) continue;
     const u = (W.VX[i] + 1) / MW, v = (W.HY[j] + 1) / MH;
-    if (Math.hypot(u - 0.52, v - 0.42) < 0.16) continue; // 다운타운은 촘촘한 격자 유지
+    if (Math.hypot(u - 0.52, v - 0.52) < 0.16) continue; // 다운타운은 촘촘한 격자 유지
     if (R() > 0.2) continue;
     const bi = t === 'h' ? i + 1 : i, bj = t === 'h' ? j : j + 1;
     if (deg(i, j) - 1 < 2 || deg(bi, bj) - 1 < 2) continue;
@@ -801,7 +801,7 @@ function genWorld(seed) {
   // 구역 배정
   for (const b of W.blocks) {
     const u = (b.x0 + b.x1) / 2 / MW, v = (b.y0 + b.y1) / 2 / MH;
-    const dd = Math.hypot(u - 0.52, v - 0.42);
+    const dd = Math.hypot(u - 0.52, v - 0.52);
     b.district = dd < 0.17 ? DIST.DOWNTOWN : u > 0.7 ? DIST.HARBOR : v > 0.68 ? DIST.BEACH : u < 0.36 ? DIST.RESID : DIST.MIDTOWN;
     b.area = (b.x1 - b.x0 + 1) * (b.y1 - b.y0 + 1);
   }
@@ -881,7 +881,7 @@ function genWorld(seed) {
       const cx = (L.x0 + L.x1 + 1) / 2 / MW, cy = (L.y0 + L.y1 + 1) / 2 / MH;
       if (b.district === DIST.DOWNTOWN) {
         if (R() < 0.12) { for (let y = L.y0; y <= L.y1; y++) for (let x = L.x0; x <= L.x1; x++) set(x, y, TL.PLAZA); L.kind = 'plaza'; if (w >= 3 && h >= 3) addTree((L.x0 + w / 2) * T, (L.y0 + h / 2) * T, 'tree'); continue; }
-        const core = 1 - clamp(Math.hypot(cx - 0.52, cy - 0.42) / 0.17, 0, 1);
+        const core = 1 - clamp(Math.hypot(cx - 0.52, cy - 0.52) / 0.17, 0, 1);
         L.b = addBuilding(L.x0, L.y0, L.x1, L.y1, rr(18, 30) + core * rr(10, 32), 'tower', rpick(PAL.tower));
       } else if (b.district === DIST.MIDTOWN) {
         if (R() < 0.25 && w >= 2 && h >= 3) { for (let y = L.y0; y <= L.y1; y++) for (let x = L.x0; x <= L.x1; x++) set(x, y, TL.LOT); L.kind = 'lot'; addParkingRow(L.x0, L.y0, L.x1, L.y1); continue; }
@@ -936,6 +936,42 @@ function genWorld(seed) {
   }
   for (let y = 4; y < MH - 4; y++) for (let x = 4; x < MW - 4; x++) {
     if (W.dist[tIdx(x, y)] === DIST.COAST && get(x, y) === TL.GRASS && R() < 0.1) addTree((x + 0.5) * T, (y + 0.5) * T, 'tree');
+  }
+
+  // 6-2) 포트 네온 군사 기지 (GTA V의 포트 잔쿠도처럼 들어가면 ★★★★)
+  {
+    const X0 = 6, X1 = MW - 7, Y0 = 5, Y1 = 30;
+    let gx = W.VX[0]; for (const x of W.VX) if (Math.abs(x - 64) < Math.abs(gx - 64)) gx = x; // 정문 = 가운데쯤 세로 도로의 연장선
+    W.trees = W.trees.filter(t => !(t.x >= (X0 - 1) * T && t.x <= (X1 + 2) * T && t.y <= (Y1 + 1) * T));
+    for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) { set(x, y, (x + y) % 11 === 0 && y > 26 ? TL.GRASS : TL.DOCK); W.dist[tIdx(x, y)] = DIST.BASE; }
+    for (let y = Y0 + 4; y <= Y0 + 8; y++) for (let x = X0 + 6; x <= X1 - 6; x++) set(x, y, TL.RUNWAY);   // 활주로 (약 500m)
+    for (let y = Y0 + 9; y <= Y0 + 12; y++) for (let x = X0 + 14; x <= X1 - 20; x++) set(x, y, TL.LOT);  // 계류장
+    for (let y = Y0 + 12; y <= Y1 + 3; y++) for (let x = gx; x <= gx + 1; x++) set(x, y, TL.LOT);       // 정문 진입로
+    for (let y = Y1 + 1; y <= Y1 + 3; y++) for (let x = gx; x <= gx + 1; x++) { set(x, y, TL.ROAD); W.roadK[tIdx(x, y)] = 1; }
+    const clear = (x0, x1) => x1 < gx - 1 || x0 > gx + 2;
+    const wall = (x0, y0, x1, y1) => addBuilding(x0, y0, x1, y1, 2.8, 'fence', '#6b6f63');
+    wall(X0, Y0, X1, Y0); wall(X0, Y0 + 1, X0, Y1); wall(X1, Y0 + 1, X1, Y1);
+    wall(X0 + 1, Y1, gx - 1, Y1); wall(gx + 2, Y1, X1 - 1, Y1);
+    const W_ = [];
+    const bld = (x0, y0, x1, y1, h, kind, col) => { if (clear(x0, x1)) W_.push(addBuilding(x0, y0, x1, y1, h, kind, col)); };
+    for (const hx of [X0 + 12, X0 + 24, X0 + 36]) bld(hx, Y0 + 14, hx + 8, Y0 + 20, 11, 'hangar', '#5f6b4f');
+    bld(gx + 5, Y0 + 14, gx + 6, Y0 + 15, 26, 'ctower', '#8a8f82');
+    bld(gx + 10, Y0 + 17, gx + 18, Y0 + 21, 7, 'barracks', '#6d7358');
+    bld(gx - 13, Y0 + 22, gx - 5, Y0 + 24, 6, 'barracks', '#6d7358');
+    for (const [x, y] of [[X0 + 1, Y0 + 1], [X1 - 1, Y0 + 1], [X0 + 1, Y1 - 1], [X1 - 1, Y1 - 1]]) addBuilding(x, y, x, y, 9, 'watchtower', '#7a6a4a');
+    // 헬기 착륙장 두 곳 + 전차 주차장
+    W.helipads = [];
+    const hpX = X1 - 38;
+    for (const k of [0, 1]) { const cx = hpX + k * 8; for (let y = Y0 + 14; y <= Y0 + 19; y++) for (let x = cx; x <= cx + 5; x++) set(x, y, TL.LOT); W.helipads.push({ x: (cx + 3) * T, y: (Y0 + 17) * T }); }
+    for (let y = Y0 + 21; y <= Y1 - 2; y++) for (let x = X1 - 24; x <= X1 - 3; x++) set(x, y, TL.LOT);
+    W.base = { x0: (X0 + 1) * T, y0: (Y0 + 1) * T, x1: X1 * T, y1: Y1 * T, gate: { x: (gx + 1) * T, y: (Y1 + 0.5) * T },
+      spots: {
+        tanks: [{ x: (X1 - 20) * T, y: (Y1 - 5) * T, a: -Math.PI / 2 }, { x: (X1 - 12) * T, y: (Y1 - 5) * T, a: -Math.PI / 2 }],
+        helis: W.helipads.map(h => ({ x: h.x, y: h.y, a: 0 })),
+        jets: [{ x: (X0 + 10) * T, y: (Y0 + 5) * T + 1, a: 0 }, { x: (X0 + 10) * T, y: (Y0 + 8) * T, a: 0 }], // 활주로 서쪽 끝, 동쪽을 향해
+      },
+      guards: [{ x: (gx - 1) * T, y: (Y1 - 2) * T }, { x: (gx + 3) * T, y: (Y1 - 2) * T }, { x: (X0 + 20) * T, y: (Y0 + 23) * T }, { x: (gx + 14) * T, y: (Y0 + 23) * T }, { x: (X1 - 30) * T, y: (Y0 + 20) * T }, { x: (X1 - 14) * T, y: (Y1 - 3) * T }, { x: (X0 + 60) * T, y: (Y0 + 12) * T }, { x: (X0 + 90) * T, y: (Y0 + 12) * T }],
+    };
   }
 
   // 7) 특수 장소
@@ -1017,7 +1053,7 @@ function treesNear(x, y) {
   return out;
 }
 
-const MINI_COL = { [TL.WATER]: '#1d4e6e', [TL.ROAD]: '#c9ccd2', [TL.WALK]: '#8b8f96', [TL.BUILD]: '#39404c', [TL.GRASS]: '#3f6b3a', [TL.SAND]: '#c9b37c', [TL.LOT]: '#5d6168', [TL.PLAZA]: '#8f8577', [TL.DOCK]: '#6b6f73' };
+const MINI_COL = { [TL.WATER]: '#1d4e6e', [TL.ROAD]: '#c9ccd2', [TL.WALK]: '#8b8f96', [TL.BUILD]: '#39404c', [TL.GRASS]: '#3f6b3a', [TL.SAND]: '#c9b37c', [TL.LOT]: '#5d6168', [TL.PLAZA]: '#8f8577', [TL.DOCK]: '#6b6f73', [TL.RUNWAY]: '#2a2c30' };
 function buildMinimap() {
   const c = document.createElement('canvas'); c.width = MW; c.height = MH;
   const g = c.getContext('2d'), img = g.createImageData(MW, MH);
@@ -1204,6 +1240,7 @@ class Car {
   }
 
   step(dt) {
+    if (this.V.special) return specialStep(this, dt);
     const V = this.V, inp = this.in;
     const cs = Math.cos(this.a), sn = Math.sin(this.a);
     let vf = this.vx * cs + this.vy * sn, vl = -this.vx * sn + this.vy * cs;
@@ -1213,7 +1250,7 @@ class Car {
     const d = this.steer, a = this.L * 0.3, b = this.L * 0.3, wb = a + b;
     const load = this.m * 9.81 * 0.5;
     const wet = Game.weather.wet;
-    const gripF = V.grip * wet, gripR = V.grip * wet * (inp.hb ? 0.42 : 1.12);
+    const gripF = V.grip * wet, gripR = V.grip * wet * (inp.hb ? 0.42 : 1.3);
     let FyF = 0, FyR = 0;
     const avf = Math.abs(vf);
     if (avf > 0.3) {
@@ -1254,19 +1291,20 @@ class Car {
     if (!inp.hb && speed > 2 && !this.dead) {
       const vfN = this.vx * cs + this.vy * sn, vlN = -this.vx * sn + this.vy * cs;
       const aMax = V.grip * wet * 9.81 * 1.05, wLim = aMax / Math.max(2, Math.abs(vfN)); // 타이어 그립으로 낼 수 있는 만큼만
-      const wWant = clamp(vfN * Math.tan(d) / wb, -wLim, wLim), assist = this.driver === 'player' ? 3.2 : 2;
+      const wWant = clamp(vfN * Math.tan(d) / wb, -wLim, wLim), assist = this.driver === 'player' ? 5 : 2;
       this.w += (wWant - this.w) * (1 - Math.exp(-assist * dt));
-      const vl2 = vlN * Math.exp(-(this.driver === 'player' ? 1.6 : 1) * dt);
+      const vl2 = vlN * Math.exp(-(this.driver === 'player' ? 4 : 1) * dt);
       this.vx = vfN * cs - vl2 * sn; this.vy = vfN * sn + vl2 * cs;
     }
     this.x += this.vx * dt; this.y += this.vy * dt; this.a = angNorm(this.a + this.w * dt);
     this.vf = this.vx * Math.cos(this.a) + this.vy * Math.sin(this.a);
     this.vl = -this.vx * Math.sin(this.a) + this.vy * Math.cos(this.a);
-    this.skid = !this.dead && ((Math.abs(this.vl) > 2.6 && speed > 5) || (inp.hb && speed > 4) || (inp.brk > 0.7 && speed > 9));
+    this.skid = !this.dead && ((Math.abs(this.vl) > 3.5 && speed > 6) || (inp.hb && speed > 4) || (inp.brk > 0.95 && speed > 16));
   }
 
   // 정적 충돌(건물, 물, 나무)
   collideStatic() {
+    if (this.alt > 1.2) return;
     const r = this.r;
     let impact = 0;
     const cs = Math.cos(this.a), sn = Math.sin(this.a);
@@ -1331,6 +1369,7 @@ class Car {
   }
   damage(amt, by) {
     if (this.dead) return;
+    amt *= this.V.armor || 1;
     this.hp -= amt;
     if (by) this.lastHitBy = by;
     if (this.hp <= 0 && this.burnT <= 0) {
@@ -1344,6 +1383,7 @@ class Car {
     if (this.dead) { this.in.thr = 0; this.in.brk = 1; this.in.st = 0; this.in.hb = false; this.wreckT += dt; }
     else if (this.burnT > 0) {
       this.burnT -= dt;
+      if (this.alt > 0) { this.alt = Math.max(0, this.alt - 18 * dt); this.a += dt * 3; if (this.alt <= 0) this.burnT = Math.min(this.burnT, 0.01); }
       if (Math.random() < 0.6) Particles.fire(this.x + rand(-1, 1), this.y + rand(-1, 1));
       if (Math.random() < 0.3) Particles.smoke(this.x, this.y, 1.5);
       if (this.burnT <= 0) { this.dead = true; explode(this.x, this.y, 7, 120, this.lastHitBy, this); this.siren = false; }
@@ -1359,7 +1399,7 @@ class Car {
     const sub = this.type === 'bike' ? 3 : 2, h = dt / sub;
     // 도난 경보
     if (this.alarmT > 0) { const b0 = Math.floor(this.alarmT * 2.5); this.alarmT -= dt; if (Math.floor(this.alarmT * 2.5) !== b0) Sfx.tone({ x: this.x, y: this.y, f0: 560, f1: 560, dur: 0.22, type: 'square', vol: 0.22 }); }
-    const moving = this.speed > 0.01 || Math.abs(this.w) > 0.01 || this.in.thr !== 0;
+    const moving = this.speed > 0.01 || Math.abs(this.w) > 0.01 || this.in.thr !== 0 || (this.V.special && (this.driver || this.alt > 0));
     if (moving) for (let i = 0; i < sub; i++) { this.step(h); this.collideStatic(); }
     // 스키드 마크
     if (this.skid) {
@@ -1375,6 +1415,7 @@ class Car {
 
 // ---------- 차량 간 충돌 (원 근사 + 충격량) ----------
 function collideCarPair(A, B) {
+  if (A.alt > 1.2 || B.alt > 1.2) return;
   const R = A.brad + B.brad;
   if (dist2(A.x, A.y, B.x, B.y) > R * R) return;
   const ca = A.circles(), cb = B.circles(), ra = A.r, rb = B.r;
@@ -1398,6 +1439,7 @@ function collideCarPair(A, B) {
     const imp = -vn;
     if (imp > 3) {
       A.onImpact(imp * Math.min(1, B.m / A.m * 1.2), B); B.onImpact(imp * Math.min(1, A.m / B.m * 1.2), A);
+      if ((A.type === 'tank') !== (B.type === 'tank')) { const v = A.type === 'tank' ? B : A, t = v === A ? B : A; v.damage(imp * 14, t.driver === 'player' ? Game.player : null); }
       // 경찰차 들이받기 = 범죄
       if ((A.driver === 'player' && B.type === 'police') || (B.driver === 'player' && A.type === 'police')) crime('hitCop', px, py);
       if (imp > 8 && (A.driver === 'player' || B.driver === 'player')) {
@@ -1430,6 +1472,8 @@ function playerDrive(car, dt) {
     if (Math.abs(j.jy) > 0.2) thrKey = clamp(-j.jy * 1.4, -1, 1);
     hb = hb || j.hb;
   }
+  car.in.raw = thrKey;
+  if (car.V.special) { car.in.st = clamp(st, -1, 1); car.in.up = thrKey > 0; car.in.hb = hb; return; }
   const vf = car.vf;
   const analog = (Pad.active && Pad.lx) || (Input.usingTouch && (document.body.classList.contains('driving') || Input.touch.on));
   if (!analog) {
@@ -1519,7 +1563,7 @@ function findLeader(car, range, peds = true, carsToo = true) {
     const gap = lx - car.L / 2 - projL;
     if (gap < bestS) { bestS = gap; bestV = ovx * c + ovy * s; what = obj; }
   };
-  if (carsToo) for (const o of Game.cars) { if (o === car || dist2(o.x, o.y, car.x, car.y) > (range + 6) ** 2) continue; test(o.x, o.y, o.vx, o.vy, o.L / 2, o.W / 2, o.a, o); }
+  if (carsToo) for (const o of Game.cars) { if (o === car || o.alt > 1.2 || dist2(o.x, o.y, car.x, car.y) > (range + 6) ** 2) continue; test(o.x, o.y, o.vx, o.vy, o.L / 2, o.W / 2, o.a, o); }
   if (peds) {
     for (const p of Game.peds) { if (p.dead || p.car || dist2(p.x, p.y, car.x, car.y) > range * range) continue; test(p.x, p.y, 0, 0, 0.4, 0.4, 0, p); }
     const P = Game.player; if (!P.car && !P.dead) test(P.x, P.y, 0, 0, 0.4, 0.4, 0, P);
@@ -1959,12 +2003,12 @@ function updateProjectiles(dt) {
       const nx = p.x + p.vx * dt, ny = p.y + p.vy * dt;
       Particles.smoke(p.x, p.y, 0.8, '#d0d0d0'); if (Math.random() < 0.7) Particles.fire(p.x, p.y, 0.6);
       let boom = p.life <= 0 || solidT(Math.floor(nx / T), Math.floor(ny / T)) && tileAt(nx, ny) === TL.BUILD;
-      if (!boom) for (const c of Game.cars) { if (c === (p.by.car || null)) continue; if (dist2(c.x, c.y, nx, ny) < (c.L / 2 + 0.3) ** 2) { boom = true; break; } }
+      if (!boom) for (const c of Game.cars) { if (c === (p.by.car || null) || c.alt > 1.2) continue; if (dist2(c.x, c.y, nx, ny) < (c.L / 2 + 0.3) ** 2) { boom = true; break; } }
       if (!boom) for (const q of Game.peds) { if (!q.dead && q !== p.by && !q.car && dist2(q.x, q.y, nx, ny) < 0.8) { boom = true; break; } }
       if (!boom && p.by !== Game.player && !Game.player.car && dist2(Game.player.x, Game.player.y, nx, ny) < 0.8) boom = true;
       const H = Police.heli; if (!boom && H && !H.dead && p.by === Game.player && dist2(H.x, H.y, nx, ny) < 12) boom = true;
       p.x = nx; p.y = ny;
-      if (boom) { explode(p.x, p.y, 7, 150, p.by, null); arr.splice(i, 1); }
+      if (boom) { explode(p.x, p.y, p.big || 7, p.dmg || 150, p.by, null); arr.splice(i, 1); }
     } else if (p.type === 'grenade') {
       p.fuse -= dt;
       p.vz -= 18 * dt; p.z += p.vz * dt; if (p.z < 0) { p.z = 0; p.vz = -p.vz * 0.4; p.vx *= 0.7; p.vy *= 0.7; }
@@ -2175,7 +2219,7 @@ function combatAI(p, dt) {
   const P = Game.player;
   if (P.dead) { p.state = p.kind === 'civ' ? 'flee' : 'idle'; if (p.kind === 'cop') returnToWalk(p); return; }
   const isCop = p.kind === 'cop' || p.kind === 'swat';
-  if (isCop && Wanted.stars === 0) { returnToWalk(p); return; }
+  if (isCop && Wanted.stars === 0) { if (p.soldier) p.state = 'idle'; else returnToWalk(p); return; }
   let tx = P.px, ty = P.py;
   if (isCop && !Wanted.seen) { tx = Wanted.searchX; ty = Wanted.searchY; }
   const d = dist(p.x, p.y, tx, ty);
@@ -2264,7 +2308,7 @@ function pedStatic(p) {
 
 // 보행자-차량 충돌 (치임)
 function pedCarCollide(p, car) {
-  if (p.car || dist2(p.x, p.y, car.x, car.y) > (car.brad + 0.6) ** 2) return;
+  if (car.alt > 1.2 || p.car || dist2(p.x, p.y, car.x, car.y) > (car.brad + 0.6) ** 2) return;
   for (const [cx, cy] of car.circles()) {
     const dx = p.x - cx, dy = p.y - cy, d2 = dx * dx + dy * dy, rs = car.r + p.r;
     if (d2 >= rs * rs || d2 < 1e-8) continue;
@@ -2273,6 +2317,7 @@ function pedCarCollide(p, car) {
     const rx = cx - car.x, ry = cy - car.y;
     const cvx = car.vx - car.w * ry, cvy = car.vy + car.w * rx;
     const vn = (cvx - p.vx) * nx + (cvy - p.vy) * ny;
+    if (car.type === 'tank' && vn > 0.8 && !p.dead && p !== Game.player) { p.damage(300, car.driver === 'player' ? Game.player : null, nx, ny, 'car'); continue; }
     if (vn > 4.5 && !p.dead) {
       const by = car.driver === 'player' ? Game.player : null;
       p.vx = cvx * 0.8 + nx * 3; p.vy = cvy * 0.8 + ny * 3;
@@ -2415,7 +2460,7 @@ const Wanted = {
   clear(msg) {
     if (this.stars > 0 && msg) UI.toast(msg);
     this.reset();
-    for (const p of Game.peds) if ((p.kind === 'cop' || p.kind === 'swat') && p.state === 'chase') returnToWalk(p);
+    for (const p of Game.peds) if ((p.kind === 'cop' || p.kind === 'swat') && p.state === 'chase') { if (p.soldier) p.state = 'idle'; else returnToWalk(p); }
   },
 };
 
@@ -3947,6 +3992,246 @@ addEventListener('keydown', e => { if (typeof Game !== 'undefined' && Game.state
 
 'use strict';
 /* =====================================================================
+ * military.js — 포트 네온 군사 기지: 전차 · 공격 헬기 · 전투기 · 경비병
+ *
+ * GTA V의 포트 잔쿠도처럼: 울타리 안에 들어가면 경고 후 수배 ★★★★,
+ * 안에는 탈 수 있는 탱크(라이노), 공격 헬기(헌터), 전투기(라저)가 세워져 있다.
+ * 조종은 아케이드식:
+ *  · 전차: 제자리 회전, 느리지만 무겁고(차를 밀어붙여 부순다) 포탑은 조준 방향을 따라 돈다.
+ *  · 헬기: 가속하면 자동으로 떠올라 순항 고도 유지, 하차 버튼 = 착륙.
+ *  · 전투기: 활주로에서 속도를 붙이면 이륙, 속도가 떨어지면 고도가 내려간다. 하차 버튼 = 착륙 접근.
+ *  공중에서는 지상 충돌을 무시하지만, 고도보다 높은 건물에 부딪히면 추락한다.
+ * ===================================================================== */
+
+Object.assign(VTYPES, {
+  tank: { name: '라이노 전차', L: 7.2, W: 3.5, mass: 40000, Fe: 1, vmax: 11, grip: 3, cs: 6, steer: 0.9, hp: 2200, colors: ['#4b5a3a'], style: 'tank', special: 'tank', armor: 0.15 },
+  milheli: { name: '헌터 공격 헬기', L: 9, W: 2.4, mass: 5000, Fe: 1, vmax: 36, grip: 1, cs: 5, steer: 1.5, hp: 700, colors: ['#4a5540'], style: 'milheli', special: 'heli', armor: 0.5 },
+  jet: { name: '라저 전투기', L: 12, W: 3, mass: 9000, Fe: 1, vmax: 78, grip: 1, cs: 5, steer: 0.9, hp: 600, colors: ['#8a929c'], style: 'jet', special: 'jet', armor: 0.5 },
+});
+const isAir = c => c && (c.V.special === 'heli' || c.V.special === 'jet');
+const airborne = c => c && c.alt > 1.2;
+
+// ---------- 특수 차량 물리 ----------
+function specialStep(c, dt) {
+  const V = c.V, inp = c.in, raw = inp.raw || 0;
+  c.alt = c.alt || 0;
+  if (V.special === 'tank') {
+    const want = c.driver ? raw * (raw > 0 ? V.vmax : 6) : 0;
+    c.spd = smooth(c.spd || 0, want, raw ? 1.4 : 3, dt);
+    c.w = (c.driver ? inp.st * V.steer : 0) * (raw < -0.1 ? -1 : 1);
+    c.a = angNorm(c.a + c.w * dt);
+    const cs = Math.cos(c.a), sn = Math.sin(c.a);
+    // 외부 충격 속도는 금방 사라지게(무거운 궤도차)
+    const ex = c.vx - cs * c.vf, ey = c.vy - sn * c.vf;
+    c.vx = cs * c.spd + ex * Math.exp(-6 * dt); c.vy = sn * c.spd + ey * Math.exp(-6 * dt);
+  } else if (V.special === 'heli') {
+    const flying = c.driver && !c.landing && (c.alt > 0.5 || Math.abs(raw) > 0.1 || Math.abs(inp.st) > 0.1 || inp.up);
+    const target = flying ? 72 : 0;
+    c.alt = c.alt < target ? Math.min(target, c.alt + 8 * dt) : Math.max(target, c.alt - (c.landing ? 7 : 5) * dt);
+    if (c.landing && c.alt <= 0.05) { c.landing = false; UI.toast('착륙 완료'); }
+    c.rotor = (c.rotor || 0) + dt * (c.alt > 0.1 || flying ? 42 : 4);
+    const cs = Math.cos(c.a), sn = Math.sin(c.a);
+    if (c.alt > 3) {
+      c.vx += cs * raw * 16 * dt; c.vy += sn * raw * 16 * dt;
+      c.vx *= Math.exp(-0.9 * dt); c.vy *= Math.exp(-0.9 * dt);
+      const sp = Math.hypot(c.vx, c.vy); if (sp > V.vmax) { c.vx *= V.vmax / sp; c.vy *= V.vmax / sp; }
+      c.w = inp.st * V.steer;
+    } else { c.vx *= Math.exp(-4 * dt); c.vy *= Math.exp(-4 * dt); c.w = c.alt > 0.5 ? inp.st * 0.8 : 0; }
+    c.a = angNorm(c.a + c.w * dt);
+  } else { // jet
+    c.spd = c.spd || 0;
+    const air = c.alt > 1.2;
+    if (c.driver) {
+      if (raw > 0) c.spd += raw * 15 * dt; else if (raw < 0) c.spd += raw * 20 * dt;
+      if (!raw && !air) c.spd *= Math.exp(-0.5 * dt);
+    } else c.spd *= Math.exp(-2 * dt);
+    c.spd = clamp(c.spd, air ? 20 : 0, V.vmax);
+    if (c.landing) c.spd = Math.max(air ? 20 : 0, c.spd - 6 * dt);
+    const takeoff = 34;
+    if (c.landing) c.alt = Math.max(0, c.alt - 7 * dt);
+    else if (c.spd >= takeoff) c.alt = Math.min(95, c.alt + (c.spd - 30) * 0.35 * dt * 2);
+    else if (c.alt > 0) c.alt = Math.max(0, c.alt - ((takeoff - c.spd) * 0.6 + 2) * dt);
+    if (c.landing && c.alt <= 0.05) { c.landing = false; UI.toast('착륙 완료 — 브레이크로 멈춘 뒤 내려라'); }
+    c.w = inp.st * V.steer * (air ? 1 : clamp(c.spd / 12, 0, 0.45));
+    c.bank = smooth(c.bank || 0, air ? -inp.st * 0.7 : 0, 4, dt);
+    c.a = angNorm(c.a + c.w * dt);
+    c.vx = Math.cos(c.a) * c.spd; c.vy = Math.sin(c.a) * c.spd;
+  }
+  c.x += c.vx * dt; c.y += c.vy * dt;
+  c.vf = c.vx * Math.cos(c.a) + c.vy * Math.sin(c.a); c.vl = -c.vx * Math.sin(c.a) + c.vy * Math.cos(c.a);
+  c.steer = inp.st * 0.4; c.skid = false;
+  // 지도 밖으로 나가면 되돌린다
+  const m = 20, WX = MW * T, WY = MH * T;
+  if (c.x < m || c.y < m || c.x > WX - m || c.y > WY - m) {
+    c.x = clamp(c.x, m, WX - m); c.y = clamp(c.y, m, WY - m);
+    if (isAir(c)) { c.a = angNorm(c.a + Math.PI * 0.9); if (c.driver === 'player') UI.toast('작전 구역 끝 — 기수를 돌린다'); }
+  }
+  // 공중 충돌: 현재 고도보다 높은 건물
+  if (c.alt > 1.2 && !c.dead) {
+    const tx = Math.floor(c.x / T), ty = Math.floor(c.y / T);
+    const bi = tx >= 0 && ty >= 0 && tx < MW && ty < MH ? World.bIndex[tIdx(tx, ty)] : -1;
+    if (bi >= 0 && World.buildings[bi] && World.buildings[bi].h > c.alt) { c.damage(9999, null); c.burnT = 0.01; UI.toast('건물에 충돌했다!'); }
+  }
+}
+
+// ---------- 무기 ----------
+const MilFire = {
+  aim(c) {
+    const P = Game.player;
+    if (Game.view !== 'top' && View3D.ok) return View3D.yaw;
+    if (!Input.usingTouch && !Pad.active) { const [wx, wy] = screenToWorld(Input.mouse.x, Input.mouse.y); return Math.atan2(wy - c.y, wx - c.x); }
+    if (Pad.active && (Pad.rx || Pad.ry)) return Math.atan2(Pad.ry, Pad.rx);
+    // 터치: 앞쪽의 가장 가까운 적/차량 자동 조준
+    let best = null, bs = 1e9;
+    for (const q of [...Game.peds, ...Game.cars]) {
+      if (q === c || q.dead || (q.kind !== 'car' && (q.kind === 'dog' || q.car))) continue;
+      const d = dist(q.x, q.y, c.x, c.y); if (d > 60 || d < 2) continue;
+      const da = Math.abs(angNorm(Math.atan2(q.y - c.y, q.x - c.x) - c.a)); if (da > 0.8) continue;
+      const hostile = q.state === 'chase' || q.driverKind === 'cop' || q.kind === 'swat' || q.kind === 'cop';
+      const sc = d * (hostile ? 0.5 : 1) + da * 20; if (sc < bs) { bs = sc; best = q; }
+    }
+    return best ? Math.atan2(best.y - c.y, best.x - c.x) : c.a;
+  },
+  shell(c, ang, speed, radius, dmg, from) {
+    const P = Game.player;
+    Game.projectiles.push({ type: 'rocket', x: from[0], y: from[1], vx: Math.cos(ang) * speed + c.vx, vy: Math.sin(ang) * speed + c.vy, life: 2.4, by: P, a: ang, big: radius, dmg });
+    Sfx.shot(from[0], from[1], 'rocket'); Effects.flash(from[0], from[1], 8, 0.12); crime('gunfire', from[0], from[1]);
+  },
+  update(c, dt, firing, alt) {
+    const P = Game.player, V = c.V;
+    c.fireCD = (c.fireCD || 0) - dt; c.altCD = (c.altCD || 0) - dt;
+    const ang = this.aim(c);
+    if (V.special === 'tank') {
+      const d = angNorm(ang - (c.turret ?? c.a));
+      c.turret = angNorm((c.turret ?? c.a) + clamp(d, -1.8 * dt, 1.8 * dt));
+      if ((firing || alt) && c.fireCD <= 0) {
+        c.fireCD = 1.3; const t = c.turret, tip = [c.x + Math.cos(t) * 5.5, c.y + Math.sin(t) * 5.5];
+        this.shell(c, t, 60, 8, 230, tip); c.vx -= Math.cos(t) * 1.5; c.vy -= Math.sin(t) * 1.5; Cam.shake = Math.max(Cam.shake, 0.35); buzz(80);
+      }
+      return;
+    }
+    // 헬기·전투기: 기관포(발사) + 미사일(드리프트/스페이스)
+    if (firing && c.fireCD <= 0) {
+      c.fireCD = V.special === 'jet' ? 0.07 : 0.09;
+      const a = V.special === 'jet' ? c.a : ang;
+      fireWeapon(P, 'rifle', a + gauss() * 0.04, 1);
+    }
+    if (alt && c.altCD <= 0) {
+      c.altCD = 0.7;
+      const side = (c.side = -(c.side || 1));
+      const from = [c.x + Math.cos(c.a) * 3 - Math.sin(c.a) * side * 1.5, c.y + Math.sin(c.a) * 3 + Math.cos(c.a) * side * 1.5];
+      this.shell(c, V.special === 'jet' ? c.a : ang, V.special === 'jet' ? 95 : 60, 7, 180, from);
+    }
+  },
+};
+
+// ---------- 기지 관리 (차량 배치 · 경비병 · 출입 경보) ----------
+const Military = {
+  slots: [], warnT: 0, warned: false, soldiers: [],
+  reset() { this.slots = []; this.soldiers = []; this.warnT = 0; this.warned = false; },
+  inside(x, y) { const B = World.base; return B && x > B.x0 && x < B.x1 && y > B.y0 && y < B.y1; },
+  update(dt) {
+    const B = World.base; if (!B) return;
+    const P = Game.player;
+    const cx = (B.x0 + B.x1) / 2, cy = (B.y0 + B.y1) / 2;
+    const near = Math.abs(P.px - cx) < (B.x1 - B.x0) / 2 + 150 && P.py < B.y1 + 160;
+    if (!this.slots.length) {
+      for (const s of B.spots.tanks) this.slots.push({ s, type: 'tank', car: null, cool: 0 });
+      for (const s of B.spots.helis) this.slots.push({ s, type: 'milheli', car: null, cool: 0 });
+      for (const s of B.spots.jets) this.slots.push({ s, type: 'jet', car: null, cool: 0 });
+    }
+    for (const sl of this.slots) {
+      const c = sl.car;
+      const gone = !c || !Game.cars.includes(c) || c.dead || (c !== P.car && dist(c.x, c.y, sl.s.x, sl.s.y) > 30);
+      if (gone && c) { sl.car = null; sl.cool = 45; if (c !== P.car && Game.cars.includes(c) && !c.dead && dist(c.x, c.y, P.px, P.py) > 150) c.remove = true; }
+      sl.cool -= dt;
+      if (!sl.car && near && sl.cool <= 0 && dist(sl.s.x, sl.s.y, P.px, P.py) > 25 && !Game.cars.some(q => dist2(q.x, q.y, sl.s.x, sl.s.y) < 36)) {
+        const car = new Car(sl.type, sl.s.x, sl.s.y, sl.s.a, { persistent: true }); car.alt = 0; car.military = true;
+        Game.cars.push(car); sl.car = car;
+      }
+    }
+    // 경비병
+    this.soldiers = this.soldiers.filter(p => Game.peds.includes(p) && !p.dead);
+    if (near && this.soldiers.length < B.guards.length && !this.spawnCD) {
+      for (const g of B.guards) {
+        if (this.soldiers.some(p => p.homeX === g.x && p.homeY === g.y) || onScreen(g.x, g.y, 4) && this.soldiers.length) continue;
+        const p = spawnPed('swat', g.x, g.y);
+        Object.assign(p, { soldier: true, persistent: true, state: 'idle', homeX: g.x, homeY: g.y, shirt: '#4b5a3a', pants: '#3b4a2e', hair: '#3b4a2e', weapon: 'rifle', hp: 140, maxHp: 140 });
+        this.soldiers.push(p);
+      }
+    }
+    if (!near) { for (const p of this.soldiers) p.remove = true; this.soldiers = []; }
+    // 출입 경보
+    const inside = this.inside(P.px, P.py) && !P.dead;
+    if (inside && Wanted.stars < 4 && !Game.noWanted) {
+      if (!this.warned) { this.warned = true; UI.big('군사 제한구역', '5초 안에 나가지 않으면 사살 명령이 떨어진다', 2.5, '#ff4d4d'); Sfx.tone({ f0: 900, f1: 600, dur: 0.6, type: 'sawtooth', vol: 0.2 }); }
+      this.warnT += dt;
+      if (this.warnT > 5) { Wanted.set(4); Wanted.seen = true; UI.toast('기지 경보 발령! 수배 ★★★★'); }
+    } else if (!inside) { this.warnT = 0; this.warned = false; }
+    if (Wanted.stars > 0) for (const p of this.soldiers) if (p.state !== 'chase' && dist2(p.x, p.y, P.px, P.py) < 110 * 110) { p.state = 'chase'; if (chance(0.3)) Talk.say(p, pick(['침입자다!', '사격 개시!', '기지 봉쇄!']), 2, true); }
+  },
+};
+
+// ---------- 2D 그리기 ----------
+function drawMilVehicle(c) { // drawCar 안(차 좌표계)에서 호출
+  const L = c.L, W = c.W, st = c.V.style, dead = c.dead;
+  if (st === 'tank') {
+    ctx.fillStyle = '#15171a'; ctx.fillRect(-L / 2, -W / 2, L, 0.8); ctx.fillRect(-L / 2, W / 2 - 0.8, L, 0.8);
+    ctx.fillStyle = '#2b2d31'; const off = ((c.trackT = (c.trackT || 0) + (c.vf || 0) * 0.05) % 0.8 + 0.8) % 0.8;
+    for (let x = -L / 2 + off; x < L / 2; x += 0.8) { ctx.fillRect(x, -W / 2, 0.15, 0.8); ctx.fillRect(x, W / 2 - 0.8, 0.15, 0.8); }
+    ctx.fillStyle = dead ? '#26272a' : c.color; ctx.fillRect(-L / 2 + 0.3, -W / 2 + 0.7, L - 0.6, W - 1.4);
+    ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.fillRect(-L / 2 + 0.3, W / 2 - 1.1, L - 0.6, 0.4);
+    ctx.save(); ctx.rotate(angNorm((c.turret ?? c.a) - c.a));
+    ctx.fillStyle = dead ? '#1d1e21' : shade(c.color, -0.15); ctx.beginPath(); ctx.ellipse(-0.3, 0, 1.9, 1.3, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = dead ? '#111' : '#2f3a26'; ctx.fillRect(1.2, -0.18, 4.3, 0.36);
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.beginPath(); ctx.arc(-0.8, -0.4, 0.4, 0, TAU); ctx.fill();
+    ctx.restore();
+    return;
+  }
+  if (st === 'milheli') {
+    ctx.fillStyle = dead ? '#26272a' : c.color;
+    ctx.fillRect(-4.6, -0.25, 3.6, 0.5); ctx.fillRect(-4.8, -1, 0.35, 2);
+    ctx.beginPath(); ctx.ellipse(0, 0, 2.6, 1.15, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#1b2735'; ctx.beginPath(); ctx.ellipse(1.6, 0, 0.9, 0.7, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#2f3a26'; ctx.fillRect(-0.6, -1.9, 1.2, 0.5); ctx.fillRect(-0.6, 1.4, 1.2, 0.5);
+    ctx.strokeStyle = 'rgba(20,20,20,0.75)'; ctx.lineWidth = 0.22;
+    const r = c.rotor || 0; for (let k = 0; k < 4; k++) { const a = r + k * Math.PI / 2; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 5, Math.sin(a) * 5); ctx.stroke(); }
+    if ((c.alt || 0) > 0.1) { ctx.fillStyle = 'rgba(40,40,40,0.12)'; ctx.beginPath(); ctx.arc(0, 0, 5, 0, TAU); ctx.fill(); }
+    return;
+  }
+  // 전투기
+  const col = dead ? '#26272a' : c.color;
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(3.5, -0.6); ctx.lineTo(-5.5, -0.6); ctx.lineTo(-6, 0); ctx.lineTo(-5.5, 0.6); ctx.lineTo(3.5, 0.6); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(1.2, -0.5); ctx.lineTo(-2.2, -4.6); ctx.lineTo(-3.4, -4.6); ctx.lineTo(-2.4, -0.5); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(1.2, 0.5); ctx.lineTo(-2.2, 4.6); ctx.lineTo(-3.4, 4.6); ctx.lineTo(-2.4, 0.5); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-4.4, -0.4); ctx.lineTo(-5.8, -2); ctx.lineTo(-6.2, -2); ctx.lineTo(-5.6, -0.4); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(-4.4, 0.4); ctx.lineTo(-5.8, 2); ctx.lineTo(-6.2, 2); ctx.lineTo(-5.6, 0.4); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#1b2735'; ctx.beginPath(); ctx.ellipse(2.8, 0, 1.1, 0.35, 0, 0, TAU); ctx.fill();
+  if (!dead && (c.spd || 0) > 20) { ctx.fillStyle = `rgba(255,${150 + Math.random() * 80 | 0},60,0.8)`; ctx.beginPath(); ctx.ellipse(-6.4, 0, 0.8 + Math.random() * 0.4, 0.3, 0, 0, TAU); ctx.fill(); }
+}
+// 공중에 뜬 기체: 건물 위에 원근 투영해서 그린다
+function drawAirborne(amb) {
+  for (const c of Game.cars) {
+    if (!airborne(c)) continue;
+    if (Math.abs(c.x - Cam.x) > Cam.vw / 2 + 30 || Math.abs(c.y - Cam.y) > Cam.vh / 2 + 30) continue;
+    const [x, y] = proj(c.x, c.y, c.alt), f = Cam.H / (Cam.H - Math.min(c.alt, Cam.H - 20));
+    ctx.save(); ctx.translate(x, y); ctx.rotate(c.a); ctx.scale(f, f);
+    drawMilVehicle(c);
+    ctx.restore();
+  }
+}
+function drawAirShadows(sv) {
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  for (const c of Game.cars) {
+    if (!airborne(c)) continue;
+    ctx.save(); ctx.translate(c.x + (sv ? sv[0] : 0.2) * c.alt * 0.4, c.y + (sv ? sv[1] : 0.3) * c.alt * 0.4); ctx.rotate(c.a);
+    ctx.beginPath(); ctx.ellipse(0, 0, c.L / 2, c.V.special === 'jet' ? 3.5 : 1.3, 0, 0, TAU); ctx.fill(); ctx.restore();
+  }
+}
+
+'use strict';
+/* =====================================================================
  * render.js — 탑다운 렌더링
  *
  * GTA 1/2 스타일의 '의사 3D' 건물: 카메라가 도시 위 높이 H에 있다고 보고
@@ -4010,6 +4295,7 @@ const GROUND = {
   [TL.DOCK]: ['#7d8083', '#797c7f', '#818487'],
   [TL.BUILD]: ['#2a2e35'],
   [TL.WATER]: ['#1d5a80'],
+  [TL.RUNWAY]: ['#2c2e33', '#2a2c31'],
 };
 function drawGround(amb) {
   const ppm = Cam.ppm;
@@ -4099,6 +4385,22 @@ function drawGround(amb) {
         for (let s = 0; s < T; s += 1) ctx.fillRect(tx * T + s, ty * T + (s % 2) * 0.1, 0.5, 0.2);
       }
       if (hash2(tx, ty) < 0.08) { ctx.fillStyle = 'rgba(40,30,20,0.25)'; ctx.beginPath(); ctx.arc(tx * T + 2, ty * T + 2, 1.1, 0, TAU); ctx.fill(); }
+    }
+  }
+  // 활주로 표시 · 헬기 착륙장
+  if (World.base) {
+    const B = World.base;
+    if (Cam.y - Cam.vh / 2 < B.y1 + 10) {
+      const ry0 = 9 * T, ry1 = 14 * T, cy = (ry0 + ry1) / 2, rx0 = 12 * T, rx1 = (MW - 13) * T;
+      ctx.fillStyle = 'rgba(240,240,235,0.85)';
+      for (let x = rx0 + 20; x < rx1 - 20; x += 12) ctx.fillRect(x, cy - 0.2, 6, 0.4);
+      for (const ex of [rx0 + 2, rx1 - 12]) for (let k = 0; k < 6; k++) ctx.fillRect(ex, ry0 + 1.5 + k * 3, 10, 1.4);
+      ctx.fillStyle = 'rgba(242,193,78,0.8)'; ctx.fillRect(rx0, ry0 + 0.3, rx1 - rx0, 0.25); ctx.fillRect(rx0, ry1 - 0.55, rx1 - rx0, 0.25);
+      for (const h of World.helipads || []) {
+        ctx.strokeStyle = 'rgba(240,240,235,0.9)'; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.arc(h.x, h.y, 9, 0, TAU); ctx.stroke();
+        ctx.fillStyle = 'rgba(240,240,235,0.9)'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('H', h.x, h.y + 0.5);
+      }
+      ctx.fillStyle = 'rgba(242,193,78,0.9)'; ctx.font = 'bold 3px "Black Han Sans", sans-serif'; ctx.textAlign = 'center'; ctx.fillText('군사 제한구역 · 무단 출입 금지', B.gate.x, B.gate.y + 5);
     }
   }
   // 주차칸
@@ -4221,6 +4523,7 @@ function drawCar(c, shadow) {
   ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a);
   if (shadow) { ctx.fillStyle = 'rgba(0,0,0,0.32)'; rr(ctx, -L / 2 + shadow[0] * 1.2, -W / 2 + shadow[1] * 1.2, L, W, st === 'bike' ? 0.35 : 0.5); ctx.fill(); }
   if (st === 'bike') { drawBike(c); ctx.restore(); return; }
+  if (st === 'tank' || st === 'milheli' || st === 'jet') { drawMilVehicle(c); ctx.restore(); return; }
   // 바퀴
   ctx.fillStyle = '#111';
   const wx = L * 0.3, wy = W / 2 - 0.12;
@@ -4714,7 +5017,8 @@ function renderScene() {
   for (const p of Game.peds) if (!p.dead && Math.abs(p.x - Cam.x) < Cam.vw / 2 + 2 && Math.abs(p.y - Cam.y) < Cam.vh / 2 + 2) drawPed(p, shadowV);
   const P = Game.player;
   if (!P.car && !P.hidden && !(P.dead && Game.state === 'menu')) drawPed(P, shadowV);
-  for (const c of Game.cars) if (Math.abs(c.x - Cam.x) < Cam.vw / 2 + 6 && Math.abs(c.y - Cam.y) < Cam.vh / 2 + 6) drawCar(c, shadowV);
+  for (const c of Game.cars) if (!airborne(c) && Math.abs(c.x - Cam.x) < Cam.vw / 2 + 6 && Math.abs(c.y - Cam.y) < Cam.vh / 2 + 6) drawCar(c, shadowV);
+  drawAirShadows(shadowV);
   drawHeli(amb, shadowV);
   drawEffects();
   drawParticles(false);
@@ -4723,6 +5027,7 @@ function renderScene() {
   drawTrees(amb);
   drawBuildings(amb);
   drawHeli(amb, null);
+  drawAirborne(amb);
   // 떠오르는 텍스트(월드 위치, 화면 크기)
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.textAlign = 'center'; ctx.font = '700 15px "Noto Sans KR", sans-serif';
@@ -4917,7 +5222,37 @@ const View3D = {
     const bodyMat = new THREE.MeshLambertMaterial({ color: c.color });
     g.userData.bodyMat = bodyMat;
     const glass = this.mat('#1b2735');
-    if (st === 'bike') {
+    if (st === 'tank') {
+      const dark = this.mat('#1c1e21');
+      for (const z of [-W / 2 + 0.4, W / 2 - 0.4]) add(dark, L, 1.1, 0.8, 0, 0.55, z);
+      add(bodyMat, L * 0.92, 0.8, W - 1.5, 0, 1.0, 0);
+      add(bodyMat, L * 0.96, 0.18, W * 1.02, 0, 1.2, 0);
+      const tur = new THREE.Group(); tur.position.set(-0.3, 1.4, 0); g.add(tur);
+      const tb = new THREE.Mesh(box, bodyMat); tb.scale.set(3.4, 0.9, 2.5); tb.position.set(0, 0.45, 0); tur.add(tb);
+      const gun = new THREE.Mesh(box, this.mat('#2f3a26')); gun.scale.set(4.6, 0.3, 0.3); gun.position.set(3.8, 0.5, 0); tur.add(gun);
+      g.userData.turret = tur;
+    } else if (st === 'milheli') {
+      add(bodyMat, 4.8, 1.5, 1.4, 0.4, 1.4, 0);
+      add(glass, 1.6, 0.9, 1.2, 2.5, 1.5, 0);
+      add(bodyMat, 4.4, 0.5, 0.5, -3.6, 1.7, 0);
+      add(bodyMat, 0.5, 1.5, 0.15, -5.6, 2.2, 0);
+      add(this.mat('#2f3a26'), 1.0, 0.4, 3.8, 0, 1.2, 0);
+      for (const z of [-0.8, 0.8]) add(this.mat('#222'), 3.6, 0.1, 0.1, 0.2, 0.2, z);
+      add(this.mat('#222'), 0.4, 0.5, 0.4, 0.3, 2.4, 0);
+      const rot = new THREE.Mesh(box, this.mat('#222')); rot.scale.set(11, 0.08, 0.4); rot.position.set(0.3, 2.7, 0); g.add(rot);
+      const rot2 = new THREE.Mesh(box, this.mat('#222')); rot2.scale.set(0.4, 0.08, 11); rot2.position.set(0.3, 2.7, 0); g.add(rot2);
+      g.userData.rotor = [rot, rot2];
+    } else if (st === 'jet') {
+      add(bodyMat, L * 0.85, 1.2, 1.3, -0.3, 1.5, 0);
+      add(bodyMat, 1.6, 0.8, 0.9, L * 0.45, 1.5, 0);
+      add(glass, 2.4, 0.6, 0.8, L * 0.2, 2.3, 0);
+      add(bodyMat, 3.0, 0.15, 9.2, -1.4, 1.4, 0);
+      add(bodyMat, 1.4, 0.12, 4.0, -L * 0.42, 1.6, 0);
+      for (const z of [-0.8, 0.8]) add(bodyMat, 1.6, 1.8, 0.12, -L * 0.4, 2.6, z);
+      add(new THREE.MeshBasicMaterial({ color: 0xff9a40 }), 0.2, 0.7, 0.7, -L * 0.5 - 0.3, 1.5, 0).name = 'flame';
+      for (const [x, z] of [[L * 0.3, 0], [-1.5, 1.2], [-1.5, -1.2]]) add(this.mat('#111'), 0.5, 0.8, 0.3, x, 0.4, z);
+      g.userData.flame = g.getObjectByName('flame');
+    } else if (st === 'bike') {
       add(this.mat('#2b2d31'), L * 0.9, 0.3, 0.22, 0, 0.55, 0);
       add(bodyMat, 0.8, 0.35, 0.4, 0.2, 0.85, 0);
       for (const x of [-L * 0.33, L * 0.33]) { const w = new THREE.Mesh(this.geo.wheel, this.mat('#111')); w.rotation.x = Math.PI / 2; w.scale.set(1, 0.4, 1); w.position.set(x, 0.34, 0); g.add(w); }
@@ -5022,23 +5357,25 @@ const View3D = {
       let ex = tx, ey = ty, eh = 1.62;
       if (car) { const c = Math.cos(car.a), s = Math.sin(car.a); ex = car.x + c * (car.type === 'bike' ? 0 : 0.1) + s * (car.type === 'bike' ? 0 : 0.36); ey = car.y + s * 0.1 - c * (car.type === 'bike' ? 0 : 0.36); eh = car.type === 'bike' ? 1.75 : ['truck', 'armored', 'van', 'swat', 'ambulance'].includes(car.V.style) ? 1.6 : 1.2; }
       else { ex += fx * 0.18; ey += fy * 0.18; }
+      if (car && car.V.special) eh = (car.type === 'tank' ? 3.0 : 2.3) + (car.alt || 0);
       cam.position.set(ex, eh, ey);
       cam.lookAt(ex + fx * 10, eh + Math.tan(this.pitch) * 10 - (car ? 0.1 : 0), ey + fy * 10);
       cam.fov = car ? 70 : 72;
     } else {
       const back = car ? (v === 'front' ? -1 : 1) * (6.5 + car.L * 0.8 + Math.min(car.speed, 30) * 0.08) : (v === 'front' ? -4.2 : 4.6);
-      const up = car ? 2.6 + car.L * 0.25 : 2.3;
+      const alt = car ? car.alt || 0 : 0;
+      const up = (car ? 2.6 + car.L * 0.25 : 2.3) + alt;
       let dist_ = Math.abs(back);
       const dx = -fx * sign(back), dy = -fy * sign(back);
       // 벽에 가리면 카메라를 당긴다
       const hit = rayWall(tx, ty, dx, dy, dist_);
-      if (hit < dist_) dist_ = Math.max(1.2, hit - 0.4);
+      if (hit < dist_ && alt < 1.2) dist_ = Math.max(1.2, hit - 0.4);
       const cx = tx + dx * dist_, cy = ty + dy * dist_;
       const k = 1 - Math.exp(-10 * dt);
       const cp = cam.position;
       if (!this.camInit) { cp.set(cx, up, cy); this.camInit = true; }
       cp.set(lerp(cp.x, cx, k), lerp(cp.y, up + Math.max(0, -this.pitch) * 3, k), lerp(cp.z, cy, k));
-      const lookH = car ? 1.2 : 1.45;
+      const lookH = (car ? 1.2 : 1.45) + alt - (alt > 1.2 ? 5 : 0);
       cam.lookAt(tx + fx * (v === 'front' ? 0 : 3), lookH + this.pitch * 4, ty + fy * (v === 'front' ? 0 : 3));
       cam.fov = car ? 65 + Math.min(12, car.speed * 0.35) : 60;
     }
@@ -5058,7 +5395,7 @@ const View3D = {
     const sky = new THREE.Color(lerp(0.62, 0.04, night) * (1 - 0.3 * wet), lerp(0.78, 0.06, night) * (1 - 0.25 * wet), lerp(0.91, 0.14, night) * (1 - 0.1 * wet));
     if (amb[0] > amb[2] + 0.1) sky.lerp(new THREE.Color(0.95, 0.55, 0.35), 0.45);
     this.renderer.setClearColor(sky); S.fog.color.copy(sky);
-    S.fog.far = 170 - wet * 50;
+    S.fog.far = 170 - wet * 50 + (P.car && P.car.alt || 0) * 2.5;
     this.hemi.intensity = 0.25 + (1 - night) * 0.75; this.sun.intensity = 0.1 + (1 - night) * 0.8;
     this.hemi.color.setRGB(amb[0], amb[1], amb[2]);
     this.bmat.emissiveIntensity = night > 0.35 ? night * 0.9 : 0;
@@ -5077,7 +5414,14 @@ const View3D = {
       seen.add(c.id);
       let g = this.cars.get(c.id);
       if (!g) { g = this.makeCar(c); this.cars.set(c.id, g); }
-      g.position.set(c.x, 0, c.y); g.rotation.y = -c.a;
+      g.position.set(c.x, c.alt || 0, c.y); g.rotation.order = 'YXZ'; g.rotation.set(0, -c.a, 0);
+      if (c.V.special) {
+        const U = g.userData;
+        if (U.turret) U.turret.rotation.y = -angNorm((c.turret ?? c.a) - c.a);
+        if (U.rotor) { U.rotor[0].rotation.y = U.rotor[1].rotation.y = c.rotor || 0; }
+        if (c.V.special === 'heli' && c.alt > 3) g.rotation.z = -clamp(c.vf / 36, -1, 1) * 0.25, g.rotation.x = -(c.in.st || 0) * 0.2;
+        if (c.V.special === 'jet') { g.rotation.x = c.bank || 0; if (U.flame) U.flame.visible = (c.spd || 0) > 20 && !c.dead; }
+      }
       const bm = g.userData.bodyMat, col = c.dead ? '#26272a' : c.color;
       if (g.userData.col !== col) { bm.color.set(col); g.userData.col = col; }
       if (c.burnT > 0 && !c.dead) bm.emissive.setRGB(0.5 + Math.random() * 0.3, 0.2, 0); else bm.emissive.setRGB(0, 0, 0);
@@ -5429,7 +5773,7 @@ function drawRadar(s) {
   const R = (Input.usingTouch ? 62 : 80) * s;
   const pad = 16 * s + 4;
   const cx = pad + R, cy = Input.usingTouch ? pad + R + 8 : CH - pad - R;
-  const span = P.car ? 230 + P.car.speed * 3 : 190; // 레이더 지름(m)
+  const span = P.car ? 230 + P.car.speed * 3 + (P.car.alt || 0) * 5 : 190; // 레이더 지름(m)
   const k = (R * 2) / span;
   c.save();
   c.beginPath(); c.arc(cx, cy, R, 0, TAU); c.closePath();
@@ -5492,6 +5836,7 @@ function drawRadar(s) {
     txt(c, 'km/h', sx + kmW + 5 * s, sy, `${14 * s}px ${FONT_NUM}`, '#cfd6e0', 'rgba(0,0,0,0.9)', 3, 'left');
     const rev = P.car.vf < -0.3;
     txt(c, rev ? 'R' : 'D', sx + kmW + 40 * s, sy, `${22 * s}px ${FONT_NUM}`, rev ? '#ff8a80' : '#7ae68f', 'rgba(0,0,0,0.9)', 3, 'left');
+    if (isAir(P.car)) txt(c, `고도 ${Math.round(P.car.alt || 0)}m`, sx, sy - 34 * s, `${16 * s}px ${FONT_NUM}`, '#9fd8ff', 'rgba(0,0,0,0.9)', 3, 'left');
     const hw = 70 * s; c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(sx, sy + 6 * s, hw, 5 * s);
     const hpk = P.car.hp / P.car.maxHp; c.fillStyle = hpk > 0.5 ? '#7ad67a' : hpk > 0.25 ? '#f2c14e' : '#e0443e'; c.fillRect(sx, sy + 6 * s, hw * hpk, 5 * s);
     if (Radio.station > 0) txt(c, Radio.stations[Radio.station].name, sx, sy - 34 * s, `600 ${11 * s}px ${FONT_KR}`, '#ffcf5a', 'rgba(0,0,0,0.9)', 3, 'left');
@@ -5826,7 +6171,7 @@ const Game = {
     if (sv) { for (const k in sv.inv) P.inv[k] = sv.inv[k] === -1 ? Infinity : sv.inv[k]; this.clock = sv.time || this.clock; }
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
     placeStaticPickups();
-    Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
+    Military.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
     this.waypoint = null; this.noWanted = false;
     Cam.x = P.x; Cam.y = P.y;
     this.populate(true);
@@ -5875,6 +6220,13 @@ const Game = {
       this._lastDrv = drv; document.body.classList.toggle('driving', drv);
       Input.touch.on = false; Input.touch.jx = Input.touch.jy = 0; Input.touch.stickId = null; Drive.reset();
       const b = document.getElementById('t-enter'); if (b) b.textContent = drv ? '하차' : '탑승';
+    }
+    const sp = drv && this.player.car.V.special || '';
+    if (sp !== this._lastSp) {
+      this._lastSp = sp;
+      const L = { tank: ['주포', '주포'], heli: ['기관포', '미사일'], jet: ['기관포', '미사일'] }[sp] || ['발사', '드리프트'];
+      const f = document.getElementById('t-fire'), h = document.getElementById('t-hb');
+      if (f) f.textContent = L[0]; if (h) h.textContent = L[1];
     }
     Drive.update(dt);
     if (st === 'play') {
@@ -5952,6 +6304,7 @@ const Game = {
     Jay.update(dt);
     Missions.update(dt);
     Jobs.update(dt);
+    Military.update(dt);
     Talk.update(dt); Aim.update(dt); EMS.update(dt); Givers.update(); Vendors.update(dt); GPS.update(dt);
     // 체력 자연 회복: 6초 동안 안 다치면 50까지 천천히 (GTA V)
     if (!P.dead && P.hp < 50 && this.time - (P.lastHurt || 0) > 6) P.hp = Math.min(50, P.hp + 2 * dt);
@@ -5976,7 +6329,7 @@ const Game = {
     W.nextT -= dt;
     if (W.nextT <= 0) { W.rain = !W.rain; W.nextT = W.rain ? rand(60, 130) : rand(150, 320); }
     W.intensity = smooth(W.intensity, W.rain ? 1 : 0, 0.3, dt);
-    W.wet = 1 - 0.22 * W.intensity;
+    W.wet = 1 - 0.12 * W.intensity;
     this.wind = Math.sin(this.time * 0.05) * 0.8;
     // 차량
     for (const c of this.cars) c.update(dt);
@@ -6092,8 +6445,8 @@ const Game = {
       tx += clamp((wx - P.x) * 0.2, -6, 6); ty += clamp((wy - P.y) * 0.2, -6, 6);
     }
     Cam.x = smooth(Cam.x, tx, car ? 4 : 5, dt); Cam.y = smooth(Cam.y, ty, car ? 4 : 5, dt);
-    const span = (car ? 56 + car.speed * 1.05 : 38) * Cam.zoomMul;
-    Cam.ppm = smooth(Cam.ppm, Math.min(CW, CH) / Math.min(130, span), 1.6, dt);
+    const span = (car ? 56 + car.speed * 1.05 + (car.alt || 0) * 1.6 : 38) * Cam.zoomMul;
+    Cam.ppm = smooth(Cam.ppm, Math.min(CW, CH) / Math.min(car && car.alt > 1.2 ? 220 : 130, span), 1.6, dt);
     camSetView();
     Cam.shake = Math.max(0, Cam.shake - dt * 1.6);
     Cam.sx = (Math.random() - 0.5) * Cam.shake * 14; Cam.sy = (Math.random() - 0.5) * Cam.shake * 14;
@@ -6264,6 +6617,7 @@ function updatePlayerInCar(P, dt) {
   P.x = c.x; P.y = c.y; P.vx = c.vx; P.vy = c.vy; P.cd -= dt;
   const W = WEAPONS[P.weapon];
   const firing = Input.mouse.down || Input.touch.fire || keyDown('ControlLeft', 'KeyJ', 'PadX');
+  if (c.V.special) { MilFire.update(c, dt, firing, keyDown('Space', 'PadRB', 'PadB') || Input.touch.hb); return; }
   if (firing && P.cd <= 0 && !W.melee && !W.throw && !W.proj && P.inv[P.weapon] > 0) {
     let ang;
     if (this_view3d()) ang = View3D.aimAngle();
@@ -6305,7 +6659,8 @@ function tryEnterCar(P) {
 }
 function exitCar(P, force) {
   const c = P.car; if (!c) return;
-  const fast = c.speed > 9;
+  if (isAir(c) && c.alt > 1 && !force) { c.landing = true; UI.toast(c.V.special === 'jet' ? '착륙 접근 중… 고도를 낮춘다' : '착륙 중…'); return; }
+  const fast = c.speed > 9 && !c.V.special;
   let door = c.doorPos(-1);
   if (solidT(Math.floor(door[0] / T), Math.floor(door[1] / T))) door = c.doorPos(1);
   if (solidT(Math.floor(door[0] / T), Math.floor(door[1] / T))) { if (!force) { UI.toast('문이 막혀 내릴 수 없다'); return; } door = [c.x, c.y]; }

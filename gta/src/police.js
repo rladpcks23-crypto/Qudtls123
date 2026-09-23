@@ -51,7 +51,7 @@ const Wanted = {
   clear(msg) {
     if (this.stars > 0 && msg) UI.toast(msg);
     this.reset();
-    for (const p of Game.peds) if ((p.kind === 'cop' || p.kind === 'swat') && p.state === 'chase') returnToWalk(p);
+    for (const p of Game.peds) if ((p.kind === 'cop' || p.kind === 'swat') && p.state === 'chase') { if (p.soldier) p.state = 'idle'; else returnToWalk(p); }
   },
 };
 

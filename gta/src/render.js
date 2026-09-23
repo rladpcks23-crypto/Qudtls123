@@ -63,6 +63,7 @@ const GROUND = {
   [TL.DOCK]: ['#7d8083', '#797c7f', '#818487'],
   [TL.BUILD]: ['#2a2e35'],
   [TL.WATER]: ['#1d5a80'],
+  [TL.RUNWAY]: ['#2c2e33', '#2a2c31'],
 };
 function drawGround(amb) {
   const ppm = Cam.ppm;
@@ -152,6 +153,22 @@ function drawGround(amb) {
         for (let s = 0; s < T; s += 1) ctx.fillRect(tx * T + s, ty * T + (s % 2) * 0.1, 0.5, 0.2);
       }
       if (hash2(tx, ty) < 0.08) { ctx.fillStyle = 'rgba(40,30,20,0.25)'; ctx.beginPath(); ctx.arc(tx * T + 2, ty * T + 2, 1.1, 0, TAU); ctx.fill(); }
+    }
+  }
+  // 활주로 표시 · 헬기 착륙장
+  if (World.base) {
+    const B = World.base;
+    if (Cam.y - Cam.vh / 2 < B.y1 + 10) {
+      const ry0 = 9 * T, ry1 = 14 * T, cy = (ry0 + ry1) / 2, rx0 = 12 * T, rx1 = (MW - 13) * T;
+      ctx.fillStyle = 'rgba(240,240,235,0.85)';
+      for (let x = rx0 + 20; x < rx1 - 20; x += 12) ctx.fillRect(x, cy - 0.2, 6, 0.4);
+      for (const ex of [rx0 + 2, rx1 - 12]) for (let k = 0; k < 6; k++) ctx.fillRect(ex, ry0 + 1.5 + k * 3, 10, 1.4);
+      ctx.fillStyle = 'rgba(242,193,78,0.8)'; ctx.fillRect(rx0, ry0 + 0.3, rx1 - rx0, 0.25); ctx.fillRect(rx0, ry1 - 0.55, rx1 - rx0, 0.25);
+      for (const h of World.helipads || []) {
+        ctx.strokeStyle = 'rgba(240,240,235,0.9)'; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.arc(h.x, h.y, 9, 0, TAU); ctx.stroke();
+        ctx.fillStyle = 'rgba(240,240,235,0.9)'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('H', h.x, h.y + 0.5);
+      }
+      ctx.fillStyle = 'rgba(242,193,78,0.9)'; ctx.font = 'bold 3px "Black Han Sans", sans-serif'; ctx.textAlign = 'center'; ctx.fillText('군사 제한구역 · 무단 출입 금지', B.gate.x, B.gate.y + 5);
     }
   }
   // 주차칸
@@ -274,6 +291,7 @@ function drawCar(c, shadow) {
   ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a);
   if (shadow) { ctx.fillStyle = 'rgba(0,0,0,0.32)'; rr(ctx, -L / 2 + shadow[0] * 1.2, -W / 2 + shadow[1] * 1.2, L, W, st === 'bike' ? 0.35 : 0.5); ctx.fill(); }
   if (st === 'bike') { drawBike(c); ctx.restore(); return; }
+  if (st === 'tank' || st === 'milheli' || st === 'jet') { drawMilVehicle(c); ctx.restore(); return; }
   // 바퀴
   ctx.fillStyle = '#111';
   const wx = L * 0.3, wy = W / 2 - 0.12;
@@ -767,7 +785,8 @@ function renderScene() {
   for (const p of Game.peds) if (!p.dead && Math.abs(p.x - Cam.x) < Cam.vw / 2 + 2 && Math.abs(p.y - Cam.y) < Cam.vh / 2 + 2) drawPed(p, shadowV);
   const P = Game.player;
   if (!P.car && !P.hidden && !(P.dead && Game.state === 'menu')) drawPed(P, shadowV);
-  for (const c of Game.cars) if (Math.abs(c.x - Cam.x) < Cam.vw / 2 + 6 && Math.abs(c.y - Cam.y) < Cam.vh / 2 + 6) drawCar(c, shadowV);
+  for (const c of Game.cars) if (!airborne(c) && Math.abs(c.x - Cam.x) < Cam.vw / 2 + 6 && Math.abs(c.y - Cam.y) < Cam.vh / 2 + 6) drawCar(c, shadowV);
+  drawAirShadows(shadowV);
   drawHeli(amb, shadowV);
   drawEffects();
   drawParticles(false);
@@ -776,6 +795,7 @@ function renderScene() {
   drawTrees(amb);
   drawBuildings(amb);
   drawHeli(amb, null);
+  drawAirborne(amb);
   // 떠오르는 텍스트(월드 위치, 화면 크기)
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.textAlign = 'center'; ctx.font = '700 15px "Noto Sans KR", sans-serif';
