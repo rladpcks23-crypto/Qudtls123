@@ -389,6 +389,12 @@ const Menu = {
     const camLabel = () => { camBtn.textContent = Settings.camRot ? '운전 시점: 차 방향으로 회전' : '운전 시점: 북쪽 고정'; };
     camLabel(); camBtn.onclick = () => { Settings.camRot = !Settings.camRot; Settings.save(); camLabel(); };
     this.camLabel = camLabel;
+    const sensBtn = document.getElementById('btn-sens'), wheelBtn = document.getElementById('btn-wheel');
+    const SENS = [[0.7, '둔하게'], [1, '보통'], [1.35, '민감하게']], WHEEL = [['md', '보통'], ['lg', '크게'], ['xl', '아주 크게']];
+    const setLabels = () => { sensBtn.textContent = `조향 감도: ${(SENS.find(s => s[0] === Settings.sens) || SENS[1])[1]}`; wheelBtn.textContent = `핸들 크기: ${(WHEEL.find(w => w[0] === Settings.wheel) || WHEEL[1])[1]}`; document.body.dataset.wheel = Settings.wheel; };
+    setLabels();
+    sensBtn.onclick = () => { const i = SENS.findIndex(s => s[0] === Settings.sens); Settings.sens = SENS[(i + 1) % SENS.length][0]; Settings.save(); setLabels(); };
+    wheelBtn.onclick = () => { const i = WHEEL.findIndex(w => w[0] === Settings.wheel); Settings.wheel = WHEEL[(i + 1) % WHEEL.length][0]; Settings.save(); setLabels(); };
     document.getElementById('btn-view').onclick = () => { this.hidePause(); Game.state = 'play'; cycleView(); };
     document.getElementById('btn-quitjob').onclick = () => { Jobs.stop('일을 그만뒀다'); this.hidePause(); Game.state = 'play'; };
     document.getElementById('jobs-close').onclick = () => Jobs.closeBoard();
@@ -536,7 +542,7 @@ const Touch = {
 // 핸들: 바퀴 테두리를 잡고 돌린다(손가락 각도 변화 = 핸들 회전). 가운데를 잡으면 좌우로 끌어도 된다.
 // 놓으면 스프링처럼 가운데로 돌아온다. 페달: 엑셀 = 가속, 브레이크 = 감속 → 멈춘 뒤 계속 밟으면 후진.
 const Drive = {
-  angle: 0, held: false, id: null, gas: 0, brake: 0, gasV: 0, brakeV: 0, MAX: 2.2, el: null,
+  angle: 0, held: false, id: null, gas: 0, brake: 0, gasV: 0, brakeV: 0, MAX: 2.6, el: null,
   init() {
     const w = this.el = document.getElementById('wheel');
     const pos = t => { const r = w.getBoundingClientRect(); return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, r: r.width / 2 }; };
@@ -550,7 +556,7 @@ const Drive = {
     w.addEventListener('touchmove', e => {
       e.preventDefault();
       for (const t of e.changedTouches) if (t.identifier === this.id) {
-        if (this.center) this.angle = clamp(this.base + (t.clientX - this.startX) / 55, -this.MAX, this.MAX);
+        if (this.center) this.angle = clamp(this.base + (t.clientX - this.startX) / 60, -this.MAX, this.MAX);
         else {
           const a = Math.atan2(t.clientY - this.cy, t.clientX - this.cx);
           this.acc += angNorm(a - this.lastA); this.lastA = a; // 누적해서 한 바퀴 넘게 돌려도 튀지 않게
@@ -570,10 +576,14 @@ const Drive = {
   },
   reset() { this.angle = 0; this.held = false; this.gas = this.brake = this.gasV = this.brakeV = 0; document.querySelectorAll('.pedal').forEach(p => p.classList.remove('on')); },
   update(dt) {
-    if (!this.held) this.angle = smooth(this.angle, 0, 6, dt);
+    if (!this.held) this.angle = smooth(this.angle, 0, 9, dt);
     this.gasV = smooth(this.gasV, this.gas, this.gas ? 10 : 20, dt);
     this.brakeV = smooth(this.brakeV, this.brake, this.brake ? 14 : 20, dt);
     if (this.el) this.el.style.transform = `rotate(${this.angle}rad)`;
   },
-  get steer() { return clamp(this.angle / 1.6, -1, 1); },
+  get steer() {
+    const x = clamp(this.angle / 1.9, -1, 1);
+    if (Math.abs(x) < 0.03) return 0;
+    return clamp(sign(x) * Math.pow(Math.abs(x), 1.35) * Settings.sens, -1, 1);
+  },
 };

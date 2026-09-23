@@ -96,7 +96,10 @@
   #drive { display: none; }
   body.touch.playing.driving #drive { display: block; }
   body.driving #stick, body.driving #stick-zone, body.driving #t-weapon { display: none !important; }
-  #wheel { position: fixed; z-index: 6; left: calc(18px + env(safe-area-inset-left)); bottom: calc(16px + env(safe-area-inset-bottom)); width: 156px; height: 156px; touch-action: none; }
+  /* 핸들 크기: 설정(보통/크게/아주 크게). 손가락이 닿는 영역은 그림보다 조금 더 넓다 */
+  body { --wheel: 204px; }
+  body[data-wheel="md"] { --wheel: 168px; } body[data-wheel="xl"] { --wheel: 244px; }
+  #wheel { position: fixed; z-index: 6; left: calc(12px + env(safe-area-inset-left)); bottom: calc(10px + env(safe-area-inset-bottom)); width: var(--wheel); height: var(--wheel); touch-action: none; padding: 10px; box-sizing: content-box; margin: -10px; }
   #wheel svg { width: 100%; height: 100%; display: block; opacity: .88; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.55)); }
   #wheel.on svg { opacity: 1; }
   /* 알루미늄 페달: 금속 판 + 고무 미끄럼 방지 줄 */
@@ -108,16 +111,16 @@
   .pedal span { position: absolute; left: 50%; top: -20px; transform: translateX(-50%); font-size: 11px; font-weight: 700; color: rgba(255,255,255,.85); letter-spacing: .12em; text-shadow: 0 1px 2px #000; white-space: nowrap; }
   .pedal::after { content: ''; position: absolute; inset: 4px; border-radius: 4px; border: 1px solid rgba(255,255,255,.25); pointer-events: none; }
   .pedal.on { opacity: 1; transform: perspective(260px) rotateX(20deg) translateY(3px); filter: brightness(.85); box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 2px 0 #0b0d10, 0 3px 6px rgba(0,0,0,.4); }
-  #pedal-gas { right: calc(18px + env(safe-area-inset-right)); width: 62px; height: 128px; }
-  #pedal-brake { right: calc(96px + env(safe-area-inset-right)); width: 84px; height: 84px; }
+  #pedal-gas { right: calc(18px + env(safe-area-inset-right)); width: 70px; height: 146px; }
+  #pedal-brake { right: calc(104px + env(safe-area-inset-right)); width: 92px; height: 92px; }
   #pedal-gas.on { border-color: #3fbf6a; } #pedal-brake.on { border-color: #d9443a; }
-  body.driving #t-hb { right: calc(104px + env(safe-area-inset-right)); bottom: calc(116px + env(safe-area-inset-bottom)); width: 60px; height: 60px; }
-  body.driving #t-enter { right: calc(18px + env(safe-area-inset-right)); bottom: calc(162px + env(safe-area-inset-bottom)); width: 60px; height: 60px; }
-  body.driving #t-fire { right: calc(196px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); width: 62px; height: 62px; font-size: 13px; }
-  body.driving #t-radio { right: calc(104px + env(safe-area-inset-right)); bottom: calc(186px + env(safe-area-inset-bottom)); }
+  body.driving #t-hb { right: calc(110px + env(safe-area-inset-right)); bottom: calc(130px + env(safe-area-inset-bottom)); width: 60px; height: 60px; }
+  body.driving #t-enter { right: calc(22px + env(safe-area-inset-right)); bottom: calc(190px + env(safe-area-inset-bottom)); width: 60px; height: 60px; }
+  body.driving #t-fire { right: calc(208px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); width: 62px; height: 62px; font-size: 13px; }
+  body.driving #t-radio { right: calc(116px + env(safe-area-inset-right)); bottom: calc(198px + env(safe-area-inset-bottom)); }
   @media (orientation: landscape) and (max-height: 520px) {
-    #wheel { width: 150px; height: 150px; }
-    body.driving #t-fire { right: calc(200px + env(safe-area-inset-right)); }
+    body { --wheel: 196px; } body[data-wheel="md"] { --wheel: 160px; } body[data-wheel="xl"] { --wheel: 232px; }
+    body.driving #t-fire { right: calc(210px + env(safe-area-inset-right)); }
   }
   @media (orientation: landscape) and (max-height: 520px) {
     .menu-col { gap: 10px; padding-top: max(14px, env(safe-area-inset-top)); }
@@ -133,6 +136,10 @@
     #t-run { right: calc(196px + env(safe-area-inset-right)); bottom: calc(20px + env(safe-area-inset-bottom)); }
     #t-steal { right: calc(196px + env(safe-area-inset-right)); bottom: calc(96px + env(safe-area-inset-bottom)); }
     #stick:not(.active) { bottom: calc(24px + env(safe-area-inset-bottom)); left: calc(24px + env(safe-area-inset-left)) !important; }
+  }
+  @media (orientation: portrait) {
+    body { --wheel: 150px; } body[data-wheel="md"] { --wheel: 128px; } body[data-wheel="xl"] { --wheel: 172px; }
+    body.driving #t-fire { right: calc(112px + env(safe-area-inset-right)); bottom: calc(236px + env(safe-area-inset-bottom)); }
   }
   @media (max-width: 520px) { .kicker { font-size: 12px; letter-spacing: 0.16em; } .tag { font-size: 14px; } }
   @media (prefers-reduced-motion: reduce) { .btn { transition: none; } .btn:hover { transform: none; } }
@@ -223,6 +230,8 @@
     <button class="btn" id="btn-map">지도 보기</button>
     <button class="btn" id="btn-sound">소리 끄기</button>
     <button class="btn" id="btn-view">시점 바꾸기 (탑뷰 · 3인칭 후면/전면 · 1인칭)</button>
+    <button class="btn" id="btn-sens">조향 감도: 보통</button>
+    <button class="btn only-mobile" id="btn-wheel">핸들 크기: 크게</button>
     <button class="btn" id="btn-camrot">운전 시점: 차 방향으로 회전</button>
     <button class="btn" id="btn-quitjob" hidden>하던 일 그만두기</button>
     <div class="cheat"><input id="cheat-input" type="text" placeholder="치트 코드" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn small" id="cheat-go">입력</button></div>

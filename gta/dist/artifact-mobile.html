@@ -96,7 +96,10 @@
   #drive { display: none; }
   body.touch.playing.driving #drive { display: block; }
   body.driving #stick, body.driving #stick-zone, body.driving #t-weapon { display: none !important; }
-  #wheel { position: fixed; z-index: 6; left: calc(18px + env(safe-area-inset-left)); bottom: calc(16px + env(safe-area-inset-bottom)); width: 156px; height: 156px; touch-action: none; }
+  /* 핸들 크기: 설정(보통/크게/아주 크게). 손가락이 닿는 영역은 그림보다 조금 더 넓다 */
+  body { --wheel: 204px; }
+  body[data-wheel="md"] { --wheel: 168px; } body[data-wheel="xl"] { --wheel: 244px; }
+  #wheel { position: fixed; z-index: 6; left: calc(12px + env(safe-area-inset-left)); bottom: calc(10px + env(safe-area-inset-bottom)); width: var(--wheel); height: var(--wheel); touch-action: none; padding: 10px; box-sizing: content-box; margin: -10px; }
   #wheel svg { width: 100%; height: 100%; display: block; opacity: .88; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.55)); }
   #wheel.on svg { opacity: 1; }
   /* 알루미늄 페달: 금속 판 + 고무 미끄럼 방지 줄 */
@@ -108,16 +111,16 @@
   .pedal span { position: absolute; left: 50%; top: -20px; transform: translateX(-50%); font-size: 11px; font-weight: 700; color: rgba(255,255,255,.85); letter-spacing: .12em; text-shadow: 0 1px 2px #000; white-space: nowrap; }
   .pedal::after { content: ''; position: absolute; inset: 4px; border-radius: 4px; border: 1px solid rgba(255,255,255,.25); pointer-events: none; }
   .pedal.on { opacity: 1; transform: perspective(260px) rotateX(20deg) translateY(3px); filter: brightness(.85); box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 2px 0 #0b0d10, 0 3px 6px rgba(0,0,0,.4); }
-  #pedal-gas { right: calc(18px + env(safe-area-inset-right)); width: 62px; height: 128px; }
-  #pedal-brake { right: calc(96px + env(safe-area-inset-right)); width: 84px; height: 84px; }
+  #pedal-gas { right: calc(18px + env(safe-area-inset-right)); width: 70px; height: 146px; }
+  #pedal-brake { right: calc(104px + env(safe-area-inset-right)); width: 92px; height: 92px; }
   #pedal-gas.on { border-color: #3fbf6a; } #pedal-brake.on { border-color: #d9443a; }
-  body.driving #t-hb { right: calc(104px + env(safe-area-inset-right)); bottom: calc(116px + env(safe-area-inset-bottom)); width: 60px; height: 60px; }
-  body.driving #t-enter { right: calc(18px + env(safe-area-inset-right)); bottom: calc(162px + env(safe-area-inset-bottom)); width: 60px; height: 60px; }
-  body.driving #t-fire { right: calc(196px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); width: 62px; height: 62px; font-size: 13px; }
-  body.driving #t-radio { right: calc(104px + env(safe-area-inset-right)); bottom: calc(186px + env(safe-area-inset-bottom)); }
+  body.driving #t-hb { right: calc(110px + env(safe-area-inset-right)); bottom: calc(130px + env(safe-area-inset-bottom)); width: 60px; height: 60px; }
+  body.driving #t-enter { right: calc(22px + env(safe-area-inset-right)); bottom: calc(190px + env(safe-area-inset-bottom)); width: 60px; height: 60px; }
+  body.driving #t-fire { right: calc(208px + env(safe-area-inset-right)); bottom: calc(18px + env(safe-area-inset-bottom)); width: 62px; height: 62px; font-size: 13px; }
+  body.driving #t-radio { right: calc(116px + env(safe-area-inset-right)); bottom: calc(198px + env(safe-area-inset-bottom)); }
   @media (orientation: landscape) and (max-height: 520px) {
-    #wheel { width: 150px; height: 150px; }
-    body.driving #t-fire { right: calc(200px + env(safe-area-inset-right)); }
+    body { --wheel: 196px; } body[data-wheel="md"] { --wheel: 160px; } body[data-wheel="xl"] { --wheel: 232px; }
+    body.driving #t-fire { right: calc(210px + env(safe-area-inset-right)); }
   }
   @media (orientation: landscape) and (max-height: 520px) {
     .menu-col { gap: 10px; padding-top: max(14px, env(safe-area-inset-top)); }
@@ -133,6 +136,10 @@
     #t-run { right: calc(196px + env(safe-area-inset-right)); bottom: calc(20px + env(safe-area-inset-bottom)); }
     #t-steal { right: calc(196px + env(safe-area-inset-right)); bottom: calc(96px + env(safe-area-inset-bottom)); }
     #stick:not(.active) { bottom: calc(24px + env(safe-area-inset-bottom)); left: calc(24px + env(safe-area-inset-left)) !important; }
+  }
+  @media (orientation: portrait) {
+    body { --wheel: 150px; } body[data-wheel="md"] { --wheel: 128px; } body[data-wheel="xl"] { --wheel: 172px; }
+    body.driving #t-fire { right: calc(112px + env(safe-area-inset-right)); bottom: calc(236px + env(safe-area-inset-bottom)); }
   }
   @media (max-width: 520px) { .kicker { font-size: 12px; letter-spacing: 0.16em; } .tag { font-size: 14px; } }
   @media (prefers-reduced-motion: reduce) { .btn { transition: none; } .btn:hover { transform: none; } }
@@ -223,6 +230,8 @@
     <button class="btn" id="btn-map">지도 보기</button>
     <button class="btn" id="btn-sound">소리 끄기</button>
     <button class="btn" id="btn-view">시점 바꾸기 (탑뷰 · 3인칭 후면/전면 · 1인칭)</button>
+    <button class="btn" id="btn-sens">조향 감도: 보통</button>
+    <button class="btn only-mobile" id="btn-wheel">핸들 크기: 크게</button>
     <button class="btn" id="btn-camrot">운전 시점: 차 방향으로 회전</button>
     <button class="btn" id="btn-quitjob" hidden>하던 일 그만두기</button>
     <div class="cheat"><input id="cheat-input" type="text" placeholder="치트 코드" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn small" id="cheat-go">입력</button></div>
@@ -361,8 +370,10 @@ const TUNE = IS_MOBILE
 // 사용자 설정 (브라우저에 저장)
 const Settings = {
   camRot: true, // 운전 중 화면을 차 방향으로 회전
-  load() { try { const v = localStorage.getItem('nh.camrot'); if (v !== null) this.camRot = v === '1'; } catch (e) { } },
-  save() { try { localStorage.setItem('nh.camrot', this.camRot ? '1' : '0'); } catch (e) { } },
+  sens: 1,      // 조향 감도 배율 (0.7 둔하게 · 1 보통 · 1.35 민감하게)
+  wheel: 'lg',  // 모바일 핸들 크기 md · lg · xl
+  load() { try { const v = localStorage.getItem('nh.camrot'); if (v !== null) this.camRot = v === '1'; const s = parseFloat(localStorage.getItem('nh.sens')); if (s) this.sens = s; const w = localStorage.getItem('nh.wheel'); if (w) this.wheel = w; } catch (e) { } },
+  save() { try { localStorage.setItem('nh.camrot', this.camRot ? '1' : '0'); localStorage.setItem('nh.sens', String(this.sens)); localStorage.setItem('nh.wheel', this.wheel); } catch (e) { } },
 };
 Settings.load();
 function buzz(ms) { if (IS_MOBILE && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { } } }
@@ -1197,12 +1208,12 @@ class Car {
     const cs = Math.cos(this.a), sn = Math.sin(this.a);
     let vf = this.vx * cs + this.vy * sn, vl = -this.vx * sn + this.vy * cs;
     const speed = Math.hypot(vf, vl);
-    const maxSt = V.steer / (1 + Math.abs(vf) / 30);
-    this.steer = smooth(this.steer, clamp(inp.st, -1, 1) * maxSt, inp.st === 0 ? 8 : 6, dt);
+    const maxSt = V.steer / (1 + Math.abs(vf) / 36);
+    this.steer = smooth(this.steer, clamp(inp.st, -1, 1) * maxSt, inp.st === 0 ? 16 : 11, dt);
     const d = this.steer, a = this.L * 0.3, b = this.L * 0.3, wb = a + b;
     const load = this.m * 9.81 * 0.5;
     const wet = Game.weather.wet;
-    const gripF = V.grip * wet, gripR = V.grip * wet * (inp.hb ? 0.42 : 1);
+    const gripF = V.grip * wet, gripR = V.grip * wet * (inp.hb ? 0.42 : 1.12);
     let FyF = 0, FyR = 0;
     const avf = Math.abs(vf);
     if (avf > 0.3) {
@@ -1239,6 +1250,15 @@ class Car {
       if (inp.brk > 0 && Math.abs(vf) < 0.6 && inp.thr === 0) { this.vx *= 0.5; this.vy *= 0.5; }
     }
     this.w *= 1 - 0.4 * dt;
+    // 주행 안정 보조(아케이드 ESC): 핸드브레이크를 쓰지 않으면 차가 조향한 만큼만 돌도록 요레이트를 당기고 옆미끄러짐을 줄인다
+    if (!inp.hb && speed > 2 && !this.dead) {
+      const vfN = this.vx * cs + this.vy * sn, vlN = -this.vx * sn + this.vy * cs;
+      const aMax = V.grip * wet * 9.81 * 1.05, wLim = aMax / Math.max(2, Math.abs(vfN)); // 타이어 그립으로 낼 수 있는 만큼만
+      const wWant = clamp(vfN * Math.tan(d) / wb, -wLim, wLim), assist = this.driver === 'player' ? 3.2 : 2;
+      this.w += (wWant - this.w) * (1 - Math.exp(-assist * dt));
+      const vl2 = vlN * Math.exp(-(this.driver === 'player' ? 1.6 : 1) * dt);
+      this.vx = vfN * cs - vl2 * sn; this.vy = vfN * sn + vl2 * cs;
+    }
     this.x += this.vx * dt; this.y += this.vy * dt; this.a = angNorm(this.a + this.w * dt);
     this.vf = this.vx * Math.cos(this.a) + this.vy * Math.sin(this.a);
     this.vl = -this.vx * Math.sin(this.a) + this.vy * Math.cos(this.a);
@@ -1411,7 +1431,14 @@ function playerDrive(car, dt) {
     hb = hb || j.hb;
   }
   const vf = car.vf;
-  car.in.st = st; car.in.hb = hb;
+  const analog = (Pad.active && Pad.lx) || (Input.usingTouch && (document.body.classList.contains('driving') || Input.touch.on));
+  if (!analog) {
+    const k = car.kst || 0, rate = 2.4 * Settings.sens;
+    if (st === 0) car.kst = Math.abs(k) < 10 * dt ? 0 : k - sign(k) * 10 * dt;
+    else car.kst = (sign(k) !== st && k !== 0) ? st * 0.2 : clamp(k + st * rate * dt + (k === 0 ? st * 0.2 : 0), -1, 1);
+    st = car.kst;
+  } else if (Pad.active && Pad.lx) st = sign(st) * Math.pow(Math.abs(st), 1.3) * Settings.sens;
+  car.in.st = clamp(st, -1, 1); car.in.hb = hb;
   if (thrKey > 0) { car.in.thr = thrKey; car.in.brk = vf < -1 ? 1 : 0; if (vf < -1) car.in.thr = 0; }
   else if (thrKey < 0) {
     if (vf > 1) { car.in.brk = -thrKey; car.in.thr = 0; }
@@ -5540,6 +5567,12 @@ const Menu = {
     const camLabel = () => { camBtn.textContent = Settings.camRot ? '운전 시점: 차 방향으로 회전' : '운전 시점: 북쪽 고정'; };
     camLabel(); camBtn.onclick = () => { Settings.camRot = !Settings.camRot; Settings.save(); camLabel(); };
     this.camLabel = camLabel;
+    const sensBtn = document.getElementById('btn-sens'), wheelBtn = document.getElementById('btn-wheel');
+    const SENS = [[0.7, '둔하게'], [1, '보통'], [1.35, '민감하게']], WHEEL = [['md', '보통'], ['lg', '크게'], ['xl', '아주 크게']];
+    const setLabels = () => { sensBtn.textContent = `조향 감도: ${(SENS.find(s => s[0] === Settings.sens) || SENS[1])[1]}`; wheelBtn.textContent = `핸들 크기: ${(WHEEL.find(w => w[0] === Settings.wheel) || WHEEL[1])[1]}`; document.body.dataset.wheel = Settings.wheel; };
+    setLabels();
+    sensBtn.onclick = () => { const i = SENS.findIndex(s => s[0] === Settings.sens); Settings.sens = SENS[(i + 1) % SENS.length][0]; Settings.save(); setLabels(); };
+    wheelBtn.onclick = () => { const i = WHEEL.findIndex(w => w[0] === Settings.wheel); Settings.wheel = WHEEL[(i + 1) % WHEEL.length][0]; Settings.save(); setLabels(); };
     document.getElementById('btn-view').onclick = () => { this.hidePause(); Game.state = 'play'; cycleView(); };
     document.getElementById('btn-quitjob').onclick = () => { Jobs.stop('일을 그만뒀다'); this.hidePause(); Game.state = 'play'; };
     document.getElementById('jobs-close').onclick = () => Jobs.closeBoard();
@@ -5687,7 +5720,7 @@ const Touch = {
 // 핸들: 바퀴 테두리를 잡고 돌린다(손가락 각도 변화 = 핸들 회전). 가운데를 잡으면 좌우로 끌어도 된다.
 // 놓으면 스프링처럼 가운데로 돌아온다. 페달: 엑셀 = 가속, 브레이크 = 감속 → 멈춘 뒤 계속 밟으면 후진.
 const Drive = {
-  angle: 0, held: false, id: null, gas: 0, brake: 0, gasV: 0, brakeV: 0, MAX: 2.2, el: null,
+  angle: 0, held: false, id: null, gas: 0, brake: 0, gasV: 0, brakeV: 0, MAX: 2.6, el: null,
   init() {
     const w = this.el = document.getElementById('wheel');
     const pos = t => { const r = w.getBoundingClientRect(); return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, r: r.width / 2 }; };
@@ -5701,7 +5734,7 @@ const Drive = {
     w.addEventListener('touchmove', e => {
       e.preventDefault();
       for (const t of e.changedTouches) if (t.identifier === this.id) {
-        if (this.center) this.angle = clamp(this.base + (t.clientX - this.startX) / 55, -this.MAX, this.MAX);
+        if (this.center) this.angle = clamp(this.base + (t.clientX - this.startX) / 60, -this.MAX, this.MAX);
         else {
           const a = Math.atan2(t.clientY - this.cy, t.clientX - this.cx);
           this.acc += angNorm(a - this.lastA); this.lastA = a; // 누적해서 한 바퀴 넘게 돌려도 튀지 않게
@@ -5721,12 +5754,16 @@ const Drive = {
   },
   reset() { this.angle = 0; this.held = false; this.gas = this.brake = this.gasV = this.brakeV = 0; document.querySelectorAll('.pedal').forEach(p => p.classList.remove('on')); },
   update(dt) {
-    if (!this.held) this.angle = smooth(this.angle, 0, 6, dt);
+    if (!this.held) this.angle = smooth(this.angle, 0, 9, dt);
     this.gasV = smooth(this.gasV, this.gas, this.gas ? 10 : 20, dt);
     this.brakeV = smooth(this.brakeV, this.brake, this.brake ? 14 : 20, dt);
     if (this.el) this.el.style.transform = `rotate(${this.angle}rad)`;
   },
-  get steer() { return clamp(this.angle / 1.6, -1, 1); },
+  get steer() {
+    const x = clamp(this.angle / 1.9, -1, 1);
+    if (Math.abs(x) < 0.03) return 0;
+    return clamp(sign(x) * Math.pow(Math.abs(x), 1.35) * Settings.sens, -1, 1);
+  },
 };
 
 'use strict';

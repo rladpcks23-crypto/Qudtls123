@@ -68,12 +68,12 @@ class Car {
     const cs = Math.cos(this.a), sn = Math.sin(this.a);
     let vf = this.vx * cs + this.vy * sn, vl = -this.vx * sn + this.vy * cs;
     const speed = Math.hypot(vf, vl);
-    const maxSt = V.steer / (1 + Math.abs(vf) / 30);
-    this.steer = smooth(this.steer, clamp(inp.st, -1, 1) * maxSt, inp.st === 0 ? 8 : 6, dt);
+    const maxSt = V.steer / (1 + Math.abs(vf) / 36);
+    this.steer = smooth(this.steer, clamp(inp.st, -1, 1) * maxSt, inp.st === 0 ? 16 : 11, dt);
     const d = this.steer, a = this.L * 0.3, b = this.L * 0.3, wb = a + b;
     const load = this.m * 9.81 * 0.5;
     const wet = Game.weather.wet;
-    const gripF = V.grip * wet, gripR = V.grip * wet * (inp.hb ? 0.42 : 1);
+    const gripF = V.grip * wet, gripR = V.grip * wet * (inp.hb ? 0.42 : 1.12);
     let FyF = 0, FyR = 0;
     const avf = Math.abs(vf);
     if (avf > 0.3) {
@@ -110,6 +110,15 @@ class Car {
       if (inp.brk > 0 && Math.abs(vf) < 0.6 && inp.thr === 0) { this.vx *= 0.5; this.vy *= 0.5; }
     }
     this.w *= 1 - 0.4 * dt;
+    // 주행 안정 보조(아케이드 ESC): 핸드브레이크를 쓰지 않으면 차가 조향한 만큼만 돌도록 요레이트를 당기고 옆미끄러짐을 줄인다
+    if (!inp.hb && speed > 2 && !this.dead) {
+      const vfN = this.vx * cs + this.vy * sn, vlN = -this.vx * sn + this.vy * cs;
+      const aMax = V.grip * wet * 9.81 * 1.05, wLim = aMax / Math.max(2, Math.abs(vfN)); // 타이어 그립으로 낼 수 있는 만큼만
+      const wWant = clamp(vfN * Math.tan(d) / wb, -wLim, wLim), assist = this.driver === 'player' ? 3.2 : 2;
+      this.w += (wWant - this.w) * (1 - Math.exp(-assist * dt));
+      const vl2 = vlN * Math.exp(-(this.driver === 'player' ? 1.6 : 1) * dt);
+      this.vx = vfN * cs - vl2 * sn; this.vy = vfN * sn + vl2 * cs;
+    }
     this.x += this.vx * dt; this.y += this.vy * dt; this.a = angNorm(this.a + this.w * dt);
     this.vf = this.vx * Math.cos(this.a) + this.vy * Math.sin(this.a);
     this.vl = -this.vx * Math.sin(this.a) + this.vy * Math.cos(this.a);
@@ -282,7 +291,14 @@ function playerDrive(car, dt) {
     hb = hb || j.hb;
   }
   const vf = car.vf;
-  car.in.st = st; car.in.hb = hb;
+  const analog = (Pad.active && Pad.lx) || (Input.usingTouch && (document.body.classList.contains('driving') || Input.touch.on));
+  if (!analog) {
+    const k = car.kst || 0, rate = 2.4 * Settings.sens;
+    if (st === 0) car.kst = Math.abs(k) < 10 * dt ? 0 : k - sign(k) * 10 * dt;
+    else car.kst = (sign(k) !== st && k !== 0) ? st * 0.2 : clamp(k + st * rate * dt + (k === 0 ? st * 0.2 : 0), -1, 1);
+    st = car.kst;
+  } else if (Pad.active && Pad.lx) st = sign(st) * Math.pow(Math.abs(st), 1.3) * Settings.sens;
+  car.in.st = clamp(st, -1, 1); car.in.hb = hb;
   if (thrKey > 0) { car.in.thr = thrKey; car.in.brk = vf < -1 ? 1 : 0; if (vf < -1) car.in.thr = 0; }
   else if (thrKey < 0) {
     if (vf > 1) { car.in.brk = -thrKey; car.in.thr = 0; }

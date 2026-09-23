@@ -59,8 +59,10 @@ const TUNE = IS_MOBILE
 // 사용자 설정 (브라우저에 저장)
 const Settings = {
   camRot: true, // 운전 중 화면을 차 방향으로 회전
-  load() { try { const v = localStorage.getItem('nh.camrot'); if (v !== null) this.camRot = v === '1'; } catch (e) { } },
-  save() { try { localStorage.setItem('nh.camrot', this.camRot ? '1' : '0'); } catch (e) { } },
+  sens: 1,      // 조향 감도 배율 (0.7 둔하게 · 1 보통 · 1.35 민감하게)
+  wheel: 'lg',  // 모바일 핸들 크기 md · lg · xl
+  load() { try { const v = localStorage.getItem('nh.camrot'); if (v !== null) this.camRot = v === '1'; const s = parseFloat(localStorage.getItem('nh.sens')); if (s) this.sens = s; const w = localStorage.getItem('nh.wheel'); if (w) this.wheel = w; } catch (e) { } },
+  save() { try { localStorage.setItem('nh.camrot', this.camRot ? '1' : '0'); localStorage.setItem('nh.sens', String(this.sens)); localStorage.setItem('nh.wheel', this.wheel); } catch (e) { } },
 };
 Settings.load();
 function buzz(ms) { if (IS_MOBILE && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { } } }
