@@ -402,6 +402,7 @@ function drawFullMap() {
   // 구역 이름
   const acc = {};
   for (const b of World.blocks) { const d = b.smallPark ? World.hoods[b.hood].name : b.park || (b.district === DIST.PARK ? '' : World.hoods[b.hood].name); if (!d) continue; acc[d] = acc[d] || [0, 0, 0]; acc[d][0] += (b.x0 + b.x1) / 2; acc[d][1] += (b.y0 + b.y1) / 2; acc[d][2]++; }
+  if (World.airport) acc['네온 국제공항'] = [World.airport.cx, World.airport.cy + World.airport.ry * 0.15, 1];
   if (World.base) acc[DIST_NAMES[DIST.BASE]] = [(World.base.x0 + World.base.x1) / 2 / T, (World.base.y0 + World.base.y1) / 2 / T, 1];
   for (const d in acc) { const [sx, sy, n] = acc[d]; if (!n) continue; txt(c, d, ox + sx / n * T * k, oy + sy / n * T * k, `${13 * UI.s}px ${FONT_DISP}`, 'rgba(255,255,255,0.8)', 'rgba(0,0,0,0.9)', 4, 'center'); }
   if (World.base) { const B = World.base; txt(c, '포트 네온 기지', ox + (B.x0 + B.x1) / 2 * k, oy + (B.y0 + B.y1) / 2 * k, `${15 * UI.s}px ${FONT_DISP}`, '#c9d49a', 'rgba(0,0,0,0.9)', 4, 'center'); }
