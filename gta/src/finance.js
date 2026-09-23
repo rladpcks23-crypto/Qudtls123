@@ -64,7 +64,7 @@ const Finance = {
   },
   save() { return { prices: this.prices.map(p => Math.round(p * 100) / 100), shares: this.shares, estate: this.estate, wh: this.wh, laws: this.laws, bank: { dep: Math.round(this.bank.dep), debt: Math.round(this.bank.debt) }, heist: { done: this.heist.done, prep: this.heist.prep, cool: {} } }; },
   law(id) { return !!this.laws[id]; },
-  rentPerMin() { return Math.round(ESTATES.filter(e => this.estate[e.id]).reduce((a, e) => a + e.rent, 0) * (this.law('rent') ? 1.3 : 1)); },
+  rentPerMin() { return Math.round(ESTATES.filter(e => this.estate[e.id]).reduce((a, e) => a + e.rent, 0) * (this.law('rent') ? 1.3 : 1) * (1 + 0.05 * (Game.player.eduLv || 0))); },
   stockValue() { return COMPANIES.reduce((a, c, i) => a + (this.shares[c.id] || 0) * this.prices[i], 0); },
   netWorth() {
     const est = ESTATES.filter(e => this.estate[e.id]).reduce((a, e) => a + e.price, 0);

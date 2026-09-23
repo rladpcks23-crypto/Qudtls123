@@ -6,7 +6,7 @@ UI·대사·주석은 전부 **한국어**. 새 문자열도 한국어로 쓴다
 ## 빌드 · 실행 · 테스트
 
 ```bash
-python3 build.py                 # src/*.js + shell.html → build/neon-harbor-{pc,mobile}.html, dist/artifact-*.html
+python3 build.py                 # src/*.js + shell.html → build/neon-harbor-pc.html, dist/artifact-pc.html (v2.8부터 PC판만. 모바일은 --mobile)
 # 브라우저로 build/neon-harbor-pc.html 을 바로 열면 실행된다 (서버 불필요)
 
 npm install && npx playwright install chromium   # 테스트용 (한 번만)
@@ -15,7 +15,7 @@ node tests/soak-test.js          # 400초 무작위 조작 — errs/nan 이 비�
 node tests/missions-test.js      # 스토리 14개 자동 진행 (테스트가 순간이동을 해서 일부 FAIL은 정상)
 node tests/jobs-test.js          # 직업 9개 자동 진행
 
-bash packaging/build-android.sh  # release/NeonHarbor-mobile.apk (apktool·zipalign·JDK 필요, 키: packaging/neonharbor.keystore)
+# (중단됨) bash packaging/build-android.sh  # release/NeonHarbor-mobile.apk — v2.8부터 모바일판은 만들지 않는다 (apktool·zipalign·JDK 필요, 키: packaging/neonharbor.keystore)
 bash packaging/desktop/build.sh  # release/NeonHarbor-PC.exe (electron-builder)
 ```
 버전 올리기: `packaging/build-android.sh`의 versionCode/versionName, `packaging/desktop/package.json`의 version, `CHANGELOG.md`.

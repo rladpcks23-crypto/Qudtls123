@@ -9,8 +9,9 @@
  * 시야/탄도 판정: Amanatides & Woo, "A Fast Voxel Traversal Algorithm" (1987) 의 DDA.
  * ===================================================================== */
 
+const ENABLE_BASE = false; // v2.8: 군 기지는 잠시 뺀다 (군 장비는 공항 군수 화물 구역에)
 const T = 4;               // 타일 한 칸 = 4m (차선 폭)
-const MW = 480, MH = 480;  // 타일 수 → 1920m × 1920m 도시 (v2.5에서 190 → 480 확장; 3D는 청크 단위로 스트리밍)
+const MW = 640, MH = 640;  // 타일 수 → 2560m × 2560m 섬 (v2.8에서 480 → 640 확장; 3D는 청크 단위로 스트리밍)
 const TL = { WATER: 0, ROAD: 1, WALK: 2, BUILD: 3, GRASS: 4, SAND: 5, LOT: 6, PLAZA: 7, DOCK: 8, RUNWAY: 9 };
 const DIST = { DOWNTOWN: 0, MIDTOWN: 1, RESID: 2, HARBOR: 3, BEACH: 4, PARK: 5, COAST: 6, BASE: 7, INDUSTRY: 8 };
 const DIST_NAMES = ['다운타운', '미드타운', '웨스트 힐즈', '하버 포인트', '선셋 비치', '센트럴 파크', '해안 산책로', '포트 네온 기지', '아이언 밸리'];
@@ -129,10 +130,10 @@ function genWorld(seed) {
   for (let k = cands.length - 1; k > 0; k--) { const m = Math.floor(R() * (k + 1)); [cands[k], cands[m]] = [cands[m], cands[k]]; }
   for (const [t, i, j] of cands) {
     const a = `${i},${j}`, b = t === 'h' ? `${i + 1},${j}` : `${i},${j + 1}`;
-    if (touched.has(a) || touched.has(b)) continue;
-    const u = (W.VX[i] + 1) / MW, v = (W.HY[j] + 1) / MH;
-    if (Math.hypot(u - 0.52, v - 0.52) < 0.16) continue; // 다운타운은 촘촘한 격자 유지
-    if (R() > 0.2) continue;
+    const u = (W.VX[i] + 1) / MW, v = (W.HY[j] + 1) / MH, dc = Math.hypot(u - 0.52, v - 0.5);
+    if ((touched.has(a) || touched.has(b)) && (dc < 0.3 || R() < 0.5)) continue; // 외곽은 슈퍼블록이 이어져 불규칙한 큰 블록이 된다
+    if (dc < 0.13) continue; // 다운타운은 촘촘한 격자 유지 (밀도가 높을수록 블록이 작다)
+    if (R() > 0.12 + dc * 0.75) continue;
     const bi = t === 'h' ? i + 1 : i, bj = t === 'h' ? j : j + 1;
     if (deg(i, j) - 1 < 2 || deg(bi, bj) - 1 < 2) continue;
     if (t === 'h') hE[i][j] = false; else vE[i][j] = false;
@@ -160,22 +161,42 @@ function genWorld(seed) {
     const bay = E(u, v, 0.64, 0.87, 0.075, 0.07) < 1 || E(u, v, 0.33, 0.87, 0.06, 0.05) < 1;
     return inside && !bay;
   };
-  const riverAt = (u, v) => (u > 0.1 && u < 0.41 && Math.abs(v - (0.64 + 0.03 * Math.sin(u * 14 + ph[4]))) < 0.022) || (v >= 0.62 && Math.abs(u - (0.4 + 0.02 * Math.sin(v * 12))) < 0.02);
+  const riverAt = (u, v) => (u > 0.1 && u < 0.41 && Math.abs(v - (0.64 + 0.03 * Math.sin(u * 14 + ph[4]))) < 0.013) || (v >= 0.62 && Math.abs(u - (0.4 + 0.02 * Math.sin(v * 12))) < 0.012);
   W.rural = (u, v) => u < 0.12 || u > 0.87; // 섬 양 끝은 숲과 농가
   const cellLand = [], cellRiver = [];
   for (let i = 0; i < NX - 1; i++) { cellLand.push([]); cellRiver.push([]); for (let j = 0; j < NY - 1; j++) {
     const u = (W.VX[i] + W.VX[i + 1] + 2) / 2 / MW, v = (W.HY[j] + W.HY[j + 1] + 2) / 2 / MH;
-    const base = j <= 1 && W.VX[i + 1] <= 186; // 기지로 이어지는 땅
-    const riv = !base && riverAt(u, v) && Math.hypot(u - 0.52, v - 0.5) > 0.12;
+    const base = ENABLE_BASE && j <= 1 && W.VX[i + 1] <= MW * 0.36 + 3; // 기지로 이어지는 땅
+    const riv = !base && riverAt(u, v) && landAt(u, v) && Math.hypot(u - 0.52, v - 0.5) > 0.12;
     cellRiver[i].push(riv); cellLand[i].push((landAt(u, v) || base) && !riv);
   } }
+  // 공항: 북동쪽 바다를 메운 넓은 부지(인천공항처럼) + 본섬으로 이어지는 둑길
+  const cellAir = cellLand.map(r => r.map(() => false));
+  {
+    let i0 = -1, i1 = -1, j0 = -1, j1 = -1;
+    for (let i = 0; i < NX - 1; i++) { const u = (W.VX[i] + 1) / MW; if (u >= 0.66 && i0 < 0) i0 = i; if (u < 0.95) i1 = i; }
+    for (let j = 0; j < NY - 1; j++) { const v = (W.HY[j] + 1) / MH; if (v >= 0.06 && j0 < 0) j0 = j; if (v < 0.27) j1 = j; }
+    if (i0 >= 0 && i1 > i0 + 3 && j1 > j0 + 3) {
+      for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) { cellAir[i][j] = true; cellLand[i][j] = true; cellRiver[i][j] = false; }
+      const ic = Math.floor((i0 + i1) / 2);
+      for (let j = j1 + 1; j < NY - 1 && !cellLand[ic][j]; j++) { cellLand[ic][j] = true; cellRiver[ic][j] = false; } // 둑길
+      W.airport = { i0, i1, j0, j1 };
+    }
+  }
+  W.cellAir = cellAir;
   const cl = (i, j) => i >= 0 && j >= 0 && i < NX - 1 && j < NY - 1 && cellLand[i][j];
+  const ca = (i, j) => i >= 0 && j >= 0 && i < NX - 1 && j < NY - 1 && cellAir[i][j];
   const cr = (i, j) => i >= 0 && j >= 0 && i < NX - 1 && j < NY - 1 && cellRiver[i][j];
   // 도로 구간은 옆 칸 중 하나라도 땅이면 남긴다. 양쪽이 강이면(또는 땅-강) 다리로 남긴다
-  const keep = (a, b, ra, rb) => a || b || (ra && rb);
+  //   다리는 양 끝이 둑(땅에 닿은 교차로)일 때만 — 강 한가운데를 따라가는 도로는 만들지 않는다
+  const nodeLand = (i, j) => cl(i - 1, j - 1) || cl(i, j - 1) || cl(i - 1, j) || cl(i, j);
   for (let i = 0; i < NX; i++) for (let j = 0; j < NY; j++) {
-    if (i < NX - 1 && hE[i][j] && !keep(cl(i, j - 1), cl(i, j), cr(i, j - 1), cr(i, j))) hE[i][j] = false;
-    if (j < NY - 1 && vE[i][j] && !keep(cl(i - 1, j), cl(i, j), cr(i - 1, j), cr(i, j))) vE[i][j] = false;
+    if (i < NX - 1 && hE[i][j] && !(cl(i, j - 1) || cl(i, j) || (cr(i, j - 1) && cr(i, j) && nodeLand(i, j) && nodeLand(i + 1, j) && (i % 2 === 0)))) hE[i][j] = false;
+    if (j < NY - 1 && vE[i][j] && !(cl(i - 1, j) || cl(i, j) || (cr(i - 1, j) && cr(i, j) && nodeLand(i, j) && nodeLand(i, j + 1) && (j % 2 === 0)))) vE[i][j] = false;
+  }
+  for (let i = 0; i < NX; i++) for (let j = 0; j < NY; j++) { // 공항 안쪽 도로는 없앤다 (둘레 도로만 남김)
+    if (i < NX - 1 && ca(i, j - 1) && ca(i, j)) hE[i][j] = false;
+    if (j < NY - 1 && ca(i - 1, j) && ca(i, j)) vE[i][j] = false;
   }
   // 섬 가운데와 이어지지 않은 도로 조각은 없앤다
   {
@@ -183,7 +204,7 @@ function genWorld(seed) {
     const nb = (i, j) => { const o = []; if (i < NX - 1 && hE[i][j]) o.push([i + 1, j]); if (i > 0 && hE[i - 1][j]) o.push([i - 1, j]); if (j < NY - 1 && vE[i][j]) o.push([i, j + 1]); if (j > 0 && vE[i][j - 1]) o.push([i, j - 1]); return o; };
     while (q.length) { const [i, j] = q.pop(); for (const n of nb(i, j)) { const k = n.join(); if (!seen.has(k)) { seen.add(k); q.push(n); } } }
     for (let i = 0; i < NX; i++) for (let j = 0; j < NY; j++) if (!seen.has(i + ',' + j)) { if (i < NX - 1) hE[i][j] = false; if (j < NY - 1) vE[i][j] = false; if (i > 0) hE[i - 1][j] = false; if (j > 0) vE[i][j - 1] = false; }
-    for (let i = 0; i < NX - 1; i++) for (let j = 0; j < NY - 1; j++) if (cellLand[i][j] && ![[i, j], [i + 1, j], [i, j + 1], [i + 1, j + 1]].some(([a, b]) => seen.has(a + ',' + b))) cellLand[i][j] = false;
+    for (let i = 0; i < NX - 1; i++) for (let j = 0; j < NY - 1; j++) if (cellLand[i][j] && !cellAir[i][j] && ![[i, j], [i + 1, j], [i, j + 1], [i + 1, j + 1]].some(([a, b]) => seen.has(a + ',' + b))) cellLand[i][j] = false;
   }
   W.cellLand = cellLand; W.cellRiver = cellRiver;
   // 고속도로: 가로 2줄 · 세로 2줄 (4차선, AI가 빠르게 달린다)
@@ -217,8 +238,9 @@ function genWorld(seed) {
     if (vE[i][j]) for (let y = W.HY[j] + 2; y < W.HY[j + 1]; y++) { paintRoad(W.VX[i], y, 1); paintRoad(W.VX[i] + 1, y, 1); }
   }
 
+  const nearAirport = b => { const A = W.airport; if (!A) return false; const ax0 = W.VX[A.i0] - 40, ax1 = W.VX[A.i1 + 1] + 40, ay0 = W.HY[A.j0] - 40, ay1 = W.HY[A.j1 + 1] + 40; return !b.airport && b.x1 >= ax0 && b.x0 <= ax1 && b.y1 >= ay0 && b.y0 <= ay1; };
   // ---------- 에투알 광장 · 대로 · 랜드마크 (파리식 방사형 구조) ----------
-  W.decos = []; W.landmarks = [];
+  W.decos = []; W.landmarks = []; W.runways = [];
   function buildEtoile(b, ix0, iy0, ix1, iy1) {
     const cx = W.etoile.cx, cy = W.etoile.cy, Rr = Math.min(cx - ix0, ix1 + 1 - cx, cy - iy0, iy1 + 1 - cy) - 0.6;
     W.etoile.R = Rr;
@@ -238,30 +260,117 @@ function genWorld(seed) {
     b.lots = [];
     W.landmarks.push({ name: '네온 개선문', x: cx * T, y: cy * T });
   }
+  // 공항: 평행 활주로 두 개 + 유도로 + 가운데 터미널(여객동 + 탑승동 날개) + 관제탑 + 격납고 + 주차장
+  function buildAirport(b, ix0, iy0, ix1, iy1) {
+    b.lots = [];
+    const pv = (x0, y0, x1, y1, t) => { for (let y = Math.max(iy0, y0); y <= Math.min(iy1, y1); y++) for (let x = Math.max(ix0, x0); x <= Math.min(ix1, x1); x++) set(x, y, t); };
+    pv(ix0, iy0, ix1, iy1, TL.GRASS);
+    const w = ix1 - ix0, h = iy1 - iy0;
+    const rA = iy0 + 6, rB = iy1 - 11;                      // 활주로 두 줄 (폭 6칸 = 24m)
+    for (const ry of [rA, rB]) { pv(ix0 + 6, ry, ix1 - 6, ry + 5, TL.RUNWAY); W.runways.push({ x0: (ix0 + 6) * T, y0: ry * T, x1: (ix1 - 5) * T, y1: (ry + 6) * T }); }
+    const tA = rA + 9, tB = rB - 5;                         // 평행 유도로
+    pv(ix0 + 8, tA, ix1 - 8, tA + 1, TL.LOT); pv(ix0 + 8, tB, ix1 - 8, tB + 1, TL.LOT);
+    for (let x = ix0 + 10; x < ix1 - 8; x += 22) { pv(x, rA + 6, x + 1, tA, TL.LOT); pv(x, tB + 2, x + 1, rB - 1, TL.LOT); }
+    // 가운데 계류장 + 터미널
+    const ax0 = ix0 + Math.floor(w * 0.22), ax1 = ix1 - Math.floor(w * 0.22), ay0 = tA + 4, ay1 = tB - 4;
+    pv(ax0, ay0, ax1, ay1, TL.LOT);
+    const mx = Math.floor((ax0 + ax1) / 2), my = Math.floor((ay0 + ay1) / 2);
+    // 여객 터미널 (가운데 큰 건물, 곡선 지붕) + 좌우 탑승동 날개 + 계류장 안의 긴 탑승동 두 줄 (인천공항 배치)
+    const tw = Math.floor((ax1 - ax0) * 0.28), th = Math.max(4, Math.floor((ay1 - ay0) * 0.12));
+    const term = addBuilding(mx - tw, my - th, mx + tw, my + th, 18, 'terminal', '#c9d3dc'); term.label = '네온 국제공항';
+    W.decos.push({ t: 'vault', x0: (mx - tw) * T, y0: (my - th) * T, x1: (mx + tw + 1) * T, y1: (my + th + 1) * T, z: 18, c: '#8fb3c9' });
+    for (const s of [-1, 1]) { const x0 = s < 0 ? mx - tw - 16 : mx + tw + 1, x1 = s < 0 ? mx - tw - 1 : mx + tw + 16; addBuilding(x0, my - 1, x1, my + 1, 10, 'terminal', '#b8c4cf'); }
+    const cA = Math.floor((ay0 + my - th) / 2), cB = Math.floor((ay1 + my + th) / 2);
+    for (const cy of [cA, cB]) { addBuilding(mx - Math.floor(tw * 1.3), cy - 1, mx + Math.floor(tw * 1.3), cy + 1, 10, 'terminal', '#b8c4cf'); addBuilding(mx - 1, Math.min(cy, my) + 2, mx + 1, Math.max(cy, my) - 2, 7, 'terminal', '#aab6c1'); }
+    // 화물 청사 (계류장 동쪽) · 계류장 모서리 잔디
+    addBuilding(ax1 - 12, ay0 + 2, ax1 - 3, ay0 + 8, 12, 'warehouse', '#9aa3ad').label = '화물 청사';
+    for (const [x, y] of [[ax0, ay0], [ax0, ay1 - 5], [ax1 - 5, ay1 - 5]]) pv(x, y, x + 5, y + 5, TL.GRASS);
+    const ct = addBuilding(ax1 + 4, my - 1, ax1 + 5, my, 40, 'ctower', '#9aa3ad'); ct.label = '관제탑';
+    W.decos.push({ t: 'cab', x: (ax1 + 5) * T, y: (my + 0.5) * T, z: 40, c: '#2b4a5a' });
+    for (let k = 0; k < 3; k++) { const hx = ix0 + 8 + k * 10; if (hx + 8 < ax0 - 2) { pv(hx - 1, my - 4, hx + 9, my + 6, TL.LOT); addBuilding(hx, my - 3, hx + 7, my + 3, 10, 'hangar', '#7a8290'); W.decos.push({ t: 'vault', x0: hx * T, y0: (my - 3) * T, x1: (hx + 8) * T, y1: (my + 4) * T, z: 10, c: '#6b7480' }); } }
+    // 군수 화물 구역 (공항 서쪽 끝): 전차 2 · 헬기 2 · 전투기 2 — 제한구역이 아니라 수배되지 않는다
+    {
+      const dx0 = ix0 + 4, dy0 = my + 8, dx1 = Math.min(ax0 - 3, ix0 + 40), dy1 = Math.min(tB - 3, my + 20);
+      pv(dx0, dy0, dx1, dy1, TL.LOT);
+      W.helipads = [];
+      for (const k of [0, 1]) { const cx = dx0 + 2 + k * 8; W.helipads.push({ x: (cx + 3) * T, y: (dy0 + 4) * T }); }
+      addBuilding(dx1 - 7, dy0 + 1, dx1 - 1, dy0 + 5, 9, 'hangar', '#5f6b4f').label = '군수 화물청사';
+      W.decos.push({ t: 'vault', x0: (dx1 - 7) * T, y0: (dy0 + 1) * T, x1: dx1 * T, y1: (dy0 + 6) * T, z: 9, c: '#56604a' });
+      W.depot = { door: { x: (dx0 + 20) * T, y: (dy1 + 1) * T }, spots: {
+        tanks: [{ x: (dx0 + 4) * T, y: (dy1 - 2) * T, a: 0 }, { x: (dx0 + 12) * T, y: (dy1 - 2) * T, a: 0 }],
+        helis: W.helipads.map(h => ({ x: h.x, y: h.y, a: 0 })),
+        jets: [{ x: (ix0 + 9) * T, y: (rA + 1.5) * T, a: 0 }, { x: (ix0 + 9) * T, y: (rA + 4.5) * T, a: 0 }] } };
+    }
+    // 여객기 게이트 (탑승동 양옆)
+    W.airport.gates = [];
+    for (const [gx, gy, a] of [[mx - 10, cA - 6, Math.PI / 2], [mx + 10, cA - 6, Math.PI / 2], [mx - 10, cB + 6, -Math.PI / 2], [mx + 10, cB + 6, -Math.PI / 2], [mx - tw - 8, my - 6, Math.PI / 2], [mx + tw + 8, my + 6, -Math.PI / 2]])
+      W.airport.gates.push({ x: (gx + 0.5) * T, y: (gy + 0.5) * T, a, car: null, cd: 0 });
+    W.airport.takeoff = { x: (ix0 + 9) * T, y: (rA + 3) * T, a: 0 };
+    // 동쪽 끝 주차장 + 공항 문
+    const pkx = ix1 - 14; pv(pkx, my - 8, ix1 - 1, my + 8, TL.LOT);
+    for (let y = my - 7; y <= my + 5; y += 3) addParkingRow(pkx + 1, y, ix1 - 2, y + 2);
+    W.places.biz_airport = { x: (ix1 + 0.5) * T, y: (my + 0.5) * T, face: 0, label: '네온 국제공항', lot: { x0: ix0, y0: iy0, x1: ix1, y1: iy1, block: b, b: term } };
+    for (let k = 0; k < 40; k++) { const x = ix0 + 2 + Math.floor(R() * (w - 4)), y = iy0 + 1 + Math.floor(R() * (h - 2)); if (get(x, y) === TL.GRASS && get(x, y - 1) === TL.GRASS && get(x, y + 1) === TL.GRASS) addTree((x + 0.5) * T, (y + 0.5) * T, 'tree'); }
+    W.landmarks.push({ name: '네온 국제공항', x: (mx + 0.5) * T, y: (my + 0.5) * T });
+  }
   function carveBoulevards() {
-    const cx = W.etoile.cx, cy = W.etoile.cy, R0 = (W.etoile.R || 8) + 2, Lmax = 0.47 * MW, ringR = 0.3 * MW;
+    const cx = W.etoile.cx, cy = W.etoile.cy, R0 = (W.etoile.R || 8) + 2, Lmax = 0.1 * MW, ringR = 0.14 * MW; // 광장 둘레만 짧은 방사로 (모든 길이 중심으로 모이지는 않는다)
     const mask = new Uint8Array(MW * MH);
     const rays = []; for (let k = 0; k < 8; k++) { const a = Math.PI / 8 + k * Math.PI / 4; rays.push([Math.cos(a), Math.sin(a)]); }
     const carve = (x, y) => {
       if (x < 1 || y < 1 || x >= MW - 1 || y >= MH - 1) return;
       const i = tIdx(x, y), t = W.tiles[i];
-      if (t === TL.ROAD || t === TL.WATER || t === TL.RUNWAY || t === TL.DOCK || t === TL.SAND || W.dist[i] === DIST.BASE || W.region[i] === (W.etoile.block ? W.etoile.block.id : -9)) return;
+      if (t === TL.ROAD || t === TL.WATER || t === TL.RUNWAY || t === TL.DOCK || t === TL.SAND || W.dist[i] === DIST.BASE || W.region[i] === (W.etoile.block ? W.etoile.block.id : -9) || (W.blocks[W.region[i]] && W.blocks[W.region[i]].airport)) return;
       if (t === TL.BUILD) { const bb = W.buildings[W.bIndex[i]]; if (bb && !bb.removed) { bb.removed = true; for (let yy = bb.y0; yy <= bb.y1; yy++) for (let xx = bb.x0; xx <= bb.x1; xx++) { set(xx, yy, TL.GRASS); W.bIndex[tIdx(xx, yy)] = -1; } } }
       set(x, y, TL.ROAD); W.roadK[i] = 4; mask[i] = 1;
     };
     for (let y = 1; y < MH - 1; y++) for (let x = 1; x < MW - 1; x++) {
       const dx = x + 0.5 - cx, dy = y + 0.5 - cy, d = Math.hypot(dx, dy);
-      let hit = Math.abs(d - ringR) < 1.6 || Math.abs(d - ringR * 0.5) < 1.4;
+      let hit = Math.abs(d - ringR * 0.5) < 1.4;
       if (!hit && d > R0 && d < Lmax) for (const [ux, uy] of rays) { const al = dx * ux + dy * uy; if (al > 0 && Math.abs(dx * uy - dy * ux) < 1.6) { hit = true; break; } }
       if (hit) carve(x, y);
     }
     // 가로수와 가로등 (대로 양옆)
     const side = (x, y, tree) => { const tx = Math.floor(x), ty = Math.floor(y); if (tx < 1 || ty < 1 || tx >= MW - 1 || ty >= MH - 1) return; const t = W.tiles[tIdx(tx, ty)]; if (t === TL.ROAD || t === TL.WATER || t === TL.BUILD || W.dist[tIdx(tx, ty)] === DIST.BASE) return; if (tree) addTree(x * T, y * T, 'tree'); else W.lamps.push({ x: x * T, y: y * T }); };
     for (const [ux, uy] of rays) for (let s = R0 + 2, k = 0; s < Lmax; s += 2.6, k++) for (const sg of [-1, 1]) side(cx + ux * s - uy * sg * 2.1, cy + uy * s + ux * sg * 2.1, k % 4 !== 0);
-    for (const rr of [ringR, ringR * 0.5]) for (let a = 0, k = 0; a < TAU; a += 2.6 / rr, k++) for (const sg of [-1, 1]) side(cx + Math.cos(a) * (rr + sg * 2.1), cy + Math.sin(a) * (rr + sg * 2.1), k % 4 !== 0);
+    for (const rr of [ringR * 0.5]) for (let a = 0, k = 0; a < TAU; a += 2.6 / rr, k++) for (const sg of [-1, 1]) side(cx + Math.cos(a) * (rr + sg * 2.1), cy + Math.sin(a) * (rr + sg * 2.1), k % 4 !== 0);
+    // 옛길: 동네 중심끼리 이어지는 구불구불한 길 (Parish & Müller의 '전역 목표 + 지역 제약' 방식을 흉내:
+    //   목표 방향으로 가되 잡음으로 굽고, 물을 만나면 비껴간다. 격자와 상관없이 비스듬히 지나가 자연스러운 길이 된다)
+    const hoodC = W.hoods.map(h => ({ x: h.u * MW, y: h.v * MH }));
+    const pairs = new Set();
+    hoodC.forEach((a, i) => hoodC.map((b, j) => [j, Math.hypot(a.x - b.x, a.y - b.y)]).filter(([j]) => j !== i).sort((p, q) => p[1] - q[1]).slice(0, 2).forEach(([j]) => pairs.add(Math.min(i, j) + ',' + Math.max(i, j))));
+    const landT = (x, y) => { const t = get(Math.floor(x), Math.floor(y)); return t !== TL.WATER; };
+    const trace = (ax, ay, bx, by, wid, seed) => {
+      let x = ax, y = ay, h = Math.atan2(by - y, bx - x);
+      for (let k = 0; k < 3000; k++) {
+        const want = Math.atan2(by - y, bx - x) + 0.55 * Math.sin(k * 0.021 + seed) + 0.25 * Math.sin(k * 0.067 + seed * 2.3);
+        let dh = angNorm(want - h); h += clamp(dh, -0.045, 0.045);
+        let nx = x + Math.cos(h) * 0.7, ny = y + Math.sin(h) * 0.7;
+        if (!landT(nx + Math.cos(h) * 3, ny + Math.sin(h) * 3)) { // 물 앞: 좌우로 비껴간다
+          let ok = false; for (const s of [0.5, -0.5, 1, -1, 1.5, -1.5]) { const h2 = h + s; if (landT(x + Math.cos(h2) * 4, y + Math.sin(h2) * 4)) { h = h2; ok = true; break; } }
+          if (!ok) return; nx = x + Math.cos(h) * 0.7; ny = y + Math.sin(h) * 0.7;
+        }
+        x = nx; y = ny;
+        for (let oy = -wid; oy <= wid; oy++) for (let ox = -wid; ox <= wid; ox++) if (ox * ox + oy * oy <= wid * wid + 0.5) carve(Math.floor(x) + ox, Math.floor(y) + oy);
+        if (k % 9 === 0) side(x - Math.sin(h) * (wid + 1.6), y + Math.cos(h) * (wid + 1.6), k % 27 !== 0);
+        if (Math.hypot(bx - x, by - y) < 3) return;
+      }
+    };
+    let sd = 1;
+    for (const key of pairs) { const [i, j] = key.split(',').map(Number); trace(hoodC[i].x, hoodC[i].y, hoodC[j].x, hoodC[j].y, 1, sd++ * 1.7); }
+    // 해안을 따라 도는 해안도로 (텐서장 유선처럼 경계에 평행): 바다에서 일정 거리인 곳을 잇는다
+    {
+      const dW = new Float32Array(MW * MH).fill(1e9), q = [];
+      for (let i = 0; i < MW * MH; i++) if (W.tiles[i] === TL.WATER && !W.riverT[i]) { dW[i] = 0; q.push(i); }
+      // 두 번 훑는 거리 변환(chamfer 3-4) — 모서리가 둥글어진다
+      const pass = (fwd) => { const s = fwd ? 1 : -1; for (let y = fwd ? 1 : MH - 2; fwd ? y < MH - 1 : y > 0; y += s) for (let x = fwd ? 1 : MW - 2; fwd ? x < MW - 1 : x > 0; x += s) { const i = tIdx(x, y); let v = dW[i]; v = Math.min(v, dW[i - s] + 3, dW[i - s * MW] + 3, dW[i - s * MW - s] + 4, dW[i - s * MW + s] + 4); dW[i] = v; } };
+      pass(true); pass(false);
+      const Rc = 14 * 3; // 약 14타일 안쪽
+      for (let y = 2; y < MH - 2; y++) for (let x = 2; x < MW - 2; x++) { const d = dW[tIdx(x, y)]; if (d >= Rc - 3 && d < Rc + 3 && hash2(x >> 5, y >> 5) < 0.75) carve(x, y); }
+    }
     // 골목: 큰 블록 한가운데를 가르는 좁은 길 (roadK 5)
     for (const b of W.blocks) {
-      if (b.etoile || b.landmark || b.rural || b.district === DIST.PARK || b.district === DIST.DOWNTOWN) continue;
+      if (b.etoile || b.landmark || b.rural || b.airport || b.district === DIST.PARK || b.district === DIST.DOWNTOWN) continue;
       const w = b.x1 - b.x0 + 1, h = b.y1 - b.y0 + 1;
       const alley = (x, y) => { const i = tIdx(x, y), t = W.tiles[i]; if (t === TL.ROAD || t === TL.WATER) return; if (t === TL.BUILD) { const bb = W.buildings[W.bIndex[i]]; if (bb && !bb.removed) { bb.removed = true; for (let yy = bb.y0; yy <= bb.y1; yy++) for (let xx = bb.x0; xx <= bb.x1; xx++) { set(xx, yy, TL.GRASS); W.bIndex[tIdx(xx, yy)] = -1; } } } set(x, y, TL.ROAD); W.roadK[i] = 5; mask[i] = 2; };
       if (w >= 13 && R() < 0.8) { const x = Math.floor((b.x0 + b.x1) / 2); for (let y = b.y0 + 1; y < b.y1; y++) alley(x, y); }
@@ -291,6 +400,23 @@ function genWorld(seed) {
     b.lots = [];
     const door = { x: (mx + 0.5) * T, y: (b.y1 + 0.5) * T, face: 1 };
     return { b, main, door };
+  }
+  // 페리의 '근린주구'(Perry, 1929): 동네 한가운데 초등학교 + 공원 (가게는 가장자리 큰길에)
+  function buildNeighborhoods() {
+    W.schools = [];
+    W.hoods.forEach((h, i) => {
+      if (h.d === DIST.DOWNTOWN) return;
+      const r = landmarkBlock(h.u, h.v, b => !b.rural && !b.airport && b.district !== DIST.PARK && Math.hypot((b.x0 + b.x1) / 2 / MW - h.u, (b.y0 + b.y1) / 2 / MH - h.v) < 0.08, (b, ix0, iy0, ix1, iy1, mx, my) => {
+        for (let y = iy0; y <= iy1; y++) for (let x = ix0; x <= ix1; x++) set(x, y, TL.GRASS);
+        const half = Math.floor((ix0 + ix1) / 2);
+        for (let y = iy0 + 1; y < iy1; y++) for (let x = half + 1; x < ix1; x++) if (R() < 0.18) addTree((x + 0.5) * T, (y + 0.5) * T, 'tree');
+        for (let y = iy0; y <= iy1; y++) set(half, y, TL.PLAZA);
+        const m = addBuilding(ix0 + 1, iy0 + 1, Math.max(ix0 + 2, half - 2), Math.max(iy0 + 2, Math.min(iy1 - 1, iy0 + 5)), 12, 'school', '#c98f5a'); m.label = `${h.name} 학교`;
+        for (let y = Math.min(iy1 - 1, iy0 + 7); y < iy1; y++) for (let x = ix0 + 1; x < half - 1; x++) set(x, y, TL.SAND); // 운동장
+        return m;
+      });
+      if (r) { r.b.district = DIST.PARK; r.b.park = `${h.name} 공원`; r.b.smallPark = true; W.places['school' + i] = { ...r.door, label: `${h.name} 학교`, lot: { x0: r.b.x0 + 1, y0: r.b.y0 + 1, x1: r.b.x1 - 1, y1: r.b.y1 - 1, block: r.b, b: r.main } }; W.schools.push('school' + i); }
+    });
   }
   function buildLandmarks() {
     const core = b => b.district === DIST.DOWNTOWN || b.district === DIST.MIDTOWN;
@@ -345,7 +471,7 @@ function genWorld(seed) {
   }
   // 4-3) 바다·강 칸은 물로 (그 위를 지나는 도로 = 다리)
   //   도로가 없는 줄(칸 사이 띠)은 닿은 칸이 모두 땅일 때만 땅이다 (아니면 블록이 바다 위로 새어 나간다)
-  const inBaseArea = (x, y) => x >= 3 && x <= 188 && y >= 3 && y < W.HY[0];
+  const inBaseArea = (x, y) => ENABLE_BASE && x >= 3 && x <= MW * 0.36 + 5 && y >= 3 && y < W.HY[0];
   const colI = new Int16Array(MW).fill(-1), colS = new Uint8Array(MW), rowJ = new Int16Array(MH).fill(-1), rowS = new Uint8Array(MH);
   for (let i = 0; i < NX; i++) for (let x = W.VX[i]; x < (i < NX - 1 ? W.VX[i + 1] : W.VX[i] + 2); x++) { colI[x] = i; colS[x] = x < W.VX[i] + 2 ? 1 : 0; }
   for (let j = 0; j < NY; j++) for (let y = W.HY[j]; y < (j < NY - 1 ? W.HY[j + 1] : W.HY[j] + 2); y++) { rowJ[y] = j; rowS[y] = y < W.HY[j] + 2 ? 1 : 0; }
@@ -400,6 +526,7 @@ function genWorld(seed) {
   const extra = parkC.slice(3).filter(b => b.area > 60 && b.district !== DIST.PARK);
   for (let k = 0; k < Math.round(MW * MH / 12000) && extra.length; k++) { const b = extra.splice(Math.floor(R() * extra.length), 1)[0]; b.district = DIST.PARK; }
   W.hoodT = new Uint8Array(MW * MH).fill(255);
+  if (W.airport) { const A = W.airport, ab = W.blocks[W.region[tIdx(Math.floor((W.VX[A.i0] + W.VX[A.i1 + 1]) / 2) + 1, Math.floor((W.HY[A.j0] + W.HY[A.j1 + 1]) / 2) + 1)]]; if (ab) { ab.airport = true; ab.district = DIST.PARK; ab.park = '네온 국제공항'; } }
   const eb = W.blocks[W.region[tIdx(W.etoile.cx, W.etoile.cy)]];
   if (eb) { eb.district = DIST.PARK; eb.park = '에투알 광장'; eb.etoile = true; W.etoile.block = eb; }
 
@@ -448,6 +575,7 @@ function genWorld(seed) {
     b.lots = [];
     if (ix1 < ix0 || iy1 < iy0) continue;
     if (b.etoile) { buildEtoile(b, ix0, iy0, ix1, iy1); continue; }
+    if (b.airport) { buildAirport(b, ix0, iy0, ix1, iy1); continue; }
     if (W.rural((b.x0 + b.x1) / 2 / MW, (b.y0 + b.y1) / 2 / MH) && b.district !== DIST.HARBOR) { // 섬 끝의 숲·농가
       b.rural = true;
       for (let y = iy0; y <= iy1; y++) for (let x = ix0; x <= ix1; x++) { set(x, y, TL.GRASS); if (R() < 0.22) addTree((x + rr(0.2, 0.8)) * T, (y + rr(0.2, 0.8)) * T, 'tree'); }
@@ -480,6 +608,11 @@ function genWorld(seed) {
       b.lots.push(L);
       const w = L.x1 - L.x0 + 1, h = L.y1 - L.y0 + 1;
       const cx = (L.x0 + L.x1 + 1) / 2 / MW, cy = (L.y0 + L.y1 + 1) / 2 / MH;
+      if (nearAirport(b)) { // 공항 완충 지대: 소음 때문에 낮은 밀도 — 물류창고 드문드문, 나머지는 풀밭
+        if (R() < 0.3) L.b = addBuilding(L.x0, L.y0, L.x1, L.y1, rr(7, 11), 'warehouse', rpick(PAL.ware));
+        else { for (let y = L.y0; y <= L.y1; y++) for (let x = L.x0; x <= L.x1; x++) set(x, y, TL.GRASS); if (R() < 0.5) addTree((L.x0 + w / 2) * T, (L.y0 + h / 2) * T, 'tree'); L.kind = 'field'; }
+        continue;
+      }
       if (b.district === DIST.DOWNTOWN) {
         if (R() < 0.12) { for (let y = L.y0; y <= L.y1; y++) for (let x = L.x0; x <= L.x1; x++) set(x, y, TL.PLAZA); L.kind = 'plaza'; if (w >= 3 && h >= 3) addTree((L.x0 + w / 2) * T, (L.y0 + h / 2) * T, 'tree'); continue; }
         const core = 1 - clamp(Math.hypot(cx - 0.52, cy - 0.52) / 0.17, 0, 1);
@@ -575,51 +708,81 @@ function genWorld(seed) {
   }
 
   // 6-2) 포트 네온 군사 기지 (GTA V의 포트 잔쿠도처럼 들어가면 ★★★★)
-  {
-    const X0 = 6, X1 = Math.min(MW - 7, 183), Y0 = 5, Y1 = 30; // 기지는 북서쪽 (맵이 커져도 크기 고정)
+  //   네모 상자가 아니라 진짜 기지처럼: 모서리를 깎은 울타리, 활주로 + 평행 유도로 + 연결 유도로, 아치 지붕 격납고,
+  //   관제탑·레이더 돔, 연료 탱크, 연병장을 둘러싼 막사, 기지 안 도로, 나무 숲
+  W.base = null; W.helipads = W.helipads || [];
+  if (ENABLE_BASE) {
+    const X0 = 6, X1 = Math.min(MW - 7, Math.round(MW * 0.36)), Y0 = 5, Y1 = 30, C = 7;
     let gx = W.VX[0]; for (const x of W.VX) if (Math.abs(x - 64) < Math.abs(gx - 64)) gx = x; // 정문 = 가운데쯤 세로 도로의 연장선
+    const inside = (x, y) => x >= X0 && x <= X1 && y >= Y0 && y <= Y1 && Math.min(x - X0 + y - Y0, X1 - x + y - Y0, x - X0 + Y1 - y, X1 - x + Y1 - y) >= C;
     W.trees = W.trees.filter(t => !(t.x >= (X0 - 1) * T && t.x <= (X1 + 2) * T && t.y <= (Y1 + 1) * T));
-    for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) { set(x, y, (x + y) % 11 === 0 && y > 26 ? TL.GRASS : TL.DOCK); W.dist[tIdx(x, y)] = DIST.BASE; }
-    for (let y = Y0 + 4; y <= Y0 + 8; y++) for (let x = X0 + 6; x <= X1 - 6; x++) set(x, y, TL.RUNWAY);   // 활주로 (약 500m)
-    for (let y = Y0 + 9; y <= Y0 + 12; y++) for (let x = X0 + 14; x <= X1 - 20; x++) set(x, y, TL.LOT);  // 계류장
-    for (let y = Y0 + 12; y <= Y1 + 3; y++) for (let x = gx; x <= gx + 1; x++) set(x, y, TL.LOT);       // 정문 진입로
+    for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) { if (!inside(x, y)) { set(x, y, TL.GRASS); continue; } set(x, y, TL.GRASS); W.dist[tIdx(x, y)] = DIST.BASE; }
+    const pave = (x0, y0, x1, y1, t = TL.LOT) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (inside(x, y)) set(x, y, t); };
+    pave(X0 + 8, Y0 + 4, X1 - 8, Y0 + 8, TL.RUNWAY);                       // 활주로 (약 650m)
+    W.runways.push({ x0: (X0 + 8) * T, y0: (Y0 + 4) * T, x1: (X1 - 7) * T, y1: (Y0 + 9) * T });
+    pave(X0 + 12, Y0 + 11, X1 - 12, Y0 + 12);                             // 평행 유도로
+    for (let x = X0 + 14; x < X1 - 12; x += 28) pave(x, Y0 + 9, x + 1, Y0 + 10); // 연결 유도로
+    pave(X0 + 10, Y0 + 13, X0 + 48, Y0 + 22);                             // 격납고 앞 계류장
+    pave(X0 + 8, Y1 - 5, X1 - 8, Y1 - 4);                                 // 기지 안 순환 도로
+    pave(gx, Y0 + 12, gx + 1, Y1 + 3);                                     // 정문 진입로
     for (let y = Y1 + 1; y <= Y1 + 3; y++) for (let x = gx; x <= gx + 1; x++) { set(x, y, TL.ROAD); W.roadK[tIdx(x, y)] = 1; }
     const clear = (x0, x1) => x1 < gx - 1 || x0 > gx + 2;
-    const wall = (x0, y0, x1, y1) => addBuilding(x0, y0, x1, y1, 2.8, 'fence', '#6b6f63');
-    wall(X0, Y0, X1, Y0); wall(X0, Y0 + 1, X0, Y1); wall(X1, Y0 + 1, X1, Y1);
-    wall(X0 + 1, Y1, gx - 1, Y1); wall(gx + 2, Y1, X1 - 1, Y1);
-    const W_ = [];
-    const bld = (x0, y0, x1, y1, h, kind, col) => { if (clear(x0, x1)) W_.push(addBuilding(x0, y0, x1, y1, h, kind, col)); };
-    for (const hx of [X0 + 12, X0 + 24, X0 + 36]) bld(hx, Y0 + 14, hx + 8, Y0 + 20, 11, 'hangar', '#5f6b4f');
-    bld(gx + 5, Y0 + 14, gx + 6, Y0 + 15, 26, 'ctower', '#8a8f82');
-    bld(gx + 10, Y0 + 17, gx + 18, Y0 + 21, 7, 'barracks', '#6d7358');
-    bld(gx - 13, Y0 + 22, gx - 5, Y0 + 24, 6, 'barracks', '#6d7358');
-    for (const [x, y] of [[X0 + 1, Y0 + 1], [X1 - 1, Y0 + 1], [X0 + 1, Y1 - 1], [X1 - 1, Y1 - 1]]) addBuilding(x, y, x, y, 9, 'watchtower', '#7a6a4a');
+    const bld = (x0, y0, x1, y1, h, kind, col) => clear(x0, x1) ? addBuilding(x0, y0, x1, y1, h, kind, col) : null;
+    // 아치 지붕 격납고 3동
+    for (const hx of [X0 + 12, X0 + 24, X0 + 36]) { const hb = bld(hx, Y0 + 15, hx + 8, Y0 + 20, 8, 'hangar', '#5f6b4f'); if (hb) W.decos.push({ t: 'vault', x0: hx * T, y0: (Y0 + 15) * T, x1: (hx + 9) * T, y1: (Y0 + 21) * T, z: 8, c: '#56604a' }); }
+    // 관제탑 + 레이더 돔
+    const ct = bld(gx + 5, Y0 + 14, gx + 6, Y0 + 15, 26, 'ctower', '#8a8f82'); if (ct) W.decos.push({ t: 'cab', x: (gx + 6) * T, y: (Y0 + 15) * T, z: 26, c: '#2b4a5a' });
+    const rd = bld(gx + 24, Y0 + 15, gx + 25, Y0 + 16, 7, 'radar', '#7a8070'); if (rd) W.decos.push({ t: 'dome', x: (gx + 25) * T, y: (Y0 + 16) * T, r: 5, z: 7, c: '#e8e8e8' });
+    // 연병장 + 막사 (ㄷ자로 둘러싼 작은 건물들)
+    const px0 = gx + 34, py0 = Y0 + 15;
+    pave(px0, py0, px0 + 12, py0 + 6, TL.PLAZA);
+    for (let k = 0; k < 3; k++) { bld(px0 + k * 4 + 1, py0 - 3, px0 + k * 4 + 3, py0 - 2, 6, 'barracks', '#6d7358'); bld(px0 + k * 4 + 1, py0 + 8, px0 + k * 4 + 3, py0 + 9, 6, 'barracks', '#6d7358'); }
+    bld(px0 + 14, py0 + 1, px0 + 15, py0 + 5, 7, 'barracks', '#737a5c');
+    bld(gx - 13, Y0 + 22, gx - 5, Y0 + 23, 6, 'barracks', '#6d7358');
+    // 연료 탱크 4기
+    const fx = X1 - 58, fy = Y0 + 15; pave(fx, fy, fx + 11, fy + 7);
+    for (const [dx, dy] of [[2, 2], [7, 2], [2, 6], [7, 6]]) { bld(fx + dx - 1, fy + dy - 1, fx + dx, fy + dy, 6, 'tank', '#b8bcb4'); W.decos.push({ t: 'tankcyl', x: (fx + dx) * T, y: (fy + dy) * T, r: 5, z: 6, c: '#c9ccc4' }); }
+    // 울타리: 깎인 모서리를 따라 (가로로 이어진 칸은 한 건물로 합친다) + 정문 틈 + 모서리 감시탑
+    const edge = (x, y) => inside(x, y) && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !inside(x + dx, y + dy));
+    for (let y = Y0; y <= Y1; y++) {
+      let x = X0;
+      while (x <= X1) {
+        if (!edge(x, y) || (y === Y1 && x >= gx && x <= gx + 1)) { x++; continue; }
+        let x2 = x; while (x2 + 1 <= X1 && edge(x2 + 1, y) && !(y === Y1 && x2 + 1 >= gx && x2 + 1 <= gx + 1)) x2++;
+        if (get(x, y) !== TL.RUNWAY) addBuilding(x, y, x2, y, 2.8, 'fence', '#6b6f63');
+        x = x2 + 1;
+      }
+    }
+    for (const [x, y] of [[X0 + C, Y0 + 1], [X1 - C, Y0 + 1], [X0 + C, Y1 - 1], [X1 - C, Y1 - 1], [X0 + 1, Y0 + C], [X1 - 1, Y0 + C]]) if (get(x, y) !== TL.BUILD) addBuilding(x, y, x, y, 9, 'watchtower', '#7a6a4a');
     // 헬기 착륙장 두 곳 + 전차 주차장
     W.helipads = [];
     const hpX = X1 - 38;
-    for (const k of [0, 1]) { const cx = hpX + k * 8; for (let y = Y0 + 14; y <= Y0 + 19; y++) for (let x = cx; x <= cx + 5; x++) set(x, y, TL.LOT); W.helipads.push({ x: (cx + 3) * T, y: (Y0 + 17) * T }); }
-    for (let y = Y0 + 21; y <= Y1 - 2; y++) for (let x = X1 - 24; x <= X1 - 3; x++) set(x, y, TL.LOT);
-    W.base = { rx0: (X0 + 6) * T, rx1: (X1 - 6) * T, x0: (X0 + 1) * T, y0: (Y0 + 1) * T, x1: X1 * T, y1: Y1 * T, gate: { x: (gx + 1) * T, y: (Y1 + 0.5) * T },
+    for (const k of [0, 1]) { const cx = hpX + k * 8; pave(cx, Y0 + 14, cx + 5, Y0 + 19); W.helipads.push({ x: (cx + 3) * T, y: (Y0 + 17) * T }); }
+    pave(X1 - 24, Y0 + 21, X1 - 10, Y1 - 6);
+    // 풀밭 곳곳 나무
+    for (let y = Y0 + 13; y < Y1 - 5; y++) for (let x = X0 + 4; x <= X1 - 4; x++) if (inside(x, y) && get(x, y) === TL.GRASS && hash2(x * 0.3 | 0, y * 0.3 | 0) < 0.35 && R() < 0.3) addTree((x + 0.5) * T, (y + 0.5) * T, 'tree');
+    W.base = { rx0: (X0 + 8) * T, rx1: (X1 - 7) * T, x0: (X0 + 1) * T, y0: (Y0 + 1) * T, x1: X1 * T, y1: Y1 * T, gate: { x: (gx + 1) * T, y: (Y1 + 0.5) * T },
       spots: {
-        tanks: [{ x: (X1 - 20) * T, y: (Y1 - 5) * T, a: -Math.PI / 2 }, { x: (X1 - 12) * T, y: (Y1 - 5) * T, a: -Math.PI / 2 }],
+        tanks: [{ x: (X1 - 20) * T, y: (Y1 - 8) * T, a: -Math.PI / 2 }, { x: (X1 - 13) * T, y: (Y1 - 8) * T, a: -Math.PI / 2 }],
         helis: W.helipads.map(h => ({ x: h.x, y: h.y, a: 0 })),
-        jets: [{ x: (X0 + 10) * T, y: (Y0 + 5) * T + 1, a: 0 }, { x: (X0 + 10) * T, y: (Y0 + 8) * T, a: 0 }], // 활주로 서쪽 끝, 동쪽을 향해
+        jets: [{ x: (X0 + 12) * T, y: (Y0 + 5) * T + 1, a: 0 }, { x: (X0 + 12) * T, y: (Y0 + 8) * T, a: 0 }], // 활주로 서쪽 끝, 동쪽을 향해
       },
-      guards: [{ x: (gx - 1) * T, y: (Y1 - 2) * T }, { x: (gx + 3) * T, y: (Y1 - 2) * T }, { x: (X0 + 20) * T, y: (Y0 + 23) * T }, { x: (gx + 14) * T, y: (Y0 + 23) * T }, { x: (X1 - 30) * T, y: (Y0 + 20) * T }, { x: (X1 - 14) * T, y: (Y1 - 3) * T }, { x: (X0 + 60) * T, y: (Y0 + 12) * T }, { x: (X0 + 90) * T, y: (Y0 + 12) * T }],
+      guards: [{ x: (gx - 1) * T, y: (Y1 - 2) * T }, { x: (gx + 3) * T, y: (Y1 - 2) * T }, { x: (X0 + 20) * T, y: (Y0 + 23) * T }, { x: (gx + 14) * T, y: (Y0 + 23) * T }, { x: (X1 - 30) * T, y: (Y0 + 20) * T }, { x: (X1 - 14) * T, y: (Y1 - 3) * T }, { x: (X0 + 60) * T, y: (Y0 + 13) * T }, { x: (X0 + 90) * T, y: (Y0 + 13) * T }],
     };
   }
 
   // 6-3) 파리처럼: 에투알 광장에서 뻗는 8개의 가로수 대로 + 둥근 그랑 불바르 + 랜드마크
   carveBoulevards();
   buildLandmarks();
+  buildNeighborhoods();
 
   // 기지 정문 앞 인도: 국방 후원 창구
   {
-    const gt = W.base.gate, tx0 = Math.floor(gt.x / T) + 3, ty0 = Math.floor(gt.y / T) + 3;
+    const gt = W.base ? W.base.gate : W.depot ? W.depot.door : { x: MW * T / 2, y: MH * T / 2 }, tx0 = Math.floor(gt.x / T) + 3, ty0 = Math.floor(gt.y / T) + 3;
     let spot = null;
     for (let r = 0; r < 14 && !spot; r++) for (let dy = -r; dy <= r && !spot; dy++) for (let dx = -r; dx <= r; dx++) { if (get(tx0 + dx, ty0 + dy) === TL.WALK) { spot = { x: (tx0 + dx + 0.5) * T, y: (ty0 + dy + 0.5) * T }; break; } }
-    if (spot) W.places.milgate = { ...spot, label: '기지 정문 (국방 후원)' };
+    if (!W.base && W.depot) spot = { x: W.depot.door.x, y: W.depot.door.y - 2 * T };
+    if (spot) W.places.milgate = { ...spot, label: W.base ? '기지 정문 (국방 후원)' : '국방부 출장소 (국방 후원)' };
   }
   // 7) 특수 장소
   const edgeLots = (d, pred) => W.blocks.filter(b => b.district === d).flatMap(b => b.lots.filter(L => L.edge && !L.used && pred(L)));
@@ -726,6 +889,27 @@ function genWorld(seed) {
     });
   });
   makePlace('biz_casino', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.58, 0.6), 'casino', '#1d1233', '다이아몬드 카지노');
+  // 긴급 시설 커버리지 배치 (Toregas et al. 1971, 위치 집합 커버링의 탐욕 근사):
+  //   모든 교차로가 반경 안에 들 때까지, 아직 못 덮은 교차로를 가장 많이 덮는 필지에 시설을 하나씩 더한다
+  const cover = (kind, existing, radius, maxN, col, label, bk, shop, ch, icol) => {
+    const dem = W.nodes.filter(n => n.deg), covered = new Uint8Array(W.nodes.length);
+    const mark = (x, y) => { for (const n of dem) if (Math.hypot(n.x - x, n.y - y) < radius) covered[n.id] = 1; };
+    for (const k of existing) if (W.places[k]) mark(W.places[k].x, W.places[k].y);
+    const cands = W.blocks.flatMap(b => b.lots.filter(L => L.edge && !L.used && L.b && ['mid', 'house', 'shop', 'warehouse', 'tower'].includes(L.b.kind)));
+    for (let n = 1; n <= maxN; n++) {
+      if (dem.every(d => covered[d.id])) break;
+      let best = null, bs = 0;
+      for (let c = 0; c < cands.length; c += 3) { const L = cands[c]; if (L.used) continue; const x = (L.x0 + L.x1 + 1) / 2 * T, y = (L.y0 + L.y1 + 1) / 2 * T; let sc = 0; for (const d of dem) if (!covered[d.id] && Math.hypot(d.x - x, d.y - y) < radius) sc++; if (sc > bs) { bs = sc; best = L; } }
+      if (!best || bs < 3) break;
+      const key = `${kind}_c${n}`; makePlace(key, best, bk, col, label); mark(W.places[key].x, W.places[key].y);
+      W.branches.push({ key, kind: shop, ch, c: icol, label });
+    }
+  };
+  cover('hospital', ['hospital', 'clinic', 'hospital2', 'hospital3'], 520, 6, '#e9ecef', '종합병원', 'hospital', 'hospital_st', 'H', '#e0443e');
+  cover('police', ['police', 'police2', 'police3'], 560, 6, '#2c3e66', '경찰서', 'police', 'police_st', 'P', '#4b8fe8');
+  cover('fire', [], 480, 8, '#b3261e', '소방서', 'fire', 'fire_st', '소', '#ff6b3d');
+  const nearA = W.airport && anyLot((W.VX[W.airport.i0] + W.VX[W.airport.i1 + 1]) / 2 / MW, (W.HY[W.airport.j1 + 1] + 20) / MH, ['warehouse', 'mid', 'house']);
+  if (nearA) makePlace('biz_airhotel', nearA, 'biz', '#8fb3c9', '에어포트 호텔');
   // 차고형 장소: 필지를 비워 LOT으로 만든다
   const makeLotPlace = (key, L, label) => {
     if (!L) return;

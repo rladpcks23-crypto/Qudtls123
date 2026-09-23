@@ -77,7 +77,7 @@ const Game = {
     if (!sv) this.introT = 7;
     if (sv && sv.body) { Object.assign(P, sv.body); P.hp = P.maxHp; }
     placeStaticPickups();
-    Military.reset(); AirPatrol.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
+    Military.reset(); Airport.reset(); AirPatrol.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
     this.waypoint = null; this.noWanted = false;
     Cam.x = P.x; Cam.y = P.y;
     this.populate(true);
@@ -234,7 +234,7 @@ const Game = {
     Jay.update(dt);
     Missions.update(dt);
     Jobs.update(dt);
-    Military.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update(); Biz.update(dt); BankRob.update(dt); Gangs.update(dt); GangJob.update(dt); Empire.update(dt); Finance.update(dt);
+    Military.update(dt); Airport.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update(); Biz.update(dt); BankRob.update(dt); Gangs.update(dt); GangJob.update(dt); Empire.update(dt); Finance.update(dt);
     if (this.introT > 0 && (this.introT -= dt) <= 0) UI.big('조직을 고르자', '지도(M)의 왕관 = 조직 보스 · 찾아가 계약하거나, 은신처(집)에서 내 조직을 세울 수 있다', 5, '#f2c14e');
     Talk.update(dt); Aim.update(dt); EMS.update(dt); Givers.update(); Vendors.update(dt); GPS.update(dt);
     // 체력 자연 회복: 6초 동안 안 다치면 50까지 천천히 (GTA V)
@@ -427,7 +427,7 @@ const Game = {
     }
     // 상점 · 직업 게시판 (걸어서 문 앞 마커에 들어가면 열림)
     if (!P.car && !(P.alt > 0) && this.shopCool <= 0 && !(Missions.active && Missions.active.def.noShop)) {
-      for (const [k, kind] of [...GANG_IDS.map(g => ['hq_' + g, 'hq_' + g]), ...Object.keys(BUSINESSES).map(b => [b, b]), ['ammu3', 'ammu'], ['burger3', 'burger'], ['burger4', 'burger'], ['mart4', 'mart'], ['mart5', 'mart'], ['clothes', 'clothes'], ['clothes2', 'clothes'], ['gym', 'gym'], ['pharmacy', 'pharmacy'], ['pharmacy2', 'pharmacy'], ['bank', 'bank'], ['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart'], ...EXTRA_PLACES, ...(World.branches || []).map(b => [b.key, b.kind])]) {
+      for (const [k, kind] of [...GANG_IDS.map(g => ['hq_' + g, 'hq_' + g]), ...Object.keys(BUSINESSES).map(b => [b, b]), ['ammu3', 'ammu'], ['burger3', 'burger'], ['burger4', 'burger'], ['mart4', 'mart'], ['mart5', 'mart'], ['clothes', 'clothes'], ['clothes2', 'clothes'], ['gym', 'gym'], ['pharmacy', 'pharmacy'], ['pharmacy2', 'pharmacy'], ['bank', 'bank'], ['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart'], ...EXTRA_PLACES, ...(World.branches || []).map(b => [b.key, b.kind]), ...(World.schools || []).map(k => [k, 'school'])]) {
         const S = World.places[k]; if (S && dist(P.x, P.y, S.x, S.y) < 1.8) { Shop.open(kind); return; }
       }
       const SH = World.places.safehouse;
@@ -459,17 +459,17 @@ const Game = {
     const P = this.player;
     let spot;
     if (kind === 'wasted') {
-      const hs = ['hospital', 'clinic', 'hospital2', 'hospital3'].map(k => World.places[k]).filter(Boolean);
+      const hs = ['hospital', 'clinic', 'hospital2', 'hospital3', ...(World.branches || []).filter(b => b.kind === 'hospital_st').map(b => b.key)].map(k => World.places[k]).filter(Boolean);
       spot = hs.sort((a, b) => dist(a.x, a.y, P.x, P.y) - dist(b.x, b.y, P.x, P.y))[0];
       if (!Empire.freeHospital()) P.money = Math.max(0, P.money - 100);
     } else {
-      spot = ['police', 'police2', 'police3'].map(k => World.places[k]).filter(Boolean).sort((a, b) => dist(a.x, a.y, P.x, P.y) - dist(b.x, b.y, P.x, P.y))[0];
+      spot = ['police', 'police2', 'police3', ...(World.branches || []).filter(b => b.kind === 'police_st').map(b => b.key)].map(k => World.places[k]).filter(Boolean).sort((a, b) => dist(a.x, a.y, P.x, P.y) - dist(b.x, b.y, P.x, P.y))[0];
       const fine = Math.min(P.money, 100 + Wanted.stars * 150);
       P.money = Math.max(0, P.money - (Empire.lenient() ? Math.round(fine / 2) : fine));
       if (!Empire.lenient()) { P.inv = { fist: Infinity }; P.weapon = 'fist'; } else UI.toast('경찰 후원 덕분에 무기는 돌려받았다');
     }
     const np = new PlayerPed(spot.x, spot.y);
-    Object.assign(np, { money: P.money, displayMoney: P.money, inv: P.inv, weapon: P.weapon in P.inv ? P.weapon : 'fist', bag: kind === 'wasted' ? P.bag : {}, maxHp: P.maxHp, hp: P.maxHp, endurance: P.endurance, aimSkill: P.aimSkill }); for (const k of STYLE_KEYS) np[k] = P[k];
+    Object.assign(np, { money: P.money, displayMoney: P.money, inv: P.inv, weapon: P.weapon in P.inv ? P.weapon : 'fist', bag: kind === 'wasted' ? P.bag : {}, maxHp: P.maxHp, hp: P.maxHp, endurance: P.endurance, aimSkill: P.aimSkill, eduLv: P.eduLv }); for (const k of STYLE_KEYS) np[k] = P[k];
     if (kind === 'wasted') np.inv = P.inv;
     this.player = np;
     Wanted.reset(); Police.reset(); Jay.reset();

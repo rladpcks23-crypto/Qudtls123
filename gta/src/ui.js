@@ -253,6 +253,7 @@ const EXTRA_PLACES = [], EXTRA_ICONS = [];
 function placeIcons() {
   const out = [];
   const pl = World.places;
+  for (const k of World.schools || []) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '학', c: '#e0a060', label: pl[k].label });
   for (const b of World.branches || []) if (pl[b.key]) out.push({ x: pl[b.key].x, y: pl[b.key].y, ch: b.ch, c: b.c, label: b.label });
   for (const e of EXTRA_ICONS) if (pl[e.key]) out.push({ x: pl[e.key].x, y: pl[e.key].y, ch: e.ch, c: typeof e.c === 'function' ? e.c() : e.c, label: e.label });
   for (const k of ['hospital2', 'hospital3']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: 'H', c: '#e0443e', label: '병원' });
@@ -381,7 +382,7 @@ function drawFullMap() {
   const c = ctx, P = Game.player;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
   c.fillStyle = 'rgba(6,10,18,0.92)'; c.fillRect(0, 0, CW, CH);
-  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  군사 기지 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)'], ['#9be15d', '차  내 차고 (산 차량 보관·저장)'], ['#4fc3f7', '배  마리나 (제트스키·보트)'], ['#ffd166', '₩  사업체 (사면 1분마다 수입, 초록 = 소유)'], ['#ff5d8f', '♦  다이아몬드 카지노'], ['#e07aff', '옷  옷가게 (변장)'], ['#ff9f43', '체  체육관'], ['#3ee07a', '약  약국'], ['#ffd700', '은  은행 (털 수 있다)'], ['#ff4d4d', '♛  조직 보스 (계약·가입)'], ['#e8e2d0', '시  시청 · 병원 · 경찰서 · 군 정문 = 후원']];
+  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '군  공항 군수 화물 구역 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)'], ['#9be15d', '차  내 차고 (산 차량 보관·저장)'], ['#4fc3f7', '배  마리나 (제트스키·보트)'], ['#ffd166', '₩  사업체 (사면 1분마다 수입, 초록 = 소유)'], ['#ff5d8f', '♦  다이아몬드 카지노'], ['#e07aff', '옷  옷가게 (변장)'], ['#ff9f43', '체  체육관'], ['#3ee07a', '약  약국'], ['#ffd700', '은  은행 (털 수 있다)'], ['#ff4d4d', '♛  조직 보스 (계약·가입)'], ['#e8e2d0', '시  시청 · 병원 · 경찰서 · 소방서(소) = 후원'], ['#e0a060', '학  학교 (경영 강의)']];
   // 범례 줄 수를 먼저 재서 지도 크기를 정한다 (글자가 지도·도움말과 겹치지 않게)
   const lf = `500 ${12 * UI.s}px ${FONT_KR}`, lh = 18 * Math.max(1, UI.s);
   c.font = lf;
@@ -400,8 +401,8 @@ function drawFullMap() {
   if (Game.showTurf) drawTurfOverlay(c, ox, oy, k, ox0, oy0);
   // 구역 이름
   const acc = {};
-  for (const b of World.blocks) { const d = b.park || (b.district === DIST.PARK ? '' : World.hoods[b.hood].name); if (!d) continue; acc[d] = acc[d] || [0, 0, 0]; acc[d][0] += (b.x0 + b.x1) / 2; acc[d][1] += (b.y0 + b.y1) / 2; acc[d][2]++; }
-  acc[DIST_NAMES[DIST.BASE]] = [(World.base.x0 + World.base.x1) / 2 / T, (World.base.y0 + World.base.y1) / 2 / T, 1];
+  for (const b of World.blocks) { const d = b.smallPark ? World.hoods[b.hood].name : b.park || (b.district === DIST.PARK ? '' : World.hoods[b.hood].name); if (!d) continue; acc[d] = acc[d] || [0, 0, 0]; acc[d][0] += (b.x0 + b.x1) / 2; acc[d][1] += (b.y0 + b.y1) / 2; acc[d][2]++; }
+  if (World.base) acc[DIST_NAMES[DIST.BASE]] = [(World.base.x0 + World.base.x1) / 2 / T, (World.base.y0 + World.base.y1) / 2 / T, 1];
   for (const d in acc) { const [sx, sy, n] = acc[d]; if (!n) continue; txt(c, d, ox + sx / n * T * k, oy + sy / n * T * k, `${13 * UI.s}px ${FONT_DISP}`, 'rgba(255,255,255,0.8)', 'rgba(0,0,0,0.9)', 4, 'center'); }
   if (World.base) { const B = World.base; txt(c, '포트 네온 기지', ox + (B.x0 + B.x1) / 2 * k, oy + (B.y0 + B.y1) / 2 * k, `${15 * UI.s}px ${FONT_DISP}`, '#c9d49a', 'rgba(0,0,0,0.9)', 4, 'center'); }
   for (const ic of placeIcons()) {

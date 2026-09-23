@@ -15,7 +15,7 @@ const Save = {
     try {
       const P = Game.player;
       const inv = {}; for (const k in P.inv) if (k !== 'fist') inv[k] = P.inv[k] === Infinity ? -1 : P.inv[k];
-      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {}, gangs: Gangs.save(), empire: Empire.save(), finance: Finance.save(), body: { maxHp: P.maxHp, endurance: P.endurance || 1, aimSkill: P.aimSkill || 1, shirt: P.shirt, pants: P.pants, hatType: P.hatType || 'none', hatCol: P.hatCol || '', logo: P.logo || '' } }));
+      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {}, gangs: Gangs.save(), empire: Empire.save(), finance: Finance.save(), body: { maxHp: P.maxHp, endurance: P.endurance || 1, aimSkill: P.aimSkill || 1, shirt: P.shirt, pants: P.pants, hatType: P.hatType || 'none', hatCol: P.hatCol || '', logo: P.logo || '', eduLv: P.eduLv || 0 } }));
     } catch (e) { /* 저장 불가 환경 */ }
   },
   clear() { try { localStorage.removeItem(this.key); } catch (e) { } },
@@ -492,16 +492,16 @@ const MISSION_DEFS = [
   {
     title: '13. 강철 코끼리',
     reward: 15000,
-    intro: [['마담 윤', '청룡파 잔당이 무기를 사 모은다는 소문이야. 우리도 한 수 위를 보여줘야지.'], ['마담 윤', '북쪽 포트 네온 기지에 라이노 전차가 있어. 끌고 와. 차고에 넣으면 경찰 쪽은 우리가 정리해 줄게.'], ['도움말', '전차는 느리지만 차를 밀어 부순다. 발사 버튼 = 주포. 기지에 들어가면 수배 ★4가 붙는다.']],
+    intro: [['마담 윤', '청룡파 잔당이 무기를 사 모은다는 소문이야. 우리도 한 수 위를 보여줘야지.'], ['마담 윤', '공항 군수 화물 구역에 라이노 전차가 있어. 끌고 와. 차고에 넣으면 경찰 쪽은 우리가 정리해 줄게.'], ['도움말', '전차는 느리지만 차를 밀어 부순다. 발사 버튼 = 주포. 기지에 들어가면 수배 ★4가 붙는다.']],
     outro: [['마담 윤', '전차라니… 이 도시에서 우리한테 덤빌 놈은 이제 없겠네.']],
-    start(m) { m.spot = World.base.spots.tanks[0]; },
+    start(m) { m.spot = (World.base || World.depot).spots.tanks[0]; },
     update(m) {
       const P = Game.player, c = P.car, G = World.places.garage;
       if (m.tank && (m.tank.dead || m.tank.burnT > 0)) return { fail: '전차가 파괴됐다' };
       if (!c || c.type !== 'tank') {
-        const t = m.tank || Game.cars.find(q => q.type === 'tank' && !q.dead && q.burnT <= 0 && Military.inside(q.x, q.y));
+        const t = m.tank || Game.cars.find(q => q.type === 'tank' && !q.dead && q.burnT <= 0 && (Military.inside(q.x, q.y) || dist(q.x, q.y, m.spot.x, m.spot.y) < 40));
         m.blips = [t ? { ent: t, c: '#4fb3ff', big: true } : { x: m.spot.x, y: m.spot.y, c: '#4fb3ff', big: true }];
-        Missions.obj(m, m.tank ? '전차로 돌아가라' : '포트 네온 기지에서 라이노 전차를 훔쳐라');
+        Missions.obj(m, m.tank ? '전차로 돌아가라' : (World.base ? '포트 네온 기지' : '공항 군수 화물 구역') + '에서 라이노 전차를 훔쳐라');
         return;
       }
       m.tank = c;
@@ -516,15 +516,15 @@ const MISSION_DEFS = [
   {
     title: '14. 하늘의 주인',
     reward: 18000,
-    intro: [['조니 박', '큰일이야. 기지 녀석들이 우리를 노리고 공격 헬기 세 대를 띄운대.'], ['조니 박', '기지에서 헌터 헬기를 가져와서 먼저 떨어뜨려. 미사일은 적 헬기 쪽을 겨누고 쏘면 공중으로 날아간다.'], ['도움말', '헬기: 가속 = 이륙·전진, 핸들 = 방향. 발사 = 기관포, 드리프트/스페이스 = 미사일. 비행 중 하차 두 번 = 낙하산.']],
+    intro: [['조니 박', '큰일이야. 기지 녀석들이 우리를 노리고 공격 헬기 세 대를 띄운대.'], ['조니 박', '공항 군수 화물 구역에서 헌터 헬기를 가져와서 먼저 떨어뜨려. 미사일은 적 헬기 쪽을 겨누고 쏘면 공중으로 날아간다.'], ['도움말', '헬기: 가속 = 이륙·전진, 핸들 = 방향. 발사 = 기관포, 드리프트/스페이스 = 미사일. 비행 중 하차 두 번 = 낙하산.']],
     outro: [['조니 박', '세 대 전부?! 넌 이제 네온 하버 하늘의 주인이야.']],
-    start(m) { m.spot = World.base.spots.helis[0]; m.foes = []; },
+    start(m) { m.spot = (World.base || World.depot).spots.helis[0]; m.foes = []; },
     update(m) {
       const P = Game.player, c = P.car;
       if (m.stage === 0) {
         if (!c || c.type !== 'milheli' || c.alt < 30) {
           m.blips = c && c.type === 'milheli' ? [] : [{ x: m.spot.x, y: m.spot.y, c: '#4fb3ff', big: true }];
-          Missions.obj(m, c && c.type === 'milheli' ? '고도를 올려라' : '포트 네온 기지에서 헌터 헬기를 가져와라');
+          Missions.obj(m, c && c.type === 'milheli' ? '고도를 올려라' : (World.base ? '포트 네온 기지' : '공항 군수 화물 구역') + '에서 헌터 헬기를 가져와라');
           return;
         }
         m.stage = 1;

@@ -160,15 +160,19 @@ function drawGround(amb) {
       if (hash2(tx, ty) < 0.08) { ctx.fillStyle = 'rgba(40,30,20,0.25)'; ctx.beginPath(); ctx.arc(tx * T + 2, ty * T + 2, 1.1, 0, TAU); ctx.fill(); }
     }
   }
-  // 활주로 표시 · 헬기 착륙장
+  // 활주로 표시 (기지·공항) · 헬기 착륙장
+  for (const r of World.runways || []) {
+    if (r.x1 < Cam.x - Cam.vw / 2 - 20 || r.x0 > Cam.x + Cam.vw / 2 + 20 || r.y1 < Cam.y - Cam.vh / 2 - 20 || r.y0 > Cam.y + Cam.vh / 2 + 20) continue;
+    const cy = (r.y0 + r.y1) / 2, hw = r.y1 - r.y0;
+    ctx.fillStyle = 'rgba(240,240,235,0.85)';
+    for (let x = r.x0 + 20; x < r.x1 - 20; x += 12) ctx.fillRect(x, cy - 0.2, 6, 0.4);
+    for (const ex of [r.x0 + 2, r.x1 - 12]) for (let k = 0; k < 6; k++) ctx.fillRect(ex, r.y0 + 1.5 + k * (hw - 3) / 6, 10, 1.4);
+    for (const ex of [r.x0 + 40, r.x1 - 48]) { ctx.fillRect(ex, r.y0 + 2, 8, 1.2); ctx.fillRect(ex, r.y1 - 3.2, 8, 1.2); } // 접지 구역 표시
+    ctx.fillStyle = 'rgba(242,193,78,0.8)'; ctx.fillRect(r.x0, r.y0 + 0.3, r.x1 - r.x0, 0.25); ctx.fillRect(r.x0, r.y1 - 0.55, r.x1 - r.x0, 0.25);
+  }
   if (World.base) {
     const B = World.base;
     if (Cam.y - Cam.vh / 2 < B.y1 + 10) {
-      const ry0 = 9 * T, ry1 = 14 * T, cy = (ry0 + ry1) / 2, rx0 = B.rx0, rx1 = B.rx1;
-      ctx.fillStyle = 'rgba(240,240,235,0.85)';
-      for (let x = rx0 + 20; x < rx1 - 20; x += 12) ctx.fillRect(x, cy - 0.2, 6, 0.4);
-      for (const ex of [rx0 + 2, rx1 - 12]) for (let k = 0; k < 6; k++) ctx.fillRect(ex, ry0 + 1.5 + k * 3, 10, 1.4);
-      ctx.fillStyle = 'rgba(242,193,78,0.8)'; ctx.fillRect(rx0, ry0 + 0.3, rx1 - rx0, 0.25); ctx.fillRect(rx0, ry1 - 0.55, rx1 - rx0, 0.25);
       for (const h of World.helipads || []) {
         ctx.strokeStyle = 'rgba(240,240,235,0.9)'; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.arc(h.x, h.y, 9, 0, TAU); ctx.stroke();
         ctx.fillStyle = 'rgba(240,240,235,0.9)'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('H', h.x, h.y + 0.5);
@@ -298,6 +302,16 @@ function drawCar(c, shadow) {
   ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a);
   if (shadow) { ctx.fillStyle = 'rgba(0,0,0,0.32)'; rr(ctx, -L / 2 + shadow[0] * 1.2, -W / 2 + shadow[1] * 1.2, L, W, st === 'bike' ? 0.35 : 0.5); ctx.fill(); }
   if (st === 'bike') { drawBike(c); ctx.restore(); return; }
+  if (st === 'airliner') { // 여객기: 동체 + 후퇴익 + 꼬리 날개 + 엔진
+    const L = c.L; ctx.fillStyle = c.dead ? '#2a2b2e' : '#e8ecf0';
+    ctx.beginPath(); ctx.moveTo(-L * 0.08, -L * 0.48); ctx.lineTo(L * 0.1, -L * 0.48); ctx.lineTo(L * 0.18, -1.2); ctx.lineTo(L * 0.18, 1.2); ctx.lineTo(L * 0.1, L * 0.48); ctx.lineTo(-L * 0.08, L * 0.48); ctx.lineTo(0, 1.2); ctx.lineTo(0, -1.2); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-L * 0.46, -L * 0.18); ctx.lineTo(-L * 0.38, -L * 0.18); ctx.lineTo(-L * 0.32, 0); ctx.lineTo(-L * 0.38, L * 0.18); ctx.lineTo(-L * 0.46, L * 0.18); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 0, L / 2, 1.9, 0, 0, TAU); ctx.fill();
+    ctx.fillStyle = '#2f6fd6'; ctx.fillRect(-L * 0.45, -0.25, L * 0.9, 0.5);
+    ctx.fillStyle = '#5b6573'; for (const s of [-1, 1]) for (const k of [0.22, 0.36]) ctx.fillRect(L * 0.02, s * L * k - 0.6, 3, 1.2);
+    ctx.fillStyle = '#1b2735'; ctx.fillRect(L * 0.43, -0.9, 1.2, 1.8);
+    ctx.restore(); return;
+  }
   if (st === 'tank' || st === 'milheli' || st === 'jet') { drawMilVehicle(c); ctx.restore(); return; }
   if (st === 'boat' || st === 'jetski') { drawBoat(c); ctx.restore(); return; }
   // 바퀴

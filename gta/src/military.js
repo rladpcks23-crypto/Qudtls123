@@ -14,6 +14,7 @@
 Object.assign(VTYPES, {
   tank: { name: '라이노 전차', L: 7.2, W: 3.5, mass: 40000, Fe: 1, vmax: 11, grip: 3, cs: 6, steer: 0.9, hp: 2200, colors: ['#4b5a3a'], style: 'tank', special: 'tank', armor: 0.15 },
   milheli: { name: '헌터 공격 헬기', L: 9, W: 2.4, mass: 5000, Fe: 1, vmax: 36, grip: 1, cs: 5, steer: 1.5, hp: 700, colors: ['#4a5540'], style: 'milheli', special: 'heli', armor: 0.5 },
+  airliner: { name: '네온 에어 여객기', L: 30, W: 5, mass: 60000, Fe: 1, vmax: 120, grip: 1, cs: 5, steer: 0.5, hp: 1500, colors: ['#f2f4f7'], style: 'airliner', special: 'jet', armor: 0.4 },
   jet: { name: '라저 전투기', L: 12, W: 3, mass: 9000, Fe: 1, vmax: 139, grip: 1, cs: 5, steer: 0.9, hp: 600, colors: ['#8a929c'], style: 'jet', special: 'jet', armor: 0.5 },
 });
 // 그 자리 건물 옥상 높이 (건물이 없으면 0)
@@ -236,12 +237,12 @@ const Military = {
   reset() { this.slots = []; this.soldiers = []; this.warnT = 0; this.warned = false; },
   inside(x, y) { const B = World.base; return B && x > B.x0 && x < B.x1 && y > B.y0 && y < B.y1; },
   update(dt) {
-    const B = World.base; if (!B) return;
+    const B = World.base || World.depot; if (!B) return;
+    const zone = !!World.base; // 기지가 있을 때만 경비병·출입 경보
     const P = Game.player;
     // 전차가 굴러오면 시민들이 달아난다
     if (P.car && P.car.type === 'tank' && !P.car.dead && chance(dt * 1.5)) scarePeds(P.car.x, P.car.y, P.car.speed > 1 ? 26 : 14);
-    const cx = (B.x0 + B.x1) / 2, cy = (B.y0 + B.y1) / 2;
-    const near = Math.abs(P.px - cx) < (B.x1 - B.x0) / 2 + 150 && P.py < B.y1 + 160;
+    const sp0 = B.spots.tanks[0], near = zone ? Math.abs(P.px - (B.x0 + B.x1) / 2) < (B.x1 - B.x0) / 2 + 150 && P.py < B.y1 + 160 : dist(P.px, P.py, sp0.x, sp0.y) < 350;
     if (!this.slots.length) {
       for (const s of B.spots.tanks) this.slots.push({ s, type: 'tank', car: null, cool: 0 });
       for (const s of B.spots.helis) this.slots.push({ s, type: 'milheli', car: null, cool: 0 });
@@ -257,6 +258,7 @@ const Military = {
         Game.cars.push(car); sl.car = car;
       }
     }
+    if (!zone) return; // 공항 군수 구역: 경비·경보 없음
     // 경비병
     this.soldiers = this.soldiers.filter(p => Game.peds.includes(p) && !p.dead);
     if (near && this.soldiers.length < B.guards.length && !this.spawnCD) {
@@ -458,3 +460,21 @@ function airTargetAlong(c, ang) {
   }
   return false;
 }
+
+// ---------- 공항: 게이트마다 여객기 (가까이 가면 생긴다, 훔쳐서 몰 수 있다) ----------
+const Airport = {
+  slots: [],
+  reset() { this.slots = []; },
+  update(dt) {
+    const A = World.airport; if (!A || !A.gates) return;
+    const P = Game.player;
+    if (!this.slots.length) this.slots = A.gates.map(s => ({ s, car: null, cool: 0 }));
+    for (const sl of this.slots) {
+      const c = sl.car, d = dist(sl.s.x, sl.s.y, P.px, P.py);
+      if (c && (!Game.cars.includes(c) || c.dead)) { sl.car = null; sl.cool = 60; }
+      else if (c && c !== P.car && d > 500 && dist(c.x, c.y, sl.s.x, sl.s.y) < 5) { c.remove = true; sl.car = null; }
+      sl.cool -= dt;
+      if (!sl.car && sl.cool <= 0 && d < 380 && d > 40) { const car = new Car('airliner', sl.s.x, sl.s.y, sl.s.a, { persistent: true }); car.alt = 0; Game.cars.push(car); sl.car = car; }
+    }
+  },
+};

@@ -94,7 +94,7 @@ const Bag = {
 };
 
 // ---------- 차량 매매상 ----------
-const VEHICLE_PRICES = { compact: 3000, sedan: 5000, bike: 4500, van: 6000, muscle: 9000, truck: 12000, sports: 18000, super: 42000, hyper: 450000, taxi: 5000, police: 15000, swat: 30000, ambulance: 12000, armored: 60000, bus: 25000, tank: 180000, milheli: 150000, jet: 220000 };
+const VEHICLE_PRICES = { compact: 3000, sedan: 5000, bike: 4500, van: 6000, muscle: 9000, truck: 12000, sports: 18000, super: 42000, hyper: 450000, taxi: 5000, police: 15000, swat: 30000, ambulance: 12000, armored: 60000, bus: 25000, tank: 180000, airliner: 900000, milheli: 150000, jet: 220000 };
 const DEALER_STOCK = ['compact', 'sedan', 'bike', 'van', 'muscle', 'sports', 'super', 'hyper', 'truck', 'armored', 'jetski', 'speedboat', 'tank', 'milheli', 'jet'];
 Object.assign(VEHICLE_PRICES, { jetski: 7000, speedboat: 26000 });
 
@@ -248,6 +248,8 @@ const BUSINESSES = {
   biz_arena: { name: '네온 아레나', price: 2800000, perMin: 16800, desc: '경기와 콘서트가 열리는 경기장 (랜드마크)' },
   biz_opera: { name: '네온 오페라 하우스', price: 3000000, perMin: 18000, desc: '돔 지붕의 오페라 극장 (랜드마크)' },
   biz_towerview: { name: '네온 타워 전망대', price: 3500000, perMin: 21000, desc: '센트럴 파크의 140m 철탑 (랜드마크)' },
+  biz_airhotel: { name: '에어포트 호텔', price: 1300000, perMin: 7800, desc: '공항 옆 호텔 — 환승객이 끊이지 않는다' },
+  biz_airport: { name: '네온 국제공항 면세·항공', price: 6000000, perMin: 36000, desc: '섬 최대의 사업 — 공항 주인은 여객기를 공짜로 몬다' },
   biz_casino: { name: '다이아몬드 카지노', price: 5000000, perMin: 30000, desc: '베팅 한도 10배 · 카지노에서 잃은 돈의 20% 환급' },
 };
 const BIZ_MULT = [1, 1.5, 2.2, 3.1, 4.3];       // 단계별 수입 배율
@@ -257,7 +259,7 @@ const Biz = {
   t: 0,
   owned() { return Game.props || (Game.props = {}); },
   lv(k) { const o = this.owned()[k]; return o ? o.lv || 1 : 0; },
-  perMin(k) { const B = BUSINESSES[k], L = this.lv(k); return L ? Math.round(B.perMin * BIZ_MULT[L - 1] * (this.has('biz_tower') && k !== 'biz_tower' ? 1.1 : 1) * (Finance.law('biztax') ? 1.2 : 1)) : 0; },
+  perMin(k) { const B = BUSINESSES[k], L = this.lv(k); return L ? Math.round(B.perMin * BIZ_MULT[L - 1] * (this.has('biz_tower') && k !== 'biz_tower' ? 1.1 : 1) * (Finance.law('biztax') ? 1.2 : 1) * (1 + 0.05 * (Game.player.eduLv || 0))) : 0; },
   total() { return Object.keys(this.owned()).reduce((a, k) => a + (BUSINESSES[k] ? this.perMin(k) : 0), 0); },
   // 실제 플레이 1분마다 소유한 사업체 수입이 바로 입금된다
   update(dt) {

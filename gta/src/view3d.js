@@ -189,6 +189,9 @@ const View3D = {
     if (d.t === 'lintel') { add(new THREE.BoxGeometry(d.x1 - d.x0, d.z1 - d.z0, d.y1 - d.y0), (d.x0 + d.x1) / 2, (d.z0 + d.z1) / 2, (d.y0 + d.y1) / 2); add(new THREE.BoxGeometry(d.x1 - d.x0 + 1, 1.2, d.y1 - d.y0 + 1), (d.x0 + d.x1) / 2, d.z1 + 0.6, (d.y0 + d.y1) / 2); }
     else if (d.t === 'dome') { add(new THREE.SphereGeometry(d.r, 20, 10, 0, TAU, 0, Math.PI / 2), d.x, d.z, d.y); add(new THREE.CylinderGeometry(0.4, 0.8, 5, 8), d.x, d.z + d.r + 2, d.y); }
     else if (d.t === 'spire') add(new THREE.ConeGeometry(2.2, d.h, 8), d.x, d.z + d.h / 2, d.y);
+    else if (d.t === 'vault') { const len = d.x1 - d.x0, r = (d.y1 - d.y0) / 2; const o = add(new THREE.CylinderGeometry(r, r, len, 16, 1, false, 0, Math.PI), (d.x0 + d.x1) / 2, d.z, (d.y0 + d.y1) / 2); o.rotation.set(0, 0, Math.PI / 2); o.scale.set(1, 1, 0.45); o.rotation.y = 0; o.rotation.x = -Math.PI / 2; o.rotation.z = Math.PI / 2; }
+    else if (d.t === 'cab') { add(new THREE.CylinderGeometry(3.2, 2.4, 3.2, 10), d.x, d.z + 1.6, d.y); add(new THREE.CylinderGeometry(3.6, 3.6, 0.5, 10), d.x, d.z + 3.4, d.y); }
+    else if (d.t === 'tankcyl') add(new THREE.CylinderGeometry(d.r, d.r, d.z + 1, 16), d.x, (d.z + 1) / 2, d.y);
     else if (d.t === 'eiffel') {
       // 네 다리(기울어진 기둥) + 층층이 좁아지는 몸통 + 첨탑. 밤에는 금빛으로 빛난다
       m.emissive = new THREE.Color('#3a2a10'); this.eiffelMat = m;
@@ -312,6 +315,19 @@ const View3D = {
       const rot = new THREE.Mesh(box, this.mat('#222')); rot.scale.set(11, 0.08, 0.4); rot.position.set(0.3, 2.7, 0); g.add(rot);
       const rot2 = new THREE.Mesh(box, this.mat('#222')); rot2.scale.set(0.4, 0.08, 11); rot2.position.set(0.3, 2.7, 0); g.add(rot2);
       g.userData.rotor = [rot, rot2];
+    } else if (st === 'airliner') {
+      const white = bodyMat, blue = this.mat('#2f6fd6'), grey = this.mat('#5b6573');
+      add(white, L, 3.6, 3.8, 0, 3.2, 0);                          // 동체
+      add(blue, L * 0.96, 0.5, 3.86, 0, 3.4, 0);                   // 줄무늬
+      add(white, 5, 2.6, 3.0, L * 0.52, 3.0, 0);                   // 기수
+      add(glass, 1.2, 0.8, 2.6, L * 0.55, 4.0, 0);
+      const wing = add(white, 6, 0.4, L * 0.95, -1, 2.4, 0);        // 주날개
+      add(white, 3, 0.3, L * 0.38, -L * 0.42, 4.6, 0);             // 수평 꼬리
+      add(blue, 4.2, 5, 0.4, -L * 0.43, 7.2, 0);                   // 수직 꼬리
+      for (const z of [-L * 0.22, L * 0.22]) add(grey, 4, 1.6, 1.6, 0.5, 1.6, z); // 엔진
+      for (const [x, z] of [[L * 0.4, 0], [-1, 2.2], [-1, -2.2]]) add(this.mat('#111'), 0.8, 1.4, 0.5, x, 0.7, z);
+      add(new THREE.MeshBasicMaterial({ color: 0xff9a40 }), 0.2, 1.2, 1.2, -L * 0.5 - 0.3, 3.2, 0).name = 'flame';
+      g.userData.flame = g.getObjectByName('flame');
     } else if (st === 'jet') {
       add(bodyMat, L * 0.85, 1.2, 1.3, -0.3, 1.5, 0);
       add(bodyMat, 1.6, 0.8, 0.9, L * 0.45, 1.5, 0);

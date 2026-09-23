@@ -20,7 +20,10 @@ TITLES = {'pc': '네온 하버 PC', 'mobile': '네온 하버 모바일'}
 
 os.makedirs(os.path.join(ROOT, 'build'), exist_ok=True)
 os.makedirs(os.path.join(ROOT, 'dist'), exist_ok=True)
-for plat, title in TITLES.items():
+# v2.8부터 PC판만 만든다. 모바일판이 필요하면: python3 build.py --mobile
+import sys
+PLATS = ['pc', 'mobile'] if '--mobile' in sys.argv else ['pc']
+for plat, title in [(p, TITLES[p]) for p in PLATS]:
     body = SHELL.replace('<title>네온 하버</title>', f'<title>{title}</title>', 1)
     body = body.replace('<!-- SCRIPTS -->', '<script>\n' + THREE + '\n</script>\n' + f"<script>\nconst NH_PLATFORM = '{plat}';\n" + JS + '\n</script>')
     open(os.path.join(ROOT, 'dist', f'artifact-{plat}.html'), 'w', encoding='utf-8').write(body)

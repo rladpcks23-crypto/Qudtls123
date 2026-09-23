@@ -28,7 +28,7 @@ const { chromium } = require(process.env.NODE_PATH_PW || 'playwright');
           if (a === 3) Wanted.clear();
           if (a === 4) { P.weapon = pick(['pistol', 'smg', 'shotgun', 'rifle', 'grenade', 'rocket']); giveWeapon(P, P.weapon, 50); }
           if (a === 5) { const c = Game.cars[R(Game.cars.length)]; if (c && !c.dead) { if (P.car) exitCar(P, true); P.x = c.x + 3; P.y = c.y; tryEnterCar(P); } }
-          if (a === 6) { if (P.car) exitCar(P, true); const B = World.base, s = pick(Military.slots); if (s && s.car) { P.x = s.car.x + 3; P.y = s.car.y; tryEnterCar(P); } else { P.x = (B.x0 + B.x1) / 2; P.y = B.y1 + 10; } }
+          if (a === 6) { if (P.car) exitCar(P, true); const B = World.base || World.depot, s = pick(Military.slots); if (s && s.car) { P.x = s.car.x + 3; P.y = s.car.y; tryEnterCar(P); } else { P.x = B.spots.tanks[0].x; P.y = B.spots.tanks[0].y + 10; } }
           if (a === 7) { P.x = rand(50, MW * T - 50); P.y = rand(50, MH * T - 50); }
           if (a === 8) Game.weather.intensity = Math.random();
           if (a === 9) Game.clock = R(1440);

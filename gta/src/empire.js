@@ -23,6 +23,7 @@ const SUPPORT_SITES = {
   hospital: { label: '병원', civ: 1, off: 0.3, perk: '치료비 면제 (지지 20 이상)' },
   police: { label: '경찰', civ: 0.3, off: 1, perk: '수배가 빨리 풀리고 체포 벌금·무기 몰수 감면 (공무원 지지 30 이상)' },
   military: { label: '군', civ: 0.2, off: 1, perk: '기지에 들어가도 수배되지 않는다 (공무원 지지 60 이상)' },
+  fire: { label: '소방서', civ: 1, off: 0.5, perk: '시민 지지가 크게 오른다' },
   cityhall: { label: '시청', civ: 0.8, off: 0.8, perk: '시민·공무원 지지 모두 오른다' },
 };
 
@@ -171,7 +172,7 @@ const Empire = {
       ...[5000, 25000, 100000].map(a => ({ id: 'sup_' + a, name: `$${a.toLocaleString()} 기부`, price: a, btn: '기부', desc: `지지 +${(Math.sqrt(a / 1000) * 3).toFixed(1)} (시민 ×${S.civ} · 공무원 ×${S.off})`, ok: () => true, fn: () => { this.donate(site, a); Shop.open(this.shopOf(site)); } })),
     ];
   },
-  shopOf(site) { return site === 'military' ? 'milgate' : site === 'cityhall' ? 'cityhall' : site === 'police' ? 'police_st' : 'hospital_st'; },
+  shopOf(site) { return site === 'fire' ? 'fire_st' : site === 'military' ? 'milgate' : site === 'cityhall' ? 'cityhall' : site === 'police' ? 'police_st' : 'hospital_st'; },
   // 병원비 면제 여부 · 체포 감면
   freeHospital() { return this.support.civ >= 20; },
   lenient() { return this.support.off >= 30; },
@@ -182,6 +183,8 @@ const Empire = {
 SHOPS.hospital_st = { title: '병원', sub: '후원하면 시민 지지가 오르고, 지지 20 이상이면 치료비가 무료다', items: () => Empire.donateItems('hospital') };
 SHOPS.police_st = { title: '경찰서', sub: '후원하면 공무원 지지가 오른다 — 지지 30 이상이면 수배가 빨리 풀린다', items: () => Empire.donateItems('police') };
 SHOPS.milgate = { title: '포트 네온 기지 정문', sub: '국방 후원 — 공무원 지지 60 이상이면 기지에 들어가도 수배되지 않는다', items: () => Empire.donateItems('military') };
+SHOPS.fire_st = { title: '소방서', sub: '후원하면 시민 지지가 오른다', items: () => Empire.donateItems('fire') };
+SHOPS.school = { title: '학교', sub: '평생교육원 — 배워 두면 돈이 된다', items: () => { const P = Game.player, lv = P.eduLv || 0; return [{ id: 'edu', name: `경영 강의 (${lv}/5단계)`, price: 20000 * (lv + 1), btn: '수강', desc: '모든 사업체·임대 수입 +5%씩 (최대 +25%)', ok: () => lv < 5, fn: () => { const c = 20000 * (lv + 1); if (P.money < c) return; P.money -= c; P.eduLv = lv + 1; Sfx.passed(); UI.toast(`경영 강의 수료 — 수입 +${P.eduLv * 5}%`); Save.write(); Shop.open('school'); } }]; } };
 SHOPS.cityhall = { title: '네온 시청', sub: '시민과 공무원 모두의 지지를 얻는다', items: () => Empire.donateItems('cityhall') };
 for (const k of ['hospital', 'clinic', 'hospital2', 'hospital3']) EXTRA_PLACES.push([k, 'hospital_st']);
 for (const k of ['police', 'police2', 'police3']) EXTRA_PLACES.push([k, 'police_st']);
