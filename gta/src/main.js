@@ -570,7 +570,10 @@ function exitCar(P, force) {
   const fast = c.speed > 9 && !c.V.special;
   let door = c.doorPos(-1);
   if (solidT(Math.floor(door[0] / T), Math.floor(door[1] / T))) door = c.doorPos(1);
-  if (solidT(Math.floor(door[0] / T), Math.floor(door[1] / T))) { if (!force) { UI.toast('문이 막혀 내릴 수 없다'); return; } door = [c.x, c.y]; }
+  if (solidT(Math.floor(door[0] / T), Math.floor(door[1] / T))) {
+    if (c.alt > 1.2) { door = openSpotNear(c.x, c.y); UI.toast('옥상 비상계단으로 내려왔다'); } // 옥상에 세운 헬기
+    else if (!force) { UI.toast('문이 막혀 내릴 수 없다'); return; } else door = openSpotNear(c.x, c.y);
+  }
   P.x = door[0]; P.y = door[1];
   P.vx = c.vx * 0.6; P.vy = c.vy * 0.6;
   if (fast && !force) { P.downT = 1; P.damage(Math.min(25, c.speed * 0.8), null, 0, 0, 'fall'); }

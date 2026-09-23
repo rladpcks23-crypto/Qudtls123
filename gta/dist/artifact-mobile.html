@@ -4145,6 +4145,21 @@ function roofAt(x, y) {
   const bi = World.bIndex[tIdx(tx, ty)];
   return bi >= 0 && World.buildings[bi] ? World.buildings[bi].h : 0;
 }
+// 막힌 칸(건물·물) 안에 있을 때 가장 가까운 빈 칸 중심 (옥상에 내린 사람을 길로 내려보낼 때)
+function openSpotNear(x, y) {
+  const cx = Math.floor(x / T), cy = Math.floor(y / T);
+  if (!solidT(cx, cy)) return [x, y];
+  for (let r = 1; r < 40; r++) {
+    let best = null, bd = 1e18;
+    for (let k = -r; k <= r; k++) for (const [tx, ty] of [[cx + k, cy - r], [cx + k, cy + r], [cx - r, cy + k], [cx + r, cy + k]]) {
+      if (solidT(tx, ty)) continue;
+      const px = (tx + 0.5) * T, py = (ty + 0.5) * T, d = dist2(px, py, x, y);
+      if (d < bd) { bd = d; best = [px, py]; }
+    }
+    if (best) return best;
+  }
+  return [x, y];
+}
 const isAir = c => c && (c.V.special === 'heli' || c.V.special === 'jet');
 const airborne = c => c && c.alt > 1.2;
 
@@ -4423,7 +4438,8 @@ const Para = {
       const hard = P.vz > 12;
       P.alt = 0; P.chute = false; P.vz = 0; P.vx *= 0.3; P.vy *= 0.3;
       if (hard) P.damage(999, null, 0, 0, 'fall');
-      else { P.downT = 0.6; UI.toast('착지!'); }
+      else { P.downT = 0.6; UI.toast(roof > 0 ? '옥상에 착지 — 비상계단으로 내려왔다' : '착지!'); }
+      if (roof > 0) [P.x, P.y] = openSpotNear(P.x, P.y);
       pedStatic(P);
     }
   },
@@ -6978,7 +6994,10 @@ function exitCar(P, force) {
   const fast = c.speed > 9 && !c.V.special;
   let door = c.doorPos(-1);
   if (solidT(Math.floor(door[0] / T), Math.floor(door[1] / T))) door = c.doorPos(1);
-  if (solidT(Math.floor(door[0] / T), Math.floor(door[1] / T))) { if (!force) { UI.toast('문이 막혀 내릴 수 없다'); return; } door = [c.x, c.y]; }
+  if (solidT(Math.floor(door[0] / T), Math.floor(door[1] / T))) {
+    if (c.alt > 1.2) { door = openSpotNear(c.x, c.y); UI.toast('옥상 비상계단으로 내려왔다'); } // 옥상에 세운 헬기
+    else if (!force) { UI.toast('문이 막혀 내릴 수 없다'); return; } else door = openSpotNear(c.x, c.y);
+  }
   P.x = door[0]; P.y = door[1];
   P.vx = c.vx * 0.6; P.vy = c.vy * 0.6;
   if (fast && !force) { P.downT = 1; P.damage(Math.min(25, c.speed * 0.8), null, 0, 0, 'fall'); }

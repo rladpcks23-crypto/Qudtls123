@@ -23,6 +23,21 @@ function roofAt(x, y) {
   const bi = World.bIndex[tIdx(tx, ty)];
   return bi >= 0 && World.buildings[bi] ? World.buildings[bi].h : 0;
 }
+// 막힌 칸(건물·물) 안에 있을 때 가장 가까운 빈 칸 중심 (옥상에 내린 사람을 길로 내려보낼 때)
+function openSpotNear(x, y) {
+  const cx = Math.floor(x / T), cy = Math.floor(y / T);
+  if (!solidT(cx, cy)) return [x, y];
+  for (let r = 1; r < 40; r++) {
+    let best = null, bd = 1e18;
+    for (let k = -r; k <= r; k++) for (const [tx, ty] of [[cx + k, cy - r], [cx + k, cy + r], [cx - r, cy + k], [cx + r, cy + k]]) {
+      if (solidT(tx, ty)) continue;
+      const px = (tx + 0.5) * T, py = (ty + 0.5) * T, d = dist2(px, py, x, y);
+      if (d < bd) { bd = d; best = [px, py]; }
+    }
+    if (best) return best;
+  }
+  return [x, y];
+}
 const isAir = c => c && (c.V.special === 'heli' || c.V.special === 'jet');
 const airborne = c => c && c.alt > 1.2;
 
@@ -301,7 +316,8 @@ const Para = {
       const hard = P.vz > 12;
       P.alt = 0; P.chute = false; P.vz = 0; P.vx *= 0.3; P.vy *= 0.3;
       if (hard) P.damage(999, null, 0, 0, 'fall');
-      else { P.downT = 0.6; UI.toast('착지!'); }
+      else { P.downT = 0.6; UI.toast(roof > 0 ? '옥상에 착지 — 비상계단으로 내려왔다' : '착지!'); }
+      if (roof > 0) [P.x, P.y] = openSpotNear(P.x, P.y);
       pedStatic(P);
     }
   },
