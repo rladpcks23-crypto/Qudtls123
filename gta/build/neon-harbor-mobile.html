@@ -208,14 +208,16 @@
     </div>
     <div class="tab" id="tab-sys" hidden>
       <p><b>수배 ★</b> — 범죄마다 '열기' 점수가 쌓여 별 1~5개가 된다. 경찰이 직접 보거나, 목격한 시민이 몇 초 뒤 신고한다. 경찰 시야를 벗어나면 별이 깜빡이고 레이더에 붉은 수색 원이 생긴다. 원 밖에서 들키지 않고 버티면 수배가 풀린다. 페인트샵(S)도 방법.</p>
-      <p><b>경찰 전력</b> — ★ 도보 순경 · ★★ 순찰차와 발포 · ★★★ 헬기와 검문소 · ★★★★ SWAT와 헬기 사격. ★1~3에서는 붙잡히면 체포(BUSTED).</p>
-      <p><b>스토리</b> — 미션 12개. 도난, 배달, 암살, 소탕, 경주, 미행, 강도, 호송, 시한폭탄, 최종 결전.</p>
+      <p><b>경찰 전력</b> — ★ 도보 순경 · ★★ 순찰차와 발포 · ★★★ 헬기와 검문소 · ★★★★ SWAT와 헬기 사격(비행 중이면 군 헬기) · ★★★★★ 군 공격 헬기 2대. ★1~3에서는 붙잡히면 체포(BUSTED).</p>
+      <p><b>스토리</b> — 미션 14개. 도난, 배달, 암살, 소탕, 경주, 미행, 강도, 호송, 시한폭탄, 결전, 그리고 군 기지의 전차 탈취와 공중전.</p>
       <p><b>교통</b> — 차들은 차선을 따라 달리고, 신호를 지키며, 앞차와의 간격을 유지한다. 들이받으면 겁먹고 과속으로 달아나기도 한다.</p>
       <p><b>도시</b> — 다운타운 · 미드타운 · 웨스트 힐즈 · 하버 포인트(청룡파 구역) · 선셋 비치 · 센트럴 파크. 1초 = 게임 속 1분으로 낮과 밤이 돌고, 가끔 비가 와 노면이 미끄러워진다.</p>
       <p><b>상점</b> — 총포상(총): 무기·방탄복 · 버거 샷(버): 버거·세트·콜라 · 24 편의점(편): 간식, 에너지 드링크, 구급상자, 복권. 문 앞 마커로 걸어 들어가면 열린다.</p>
       <p><b>직업</b> — 고용센터(J): 택시 기사 · 구급대원 · 음식 배달 / 브로커($): 차량 수출 · 밀수 운반 · 소매치기. 반복할수록 보수가 오른다.</p>
       <p><b>사람들</b> — 회사원·조깅하는 사람·관광객·노인·통화 중인 사람·개 산책(개도 따라다님)·핫도그 노점·버스커. 부딪히면 항의하고, 총을 겨누면 손을 들고, 계속 겨누면 지갑을 떨어뜨린다. 쓰러진 사람에게는 구급차가 와서 되살린다. 청룡파(초록)와 파도파(주황)는 마주치면 싸운다.</p>
       <p><b>편의 기능</b> — 전체 지도를 눌러 웨이포인트를 찍으면 레이더에 GPS 경로가 뜬다. 은신처(집)에서 저장하고 6시간 잔다. 6초 동안 안 다치면 체력이 50까지 차오른다. 일시정지 메뉴에 치트 입력칸이 있다.</p>
+      <p><b>군사 기지</b> — 도시 북쪽 끝. 들어가서 5초가 지나면 수배 ★★★★. 전차(주포 · 차를 밀어 부숨), 공격 헬기(가속하면 이륙 · 기관포/미사일), 전투기(활주로에서 약 120km/h에 이륙). 비행 중 <b>하차 한 번 = 착륙</b>, <b>곧바로 한 번 더 = 낙하산 탈출</b>. ★4 이상에서 날고 있으면 군 헬기가 쫓아온다.</p>
+      <p><b>시점</b> — PC <b>C</b> 키 · 모바일 위쪽 <b>시점</b> 버튼 · 게임패드 십자키 ↑ : 탑뷰 → 3인칭(후면) → 3인칭(전면) → 1인칭.</p>
       <p><b>무단횡단</b> — 횡단보도가 아닌 곳이나 빨간 보행 신호에 건너면 경찰이 딱지를 뗀다.</p>
       <p><b>수집</b> — 숨겨진 꾸러미 10개(개당 $1,000), 뇌물 별(수배 −1), 곳곳의 무기·체력·방탄복.</p>
     </div>
@@ -2859,7 +2861,7 @@ const Missions = {
   defs: [],
   init() {
     const at = (u, v) => sidewalkNear(u * MW * T, v * MH * T);
-    this.givers = [at(0.4, 0.36), at(0.55, 0.3), at(0.3, 0.62), at(0.66, 0.5), at(0.45, 0.48), at(0.62, 0.22), at(0.28, 0.4), at(0.5, 0.62), at(0.58, 0.44), at(0.35, 0.25), at(0.7, 0.66), at(0.24, 0.55)];
+    this.givers = [at(0.4, 0.36), at(0.55, 0.3), at(0.3, 0.62), at(0.66, 0.5), at(0.45, 0.48), at(0.62, 0.22), at(0.28, 0.4), at(0.5, 0.62), at(0.58, 0.44), at(0.35, 0.25), at(0.7, 0.66), at(0.24, 0.55), at(0.5, 0.42), at(0.42, 0.7)];
     this.defs = MISSION_DEFS;
     // 미션 마커가 가게·고용센터 입구와 겹치면 둘이 동시에 열리므로 조금 옮긴다
     const taken = () => Object.values(World.places).filter(Boolean);
@@ -3314,6 +3316,61 @@ const MISSION_DEFS = [
     outro: [['마담 윤', '끝났어. 네온 하버의 밤은 이제 우리 거야.'], ['마담 윤', '…그리고 넌 이제 이 도시에서 제일 유명한 이름이 됐지.']],
     objFar: '웨스트 힐즈 저택의 청룡을 찾아라', objNear: '청룡을 쓰러뜨려라 — 놓치면 끝이다',
   }),
+  {
+    title: '13. 강철 코끼리',
+    reward: 15000,
+    intro: [['마담 윤', '청룡파 잔당이 무기를 사 모은다는 소문이야. 우리도 한 수 위를 보여줘야지.'], ['마담 윤', '북쪽 포트 네온 기지에 라이노 전차가 있어. 끌고 와. 차고에 넣으면 경찰 쪽은 우리가 정리해 줄게.'], ['도움말', '전차는 느리지만 차를 밀어 부순다. 발사 버튼 = 주포. 기지에 들어가면 수배 ★4가 붙는다.']],
+    outro: [['마담 윤', '전차라니… 이 도시에서 우리한테 덤빌 놈은 이제 없겠네.']],
+    start(m) { m.spot = World.base.spots.tanks[0]; },
+    update(m) {
+      const P = Game.player, c = P.car, G = World.places.garage;
+      if (m.tank && (m.tank.dead || m.tank.burnT > 0)) return { fail: '전차가 파괴됐다' };
+      if (!c || c.type !== 'tank') {
+        const t = m.tank || Game.cars.find(q => q.type === 'tank' && !q.dead && q.burnT <= 0 && Military.inside(q.x, q.y));
+        m.blips = [t ? { ent: t, c: '#4fb3ff', big: true } : { x: m.spot.x, y: m.spot.y, c: '#4fb3ff', big: true }];
+        Missions.obj(m, m.tank ? '전차로 돌아가라' : '포트 네온 기지에서 라이노 전차를 훔쳐라');
+        return;
+      }
+      m.tank = c;
+      m.blips = [{ x: G.x, y: G.y, c: '#f2c14e', big: true }];
+      Missions.obj(m, `전차를 하버 포인트 차고로 — 전차 상태 ${Math.round(c.hp / c.maxHp * 100)}%`);
+      if (dist(c.x, c.y, G.x, G.y) < 10 && c.speed < 3) {
+        exitCar(P, true); c.remove = true; Wanted.clear('윤: 경찰 쪽은 정리됐다');
+        return 'pass';
+      }
+    },
+  },
+  {
+    title: '14. 하늘의 주인',
+    reward: 18000,
+    intro: [['조니 박', '큰일이야. 기지 녀석들이 우리를 노리고 공격 헬기 세 대를 띄운대.'], ['조니 박', '기지에서 헌터 헬기를 가져와서 먼저 떨어뜨려. 미사일은 적 헬기 쪽을 겨누고 쏘면 공중으로 날아간다.'], ['도움말', '헬기: 가속 = 이륙·전진, 핸들 = 방향. 발사 = 기관포, 드리프트/스페이스 = 미사일. 비행 중 하차 두 번 = 낙하산.']],
+    outro: [['조니 박', '세 대 전부?! 넌 이제 네온 하버 하늘의 주인이야.']],
+    start(m) { m.spot = World.base.spots.helis[0]; m.foes = []; },
+    update(m) {
+      const P = Game.player, c = P.car;
+      if (m.stage === 0) {
+        if (!c || c.type !== 'milheli' || c.alt < 30) {
+          m.blips = c && c.type === 'milheli' ? [] : [{ x: m.spot.x, y: m.spot.y, c: '#4fb3ff', big: true }];
+          Missions.obj(m, c && c.type === 'milheli' ? '고도를 올려라' : '포트 네온 기지에서 헌터 헬기를 가져와라');
+          return;
+        }
+        m.stage = 1;
+        for (let i = 0; i < 3; i++) {
+          const a = i * TAU / 3 + rand(-0.3, 0.3), x = clamp(P.px + Math.cos(a) * 200, 40, MW * T - 40), y = clamp(P.py + Math.sin(a) * 200, 40, MH * T - 40);
+          const h = new Car('milheli', x, y, a + Math.PI, { persistent: true, mission: m });
+          Object.assign(h, { alt: 72, driver: 'ai', driverKind: 'army', hp: 320, maxHp: 320, color: '#3d4636', label: '적 공격 헬기' });
+          h.ai = { mode: 'air', fireT: 4 + i, gunT: 2, burst: 0, stay: true };
+          Game.cars.push(h); m.ents.push(h); m.foes.push(h);
+        }
+        UI.big('적기 출현!', '공격 헬기 3대', 2.2, '#ff4d4d');
+      }
+      const left = m.foes.filter(h => !h.dead && h.burnT <= 0 && Game.cars.includes(h));
+      m.blips = left.map(h => ({ ent: h, c: '#ff4d4d', big: true }));
+      Missions.obj(m, `적 공격 헬기를 격추하라: 남은 ${left.length}대`);
+      if (!left.length) return 'pass';
+    },
+    cleanup(m) { for (const h of m.foes || []) if (h.ai) h.ai.stay = false; },
+  },
 ];
 
 'use strict';
@@ -4393,7 +4450,7 @@ const AirPatrol = {
 };
 function airDrive(c, dt) {
   const P = Game.player, ai = c.ai, inp = c.in;
-  const leave = Wanted.stars === 0 || P.dead;
+  const leave = (Wanted.stars === 0 && !ai.stay) || P.dead;
   let tx = P.px, ty = P.py;
   if (leave) {
     const a = Math.atan2(c.y - P.py, c.x - P.px); tx = c.x + Math.cos(a) * 100; ty = c.y + Math.sin(a) * 100;

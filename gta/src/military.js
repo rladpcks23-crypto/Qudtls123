@@ -321,7 +321,7 @@ const AirPatrol = {
 };
 function airDrive(c, dt) {
   const P = Game.player, ai = c.ai, inp = c.in;
-  const leave = Wanted.stars === 0 || P.dead;
+  const leave = (Wanted.stars === 0 && !ai.stay) || P.dead;
   let tx = P.px, ty = P.py;
   if (leave) {
     const a = Math.atan2(c.y - P.py, c.x - P.px); tx = c.x + Math.cos(a) * 100; ty = c.y + Math.sin(a) * 100;

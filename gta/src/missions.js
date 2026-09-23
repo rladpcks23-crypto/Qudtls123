@@ -26,7 +26,7 @@ const Missions = {
   defs: [],
   init() {
     const at = (u, v) => sidewalkNear(u * MW * T, v * MH * T);
-    this.givers = [at(0.4, 0.36), at(0.55, 0.3), at(0.3, 0.62), at(0.66, 0.5), at(0.45, 0.48), at(0.62, 0.22), at(0.28, 0.4), at(0.5, 0.62), at(0.58, 0.44), at(0.35, 0.25), at(0.7, 0.66), at(0.24, 0.55)];
+    this.givers = [at(0.4, 0.36), at(0.55, 0.3), at(0.3, 0.62), at(0.66, 0.5), at(0.45, 0.48), at(0.62, 0.22), at(0.28, 0.4), at(0.5, 0.62), at(0.58, 0.44), at(0.35, 0.25), at(0.7, 0.66), at(0.24, 0.55), at(0.5, 0.42), at(0.42, 0.7)];
     this.defs = MISSION_DEFS;
     // 미션 마커가 가게·고용센터 입구와 겹치면 둘이 동시에 열리므로 조금 옮긴다
     const taken = () => Object.values(World.places).filter(Boolean);
@@ -481,4 +481,59 @@ const MISSION_DEFS = [
     outro: [['마담 윤', '끝났어. 네온 하버의 밤은 이제 우리 거야.'], ['마담 윤', '…그리고 넌 이제 이 도시에서 제일 유명한 이름이 됐지.']],
     objFar: '웨스트 힐즈 저택의 청룡을 찾아라', objNear: '청룡을 쓰러뜨려라 — 놓치면 끝이다',
   }),
+  {
+    title: '13. 강철 코끼리',
+    reward: 15000,
+    intro: [['마담 윤', '청룡파 잔당이 무기를 사 모은다는 소문이야. 우리도 한 수 위를 보여줘야지.'], ['마담 윤', '북쪽 포트 네온 기지에 라이노 전차가 있어. 끌고 와. 차고에 넣으면 경찰 쪽은 우리가 정리해 줄게.'], ['도움말', '전차는 느리지만 차를 밀어 부순다. 발사 버튼 = 주포. 기지에 들어가면 수배 ★4가 붙는다.']],
+    outro: [['마담 윤', '전차라니… 이 도시에서 우리한테 덤빌 놈은 이제 없겠네.']],
+    start(m) { m.spot = World.base.spots.tanks[0]; },
+    update(m) {
+      const P = Game.player, c = P.car, G = World.places.garage;
+      if (m.tank && (m.tank.dead || m.tank.burnT > 0)) return { fail: '전차가 파괴됐다' };
+      if (!c || c.type !== 'tank') {
+        const t = m.tank || Game.cars.find(q => q.type === 'tank' && !q.dead && q.burnT <= 0 && Military.inside(q.x, q.y));
+        m.blips = [t ? { ent: t, c: '#4fb3ff', big: true } : { x: m.spot.x, y: m.spot.y, c: '#4fb3ff', big: true }];
+        Missions.obj(m, m.tank ? '전차로 돌아가라' : '포트 네온 기지에서 라이노 전차를 훔쳐라');
+        return;
+      }
+      m.tank = c;
+      m.blips = [{ x: G.x, y: G.y, c: '#f2c14e', big: true }];
+      Missions.obj(m, `전차를 하버 포인트 차고로 — 전차 상태 ${Math.round(c.hp / c.maxHp * 100)}%`);
+      if (dist(c.x, c.y, G.x, G.y) < 10 && c.speed < 3) {
+        exitCar(P, true); c.remove = true; Wanted.clear('윤: 경찰 쪽은 정리됐다');
+        return 'pass';
+      }
+    },
+  },
+  {
+    title: '14. 하늘의 주인',
+    reward: 18000,
+    intro: [['조니 박', '큰일이야. 기지 녀석들이 우리를 노리고 공격 헬기 세 대를 띄운대.'], ['조니 박', '기지에서 헌터 헬기를 가져와서 먼저 떨어뜨려. 미사일은 적 헬기 쪽을 겨누고 쏘면 공중으로 날아간다.'], ['도움말', '헬기: 가속 = 이륙·전진, 핸들 = 방향. 발사 = 기관포, 드리프트/스페이스 = 미사일. 비행 중 하차 두 번 = 낙하산.']],
+    outro: [['조니 박', '세 대 전부?! 넌 이제 네온 하버 하늘의 주인이야.']],
+    start(m) { m.spot = World.base.spots.helis[0]; m.foes = []; },
+    update(m) {
+      const P = Game.player, c = P.car;
+      if (m.stage === 0) {
+        if (!c || c.type !== 'milheli' || c.alt < 30) {
+          m.blips = c && c.type === 'milheli' ? [] : [{ x: m.spot.x, y: m.spot.y, c: '#4fb3ff', big: true }];
+          Missions.obj(m, c && c.type === 'milheli' ? '고도를 올려라' : '포트 네온 기지에서 헌터 헬기를 가져와라');
+          return;
+        }
+        m.stage = 1;
+        for (let i = 0; i < 3; i++) {
+          const a = i * TAU / 3 + rand(-0.3, 0.3), x = clamp(P.px + Math.cos(a) * 200, 40, MW * T - 40), y = clamp(P.py + Math.sin(a) * 200, 40, MH * T - 40);
+          const h = new Car('milheli', x, y, a + Math.PI, { persistent: true, mission: m });
+          Object.assign(h, { alt: 72, driver: 'ai', driverKind: 'army', hp: 320, maxHp: 320, color: '#3d4636', label: '적 공격 헬기' });
+          h.ai = { mode: 'air', fireT: 4 + i, gunT: 2, burst: 0, stay: true };
+          Game.cars.push(h); m.ents.push(h); m.foes.push(h);
+        }
+        UI.big('적기 출현!', '공격 헬기 3대', 2.2, '#ff4d4d');
+      }
+      const left = m.foes.filter(h => !h.dead && h.burnT <= 0 && Game.cars.includes(h));
+      m.blips = left.map(h => ({ ent: h, c: '#ff4d4d', big: true }));
+      Missions.obj(m, `적 공격 헬기를 격추하라: 남은 ${left.length}대`);
+      if (!left.length) return 'pass';
+    },
+    cleanup(m) { for (const h of m.foes || []) if (h.ai) h.ai.stay = false; },
+  },
 ];
