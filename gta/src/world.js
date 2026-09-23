@@ -10,10 +10,20 @@
  * ===================================================================== */
 
 const T = 4;               // 타일 한 칸 = 4m (차선 폭)
-const MW = 190, MH = 190;  // 타일 수 → 760m × 760m 도시 (v2.0에서 150 → 190 확장)
+const MW = 480, MH = 480;  // 타일 수 → 1920m × 1920m 도시 (v2.5에서 190 → 480 확장; 3D는 청크 단위로 스트리밍)
 const TL = { WATER: 0, ROAD: 1, WALK: 2, BUILD: 3, GRASS: 4, SAND: 5, LOT: 6, PLAZA: 7, DOCK: 8, RUNWAY: 9 };
 const DIST = { DOWNTOWN: 0, MIDTOWN: 1, RESID: 2, HARBOR: 3, BEACH: 4, PARK: 5, COAST: 6, BASE: 7, INDUSTRY: 8 };
 const DIST_NAMES = ['다운타운', '미드타운', '웨스트 힐즈', '하버 포인트', '선셋 비치', '센트럴 파크', '해안 산책로', '포트 네온 기지', '아이언 밸리'];
+// 동네: 이름 · 구역 종류 · 씨앗 위치(맵 비율) · w(작을수록 넓게 퍼짐)
+const HOODS = [
+  { name: '다운타운', d: 0, u: 0.52, v: 0.5, w: 0.8 },
+  { name: '미드타운', d: 1, u: 0.4, v: 0.36 }, { name: '노스 게이트', d: 1, u: 0.55, v: 0.2 }, { name: '유니언 스퀘어', d: 1, u: 0.66, v: 0.4 },
+  { name: '올드 타운', d: 1, u: 0.42, v: 0.64 }, { name: '리버사이드', d: 1, u: 0.66, v: 0.66 },
+  { name: '웨스트 힐즈', d: 2, u: 0.1, v: 0.3 }, { name: '파인 크레스트', d: 2, u: 0.28, v: 0.16 }, { name: '레이크뷰', d: 2, u: 0.8, v: 0.16 }, { name: '로즈우드', d: 2, u: 0.14, v: 0.5 },
+  { name: '하버 포인트', d: 3, u: 0.93, v: 0.4 }, { name: '터미널 아일랜드', d: 3, u: 0.93, v: 0.68 },
+  { name: '선셋 비치', d: 4, u: 0.5, v: 0.95 }, { name: '코랄 베이', d: 4, u: 0.8, v: 0.94 }, { name: '팜 쇼어', d: 4, u: 0.2, v: 0.95 },
+  { name: '아이언 밸리', d: 8, u: 0.18, v: 0.7 }, { name: '러스트 야드', d: 8, u: 0.34, v: 0.8 },
+];
 const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // 동 남 서 북 (화면 좌표, y 아래로)
 const rightOf = d => [-DIRS[d][1], DIRS[d][0]];   // 우측통행: 진행 방향의 오른쪽 차선
 const LIGHT_CYCLE = 23;
@@ -42,6 +52,15 @@ function solidT(tx, ty) {
 function blocksSight(tx, ty) {
   if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return true;
   return World.tiles[tx + ty * MW] === TL.BUILD;
+}
+// 현재 위치의 동네 이름 (블록 밖이면 구역 이름)
+function hoodAt(x, y) {
+  const tx = clamp(Math.floor(x / T), 0, MW - 1), ty = clamp(Math.floor(y / T), 0, MH - 1), i = tx + ty * MW;
+  const b = World.region[i] >= 0 ? World.blocks[World.region[i]] : null;
+  if (b && b.park) return b.park;
+  if (World.dist[i] === DIST.PARK) return '공원';
+  const h = World.hoodT ? World.hoodT[i] : 255;
+  return h < 255 ? World.hoods[h].name : DIST_NAMES[World.dist[i]];
 }
 function districtAt(x, y) {
   const tx = clamp(Math.floor(x / T), 0, MW - 1), ty = clamp(Math.floor(y / T), 0, MH - 1);
@@ -164,18 +183,24 @@ function genWorld(seed) {
     W.blocks.push({ id, x0, y0, x1, y1 });
   }
 
-  // 구역 배정
+  // 구역 배정: 동네(hood) 씨앗점에 가장 가까운 블록끼리 묶는다(보로노이 + 약간의 흔들림) → 큰 맵에서도 동네가 다양하다
+  W.hoods = HOODS.map(h => ({ ...h, sx: 0, sy: 0, n: 0 }));
   for (const b of W.blocks) {
     const u = (b.x0 + b.x1) / 2 / MW, v = (b.y0 + b.y1) / 2 / MH;
-    const dd = Math.hypot(u - 0.52, v - 0.52);
-    b.district = dd < 0.17 ? DIST.DOWNTOWN : u > 0.7 ? DIST.HARBOR : v > 0.68 ? DIST.BEACH : u < 0.36 && v > 0.5 ? DIST.INDUSTRY : u < 0.25 ? DIST.RESID : DIST.MIDTOWN; // 주택가는 서쪽 끝만
+    let best = 0, bd = 1e9;
+    W.hoods.forEach((h, i) => { const d = Math.hypot(u - h.u, v - h.v) * (1 + 0.35 * (hash2(b.x0 * 3 + i, b.y0 * 7) - 0.5)) * (h.w || 1); if (d < bd) { bd = d; best = i; } });
+    if (Math.hypot(u - 0.52, v - 0.5) < 0.09) best = 0; // 도심 한가운데는 항상 다운타운
+    b.hood = best; b.district = W.hoods[best].d;
     b.area = (b.x1 - b.x0 + 1) * (b.y1 - b.y0 + 1);
   }
-  // 공원: 가장 큰 미드타운/주택가 블록 + 하나 더
+  // 공원: 가장 큰 미드타운/주택가 블록(센트럴 파크) + 동네 공원 몇 개
   const parkC = W.blocks.filter(b => b.district === DIST.MIDTOWN || b.district === DIST.RESID).sort((a, b) => b.area - a.area);
-  if (parkC[0]) parkC[0].district = DIST.PARK;
-  const extra = parkC.slice(3).filter(b => b.district === DIST.RESID);
-  if (extra.length) rpick(extra).district = DIST.PARK;
+  // 센트럴 파크: 다운타운 북쪽의 블록 여러 개를 통째로 공원으로 (사이 도로는 공원 산책 도로가 된다)
+  for (const b of W.blocks) if (Math.hypot((b.x0 + b.x1) / 2 / MW - 0.47, (b.y0 + b.y1) / 2 / MH - 0.29) < 0.065) { b.district = DIST.PARK; b.park = '센트럴 파크'; }
+  if (!W.blocks.some(b => b.park) && parkC[0]) { parkC[0].district = DIST.PARK; parkC[0].park = '센트럴 파크'; }
+  const extra = parkC.slice(3).filter(b => b.area > 60 && b.district !== DIST.PARK);
+  for (let k = 0; k < Math.round(MW * MH / 12000) && extra.length; k++) { const b = extra.splice(Math.floor(R() * extra.length), 1)[0]; b.district = DIST.PARK; }
+  W.hoodT = new Uint8Array(MW * MH).fill(255);
 
   const addTree = (x, y, kind) => W.trees.push({ x, y, kind, r: kind === 'palm' ? 2.2 : rr(1.9, 2.8), h: kind === 'palm' ? rr(7, 9) : rr(5, 8), hue: R() });
   const addBuilding = (x0, y0, x1, y1, h, kind, color) => {
@@ -213,7 +238,7 @@ function genWorld(seed) {
 
   for (const b of W.blocks) {
     for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) {
-      W.dist[tIdx(x, y)] = b.district;
+      W.dist[tIdx(x, y)] = b.district; W.hoodT[tIdx(x, y)] = b.hood;
       set(x, y, (x === b.x0 || x === b.x1 || y === b.y0 || y === b.y1) ? TL.WALK : TL.GRASS);
     }
     b.loop = { x0: (b.x0 + 0.5) * T, y0: (b.y0 + 0.5) * T, x1: (b.x1 + 0.5) * T, y1: (b.y1 + 0.5) * T };
@@ -318,7 +343,7 @@ function genWorld(seed) {
 
   // 6-2) 포트 네온 군사 기지 (GTA V의 포트 잔쿠도처럼 들어가면 ★★★★)
   {
-    const X0 = 6, X1 = MW - 7, Y0 = 5, Y1 = 30;
+    const X0 = 6, X1 = Math.min(MW - 7, 183), Y0 = 5, Y1 = 30; // 기지는 북서쪽 (맵이 커져도 크기 고정)
     let gx = W.VX[0]; for (const x of W.VX) if (Math.abs(x - 64) < Math.abs(gx - 64)) gx = x; // 정문 = 가운데쯤 세로 도로의 연장선
     W.trees = W.trees.filter(t => !(t.x >= (X0 - 1) * T && t.x <= (X1 + 2) * T && t.y <= (Y1 + 1) * T));
     for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) { set(x, y, (x + y) % 11 === 0 && y > 26 ? TL.GRASS : TL.DOCK); W.dist[tIdx(x, y)] = DIST.BASE; }
@@ -342,7 +367,7 @@ function genWorld(seed) {
     const hpX = X1 - 38;
     for (const k of [0, 1]) { const cx = hpX + k * 8; for (let y = Y0 + 14; y <= Y0 + 19; y++) for (let x = cx; x <= cx + 5; x++) set(x, y, TL.LOT); W.helipads.push({ x: (cx + 3) * T, y: (Y0 + 17) * T }); }
     for (let y = Y0 + 21; y <= Y1 - 2; y++) for (let x = X1 - 24; x <= X1 - 3; x++) set(x, y, TL.LOT);
-    W.base = { x0: (X0 + 1) * T, y0: (Y0 + 1) * T, x1: X1 * T, y1: Y1 * T, gate: { x: (gx + 1) * T, y: (Y1 + 0.5) * T },
+    W.base = { rx0: (X0 + 6) * T, rx1: (X1 - 6) * T, x0: (X0 + 1) * T, y0: (Y0 + 1) * T, x1: X1 * T, y1: Y1 * T, gate: { x: (gx + 1) * T, y: (Y1 + 0.5) * T },
       spots: {
         tanks: [{ x: (X1 - 20) * T, y: (Y1 - 5) * T, a: -Math.PI / 2 }, { x: (X1 - 12) * T, y: (Y1 - 5) * T, a: -Math.PI / 2 }],
         helis: W.helipads.map(h => ({ x: h.x, y: h.y, a: 0 })),
@@ -352,6 +377,13 @@ function genWorld(seed) {
     };
   }
 
+  // 기지 정문 앞 인도: 국방 후원 창구
+  {
+    const gt = W.base.gate, tx0 = Math.floor(gt.x / T) + 3, ty0 = Math.floor(gt.y / T) + 3;
+    let spot = null;
+    for (let r = 0; r < 14 && !spot; r++) for (let dy = -r; dy <= r && !spot; dy++) for (let dx = -r; dx <= r; dx++) { if (get(tx0 + dx, ty0 + dy) === TL.WALK) { spot = { x: (tx0 + dx + 0.5) * T, y: (ty0 + dy + 0.5) * T }; break; } }
+    if (spot) W.places.milgate = { ...spot, label: '기지 정문 (국방 후원)' };
+  }
   // 7) 특수 장소
   const edgeLots = (d, pred) => W.blocks.filter(b => b.district === d).flatMap(b => b.lots.filter(L => L.edge && !L.used && pred(L)));
   const doorOf = (L) => {
@@ -409,7 +441,7 @@ function genWorld(seed) {
   makePlace('gym', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.36, 0.52), 'gym', '#2b2b2b', '체육관');
   makePlace('pharmacy', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.6, 0.4), 'pharmacy', '#e8fff0', '약국');
   makePlace('pharmacy2', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.18, 0.68), 'pharmacy', '#e8fff0', '약국');
-  makePlace('bank', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.5, 0.4), 'bank', '#c9b27a', '네온 중앙은행');
+  makePlace('bank', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.5, 0.4), 'bank', '#c9b27a', '네온 시티은행');
   makePlace('ammu3', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.25, 0.64), 'ammu', '#3b3b3b', '총포상');
   makePlace('burger3', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.58, 0.44), 'burger', '#f3d9b1', '버거 샷');
   makePlace('burger4', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.22, 0.56), 'burger', '#f3d9b1', '버거 샷');
@@ -420,6 +452,21 @@ function genWorld(seed) {
   makePlace('hq_wave', choose(edgeLots(DIST.BEACH, L => !L.used && bld('shop')(L)), 0.5, 0.86), 'hq', '#e07a1f', '파도파 본부');
   makePlace('hq_iron', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.14, 0.6), 'hq', '#5b7fa6', '아이언 본부');
   makePlace('hq_cobra', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.66, 0.36), 'hq', '#8a3bd1', '코브라 본부');
+  // v2.5 큰 맵: 외곽 동네에도 병원·경찰서, 국가·경제 기관
+  const anyLot = (u, v, kinds) => choose(W.blocks.flatMap(b => b.lots.filter(L => L.edge && !L.used && L.b && kinds.includes(L.b.kind))), u, v);
+  makePlace('hospital2', anyLot(0.78, 0.2, ['mid', 'house', 'shop']), 'hospital', '#e9ecef', '레이크뷰 병원');
+  makePlace('hospital3', anyLot(0.3, 0.84, ['mid', 'warehouse', 'shop']), 'hospital', '#e9ecef', '러스트 야드 병원');
+  makePlace('police2', anyLot(0.2, 0.25, ['mid', 'house']), 'police', '#2c3e66', '웨스트 경찰서');
+  makePlace('police3', anyLot(0.8, 0.8, ['mid', 'shop', 'warehouse']), 'police', '#2c3e66', '코랄 베이 경찰서');
+  makePlace('cityhall', anyLot(0.5, 0.45, ['tower']), 'gov', '#e8e2d0', '네온 시청');
+  makePlace('assembly', anyLot(0.55, 0.24, ['mid', 'tower']), 'gov', '#d9d2bd', '국회의사당');
+  makePlace('cbank', anyLot(0.47, 0.52, ['tower']), 'bank', '#c9b27a', '네온 중앙은행');
+  makePlace('stock', anyLot(0.56, 0.47, ['tower']), 'biz', '#1f2f4f', '증권거래소');
+  makePlace('realty', anyLot(0.4, 0.42, ['mid', 'tower']), 'biz', '#9a7b63', '하버 부동산');
+  makePlace('wh_harbor', anyLot(0.9, 0.5, ['warehouse']), 'warehouse', '#7a7f86', '하버 창고');
+  makePlace('wh_iron', anyLot(0.22, 0.74, ['warehouse']), 'warehouse', '#6e6a5f', '밸리 창고');
+  makePlace('wh_north', anyLot(0.7, 0.14, ['mid', 'warehouse', 'house']), 'warehouse', '#8a8074', '노스 창고');
+  makePlace('heist', anyLot(0.34, 0.3, ['mid', 'house']), 'hq', '#2d2433', '작전실');
   makePlace('biz_casino', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.58, 0.6), 'casino', '#1d1233', '다이아몬드 카지노');
   // 차고형 장소: 필지를 비워 LOT으로 만든다
   const makeLotPlace = (key, L, label) => {
@@ -458,8 +505,31 @@ function genWorld(seed) {
   W.treeGrid = new Map();
   for (const t of W.trees) { const k = Math.floor(t.x / 8) + ',' + Math.floor(t.y / 8); if (!W.treeGrid.has(k)) W.treeGrid.set(k, []); W.treeGrid.get(k).push(t); }
 
+  buildSpatial();
   buildMinimap();
 }
+
+// ---------- 공간 인덱스 (맵이 커져서 '전체 목록에서 무작위로 고르기'·'전체 훑기'를 피한다) ----------
+const GRID_CS = 64; // 칸 크기(m)
+function gridMake(items, fx, fy) {
+  const m = new Map();
+  for (const it of items) { const k = Math.floor(fx(it) / GRID_CS) * 4096 + Math.floor(fy(it) / GRID_CS); let l = m.get(k); if (!l) m.set(k, l = []); l.push(it); }
+  return m;
+}
+function gridQuery(m, x, y, r, out = []) {
+  const c0 = Math.floor((x - r) / GRID_CS), c1 = Math.floor((x + r) / GRID_CS), d0 = Math.floor((y - r) / GRID_CS), d1 = Math.floor((y + r) / GRID_CS);
+  for (let a = c0; a <= c1; a++) for (let b = d0; b <= d1; b++) { const l = m.get(a * 4096 + b); if (l) for (const it of l) out.push(it); }
+  return out;
+}
+function buildSpatial() {
+  const W = World, N = W.nodes;
+  W.edgeGrid = gridMake(W.edgesList, e => (N[e[0]].x + N[e[1]].x) / 2, e => (N[e[0]].y + N[e[1]].y) / 2);
+  W.nodeGrid = gridMake(N, n => n.x, n => n.y);
+  W.blockGrid = gridMake(W.blocks, b => (b.x0 + b.x1 + 1) / 2 * T, b => (b.y0 + b.y1 + 1) / 2 * T);
+}
+// 반경 r 안(대략)의 도로 구간 / 블록 — 구간 길이만큼 여유를 둔다
+const edgesNear = (x, y, r) => gridQuery(World.edgeGrid, x, y, r + 40);
+const blocksNear = (x, y, r) => gridQuery(World.blockGrid, x, y, r + 40);
 
 function treesNear(x, y) {
   const out = [], cx = Math.floor(x / 8), cy = Math.floor(y / 8);
@@ -489,13 +559,18 @@ function lightState(node, dir) {
 }
 function nearestNode(x, y) {
   let best = null, bd = 1e18;
-  for (const n of World.nodes) { const d = dist2(x, y, n.x, n.y); if (d < bd) { bd = d; best = n; } }
+  for (let r = 70; r < 5000 && !best; r *= 2) {
+    for (const n of gridQuery(World.nodeGrid, x, y, r)) { const d = dist2(x, y, n.x, n.y); if (d < bd) { bd = d; best = n; } }
+  }
+  if (!best) for (const n of World.nodes) { const d = dist2(x, y, n.x, n.y); if (d < bd) { bd = d; best = n; } }
   return best;
 }
 // 가장 가까운 도로 구간과 그 위의 위치
 function nearestEdge(x, y) {
   let best = null, bd = 1e18;
-  for (const [a, b] of World.edgesList) {
+  let list = gridQuery(World.edgeGrid, x, y, 110);
+  if (!list.length) list = World.edgesList;
+  for (const [a, b] of list) {
     const A = World.nodes[a], B = World.nodes[b];
     const L = dist(A.x, A.y, B.x, B.y), dx = (B.x - A.x) / L, dy = (B.y - A.y) / L;
     const s = clamp((x - A.x) * dx + (y - A.y) * dy, 0, L);

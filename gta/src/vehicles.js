@@ -25,6 +25,7 @@ const VTYPES = {
   swat: { name: 'SWAT 장갑차', L: 5.8, W: 2.3, mass: 3200, Fe: 14500, vmax: 40, grip: 1.1, cs: 5.0, steer: 0.5, hp: 320, colors: ['#1f2328'], style: 'swat' },
   bike: { name: 'PCJ-600', L: 2.2, W: 0.8, mass: 230, Fe: 3300, vmax: 56, grip: 1.3, cs: 6, steer: 0.7, hp: 60, colors: ['#e0262b', '#1d1d1f', '#f2c200', '#2e7dd1', '#e8e8ea'], style: 'bike' },
   ambulance: { name: '구급차', L: 5.4, W: 2.1, mass: 2300, Fe: 10000, vmax: 42, grip: 1.12, cs: 5.0, steer: 0.54, hp: 180, colors: ['#f4f4f4'], style: 'ambulance' },
+  hyper: { name: '네온 하이퍼 X', L: 4.6, W: 2.05, mass: 1400, Fe: 27000, vmax: 100, grip: 1.8, cs: 6.2, steer: 0.5, hp: 110, colors: ['#9be15d', '#ff5d8f', '#6fe0ff', '#f2f2f2', '#1d1d1f'], style: 'sports' }, // 최고 360km/h
   super: { name: '인페르노', L: 4.5, W: 2.0, mass: 1350, Fe: 14500, vmax: 70, grip: 1.6, cs: 5.8, steer: 0.55, hp: 95, colors: ['#ff5d8f', '#6fe0ff', '#f2c200', '#1d1d1f', '#9be15d'], style: 'sports' },
   bus: { name: '시내버스', L: 10.5, W: 2.5, mass: 9000, Fe: 26000, vmax: 26, grip: 1.0, cs: 4.2, steer: 0.4, hp: 400, colors: ['#2f7d4a'], style: 'van' },
   jetski: { name: '시샤크 제트스키', L: 2.6, W: 1.0, mass: 320, Fe: 1, vmax: 30, grip: 1, cs: 5, steer: 1.9, hp: 70, colors: ['#e8413a', '#f2c200', '#2e7dd1', '#f4f4f4'], style: 'jetski', special: 'boat', accel: 13, armor: 0.3 },
@@ -226,7 +227,7 @@ class Car {
     else if (this.driver === 'ai' && this.ai && !this.dead && this.burnT <= 0) aiDrive(this, dt);
     else if (!this.dead) { this.in.thr = 0; this.in.st = 0; this.in.brk = this.driver ? 0 : 0.6; this.in.hb = false; }
     this.brakeLight = (this.in.brk > 0.1 || (this.in.thr < 0 && this.vf > 0.5)) ? 1 : 0;
-    const sub = this.type === 'bike' ? 3 : 2, h = dt / sub;
+    const sub = Math.max(this.type === 'bike' ? 3 : 2, Math.ceil(this.speed * dt / 1.4)), h = dt / sub; // 고속에서 벽을 뚫지 않게
     // 도난 경보
     if (this.alarmT > 0) { const b0 = Math.floor(this.alarmT * 2.5); this.alarmT -= dt; if (Math.floor(this.alarmT * 2.5) !== b0) Sfx.tone({ x: this.x, y: this.y, f0: 560, f1: 560, dur: 0.22, type: 'square', vol: 0.22 }); }
     const moving = this.speed > 0.01 || Math.abs(this.w) > 0.01 || this.in.thr !== 0 || (this.V.special && (this.driver || this.alt > 0));

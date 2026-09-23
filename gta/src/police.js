@@ -249,8 +249,9 @@ function onScreen(x, y, m = 0) {
 }
 function offscreenLaneSpot(minD, maxD) {
   const P = Game.player;
+  const near = edgesNear(P.px, P.py, maxD); if (!near.length) return null;
   for (let k = 0; k < 30; k++) {
-    const e = pick(World.edgesList), A = World.nodes[e[0]], B = World.nodes[e[1]];
+    const e = pick(near), A = World.nodes[e[0]], B = World.nodes[e[1]];
     const t = Math.random(), x = lerp(A.x, B.x, t), y = lerp(A.y, B.y, t);
     const d = dist(x, y, P.px, P.py);
     if (d < minD || d > maxD || onScreen(x, y, 8)) continue;

@@ -25,9 +25,11 @@ const Gangs = {
   // 처음 구역: 하버 → 청룡파, 해변 → 파도파, 산업단지 → 아이언, 미드타운 동쪽 → 코브라
   initTurf() {
     this.turf = {};
+    // 동네별 첫 주인 (다운타운·주택가·나머지 미드타운은 중립)
+    const HOME = { '하버 포인트': 'dragon', '터미널 아일랜드': 'dragon', '선셋 비치': 'wave', '코랄 베이': 'wave', '팜 쇼어': 'wave', '아이언 밸리': 'iron', '러스트 야드': 'iron', '유니언 스퀘어': 'cobra', '리버사이드': 'cobra' };
     for (const b of World.blocks) {
-      const u = (b.x0 + b.x1) / 2 / MW;
-      const g = b.district === DIST.HARBOR ? 'dragon' : b.district === DIST.BEACH ? 'wave' : b.district === DIST.INDUSTRY ? 'iron' : b.district === DIST.MIDTOWN && u > 0.5 ? 'cobra' : null;
+      if (b.district === DIST.PARK) continue;
+      const g = HOME[World.hoods[b.hood].name];
       if (g) this.turf[b.id] = g;
     }
   },
@@ -55,6 +57,7 @@ const Gangs = {
   leave() {
     if (!this.mine) return;
     const g = this.mine; this.mine = null; this.rep = 0; this.rank = 0;
+    if (g === 'own') { UI.toast(`${GANGS.own.name}을(를) 해산했다`); for (const k in this.turf) if (this.turf[k] === 'own') delete this.turf[k]; Empire.own = null; Empire.load(Empire.save()); Save.write(); return; }
     for (const p of Game.peds) if (p.kind === 'gang' && p.gang === g && !p.dead) { if (p.state === 'escort') p.remove = true; }
     UI.toast(`${GANGS[g].name}을(를) 떠났다`); Save.write();
   },
@@ -68,7 +71,7 @@ const Gangs = {
     // 파트너·보스 구역 수입 (1분마다)
     if (this.mine && this.rank >= 1) {
       this.incomeT += dt;
-      if (this.incomeT >= 60) { this.incomeT -= 60; const amt = this.count(this.mine) * (this.rank === 2 ? 150 : 30); if (amt > 0) { P.money += amt; Sfx.cash(); UI.toast(`조직 구역 수입 +$${amt.toLocaleString()} (${this.count(this.mine)}블록)`); } }
+      if (this.incomeT >= 60) { this.incomeT -= 60; const amt = Math.round(this.count(this.mine) * (this.rank === 2 ? 150 : 30) * Empire.incomeMul()); if (amt > 0) { P.money += amt; Sfx.cash(); UI.toast(`조직 구역 수입 +$${amt.toLocaleString()} (${this.count(this.mine)}블록)`); } }
     }
     if (this.war) this.updateWar(dt);
     if (this.boss) this.updateBoss();
@@ -106,7 +109,8 @@ const Gangs = {
   spawnWave() {
     const w = this.war; w.wave++;
     const L = w.blk.loop;
-    for (const [g, side] of [[w.A, 0], [w.D, 1]]) for (let i = 0; i < 6; i++) {
+    const size = g => g === this.mine ? Math.min(12, 6 + Math.floor(Empire.members(g) / 25)) : 6; // 내 조직은 조직원 수만큼 병력이 는다
+    for (const [g, side] of [[w.A, 0], [w.D, 1]]) for (let i = 0; i < size(g); i++) {
       const [x, y] = loopPoint(L, rand(0, L.P) * 0.5 + side * L.P * 0.5);
       const p = spawnPed('gang', x, y); setGang(p, g);
       Object.assign(p, { persistent: true, war: w, hp: 110, maxHp: 110, state: 'idle', homeX: w.x + rand(-4, 4), homeY: w.y + rand(-4, 4) });
@@ -152,7 +156,7 @@ const Gangs = {
     if (!this.mine || this.rank < 1) { UI.toast('파트너 이상만 부하를 부를 수 있다'); return; }
     if (this.callCD > 0) { UI.toast(`부하는 ${Math.ceil(this.callCD)}초 뒤에 부를 수 있다`); return; }
     this.callCD = 45;
-    const n = this.rank === 2 ? 4 : 2;
+    const n = Empire.backupSize();
     for (let i = 0; i < n; i++) {
       const s = sidewalkNear(P.px + rand(-12, 12), P.py + rand(-12, 12), 4);
       const p = spawnPed('gang', s.x, s.y); setGang(p, this.mine);
@@ -161,7 +165,20 @@ const Gangs = {
     UI.toast(`부하 ${n}명이 달려온다`); Sfx.tone({ f0: 500, f1: 900, dur: 0.2, type: 'triangle', vol: 0.2 });
   },
 
-  // ---------- 보스 결투: 현재 보스를 쓰러뜨리면 보스가 된다 ----------
+  // 전쟁 선포 (보스): 이웃 라이벌 블록 하나를 골라 습격
+  declareWar(g) {
+    const pr = this.borderPairs().filter(([a, b]) => this.turf[a.id] === g || this.turf[b.id] === g);
+    if (!pr.length) { UI.toast('이웃한 라이벌 구역이 없다'); return; }
+    const [a, b] = pick(pr); this.startWar(g, this.turf[a.id] === g ? b : a);
+  },
+  // 후계 계약: 평판 1000 파트너가 보스에게 은퇴 자금을 주고 자리를 물려받는다 (보스는 공격할 수 없다)
+  succeed() {
+    const P = Game.player, cost = 50000;
+    if (P.money < cost) { UI.toast('은퇴 자금 $50,000이 필요하다'); return; }
+    P.money -= cost; this.rank = 2;
+    UI.big(`${GANGS[this.mine].name}의 보스!`, '후계 계약 체결 — 이제 라이벌 조직이 너를 노린다', 3.5, GANGS[this.mine].color); Sfx.passed(); Save.write();
+  },
+  // ---------- (구버전) 보스 결투 ----------
   challenge() {
     const HQ = World.places[GANGS[this.mine].hq], P = Game.player;
     const b = spawnPed('gang', HQ.x + 4, HQ.y + 4); setGang(b, this.mine);
@@ -210,16 +227,18 @@ for (const g of GANG_IDS) {
     items: () => {
       const G = GANGS[g], out = [], mine = Gangs.mine;
       out.push({ id: 'ginfo', name: `${G.name} · 구역 ${Gangs.count(g)}블록`, price: 0, desc: `다음 대규모 전쟁까지 ${Math.max(0, Gangs.nextWar - Gangs.day)}일`, ok: () => false });
-      if (!mine) out.push({ id: 'gjoin', name: `${G.name}에 가입`, price: 0, btn: '가입', desc: '조직원이 된다 — 조직은 하나만 고를 수 있다', ok: () => true, fn: () => { Gangs.join(g); Shop.close(); } });
+      const B = BOSS_INFO[g];
+      out.push({ id: 'gmem', name: `보스: ${B.name} · 조직원 약 ${Empire.members(g)}명`, price: 0, desc: '보스는 누구도 건드릴 수 없다', ok: () => false });
+      if (!mine) out.push({ id: 'gjoin', name: `${B.name}와(과) 계약서에 서명 — 조직원이 된다`, price: 0, btn: '계약', desc: '조직은 하나만 고를 수 있다 · 같은 조직은 아군, 라이벌은 적', ok: () => true, fn: () => { Gangs.join(g); Shop.close(); } });
       else if (mine !== g) out.push({ id: 'grival', name: '라이벌 조직의 본부다', price: 0, desc: `너는 ${GANGS[mine].name}의 ${RANKS[Gangs.rank]}`, ok: () => false });
       else {
-        const nextNeed = Gangs.rank === 0 ? `파트너까지 평판 ${Math.max(0, 300 - Gangs.rep)}` : Gangs.rank === 1 ? (Gangs.rep >= 1000 ? '보스 결투 가능!' : `보스 결투까지 평판 ${1000 - Gangs.rep}`) : '보스';
+        const nextNeed = Gangs.rank === 0 ? `파트너까지 평판 ${Math.max(0, 300 - Gangs.rep)}` : Gangs.rank === 1 ? (Gangs.rep >= 1000 ? '후계 계약 가능!' : `후계 계약까지 평판 ${1000 - Gangs.rep}`) : '보스';
         out.push({ id: 'grank', name: `나: ${RANKS[Gangs.rank]} · 평판 ${Gangs.rep}`, price: 0, desc: nextNeed, ok: () => false });
         out.push({ id: 'gjob1', name: '보호비 수금 — 우리 구역 가게 3곳을 돈다', price: 0, btn: '시작', desc: '평판 +40, 돈 $300씩', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('collect'); } });
         out.push({ id: 'gjob2', name: '구역 습격 — 이웃 라이벌 블록의 조직원 8명 처치', price: 0, btn: '시작', desc: '성공하면 그 블록이 우리 구역, 평판 +150, $3,000', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('raid'); } });
-        if (Gangs.rank >= 1) out.push({ id: 'gcall', name: `부하 부르기 (${Gangs.rank === 2 ? 4 : 2}명)`, price: 0, btn: '호출', desc: '어디서든 PC H 길게 대신 여기서, 또는 일시정지 메뉴', ok: () => true, fn: () => { Shop.close(); Gangs.callBackup(); } });
-        if (Gangs.rank === 1 && Gangs.rep >= 1000) out.push({ id: 'gboss', name: '보스 자리 도전', price: 0, btn: '결투', desc: '현 보스(체력 400)와 경호원 2명을 쓰러뜨린다', ok: () => !Gangs.boss, fn: () => { Shop.close(); Gangs.challenge(); } });
-        if (Gangs.rank === 2) out.push({ id: 'gwar', name: '전쟁 선포 — 이웃 라이벌 블록 습격', price: 0, btn: '선포', desc: '대규모 전쟁을 지금 시작한다', ok: () => !Gangs.war, fn: () => { Shop.close(); const pr = Gangs.borderPairs().filter(([a, b]) => Gangs.turf[a.id] === g || Gangs.turf[b.id] === g); if (!pr.length) { UI.toast('이웃한 라이벌 구역이 없다'); return; } const [a, b] = pick(pr); Gangs.startWar(g, Gangs.turf[a.id] === g ? b : a); } });
+        if (Gangs.rank >= 1) out.push({ id: 'gcall', name: `부하 부르기 (${Empire.backupSize()}명)`, price: 0, btn: '호출', desc: '어디서든 PC H 길게 대신 여기서, 또는 일시정지 메뉴', ok: () => true, fn: () => { Shop.close(); Gangs.callBackup(); } });
+        if (Gangs.rank === 1 && Gangs.rep >= 1000) out.push({ id: 'gboss', name: `후계 계약 — ${BOSS_INFO[g].name}의 자리를 물려받는다`, price: 50000, btn: '계약', desc: '보스가 된다: 부하 최대 10명, 구역 수입 전부, 전쟁 선포 · 대신 라이벌 암살단이 온다', ok: () => true, fn: () => { Shop.close(); Gangs.succeed(); } });
+        if (Gangs.rank === 2) out.push({ id: 'gwar', name: '전쟁 선포 — 이웃 라이벌 블록 습격', price: 0, btn: '선포', desc: '대규모 전쟁을 지금 시작한다', ok: () => !Gangs.war, fn: () => { Shop.close(); Gangs.declareWar(g); } });
         out.push({ id: 'gleave', name: '조직 탈퇴', price: 0, btn: '탈퇴', desc: '계급과 평판을 잃는다', ok: () => true, fn: () => { Gangs.leave(); Shop.close(); } });
       }
       return out;
@@ -283,7 +302,7 @@ const GangJob = {
 };
 
 // 전체 지도 위 구역 그리기
-function drawTurfOverlay(c, ox, oy, k) {
+function drawTurfOverlay(c, ox, oy, k, bx = ox, by = oy) {
   for (const b of World.blocks) {
     const g = Gangs.turf[b.id]; if (!g) continue;
     c.fillStyle = GANGS[g].color; c.globalAlpha = 0.42;
@@ -291,11 +310,11 @@ function drawTurfOverlay(c, ox, oy, k) {
     c.globalAlpha = 1;
   }
   if (Gangs.war) { const w = Gangs.war; c.strokeStyle = '#ff3b3b'; c.lineWidth = 3; c.strokeRect(ox + w.blk.x0 * T * k, oy + w.blk.y0 * T * k, (w.blk.x1 - w.blk.x0 + 1) * T * k, (w.blk.y1 - w.blk.y0 + 1) * T * k); }
-  let y = oy + 10;
-  c.fillStyle = 'rgba(0,0,0,0.75)'; c.fillRect(ox + 8, y - 4, 230, 20 * GANG_IDS.length + (Gangs.mine ? 26 : 8));
+  let y = by + 10; ox = bx;
+  c.fillStyle = 'rgba(0,0,0,0.75)'; c.fillRect(ox + 8, y - 4, 280, 20 * GANG_IDS.length + (Gangs.mine ? 26 : 8));
   for (const g of GANG_IDS) {
     c.fillStyle = GANGS[g].color; c.fillRect(ox + 16, y + 3, 12, 12);
-    txt(c, `${GANGS[g].name}  ${Gangs.count(g)}블록${Gangs.mine === g ? '  ← 내 조직' : ''}`, ox + 34, y + 14, `600 13px ${FONT_KR}`, '#fff', null);
+    txt(c, `${GANGS[g].name}  ${Gangs.count(g)}블록 · ${Empire.members(g)}명${Gangs.mine === g ? '  ← 내 조직' : ''}`, ox + 34, y + 14, `600 13px ${FONT_KR}`, '#fff', null);
     y += 20;
   }
   if (Gangs.mine) txt(c, `나: ${RANKS[Gangs.rank]} · 평판 ${Gangs.rep} · 전쟁까지 ${Math.max(0, Gangs.nextWar - Gangs.day)}일`, ox + 16, y + 12, `600 12px ${FONT_KR}`, '#ffd166', null);

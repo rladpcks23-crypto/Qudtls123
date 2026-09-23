@@ -15,7 +15,7 @@ const Save = {
     try {
       const P = Game.player;
       const inv = {}; for (const k in P.inv) if (k !== 'fist') inv[k] = P.inv[k] === Infinity ? -1 : P.inv[k];
-      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {}, gangs: Gangs.save(), body: { maxHp: P.maxHp, endurance: P.endurance || 1, aimSkill: P.aimSkill || 1, shirt: P.shirt, pants: P.pants } }));
+      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {}, gangs: Gangs.save(), empire: Empire.save(), finance: Finance.save(), body: { maxHp: P.maxHp, endurance: P.endurance || 1, aimSkill: P.aimSkill || 1, shirt: P.shirt, pants: P.pants, hatType: P.hatType || 'none', hatCol: P.hatCol || '', logo: P.logo || '' } }));
     } catch (e) { /* 저장 불가 환경 */ }
   },
   clear() { try { localStorage.removeItem(this.key); } catch (e) { } },
@@ -112,7 +112,7 @@ const Missions = {
   },
 };
 
-const allTargets = () => [...(Jobs.active ? Jobs.targets() : []), ...Missions.targets(), ...GangJob.targets(), ...(Gangs.war && (!Gangs.mine || Gangs.war.A === Gangs.mine || Gangs.war.D === Gangs.mine) ? [{ x: Gangs.war.x, y: Gangs.war.y, c: '#ff3b3b', big: true }] : [])];
+const allTargets = () => [...(Jobs.active ? Jobs.targets() : []), ...Missions.targets(), ...GangJob.targets(), ...Empire.targets(), ...Finance.targets(), ...(Gangs.war && (!Gangs.mine || Gangs.war.A === Gangs.mine || Gangs.war.D === Gangs.mine) ? [{ x: Gangs.war.x, y: Gangs.war.y, c: '#ff3b3b', big: true }] : [])];
 
 // ---------- 미션 도우미 ----------
 function missionCar(m, type, x, y, a, opt = {}) {
@@ -130,8 +130,9 @@ function farParking(x, y, minD, maxD) {
   return c.length ? pick(c) : null;
 }
 function roadsideSpot(x, y, minD, maxD) {
+  const near = edgesNear(x, y, maxD), list = near.length ? near : World.edgesList;
   for (let k = 0; k < 80; k++) {
-    const e = pick(World.edgesList), A = World.nodes[e[0]], B = World.nodes[e[1]];
+    const e = pick(list), A = World.nodes[e[0]], B = World.nodes[e[1]];
     const L = dist(A.x, A.y, B.x, B.y), s = rand(2 * T + 6, L - 2 * T - 6);
     const sp = laneSpot(e, chance(0.5), s);
     const d = dist(sp.x, sp.y, x, y);

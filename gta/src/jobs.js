@@ -142,7 +142,7 @@ const Jobs = {
         j.fare.remove = true; j.fare = null;
         j.dest = this.farSpot(c.x, c.y, 150, 400); j.fdist = dist(c.x, c.y, j.dest.x, j.dest.y);
         j.timer = Math.round(j.fdist / 9 + 20); j.stage = 'ride';
-        UI.toast(`손님: "${DIST_NAMES[districtAt(j.dest.x, j.dest.y)]}으로 가 주세요."`);
+        UI.toast(`손님: "${hoodAt(j.dest.x, j.dest.y)}으로 가 주세요."`);
       }
     } else if (j.stage === 'ride') {
       j.blips = [{ x: j.dest.x, y: j.dest.y, c: '#f2c14e', big: true }];
@@ -168,7 +168,7 @@ const Jobs = {
       if (j.patient.dead) { j.patient = null; return; }
       if (this.stopped(c, j.patient, 7)) {
         j.patient.remove = true; j.patient = null;
-        const hs = [World.places.hospital, World.places.clinic].filter(Boolean).sort((a, b) => dist(a.x, a.y, c.x, c.y) - dist(b.x, b.y, c.x, c.y));
+        const hs = ['hospital', 'clinic', 'hospital2', 'hospital3'].map(k => World.places[k]).filter(Boolean).sort((a, b) => dist(a.x, a.y, c.x, c.y) - dist(b.x, b.y, c.x, c.y));
         j.dest = hs[0]; j.timer = Math.round(dist(c.x, c.y, j.dest.x, j.dest.y) / 9 + 20); j.stage = 'ride';
         UI.toast('환자 탑승! 병원으로 서둘러라');
       }

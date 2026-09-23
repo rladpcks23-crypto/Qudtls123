@@ -92,6 +92,23 @@
   .bag-it canvas { flex: none; } .bag-it div { flex: 1; font-size: 13px; color: #fff; } .bag-it span { display: block; font-size: 11px; color: #aeb8c6; }
   .bag-it button { flex: none; }
   @media (max-height: 520px) { #bagui .card { width: min(640px, 100%); padding: 12px 14px; gap: 6px; } #bagui h2 { font-size: 18px; margin: 0; } #bag-list { grid-template-columns: repeat(3, 1fr); gap: 6px; } .bag-it { padding: 4px; gap: 4px; } .bag-it div { font-size: 12px; } }
+  #wardui { background: rgba(5, 8, 14, 0.55); align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; }
+  #wardui .card { max-height: calc(100% - 12px); border: 1px solid #e07aff; width: min(620px, 100%); }
+  .ward-top { display: flex; gap: 12px; align-items: flex-start; } .ward-top canvas { flex: none; border-radius: 8px; }
+  #ward-opts { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .ward-row { display: flex; flex-direction: column; gap: 3px; } .ward-t { font-size: 12px; color: #aeb8c6; }
+  .ward-items { display: flex; flex-wrap: wrap; gap: 4px; }
+  .ward-sw { width: 24px; height: 24px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25); padding: 0; cursor: pointer; }
+  .ward-sw.on { border-color: #fff; box-shadow: 0 0 0 2px #e07aff; }
+  .ward-tb { padding: 4px 8px !important; font-size: 12px !important; }
+  @media (max-height: 520px) { #wardui .card { padding: 10px 12px; gap: 6px; } #wardui h2 { font-size: 18px; } .ward-top canvas { width: 80px; height: 117px; } .ward-sw { width: 20px; height: 20px; } }
+  #finui { background: rgba(5, 8, 14, 0.62); align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; }
+  #finui .card { max-height: calc(100% - 12px); border: 1px solid #6fe0ff; width: min(680px, 100%); gap: 8px; }
+  #fin-body { display: flex; flex-direction: column; gap: 0; overflow-y: auto; min-height: 0; }
+  .fin-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px solid var(--line); }
+  .fin-row canvas { flex: none; } .fin-info { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 14px; } .fin-info span { color: var(--muted); font-size: 12px; } .fin-info i { font-style: normal; }
+  .fin-btns { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; max-width: 55%; } .fin-btns .btn { padding: 5px 8px; font-size: 12px; }
+  @media (max-height: 520px) { #finui .card { padding: 10px 12px; } #finui h2 { font-size: 20px; } .fin-row { padding: 4px 0; } }
   #pause, #shop { background: rgba(5, 8, 14, 0.7); align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; }
   .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 22px; width: min(420px, 100%); box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; max-height: 100%; overflow-y: auto; }
   .card h2 { margin: 0; font-family: var(--disp); font-weight: 400; font-size: 34px; color: var(--gold); letter-spacing: 0.02em; }
@@ -261,7 +278,8 @@
       <p><b>편의 기능</b> — 전체 지도를 눌러 웨이포인트를 찍으면 레이더에 GPS 경로가 뜬다. 은신처(집)에서 저장하고 6시간 잔다. 6초 동안 안 다치면 체력이 50까지 차오른다. 일시정지 메뉴에 치트 입력칸이 있다.</p>
       <p><b>군사 기지</b> — 도시 북쪽 끝. 들어가서 5초가 지나면 수배 ★★★★. 전차(주포 · 차를 밀어 부숨), 공격 헬기(가속하면 이륙 · 기관포/미사일), 전투기(활주로에서 약 120km/h에 이륙). 비행 중 <b>하차 한 번 = 착륙</b>, <b>곧바로 한 번 더 = 낙하산 탈출</b>. ★4 이상에서 날고 있으면 군 헬기가 쫓아온다.</p>
       <p><b>시점</b> — PC <b>C</b> 키 · 모바일 위쪽 <b>시점</b> 버튼 · 게임패드 십자키 ↑ : 탑뷰 → 3인칭(후면) → 3인칭(전면) → 1인칭.</p>
-      <p><b>조직</b> — 청룡파·파도파·아이언 형제단·네온 코브라가 도시를 나눠 가진다(지도 [갱단 구역]/G). 5일마다 대규모 전쟁. 본부(청·파·철·코)에서 하나에 가입해 조직원 → 파트너 → 보스로. 파트너부터 부하 호출(K), 구역 수입.</p>
+      <p><b>조직</b> — 청룡파·파도파·아이언 형제단·네온 코브라가 도시를 나눠 가진다(지도 [갱단 구역]/G). 5일마다 대규모 전쟁. 지도의 <b>왕관 = 조직 보스</b>: 찾아가 계약하면 조직원 → 파트너(평판 300) → 후계 계약(평판 1000, $5만)으로 보스. 보스는 공격할 수 없다. 은신처(집)에서 <b>내 조직</b>을 세울 수도 있다($2만5천). 보스가 되면 라이벌 암살단이 온다. 조직원 수는 경제력·지지도에 비례.</p>
+      <p><b>후원 · 경제</b> — 병원·경찰서·시청·기지 정문에 기부하면 시민·공무원 지지가 오른다(치료비 면제, 수배 빨리 풀림, 기지 출입). 증권거래소(주) · 부동산(부, 임대 수입) · 창고(창, 무역·밀수 운송) · 작전실(작, 대형 강도) · 중앙은행(중, 예금·대출) · 국회(국, 로비로 법 통과). 옷가게에서 모자·색·조직 마크 꾸미기. 지도는 휠·드래그·+/−로 확대.</p>
       <p><b>무단횡단</b> — 횡단보도가 아닌 곳이나 빨간 보행 신호에 건너면 경찰이 딱지를 뗀다.</p>
       <p><b>수집</b> — 숨겨진 꾸러미 10개(개당 $1,000), 뇌물 별(수배 −1), 곳곳의 무기·체력·방탄복.</p>
     </div>
@@ -303,6 +321,8 @@
 
 <div id="casino" class="overlay" hidden><div class="card"></div></div>
 <div id="bagui" class="overlay" hidden><div class="card"><h2>가방</h2><div id="bag-stat" class="cz-note"></div><div id="bag-list"></div><div class="cz-row"><button class="btn small primary" id="bag-auto">필요한 것 자동 사용</button><button class="btn" id="bag-close">닫기</button></div></div></div>
+<div id="wardui" class="overlay" hidden><div class="card"><h2>옷 꾸미기</h2><div class="ward-top"><canvas id="ward-prev" width="130" height="190"></canvas><div id="ward-opts"></div></div><div id="ward-cost" class="cz-note"></div><div class="cz-row"><button class="btn small primary" id="ward-buy">입기</button><button class="btn" id="ward-close">닫기</button></div></div></div>
+<div id="finui" class="overlay" hidden><div class="card"><h2 id="fin-title">증권거래소</h2><p id="fin-sub"></p><div id="fin-money" class="cz-note"></div><div id="fin-body"></div><button class="btn" id="fin-close">나가기</button></div></div>
 <div id="shop" class="overlay" hidden>
   <div class="card">
     <h2 id="shop-title">총포상</h2>
@@ -779,10 +799,20 @@ const Radio = {
  * ===================================================================== */
 
 const T = 4;               // 타일 한 칸 = 4m (차선 폭)
-const MW = 190, MH = 190;  // 타일 수 → 760m × 760m 도시 (v2.0에서 150 → 190 확장)
+const MW = 480, MH = 480;  // 타일 수 → 1920m × 1920m 도시 (v2.5에서 190 → 480 확장; 3D는 청크 단위로 스트리밍)
 const TL = { WATER: 0, ROAD: 1, WALK: 2, BUILD: 3, GRASS: 4, SAND: 5, LOT: 6, PLAZA: 7, DOCK: 8, RUNWAY: 9 };
 const DIST = { DOWNTOWN: 0, MIDTOWN: 1, RESID: 2, HARBOR: 3, BEACH: 4, PARK: 5, COAST: 6, BASE: 7, INDUSTRY: 8 };
 const DIST_NAMES = ['다운타운', '미드타운', '웨스트 힐즈', '하버 포인트', '선셋 비치', '센트럴 파크', '해안 산책로', '포트 네온 기지', '아이언 밸리'];
+// 동네: 이름 · 구역 종류 · 씨앗 위치(맵 비율) · w(작을수록 넓게 퍼짐)
+const HOODS = [
+  { name: '다운타운', d: 0, u: 0.52, v: 0.5, w: 0.8 },
+  { name: '미드타운', d: 1, u: 0.4, v: 0.36 }, { name: '노스 게이트', d: 1, u: 0.55, v: 0.2 }, { name: '유니언 스퀘어', d: 1, u: 0.66, v: 0.4 },
+  { name: '올드 타운', d: 1, u: 0.42, v: 0.64 }, { name: '리버사이드', d: 1, u: 0.66, v: 0.66 },
+  { name: '웨스트 힐즈', d: 2, u: 0.1, v: 0.3 }, { name: '파인 크레스트', d: 2, u: 0.28, v: 0.16 }, { name: '레이크뷰', d: 2, u: 0.8, v: 0.16 }, { name: '로즈우드', d: 2, u: 0.14, v: 0.5 },
+  { name: '하버 포인트', d: 3, u: 0.93, v: 0.4 }, { name: '터미널 아일랜드', d: 3, u: 0.93, v: 0.68 },
+  { name: '선셋 비치', d: 4, u: 0.5, v: 0.95 }, { name: '코랄 베이', d: 4, u: 0.8, v: 0.94 }, { name: '팜 쇼어', d: 4, u: 0.2, v: 0.95 },
+  { name: '아이언 밸리', d: 8, u: 0.18, v: 0.7 }, { name: '러스트 야드', d: 8, u: 0.34, v: 0.8 },
+];
 const DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // 동 남 서 북 (화면 좌표, y 아래로)
 const rightOf = d => [-DIRS[d][1], DIRS[d][0]];   // 우측통행: 진행 방향의 오른쪽 차선
 const LIGHT_CYCLE = 23;
@@ -811,6 +841,15 @@ function solidT(tx, ty) {
 function blocksSight(tx, ty) {
   if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return true;
   return World.tiles[tx + ty * MW] === TL.BUILD;
+}
+// 현재 위치의 동네 이름 (블록 밖이면 구역 이름)
+function hoodAt(x, y) {
+  const tx = clamp(Math.floor(x / T), 0, MW - 1), ty = clamp(Math.floor(y / T), 0, MH - 1), i = tx + ty * MW;
+  const b = World.region[i] >= 0 ? World.blocks[World.region[i]] : null;
+  if (b && b.park) return b.park;
+  if (World.dist[i] === DIST.PARK) return '공원';
+  const h = World.hoodT ? World.hoodT[i] : 255;
+  return h < 255 ? World.hoods[h].name : DIST_NAMES[World.dist[i]];
 }
 function districtAt(x, y) {
   const tx = clamp(Math.floor(x / T), 0, MW - 1), ty = clamp(Math.floor(y / T), 0, MH - 1);
@@ -933,18 +972,24 @@ function genWorld(seed) {
     W.blocks.push({ id, x0, y0, x1, y1 });
   }
 
-  // 구역 배정
+  // 구역 배정: 동네(hood) 씨앗점에 가장 가까운 블록끼리 묶는다(보로노이 + 약간의 흔들림) → 큰 맵에서도 동네가 다양하다
+  W.hoods = HOODS.map(h => ({ ...h, sx: 0, sy: 0, n: 0 }));
   for (const b of W.blocks) {
     const u = (b.x0 + b.x1) / 2 / MW, v = (b.y0 + b.y1) / 2 / MH;
-    const dd = Math.hypot(u - 0.52, v - 0.52);
-    b.district = dd < 0.17 ? DIST.DOWNTOWN : u > 0.7 ? DIST.HARBOR : v > 0.68 ? DIST.BEACH : u < 0.36 && v > 0.5 ? DIST.INDUSTRY : u < 0.25 ? DIST.RESID : DIST.MIDTOWN; // 주택가는 서쪽 끝만
+    let best = 0, bd = 1e9;
+    W.hoods.forEach((h, i) => { const d = Math.hypot(u - h.u, v - h.v) * (1 + 0.35 * (hash2(b.x0 * 3 + i, b.y0 * 7) - 0.5)) * (h.w || 1); if (d < bd) { bd = d; best = i; } });
+    if (Math.hypot(u - 0.52, v - 0.5) < 0.09) best = 0; // 도심 한가운데는 항상 다운타운
+    b.hood = best; b.district = W.hoods[best].d;
     b.area = (b.x1 - b.x0 + 1) * (b.y1 - b.y0 + 1);
   }
-  // 공원: 가장 큰 미드타운/주택가 블록 + 하나 더
+  // 공원: 가장 큰 미드타운/주택가 블록(센트럴 파크) + 동네 공원 몇 개
   const parkC = W.blocks.filter(b => b.district === DIST.MIDTOWN || b.district === DIST.RESID).sort((a, b) => b.area - a.area);
-  if (parkC[0]) parkC[0].district = DIST.PARK;
-  const extra = parkC.slice(3).filter(b => b.district === DIST.RESID);
-  if (extra.length) rpick(extra).district = DIST.PARK;
+  // 센트럴 파크: 다운타운 북쪽의 블록 여러 개를 통째로 공원으로 (사이 도로는 공원 산책 도로가 된다)
+  for (const b of W.blocks) if (Math.hypot((b.x0 + b.x1) / 2 / MW - 0.47, (b.y0 + b.y1) / 2 / MH - 0.29) < 0.065) { b.district = DIST.PARK; b.park = '센트럴 파크'; }
+  if (!W.blocks.some(b => b.park) && parkC[0]) { parkC[0].district = DIST.PARK; parkC[0].park = '센트럴 파크'; }
+  const extra = parkC.slice(3).filter(b => b.area > 60 && b.district !== DIST.PARK);
+  for (let k = 0; k < Math.round(MW * MH / 12000) && extra.length; k++) { const b = extra.splice(Math.floor(R() * extra.length), 1)[0]; b.district = DIST.PARK; }
+  W.hoodT = new Uint8Array(MW * MH).fill(255);
 
   const addTree = (x, y, kind) => W.trees.push({ x, y, kind, r: kind === 'palm' ? 2.2 : rr(1.9, 2.8), h: kind === 'palm' ? rr(7, 9) : rr(5, 8), hue: R() });
   const addBuilding = (x0, y0, x1, y1, h, kind, color) => {
@@ -982,7 +1027,7 @@ function genWorld(seed) {
 
   for (const b of W.blocks) {
     for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) {
-      W.dist[tIdx(x, y)] = b.district;
+      W.dist[tIdx(x, y)] = b.district; W.hoodT[tIdx(x, y)] = b.hood;
       set(x, y, (x === b.x0 || x === b.x1 || y === b.y0 || y === b.y1) ? TL.WALK : TL.GRASS);
     }
     b.loop = { x0: (b.x0 + 0.5) * T, y0: (b.y0 + 0.5) * T, x1: (b.x1 + 0.5) * T, y1: (b.y1 + 0.5) * T };
@@ -1087,7 +1132,7 @@ function genWorld(seed) {
 
   // 6-2) 포트 네온 군사 기지 (GTA V의 포트 잔쿠도처럼 들어가면 ★★★★)
   {
-    const X0 = 6, X1 = MW - 7, Y0 = 5, Y1 = 30;
+    const X0 = 6, X1 = Math.min(MW - 7, 183), Y0 = 5, Y1 = 30; // 기지는 북서쪽 (맵이 커져도 크기 고정)
     let gx = W.VX[0]; for (const x of W.VX) if (Math.abs(x - 64) < Math.abs(gx - 64)) gx = x; // 정문 = 가운데쯤 세로 도로의 연장선
     W.trees = W.trees.filter(t => !(t.x >= (X0 - 1) * T && t.x <= (X1 + 2) * T && t.y <= (Y1 + 1) * T));
     for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) { set(x, y, (x + y) % 11 === 0 && y > 26 ? TL.GRASS : TL.DOCK); W.dist[tIdx(x, y)] = DIST.BASE; }
@@ -1111,7 +1156,7 @@ function genWorld(seed) {
     const hpX = X1 - 38;
     for (const k of [0, 1]) { const cx = hpX + k * 8; for (let y = Y0 + 14; y <= Y0 + 19; y++) for (let x = cx; x <= cx + 5; x++) set(x, y, TL.LOT); W.helipads.push({ x: (cx + 3) * T, y: (Y0 + 17) * T }); }
     for (let y = Y0 + 21; y <= Y1 - 2; y++) for (let x = X1 - 24; x <= X1 - 3; x++) set(x, y, TL.LOT);
-    W.base = { x0: (X0 + 1) * T, y0: (Y0 + 1) * T, x1: X1 * T, y1: Y1 * T, gate: { x: (gx + 1) * T, y: (Y1 + 0.5) * T },
+    W.base = { rx0: (X0 + 6) * T, rx1: (X1 - 6) * T, x0: (X0 + 1) * T, y0: (Y0 + 1) * T, x1: X1 * T, y1: Y1 * T, gate: { x: (gx + 1) * T, y: (Y1 + 0.5) * T },
       spots: {
         tanks: [{ x: (X1 - 20) * T, y: (Y1 - 5) * T, a: -Math.PI / 2 }, { x: (X1 - 12) * T, y: (Y1 - 5) * T, a: -Math.PI / 2 }],
         helis: W.helipads.map(h => ({ x: h.x, y: h.y, a: 0 })),
@@ -1121,6 +1166,13 @@ function genWorld(seed) {
     };
   }
 
+  // 기지 정문 앞 인도: 국방 후원 창구
+  {
+    const gt = W.base.gate, tx0 = Math.floor(gt.x / T) + 3, ty0 = Math.floor(gt.y / T) + 3;
+    let spot = null;
+    for (let r = 0; r < 14 && !spot; r++) for (let dy = -r; dy <= r && !spot; dy++) for (let dx = -r; dx <= r; dx++) { if (get(tx0 + dx, ty0 + dy) === TL.WALK) { spot = { x: (tx0 + dx + 0.5) * T, y: (ty0 + dy + 0.5) * T }; break; } }
+    if (spot) W.places.milgate = { ...spot, label: '기지 정문 (국방 후원)' };
+  }
   // 7) 특수 장소
   const edgeLots = (d, pred) => W.blocks.filter(b => b.district === d).flatMap(b => b.lots.filter(L => L.edge && !L.used && pred(L)));
   const doorOf = (L) => {
@@ -1178,7 +1230,7 @@ function genWorld(seed) {
   makePlace('gym', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.36, 0.52), 'gym', '#2b2b2b', '체육관');
   makePlace('pharmacy', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.6, 0.4), 'pharmacy', '#e8fff0', '약국');
   makePlace('pharmacy2', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.18, 0.68), 'pharmacy', '#e8fff0', '약국');
-  makePlace('bank', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.5, 0.4), 'bank', '#c9b27a', '네온 중앙은행');
+  makePlace('bank', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.5, 0.4), 'bank', '#c9b27a', '네온 시티은행');
   makePlace('ammu3', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.25, 0.64), 'ammu', '#3b3b3b', '총포상');
   makePlace('burger3', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.58, 0.44), 'burger', '#f3d9b1', '버거 샷');
   makePlace('burger4', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.22, 0.56), 'burger', '#f3d9b1', '버거 샷');
@@ -1189,6 +1241,21 @@ function genWorld(seed) {
   makePlace('hq_wave', choose(edgeLots(DIST.BEACH, L => !L.used && bld('shop')(L)), 0.5, 0.86), 'hq', '#e07a1f', '파도파 본부');
   makePlace('hq_iron', choose(edgeLots(DIST.INDUSTRY, L => !L.used && bld('warehouse')(L)), 0.14, 0.6), 'hq', '#5b7fa6', '아이언 본부');
   makePlace('hq_cobra', choose(edgeLots(DIST.MIDTOWN, L => !L.used && bld('mid')(L)), 0.66, 0.36), 'hq', '#8a3bd1', '코브라 본부');
+  // v2.5 큰 맵: 외곽 동네에도 병원·경찰서, 국가·경제 기관
+  const anyLot = (u, v, kinds) => choose(W.blocks.flatMap(b => b.lots.filter(L => L.edge && !L.used && L.b && kinds.includes(L.b.kind))), u, v);
+  makePlace('hospital2', anyLot(0.78, 0.2, ['mid', 'house', 'shop']), 'hospital', '#e9ecef', '레이크뷰 병원');
+  makePlace('hospital3', anyLot(0.3, 0.84, ['mid', 'warehouse', 'shop']), 'hospital', '#e9ecef', '러스트 야드 병원');
+  makePlace('police2', anyLot(0.2, 0.25, ['mid', 'house']), 'police', '#2c3e66', '웨스트 경찰서');
+  makePlace('police3', anyLot(0.8, 0.8, ['mid', 'shop', 'warehouse']), 'police', '#2c3e66', '코랄 베이 경찰서');
+  makePlace('cityhall', anyLot(0.5, 0.45, ['tower']), 'gov', '#e8e2d0', '네온 시청');
+  makePlace('assembly', anyLot(0.55, 0.24, ['mid', 'tower']), 'gov', '#d9d2bd', '국회의사당');
+  makePlace('cbank', anyLot(0.47, 0.52, ['tower']), 'bank', '#c9b27a', '네온 중앙은행');
+  makePlace('stock', anyLot(0.56, 0.47, ['tower']), 'biz', '#1f2f4f', '증권거래소');
+  makePlace('realty', anyLot(0.4, 0.42, ['mid', 'tower']), 'biz', '#9a7b63', '하버 부동산');
+  makePlace('wh_harbor', anyLot(0.9, 0.5, ['warehouse']), 'warehouse', '#7a7f86', '하버 창고');
+  makePlace('wh_iron', anyLot(0.22, 0.74, ['warehouse']), 'warehouse', '#6e6a5f', '밸리 창고');
+  makePlace('wh_north', anyLot(0.7, 0.14, ['mid', 'warehouse', 'house']), 'warehouse', '#8a8074', '노스 창고');
+  makePlace('heist', anyLot(0.34, 0.3, ['mid', 'house']), 'hq', '#2d2433', '작전실');
   makePlace('biz_casino', choose(edgeLots(DIST.DOWNTOWN, L => !L.used && bld('tower')(L)), 0.58, 0.6), 'casino', '#1d1233', '다이아몬드 카지노');
   // 차고형 장소: 필지를 비워 LOT으로 만든다
   const makeLotPlace = (key, L, label) => {
@@ -1227,8 +1294,31 @@ function genWorld(seed) {
   W.treeGrid = new Map();
   for (const t of W.trees) { const k = Math.floor(t.x / 8) + ',' + Math.floor(t.y / 8); if (!W.treeGrid.has(k)) W.treeGrid.set(k, []); W.treeGrid.get(k).push(t); }
 
+  buildSpatial();
   buildMinimap();
 }
+
+// ---------- 공간 인덱스 (맵이 커져서 '전체 목록에서 무작위로 고르기'·'전체 훑기'를 피한다) ----------
+const GRID_CS = 64; // 칸 크기(m)
+function gridMake(items, fx, fy) {
+  const m = new Map();
+  for (const it of items) { const k = Math.floor(fx(it) / GRID_CS) * 4096 + Math.floor(fy(it) / GRID_CS); let l = m.get(k); if (!l) m.set(k, l = []); l.push(it); }
+  return m;
+}
+function gridQuery(m, x, y, r, out = []) {
+  const c0 = Math.floor((x - r) / GRID_CS), c1 = Math.floor((x + r) / GRID_CS), d0 = Math.floor((y - r) / GRID_CS), d1 = Math.floor((y + r) / GRID_CS);
+  for (let a = c0; a <= c1; a++) for (let b = d0; b <= d1; b++) { const l = m.get(a * 4096 + b); if (l) for (const it of l) out.push(it); }
+  return out;
+}
+function buildSpatial() {
+  const W = World, N = W.nodes;
+  W.edgeGrid = gridMake(W.edgesList, e => (N[e[0]].x + N[e[1]].x) / 2, e => (N[e[0]].y + N[e[1]].y) / 2);
+  W.nodeGrid = gridMake(N, n => n.x, n => n.y);
+  W.blockGrid = gridMake(W.blocks, b => (b.x0 + b.x1 + 1) / 2 * T, b => (b.y0 + b.y1 + 1) / 2 * T);
+}
+// 반경 r 안(대략)의 도로 구간 / 블록 — 구간 길이만큼 여유를 둔다
+const edgesNear = (x, y, r) => gridQuery(World.edgeGrid, x, y, r + 40);
+const blocksNear = (x, y, r) => gridQuery(World.blockGrid, x, y, r + 40);
 
 function treesNear(x, y) {
   const out = [], cx = Math.floor(x / 8), cy = Math.floor(y / 8);
@@ -1258,13 +1348,18 @@ function lightState(node, dir) {
 }
 function nearestNode(x, y) {
   let best = null, bd = 1e18;
-  for (const n of World.nodes) { const d = dist2(x, y, n.x, n.y); if (d < bd) { bd = d; best = n; } }
+  for (let r = 70; r < 5000 && !best; r *= 2) {
+    for (const n of gridQuery(World.nodeGrid, x, y, r)) { const d = dist2(x, y, n.x, n.y); if (d < bd) { bd = d; best = n; } }
+  }
+  if (!best) for (const n of World.nodes) { const d = dist2(x, y, n.x, n.y); if (d < bd) { bd = d; best = n; } }
   return best;
 }
 // 가장 가까운 도로 구간과 그 위의 위치
 function nearestEdge(x, y) {
   let best = null, bd = 1e18;
-  for (const [a, b] of World.edgesList) {
+  let list = gridQuery(World.edgeGrid, x, y, 110);
+  if (!list.length) list = World.edgesList;
+  for (const [a, b] of list) {
     const A = World.nodes[a], B = World.nodes[b];
     const L = dist(A.x, A.y, B.x, B.y), dx = (B.x - A.x) / L, dy = (B.y - A.y) / L;
     const s = clamp((x - A.x) * dx + (y - A.y) * dy, 0, L);
@@ -1395,6 +1490,7 @@ const VTYPES = {
   swat: { name: 'SWAT 장갑차', L: 5.8, W: 2.3, mass: 3200, Fe: 14500, vmax: 40, grip: 1.1, cs: 5.0, steer: 0.5, hp: 320, colors: ['#1f2328'], style: 'swat' },
   bike: { name: 'PCJ-600', L: 2.2, W: 0.8, mass: 230, Fe: 3300, vmax: 56, grip: 1.3, cs: 6, steer: 0.7, hp: 60, colors: ['#e0262b', '#1d1d1f', '#f2c200', '#2e7dd1', '#e8e8ea'], style: 'bike' },
   ambulance: { name: '구급차', L: 5.4, W: 2.1, mass: 2300, Fe: 10000, vmax: 42, grip: 1.12, cs: 5.0, steer: 0.54, hp: 180, colors: ['#f4f4f4'], style: 'ambulance' },
+  hyper: { name: '네온 하이퍼 X', L: 4.6, W: 2.05, mass: 1400, Fe: 27000, vmax: 100, grip: 1.8, cs: 6.2, steer: 0.5, hp: 110, colors: ['#9be15d', '#ff5d8f', '#6fe0ff', '#f2f2f2', '#1d1d1f'], style: 'sports' }, // 최고 360km/h
   super: { name: '인페르노', L: 4.5, W: 2.0, mass: 1350, Fe: 14500, vmax: 70, grip: 1.6, cs: 5.8, steer: 0.55, hp: 95, colors: ['#ff5d8f', '#6fe0ff', '#f2c200', '#1d1d1f', '#9be15d'], style: 'sports' },
   bus: { name: '시내버스', L: 10.5, W: 2.5, mass: 9000, Fe: 26000, vmax: 26, grip: 1.0, cs: 4.2, steer: 0.4, hp: 400, colors: ['#2f7d4a'], style: 'van' },
   jetski: { name: '시샤크 제트스키', L: 2.6, W: 1.0, mass: 320, Fe: 1, vmax: 30, grip: 1, cs: 5, steer: 1.9, hp: 70, colors: ['#e8413a', '#f2c200', '#2e7dd1', '#f4f4f4'], style: 'jetski', special: 'boat', accel: 13, armor: 0.3 },
@@ -1596,7 +1692,7 @@ class Car {
     else if (this.driver === 'ai' && this.ai && !this.dead && this.burnT <= 0) aiDrive(this, dt);
     else if (!this.dead) { this.in.thr = 0; this.in.st = 0; this.in.brk = this.driver ? 0 : 0.6; this.in.hb = false; }
     this.brakeLight = (this.in.brk > 0.1 || (this.in.thr < 0 && this.vf > 0.5)) ? 1 : 0;
-    const sub = this.type === 'bike' ? 3 : 2, h = dt / sub;
+    const sub = Math.max(this.type === 'bike' ? 3 : 2, Math.ceil(this.speed * dt / 1.4)), h = dt / sub; // 고속에서 벽을 뚫지 않게
     // 도난 경보
     if (this.alarmT > 0) { const b0 = Math.floor(this.alarmT * 2.5); this.alarmT -= dt; if (Math.floor(this.alarmT * 2.5) !== b0) Sfx.tone({ x: this.x, y: this.y, f0: 560, f1: 560, dur: 0.22, type: 'square', vol: 0.22 }); }
     const moving = this.speed > 0.01 || Math.abs(this.w) > 0.01 || this.in.thr !== 0 || (this.V.special && (this.driver || this.alt > 0));
@@ -2061,7 +2157,7 @@ class Ped {
   get alive() { return !this.dead; }
 
   damage(amt, by, dx = 0, dy = 0, kind = 'bullet') {
-    if (this.dead || this.invuln) return;
+    if (this.dead || this.invuln) { if (this.bossNpc && by === Game.player) Empire.bossHit(this); return; }
     if (this === Game.player) this.lastHurt = Game.time;
     // 난이도: NPC가 플레이어에게 주는 피해는 줄인다(GTA도 플레이어 피격 배율이 낮다)
     if (this === Game.player && by && by !== this) amt *= 0.4;
@@ -2309,7 +2405,7 @@ function aggroGang(x, y, kind, gang) {
   for (const p of Game.peds) {
     if (p.dead) continue;
     if (p.kind === 'gang' && gang && p.gang !== gang) continue;
-    if (Gangs.friendly(p) || p.escort) continue; // 내 조직원은 나를 공격하지 않는다
+    if (Gangs.friendly(p) || p.escort || p.bossNpc) continue; // 내 조직원은 나를 공격하지 않는다 · 보스는 제자리
     if ((p.kind === 'gang' || p.kind === 'guard' || (p.kind === 'target' && kind !== 'gang')) && dist2(p.x, p.y, x, y) < 45 * 45) { if (p.kind === 'target' && p.mission && p.mission.onAlert) p.mission.onAlert(); else p.state = 'chase'; }
   }
 }
@@ -2937,8 +3033,9 @@ function onScreen(x, y, m = 0) {
 }
 function offscreenLaneSpot(minD, maxD) {
   const P = Game.player;
+  const near = edgesNear(P.px, P.py, maxD); if (!near.length) return null;
   for (let k = 0; k < 30; k++) {
-    const e = pick(World.edgesList), A = World.nodes[e[0]], B = World.nodes[e[1]];
+    const e = pick(near), A = World.nodes[e[0]], B = World.nodes[e[1]];
     const t = Math.random(), x = lerp(A.x, B.x, t), y = lerp(A.y, B.y, t);
     const d = dist(x, y, P.px, P.py);
     if (d < minD || d > maxD || onScreen(x, y, 8)) continue;
@@ -3074,7 +3171,7 @@ const Save = {
     try {
       const P = Game.player;
       const inv = {}; for (const k in P.inv) if (k !== 'fist') inv[k] = P.inv[k] === Infinity ? -1 : P.inv[k];
-      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {}, gangs: Gangs.save(), body: { maxHp: P.maxHp, endurance: P.endurance || 1, aimSkill: P.aimSkill || 1, shirt: P.shirt, pants: P.pants } }));
+      localStorage.setItem(this.key, JSON.stringify({ idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {}, gangs: Gangs.save(), empire: Empire.save(), finance: Finance.save(), body: { maxHp: P.maxHp, endurance: P.endurance || 1, aimSkill: P.aimSkill || 1, shirt: P.shirt, pants: P.pants, hatType: P.hatType || 'none', hatCol: P.hatCol || '', logo: P.logo || '' } }));
     } catch (e) { /* 저장 불가 환경 */ }
   },
   clear() { try { localStorage.removeItem(this.key); } catch (e) { } },
@@ -3171,7 +3268,7 @@ const Missions = {
   },
 };
 
-const allTargets = () => [...(Jobs.active ? Jobs.targets() : []), ...Missions.targets(), ...GangJob.targets(), ...(Gangs.war && (!Gangs.mine || Gangs.war.A === Gangs.mine || Gangs.war.D === Gangs.mine) ? [{ x: Gangs.war.x, y: Gangs.war.y, c: '#ff3b3b', big: true }] : [])];
+const allTargets = () => [...(Jobs.active ? Jobs.targets() : []), ...Missions.targets(), ...GangJob.targets(), ...Empire.targets(), ...Finance.targets(), ...(Gangs.war && (!Gangs.mine || Gangs.war.A === Gangs.mine || Gangs.war.D === Gangs.mine) ? [{ x: Gangs.war.x, y: Gangs.war.y, c: '#ff3b3b', big: true }] : [])];
 
 // ---------- 미션 도우미 ----------
 function missionCar(m, type, x, y, a, opt = {}) {
@@ -3189,8 +3286,9 @@ function farParking(x, y, minD, maxD) {
   return c.length ? pick(c) : null;
 }
 function roadsideSpot(x, y, minD, maxD) {
+  const near = edgesNear(x, y, maxD), list = near.length ? near : World.edgesList;
   for (let k = 0; k < 80; k++) {
-    const e = pick(World.edgesList), A = World.nodes[e[0]], B = World.nodes[e[1]];
+    const e = pick(list), A = World.nodes[e[0]], B = World.nodes[e[1]];
     const L = dist(A.x, A.y, B.x, B.y), s = rand(2 * T + 6, L - 2 * T - 6);
     const sp = laneSpot(e, chance(0.5), s);
     const d = dist(sp.x, sp.y, x, y);
@@ -3748,7 +3846,7 @@ const Jobs = {
         j.fare.remove = true; j.fare = null;
         j.dest = this.farSpot(c.x, c.y, 150, 400); j.fdist = dist(c.x, c.y, j.dest.x, j.dest.y);
         j.timer = Math.round(j.fdist / 9 + 20); j.stage = 'ride';
-        UI.toast(`손님: "${DIST_NAMES[districtAt(j.dest.x, j.dest.y)]}으로 가 주세요."`);
+        UI.toast(`손님: "${hoodAt(j.dest.x, j.dest.y)}으로 가 주세요."`);
       }
     } else if (j.stage === 'ride') {
       j.blips = [{ x: j.dest.x, y: j.dest.y, c: '#f2c14e', big: true }];
@@ -3774,7 +3872,7 @@ const Jobs = {
       if (j.patient.dead) { j.patient = null; return; }
       if (this.stopped(c, j.patient, 7)) {
         j.patient.remove = true; j.patient = null;
-        const hs = [World.places.hospital, World.places.clinic].filter(Boolean).sort((a, b) => dist(a.x, a.y, c.x, c.y) - dist(b.x, b.y, c.x, c.y));
+        const hs = ['hospital', 'clinic', 'hospital2', 'hospital3'].map(k => World.places[k]).filter(Boolean).sort((a, b) => dist(a.x, a.y, c.x, c.y) - dist(b.x, b.y, c.x, c.y));
         j.dest = hs[0]; j.timer = Math.round(dist(c.x, c.y, j.dest.x, j.dest.y) / 9 + 20); j.stage = 'ride';
         UI.toast('환자 탑승! 병원으로 서둘러라');
       }
@@ -4181,7 +4279,8 @@ function gangLook(p, dt) { // idle 상태의 조직원이 라이벌을 찾는다
   if (!chance(dt * 1.5)) return;
   // 플레이어가 라이벌 조직원이면 자기 구역에서 공격해 온다
   const P = Game.player;
-  if (Gangs.mine && Gangs.mine !== p.gang && !P.dead && !(P.car && P.car.alt > 1.2) && Gangs.ownerAt(p.x, p.y) === p.gang && dist2(p.x, p.y, P.px, P.py) < 16 * 16 && losClear(p.x, p.y, P.px, P.py)) {
+  const logo = P.logo && P.logo === Gangs.mine && !P.car, r = logo ? 26 : 16; // 조직 마크를 달면 멀리서도, 어느 구역에서든 알아본다
+  if (Gangs.mine && Gangs.mine !== p.gang && !p.bossNpc && !P.dead && !(P.car && P.car.alt > 1.2) && (logo || Gangs.ownerAt(p.x, p.y) === p.gang) && dist2(p.x, p.y, P.px, P.py) < r * r && losClear(p.x, p.y, P.px, P.py)) {
     p.state = 'chase'; Talk.say(p, pick(['여긴 우리 구역이다!', `${GANGS[Gangs.mine].name} 놈이다!`, '죽여!']), 2, true); return;
   }
   for (const q of Game.peds) {
@@ -4446,7 +4545,7 @@ addEventListener('keydown', e => { if (typeof Game !== 'undefined' && Game.state
 Object.assign(VTYPES, {
   tank: { name: '라이노 전차', L: 7.2, W: 3.5, mass: 40000, Fe: 1, vmax: 11, grip: 3, cs: 6, steer: 0.9, hp: 2200, colors: ['#4b5a3a'], style: 'tank', special: 'tank', armor: 0.15 },
   milheli: { name: '헌터 공격 헬기', L: 9, W: 2.4, mass: 5000, Fe: 1, vmax: 36, grip: 1, cs: 5, steer: 1.5, hp: 700, colors: ['#4a5540'], style: 'milheli', special: 'heli', armor: 0.5 },
-  jet: { name: '라저 전투기', L: 12, W: 3, mass: 9000, Fe: 1, vmax: 78, grip: 1, cs: 5, steer: 0.9, hp: 600, colors: ['#8a929c'], style: 'jet', special: 'jet', armor: 0.5 },
+  jet: { name: '라저 전투기', L: 12, W: 3, mass: 9000, Fe: 1, vmax: 139, grip: 1, cs: 5, steer: 0.9, hp: 600, colors: ['#8a929c'], style: 'jet', special: 'jet', armor: 0.5 },
 });
 // 그 자리 건물 옥상 높이 (건물이 없으면 0)
 function roofAt(x, y) {
@@ -4520,7 +4619,7 @@ function specialStep(c, dt) {
     c.spd = c.spd || 0;
     const air = c.alt > 1.2;
     if (c.driver && c.burnT <= 0) {
-      if (raw > 0) c.spd += raw * 15 * dt; else if (raw < 0) c.spd += raw * 20 * dt;
+      if (raw > 0) c.spd += raw * (15 + Math.max(0, c.spd - 40) * 0.15) * dt; // 최고 139m/s ≈ 500km/h else if (raw < 0) c.spd += raw * 20 * dt;
       if (!raw && !air) c.spd *= Math.exp(-0.5 * dt);
     } else c.spd *= Math.exp(-2 * dt);
     c.spd = clamp(c.spd, air ? 20 : 0, V.vmax);
@@ -4702,7 +4801,7 @@ const Military = {
     if (!near) { for (const p of this.soldiers) p.remove = true; this.soldiers = []; }
     // 출입 경보
     const inside = this.inside(P.px, P.py) && !P.dead;
-    if (inside && Wanted.stars < 4 && !Game.noWanted) {
+    if (inside && Wanted.stars < 4 && !Game.noWanted && !Empire.baseAccess()) {
       if (!this.warned) { this.warned = true; UI.big('군사 제한구역', '5초 안에 나가지 않으면 사살 명령이 떨어진다', 2.5, '#ff4d4d'); Sfx.tone({ f0: 900, f1: 600, dur: 0.6, type: 'sawtooth', vol: 0.2 }); }
       this.warnT += dt;
       if (this.warnT > 5) { Wanted.set(4); Wanted.seen = true; UI.toast('기지 경보 발령! 수배 ★★★★'); }
@@ -5052,7 +5151,7 @@ function drawGround(amb) {
   if (World.base) {
     const B = World.base;
     if (Cam.y - Cam.vh / 2 < B.y1 + 10) {
-      const ry0 = 9 * T, ry1 = 14 * T, cy = (ry0 + ry1) / 2, rx0 = 12 * T, rx1 = (MW - 13) * T;
+      const ry0 = 9 * T, ry1 = 14 * T, cy = (ry0 + ry1) / 2, rx0 = B.rx0, rx1 = B.rx1;
       ctx.fillStyle = 'rgba(240,240,235,0.85)';
       for (let x = rx0 + 20; x < rx1 - 20; x += 12) ctx.fillRect(x, cy - 0.2, 6, 0.4);
       for (const ex of [rx0 + 2, rx1 - 12]) for (let k = 0; k < 6; k++) ctx.fillRect(ex, ry0 + 1.5 + k * 3, 10, 1.4);
@@ -5352,6 +5451,7 @@ function drawPed(p, shadow) {
   ctx.fillStyle = p.hair; ctx.beginPath(); ctx.arc(-0.01, 0, 0.155, Math.PI * 0.5, Math.PI * 1.5); ctx.fill();
   if (p.kind === 'cop' || p.kind === 'swat') { ctx.fillStyle = p.kind === 'cop' ? '#15213f' : '#1b1f24'; ctx.beginPath(); ctx.arc(0.02, 0, 0.17, 0, TAU); ctx.fill(); ctx.fillRect(0.1, -0.12, 0.12, 0.24); }
   drawArchHead(p);
+  if (p.kind === 'player') drawPlayerStyle(p);
   ctx.restore();
 }
 
@@ -5752,8 +5852,8 @@ function renderScene() {
  *
  * 게임 로직은 그대로 2D(x, y)에서 돌고, 이 모듈은 같은 세계를 Three.js로 다시 그린다.
  *  - 2D 좌표 (x, y) → 3D (x, 높이, z=y). 2D 방향각 a → 메시 rotation.y = −a
- *  - 지면: 기존 2D 지면 그리기 함수로 도시 전체를 한 장의 텍스처로 구워 평면에 입힌다.
- *  - 건물: 전부 하나의 지오메트리로 합쳐 드로우콜 1회. 창문은 반복 텍스처 + 밤에는 발광.
+ *  - 세계는 128m 청크로 나눠 카메라 주변만 만든다(stream). 청크마다 지면 텍스처(2D 지면 렌더러로 굽기) +
+ *    건물 합친 지오메트리 + 나무·가로등·신호등 InstancedMesh. 가까운 청크는 고해상도 텍스처.
  *  - 나무·가로등·신호등: InstancedMesh. 차·사람: 필요할 때 만들고 매 프레임 위치만 갱신.
  *  - 카메라가 벽 뒤로 들어가면 GTA처럼 벽 앞으로 당긴다(2D 광선으로 판정).
  * ===================================================================== */
@@ -5772,7 +5872,7 @@ const View3D = {
       const R = this.renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: !IS_MOBILE, powerPreference: 'high-performance' });
       R.setPixelRatio(Math.min(window.devicePixelRatio || 1, IS_MOBILE ? 1.25 : 1.75));
       this.scene = new THREE.Scene();
-      this.camera = new THREE.PerspectiveCamera(62, 1, 0.1, 400);
+      this.camera = new THREE.PerspectiveCamera(62, 1, 0.1, 460);
       this.scene.fog = new THREE.Fog(0x9fc7e8, 60, 170);
       this.hemi = new THREE.HemisphereLight(0xdfefff, 0x5a5a48, 0.9); this.scene.add(this.hemi);
       this.sun = new THREE.DirectionalLight(0xffffff, 0.8); this.sun.position.set(-0.5, 1, 0.35); this.scene.add(this.sun);
@@ -5790,25 +5890,14 @@ const View3D = {
     return this.mats.get(key);
   },
 
-  // ---------- 정적 세계 ----------
+  // ---------- 정적 세계: 마인크래프트처럼 청크(128m) 단위로 스트리밍 ----------
+  // 도시 전체를 한 번에 만들지 않고, 카메라 주변 반경 R 안의 청크만 만들어 두고 멀어지면 버린다.
+  // R은 속도·고도에 따라 넓어져서 500km/h로 달려도 앞쪽이 끊기지 않는다(매 프레임 시간 예산 안에서 몇 개씩 생성).
+  CS: 128,
   buildStatic() {
     const S = this.scene;
-    // 지면 텍스처: 기존 2D 지면 렌더러를 오프스크린 캔버스에 도시 전체 크기로 실행
-    const size = IS_MOBILE ? 2048 : 4096, ppm = size / (MW * T);
-    const gc = document.createElement('canvas'); gc.width = gc.height = size;
-    const g = gc.getContext('2d');
-    const saveCtx = ctx, saveCam = { ...Cam };
-    ctx = g; Object.assign(Cam, { x: MW * T / 2, y: MH * T / 2, ppm, vw: MW * T, vh: MH * T, rot: 0, sx: 0, sy: 0 });
-    g.setTransform(ppm, 0, 0, ppm, 0, 0);
-    try { drawGround([1, 1, 1]); } finally { ctx = saveCtx; Object.assign(Cam, saveCam); }
-    const tex = new THREE.CanvasTexture(gc);
-    tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(MW * T, MH * T), new THREE.MeshLambertMaterial({ map: tex }));
-    ground.rotation.x = -Math.PI / 2; ground.position.set(MW * T / 2, 0, MH * T / 2);
-    S.add(ground);
-    const sea = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshLambertMaterial({ color: 0x1d5a80 }));
+    const sea = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000), new THREE.MeshLambertMaterial({ color: 0x1d5a80 }));
     sea.rotation.x = -Math.PI / 2; sea.position.set(MW * T / 2, -0.05, MH * T / 2); S.add(sea);
-
     // 창문 텍스처 (흰 바탕 = 정점 색 그대로, 창 = 어두운 유리) + 밤 발광 맵
     const wc = document.createElement('canvas'); wc.width = wc.height = 64;
     const w = wc.getContext('2d'); w.fillStyle = '#ffffff'; w.fillRect(0, 0, 64, 64); w.fillStyle = '#3a4656'; w.fillRect(8, 16, 48, 30); w.fillStyle = 'rgba(255,255,255,0.25)'; w.fillRect(8, 16, 48, 4);
@@ -5816,80 +5905,174 @@ const View3D = {
     const e = ec.getContext('2d'); e.fillStyle = '#000'; e.fillRect(0, 0, 64, 64); e.fillStyle = '#ffd98a'; e.fillRect(8, 16, 48, 30);
     const winTex = new THREE.CanvasTexture(wc), emTex = new THREE.CanvasTexture(ec);
     for (const t of [winTex, emTex]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; }
-    const pos = [], nor = [], uv = [], col = [];
-    const color = new THREE.Color();
-    const quad = (a, b, c, d, n, uvs, rgb) => {
-      for (const [p, u] of [[a, uvs[0]], [b, uvs[1]], [c, uvs[2]], [a, uvs[0]], [c, uvs[2]], [d, uvs[3]]]) { pos.push(...p); nor.push(...n); uv.push(...u); col.push(rgb.r, rgb.g, rgb.b); }
-    };
-    const SOLID = [[0.02, 0.98], [0.03, 0.98], [0.03, 0.97], [0.02, 0.97]];
-    for (const b of World.buildings) {
-      const X0 = b.x0 * T, Z0 = b.y0 * T, X1 = (b.x1 + 1) * T, Z1 = (b.y1 + 1) * T, H = b.h;
-      const hasWin = b.kind !== 'container' && b.kind !== 'house' && b.kind !== 'warehouse' && H > 5;
-      const wallUV = (len) => hasWin ? [[0, 0], [len / 3, 0], [len / 3, H / 3.4], [0, H / 3.4]] : SOLID;
-      const base = color.set(b.color).clone();
-      const side = f => base.clone().multiplyScalar(f);
-      quad([X0, 0, Z1], [X1, 0, Z1], [X1, H, Z1], [X0, H, Z1], [0, 0, 1], wallUV(X1 - X0), side(0.8));   // 남
-      quad([X1, 0, Z0], [X0, 0, Z0], [X0, H, Z0], [X1, H, Z0], [0, 0, -1], wallUV(X1 - X0), side(0.95)); // 북
-      quad([X1, 0, Z1], [X1, 0, Z0], [X1, H, Z0], [X1, H, Z1], [1, 0, 0], wallUV(Z1 - Z0), side(0.7));   // 동
-      quad([X0, 0, Z0], [X0, 0, Z1], [X0, H, Z1], [X0, H, Z0], [-1, 0, 0], wallUV(Z1 - Z0), side(0.88)); // 서
-      const roofC = b.kind === 'house' ? base.clone().multiplyScalar(0.7) : b.kind === 'hospital' ? color.set('#f4f4f4').clone() : b.kind === 'police' ? color.set('#2c3e66').clone() : base.clone().multiplyScalar(1.05);
-      if (b.kind === 'house') { // 박공지붕
-        const along = (X1 - X0) >= (Z1 - Z0), rH = H + 2.2;
-        if (along) {
-          const zm = (Z0 + Z1) / 2;
-          quad([X0, H, Z1], [X1, H, Z1], [X1, rH, zm], [X0, rH, zm], [0, 0.7, 0.7], SOLID, roofC);
-          quad([X1, H, Z0], [X0, H, Z0], [X0, rH, zm], [X1, rH, zm], [0, 0.7, -0.7], SOLID, roofC.clone().multiplyScalar(0.85));
-          quad([X0, H, Z0], [X0, H, Z1], [X0, rH, zm], [X0, rH, zm], [-1, 0, 0], SOLID, side(0.8));
-          quad([X1, H, Z1], [X1, H, Z0], [X1, rH, zm], [X1, rH, zm], [1, 0, 0], SOLID, side(0.7));
-        } else {
-          const xm = (X0 + X1) / 2;
-          quad([X1, H, Z1], [X1, H, Z0], [xm, rH, Z0], [xm, rH, Z1], [0.7, 0.7, 0], SOLID, roofC);
-          quad([X0, H, Z0], [X0, H, Z1], [xm, rH, Z1], [xm, rH, Z0], [-0.7, 0.7, 0], SOLID, roofC.clone().multiplyScalar(0.85));
-          quad([X0, H, Z1], [X1, H, Z1], [xm, rH, Z1], [xm, rH, Z1], [0, 0, 1], SOLID, side(0.8));
-          quad([X1, H, Z0], [X0, H, Z0], [xm, rH, Z0], [xm, rH, Z0], [0, 0, -1], SOLID, side(0.9));
-        }
-      } else quad([X0, H, Z1], [X1, H, Z1], [X1, H, Z0], [X0, H, Z0], [0, 1, 0], SOLID, roofC);
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     this.bmat = new THREE.MeshLambertMaterial({ vertexColors: true, map: winTex, emissive: 0xffffff, emissiveMap: emTex, emissiveIntensity: 0 });
-    S.add(new THREE.Mesh(geo, this.bmat));
-
-    // 나무 (줄기 + 수관)
-    const trees = World.trees;
-    const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.18, 0.25, 1, 6), this.mat('#6b4a2a'), trees.length);
-    const crown = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), trees.length);
-    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), p3 = new THREE.Vector3();
-    trees.forEach((t, i) => {
-      m4.compose(p3.set(t.x, t.h * 0.4, t.y), q.identity(), sc.set(1, t.h * 0.8, 1)); trunk.setMatrixAt(i, m4);
-      const palm = t.kind === 'palm';
-      m4.compose(p3.set(t.x, t.h * (palm ? 0.95 : 0.8), t.y), q.identity(), palm ? sc.set(t.r * 0.9, 0.5, t.r * 0.9) : sc.set(t.r, t.r * 0.9, t.r)); crown.setMatrixAt(i, m4);
-      crown.setColorAt(i, color.set(palm ? '#3f8a3a' : t.hue < 0.33 ? '#3d6e34' : t.hue < 0.66 ? '#467a3a' : '#355f30'));
-    });
-    S.add(trunk, crown);
-    // 가로등
-    const L = World.lamps;
-    const pole = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.08, 0.1, 5, 5), this.mat('#2b2d31'), L.length);
-    this.lampHeads = new THREE.InstancedMesh(new THREE.SphereGeometry(0.28, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffe2a8 }), L.length);
-    L.forEach((l, i) => { m4.makeTranslation(l.x, 2.5, l.y); pole.setMatrixAt(i, m4); m4.makeTranslation(l.x, 5.05, l.y); this.lampHeads.setMatrixAt(i, m4); });
-    S.add(pole, this.lampHeads);
-    // 신호등 (진입로마다 하나, 색은 매 프레임 갱신)
-    this.tl = [];
+    // 청크들이 함께 쓰는 지오메트리·재질
+    this.sg = {
+      trunk: new THREE.CylinderGeometry(0.18, 0.25, 1, 6), crown: new THREE.IcosahedronGeometry(1, 0),
+      pole: new THREE.CylinderGeometry(0.08, 0.1, 5, 5), head: new THREE.SphereGeometry(0.28, 8, 6),
+      tpole: new THREE.CylinderGeometry(0.07, 0.07, 3.6, 5), tbox: new THREE.BoxGeometry(0.4, 0.4, 0.4),
+    };
+    this.crownMat = new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true });
+    this.lampMat = new THREE.MeshBasicMaterial({ color: 0xffe2a8 });
+    this.tlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    // 신호등 위치 (진입로마다 하나)
+    const tls = [];
     for (const n of World.nodes) {
       if (!n.light) continue;
       for (let d = 0; d < 4; d++) {
         if (n.adj[(d + 2) % 4] < 0) continue;
         const r = rightOf(d);
-        this.tl.push({ n, d, x: n.x - DIRS[d][0] * (2 * T + 0.3) + r[0] * (T + 0.6), y: n.y - DIRS[d][1] * (2 * T + 0.3) + r[1] * (T + 0.6) });
+        tls.push({ n, d, x: n.x - DIRS[d][0] * (2 * T + 0.3) + r[0] * (T + 0.6), y: n.y - DIRS[d][1] * (2 * T + 0.3) + r[1] * (T + 0.6) });
       }
     }
-    const tp = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.07, 0.07, 3.6, 5), this.mat('#1b1d21'), this.tl.length);
-    this.tlHeads = new THREE.InstancedMesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), new THREE.MeshBasicMaterial({ color: 0xffffff }), this.tl.length);
-    this.tl.forEach((t, i) => { m4.makeTranslation(t.x, 1.8, t.y); tp.setMatrixAt(i, m4); m4.makeTranslation(t.x, 3.7, t.y); this.tlHeads.setMatrixAt(i, m4); this.tlHeads.setColorAt(i, color.set('#39e36b')); });
-    S.add(tp, this.tlHeads);
+    // 청크별 물건 목록
+    const CS = this.CS, NCX = this.NCX = Math.ceil(MW * T / CS), NCY = this.NCY = Math.ceil(MH * T / CS);
+    this.bucket = [];
+    for (let i = 0; i < NCX * NCY; i++) this.bucket.push({ b: [], trees: [], lamps: [], tl: [] });
+    const at = (x, y) => this.bucket[clamp(Math.floor(x / CS), 0, NCX - 1) + clamp(Math.floor(y / CS), 0, NCY - 1) * NCX];
+    for (const b of World.buildings) at((b.x0 + b.x1 + 1) / 2 * T, (b.y0 + b.y1 + 1) / 2 * T).b.push(b);
+    for (const t of World.trees) at(t.x, t.y).trees.push(t);
+    for (const l of World.lamps) at(l.x, l.y).lamps.push(l);
+    for (const t of tls) at(t.x, t.y).tl.push(t);
+    this.chunks = new Map();
+    this.drawR = 300;
+  },
+  // 청크 지면 텍스처: 기존 2D 지면 렌더러를 청크 크기 오프스크린 캔버스에 실행
+  chunkTex(cx, cy, px) {
+    const CS = this.CS, ppm = px / CS, X0 = cx * CS, Y0 = cy * CS;
+    const gc = document.createElement('canvas'); gc.width = gc.height = px;
+    const g = gc.getContext('2d');
+    const saveCtx = ctx, saveCam = { ...Cam };
+    ctx = g; Object.assign(Cam, { x: X0 + CS / 2, y: Y0 + CS / 2, ppm, vw: CS, vh: CS, rot: 0, sx: 0, sy: 0 });
+    g.setTransform(ppm, 0, 0, ppm, -X0 * ppm, -Y0 * ppm);
+    try { drawGround([1, 1, 1]); } finally { ctx = saveCtx; Object.assign(Cam, saveCam); }
+    const tex = new THREE.CanvasTexture(gc);
+    tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+  },
+  texPx(hi) { return IS_MOBILE || Perf.low ? (hi ? 512 : 128) : (hi ? 1024 : 256); },
+  buildChunk(cx, cy, hi) {
+    const CS = this.CS, bk = this.bucket[cx + cy * this.NCX], G = new THREE.Group();
+    const tex = this.chunkTex(cx, cy, this.texPx(hi));
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(CS, CS), new THREE.MeshLambertMaterial({ map: tex }));
+    ground.rotation.x = -Math.PI / 2; ground.position.set(cx * CS + CS / 2, 0, cy * CS + CS / 2);
+    G.add(ground);
+    const ch = { cx, cy, hi, G, ground, tl: bk.tl, tlHeads: null };
+    // 건물: 청크 안 건물을 하나의 지오메트리로
+    if (bk.b.length) {
+      const pos = [], nor = [], uv = [], col = [];
+      const color = new THREE.Color();
+      const quad = (a, b, c, d, n, uvs, rgb) => {
+        for (const [p, u] of [[a, uvs[0]], [b, uvs[1]], [c, uvs[2]], [a, uvs[0]], [c, uvs[2]], [d, uvs[3]]]) { pos.push(p[0], p[1], p[2]); nor.push(n[0], n[1], n[2]); uv.push(u[0], u[1]); col.push(rgb.r, rgb.g, rgb.b); }
+      };
+      const SOLID = [[0.02, 0.98], [0.03, 0.98], [0.03, 0.97], [0.02, 0.97]];
+      for (const b of bk.b) {
+        const X0 = b.x0 * T, Z0 = b.y0 * T, X1 = (b.x1 + 1) * T, Z1 = (b.y1 + 1) * T, H = b.h;
+        const hasWin = b.kind !== 'container' && b.kind !== 'house' && b.kind !== 'warehouse' && b.kind !== 'fence' && H > 5;
+        const wallUV = (len) => hasWin ? [[0, 0], [len / 3, 0], [len / 3, H / 3.4], [0, H / 3.4]] : SOLID;
+        const base = color.set(b.color).clone();
+        const side = f => base.clone().multiplyScalar(f);
+        quad([X0, 0, Z1], [X1, 0, Z1], [X1, H, Z1], [X0, H, Z1], [0, 0, 1], wallUV(X1 - X0), side(0.8));   // 남
+        quad([X1, 0, Z0], [X0, 0, Z0], [X0, H, Z0], [X1, H, Z0], [0, 0, -1], wallUV(X1 - X0), side(0.95)); // 북
+        quad([X1, 0, Z1], [X1, 0, Z0], [X1, H, Z0], [X1, H, Z1], [1, 0, 0], wallUV(Z1 - Z0), side(0.7));   // 동
+        quad([X0, 0, Z0], [X0, 0, Z1], [X0, H, Z1], [X0, H, Z0], [-1, 0, 0], wallUV(Z1 - Z0), side(0.88)); // 서
+        const roofC = b.kind === 'house' ? base.clone().multiplyScalar(0.7) : b.kind === 'hospital' ? color.set('#f4f4f4').clone() : b.kind === 'police' ? color.set('#2c3e66').clone() : base.clone().multiplyScalar(1.05);
+        if (b.kind === 'house') { // 박공지붕
+          const along = (X1 - X0) >= (Z1 - Z0), rH = H + 2.2;
+          if (along) {
+            const zm = (Z0 + Z1) / 2;
+            quad([X0, H, Z1], [X1, H, Z1], [X1, rH, zm], [X0, rH, zm], [0, 0.7, 0.7], SOLID, roofC);
+            quad([X1, H, Z0], [X0, H, Z0], [X0, rH, zm], [X1, rH, zm], [0, 0.7, -0.7], SOLID, roofC.clone().multiplyScalar(0.85));
+            quad([X0, H, Z0], [X0, H, Z1], [X0, rH, zm], [X0, rH, zm], [-1, 0, 0], SOLID, side(0.8));
+            quad([X1, H, Z1], [X1, H, Z0], [X1, rH, zm], [X1, rH, zm], [1, 0, 0], SOLID, side(0.7));
+          } else {
+            const xm = (X0 + X1) / 2;
+            quad([X1, H, Z1], [X1, H, Z0], [xm, rH, Z0], [xm, rH, Z1], [0.7, 0.7, 0], SOLID, roofC);
+            quad([X0, H, Z0], [X0, H, Z1], [xm, rH, Z1], [xm, rH, Z0], [-0.7, 0.7, 0], SOLID, roofC.clone().multiplyScalar(0.85));
+            quad([X0, H, Z1], [X1, H, Z1], [xm, rH, Z1], [xm, rH, Z1], [0, 0, 1], SOLID, side(0.8));
+            quad([X1, H, Z0], [X0, H, Z0], [xm, rH, Z0], [xm, rH, Z0], [0, 0, -1], SOLID, side(0.9));
+          }
+        } else quad([X0, H, Z1], [X1, H, Z1], [X1, H, Z0], [X0, H, Z0], [0, 1, 0], SOLID, roofC);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      geo.computeBoundingSphere();
+      G.add(new THREE.Mesh(geo, this.bmat));
+    }
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), p3 = new THREE.Vector3(), color = new THREE.Color();
+    const inst = (geo, mat, n) => { const m = new THREE.InstancedMesh(geo, mat, n); m.frustumCulled = false; G.add(m); return m; };
+    // 나무 (줄기 + 수관)
+    if (bk.trees.length) {
+      const trunk = inst(this.sg.trunk, this.mat('#6b4a2a'), bk.trees.length), crown = inst(this.sg.crown, this.crownMat, bk.trees.length);
+      bk.trees.forEach((t, i) => {
+        m4.compose(p3.set(t.x, t.h * 0.4, t.y), q.identity(), sc.set(1, t.h * 0.8, 1)); trunk.setMatrixAt(i, m4);
+        const palm = t.kind === 'palm';
+        m4.compose(p3.set(t.x, t.h * (palm ? 0.95 : 0.8), t.y), q.identity(), palm ? sc.set(t.r * 0.9, 0.5, t.r * 0.9) : sc.set(t.r, t.r * 0.9, t.r)); crown.setMatrixAt(i, m4);
+        crown.setColorAt(i, color.set(palm ? '#3f8a3a' : t.hue < 0.33 ? '#3d6e34' : t.hue < 0.66 ? '#467a3a' : '#355f30'));
+      });
+    }
+    // 가로등
+    if (bk.lamps.length) {
+      const pole = inst(this.sg.pole, this.mat('#2b2d31'), bk.lamps.length), heads = inst(this.sg.head, this.lampMat, bk.lamps.length);
+      bk.lamps.forEach((l, i) => { m4.makeTranslation(l.x, 2.5, l.y); pole.setMatrixAt(i, m4); m4.makeTranslation(l.x, 5.05, l.y); heads.setMatrixAt(i, m4); });
+    }
+    // 신호등 (색은 render에서 갱신)
+    if (bk.tl.length) {
+      const tp = inst(this.sg.tpole, this.mat('#1b1d21'), bk.tl.length), th = ch.tlHeads = inst(this.sg.tbox, this.tlMat, bk.tl.length);
+      bk.tl.forEach((t, i) => { m4.makeTranslation(t.x, 1.8, t.y); tp.setMatrixAt(i, m4); m4.makeTranslation(t.x, 3.7, t.y); th.setMatrixAt(i, m4); th.setColorAt(i, color.set('#39e36b')); });
+    }
+    this.scene.add(G);
+    return ch;
+  },
+  disposeChunk(ch) {
+    this.scene.remove(ch.G);
+    ch.G.traverse(o => {
+      if (o === ch.ground) { o.geometry.dispose(); o.material.map.dispose(); o.material.dispose(); }
+      else if (o.isInstancedMesh) o.dispose();
+      else if (o.isMesh) o.geometry.dispose();
+    });
+  },
+  // 카메라 주변 청크 스트리밍. 반경은 속도·고도에 비례 (500km/h ≈ 139m/s 에서도 수 초 앞까지 준비)
+  stream(fx, fy, spd, alt) {
+    const CS = this.CS, low = IS_MOBILE || Perf.low;
+    const base = low ? 220 : 380, cap = low ? 420 : 760;
+    const want = clamp(base + spd * (low ? 1.6 : 2.8) + alt * 3, base, cap);
+    this.drawR = want > this.drawR ? smooth(this.drawR, want, 1.2, 1 / 60) : smooth(this.drawR, want, 0.4, 1 / 60);
+    if (!this.lastF || Math.hypot(fx - this.lastF[0], fy - this.lastF[1]) > 150) this.firstFill = true; // 첫 프레임·순간이동: 주변을 한 번에 채운다
+    this.lastF = [fx, fy];
+    const R = this.drawR, hiR = low ? 90 : 170;
+    // 진행 방향 앞쪽을 먼저 만든다
+    const P = Game.player, car = P.car, lx = car ? car.vx * 1.5 : 0, ly = car ? car.vy * 1.5 : 0;
+    const need = [];
+    const c0 = Math.max(0, Math.floor((fx - R) / CS)), c1 = Math.min(this.NCX - 1, Math.floor((fx + R) / CS));
+    const d0 = Math.max(0, Math.floor((fy - R) / CS)), d1 = Math.min(this.NCY - 1, Math.floor((fy + R) / CS));
+    const rectD = (cx, cy, x, y) => Math.hypot(Math.max(cx * CS - x, 0, x - (cx + 1) * CS), Math.max(cy * CS - y, 0, y - (cy + 1) * CS));
+    for (let cy = d0; cy <= d1; cy++) for (let cx = c0; cx <= c1; cx++) {
+      const d = rectD(cx, cy, fx, fy); if (d > R) continue;
+      const k = cx + cy * this.NCX, ch = this.chunks.get(k), hi = d < hiR;
+      if (!ch) need.push([rectD(cx, cy, fx + lx, fy + ly), cx, cy, hi, k]);
+      else if (hi && !ch.hi) need.push([d + 1000, cx, cy, true, k, ch]);
+    }
+    need.sort((a, b) => a[0] - b[0]);
+    const t0 = performance.now(), budget = this.firstFill ? 400 : low ? 4 : 7;
+    for (const [, cx, cy, hi, k, old] of need) {
+      if (old) { // 가까워진 청크는 지면 텍스처만 고해상도로 교체
+        const tex = this.chunkTex(cx, cy, this.texPx(true));
+        old.ground.material.map.dispose(); old.ground.material.map = tex; old.ground.material.needsUpdate = true; old.hi = true;
+      } else this.chunks.set(k, this.buildChunk(cx, cy, hi));
+      if (performance.now() - t0 > budget) break;
+    }
+    this.firstFill = false;
+    // 멀어진 청크는 버린다 (조금 여유를 둬서 경계에서 깜빡이지 않게)
+    for (const [k, ch] of this.chunks) {
+      const d = rectD(ch.cx, ch.cy, fx, fy);
+      if (d > R + CS * 0.75) { this.disposeChunk(ch); this.chunks.delete(k); }
+      else ch.G.visible = d < R + 8;
+    }
   },
   buildDynamicShared() {
     this.geo = {
@@ -6029,8 +6212,33 @@ const View3D = {
     const hairC = p.kind === 'cop' ? '#15213f' : p.kind === 'gang' ? (GANGS[p.gang] || GANGS.dragon).band : p.hat || p.hair;
     const hair = new THREE.Mesh(this.geo.head, new THREE.MeshLambertMaterial({ color: hairC })); hair.position.set(-0.03, 1.7, 0); hair.scale.set(1.05, 0.75, 1.1); g.add(hair);
     const gun = new THREE.Mesh(box, this.mat('#1a1a1a')); gun.scale.set(0.5, 0.1, 0.08); gun.position.set(0.45, 1.2, 0.31); gun.visible = false; g.add(gun);
-    g.userData = { legs, arms, gun, shirt, pants, sc: p.shirt };
+    if (p.kind === 'player') this.addStyle(g, p);
+    g.userData = { legs, arms, gun, shirt, pants, sc: p.shirt, style: p.kind === 'player' ? styleKey(p) : '' };
     this.scene.add(g); return g;
+  },
+
+  // 플레이어 모자·조직 마크 (옷 꾸미기)
+  logoTex(id) {
+    this.logoTexs = this.logoTexs || {};
+    if (!this.logoTexs[id]) { const c = document.createElement('canvas'); c.width = c.height = 64; drawGangLogo(c.getContext('2d'), id, 32, 32, 28); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; this.logoTexs[id] = t; }
+    return this.logoTexs[id];
+  },
+  addStyle(g, p) {
+    const box = this.geo.box, h = p.hatType, col = p.hatCol || '#1d1d1f', m = this.mat(col);
+    const add = (mat, sx, sy, sz, x, y, z) => { const o = new THREE.Mesh(box, mat); o.scale.set(sx, sy, sz); o.position.set(x, y, z); g.add(o); return o; };
+    if (h === 'cap') { add(m, 0.32, 0.12, 0.32, -0.02, 1.8, 0); add(m, 0.16, 0.03, 0.26, 0.2, 1.75, 0); }
+    else if (h === 'beanie') { add(m, 0.33, 0.18, 0.33, -0.02, 1.82, 0); }
+    else if (h === 'fedora') { add(m, 0.55, 0.03, 0.55, -0.02, 1.77, 0); add(m, 0.3, 0.16, 0.3, -0.02, 1.86, 0); }
+    else if (h === 'bandana') { add(m, 0.32, 0.08, 0.32, -0.02, 1.78, 0); add(m, 0.12, 0.05, 0.08, -0.2, 1.74, 0); }
+    else if (h === 'helmet') { add(m, 0.4, 0.34, 0.4, 0, 1.72, 0); add(this.mat('#1c2630'), 0.05, 0.14, 0.3, 0.2, 1.7, 0); }
+    else if (h === 'crown') { const gm = new THREE.MeshLambertMaterial({ color: '#f2c14e', emissive: '#5a4210' }); for (let k = 0; k < 5; k++) { const a = k * TAU / 5; add(gm, 0.07, 0.16, 0.07, Math.cos(a) * 0.12, 1.86, Math.sin(a) * 0.12); } add(gm, 0.3, 0.05, 0.3, 0, 1.79, 0); }
+    if (p.logo && GANGS[p.logo]) {
+      const lm = new THREE.MeshBasicMaterial({ map: this.logoTex(p.logo), transparent: true });
+      const pg = new THREE.PlaneGeometry(0.22, 0.22);
+      const back = new THREE.Mesh(pg, lm); back.position.set(-0.155, 1.28, 0); back.rotation.y = -Math.PI / 2; g.add(back);
+      const chest = new THREE.Mesh(pg, lm); chest.scale.setScalar(0.5); chest.position.set(0.155, 1.36, 0.1); chest.rotation.y = Math.PI / 2; g.add(chest);
+      if (h === 'cap' || h === 'beanie' || h === 'helmet') { const hl = new THREE.Mesh(pg, lm); hl.scale.setScalar(0.45); hl.position.set(h === 'helmet' ? 0.205 : 0.15, 1.84, 0); hl.rotation.y = Math.PI / 2; g.add(hl); }
+    }
   },
 
   // ---------- 매 프레임 ----------
@@ -6112,16 +6320,22 @@ const View3D = {
     const sky = new THREE.Color(lerp(0.62, 0.04, night) * (1 - 0.3 * wet), lerp(0.78, 0.06, night) * (1 - 0.25 * wet), lerp(0.91, 0.14, night) * (1 - 0.1 * wet));
     if (amb[0] > amb[2] + 0.1) sky.lerp(new THREE.Color(0.95, 0.55, 0.35), 0.45);
     this.renderer.setClearColor(sky); S.fog.color.copy(sky);
-    S.fog.far = 170 - wet * 50 + (P.car && P.car.alt || 0) * 2.5;
+    const fc = P.car, fAlt = fc ? fc.alt || 0 : P.alt || 0;
+    this.stream(P.px, P.py, fc ? Math.abs(fc.speed || fc.spd || 0) : 0, fAlt);
+    S.fog.far = this.drawR * (1 - wet * 0.3); S.fog.near = Math.min(90, S.fog.far * 0.4);
+    if (Math.abs(this.camera.far - (this.drawR + 60)) > 20) { this.camera.far = this.drawR + 60; this.camera.updateProjectionMatrix(); }
     this.hemi.intensity = 0.25 + (1 - night) * 0.75; this.sun.intensity = 0.1 + (1 - night) * 0.8;
     this.hemi.color.setRGB(amb[0], amb[1], amb[2]);
     this.bmat.emissiveIntensity = night > 0.35 ? night * 0.9 : 0;
-    this.lampHeads.material.color.setScalar(night > 0.3 ? 1 : 0.55);
+    this.lampMat.color.setScalar(night > 0.3 ? 1 : 0.55);
     // 신호등
     if (!this.tlT || Game.time - this.tlT > 0.4) {
       this.tlT = Game.time; const cc = new THREE.Color();
-      this.tl.forEach((t, i) => { const s = lightState(t.n, t.d); this.tlHeads.setColorAt(i, cc.set(s === 'g' ? '#39e36b' : s === 'y' ? '#ffc933' : '#ff3b3b')); });
-      this.tlHeads.instanceColor.needsUpdate = true;
+      for (const [, ch] of this.chunks) {
+        if (!ch.tlHeads || !ch.G.visible) continue;
+        ch.tl.forEach((t, i) => { const s = lightState(t.n, t.d); ch.tlHeads.setColorAt(i, cc.set(s === 'g' ? '#39e36b' : s === 'y' ? '#ffc933' : '#ff3b3b')); });
+        ch.tlHeads.instanceColor.needsUpdate = true;
+      }
     }
     const R2 = 180 * 180;
     // 차량
@@ -6156,6 +6370,7 @@ const View3D = {
       if (dist2(p.x, p.y, P.px, P.py) > R2) continue;
       pseen.add(p.id);
       let g = this.peds.get(p.id);
+      if (g && p === P && g.userData.style !== styleKey(P)) { S.remove(g); g = null; } // 옷을 갈아입었다
       if (!g) { g = this.makePed(p); this.peds.set(p.id, g); }
       g.visible = !(p === P && Game.view === 'fps');
       g.position.set(p.x, p.alt || (p.swim ? -1.2 : 0), p.y);
@@ -6490,9 +6705,19 @@ function drawHUD(dt) {
 
 function roundRect(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
 
+// 조직 보스 위치 표시용 왕관
+function drawCrownMark(c, x, y, r) {
+  c.fillStyle = '#f2c14e'; c.strokeStyle = 'rgba(0,0,0,0.85)'; c.lineWidth = 1.2;
+  c.beginPath(); c.moveTo(x - r, y + r * 0.5); c.lineTo(x - r, y - r * 0.5); c.lineTo(x - r * 0.5, y); c.lineTo(x, y - r * 0.8); c.lineTo(x + r * 0.5, y); c.lineTo(x + r, y - r * 0.5); c.lineTo(x + r, y + r * 0.5); c.closePath(); c.stroke(); c.fill();
+}
+// 다른 파일이 장소를 더할 때: EXTRA_PLACES.push([장소키, SHOPS키]) · EXTRA_ICONS.push({ key, ch, c, label })
+const EXTRA_PLACES = [], EXTRA_ICONS = [];
 function placeIcons() {
   const out = [];
   const pl = World.places;
+  for (const e of EXTRA_ICONS) if (pl[e.key]) out.push({ x: pl[e.key].x, y: pl[e.key].y, ch: e.ch, c: typeof e.c === 'function' ? e.c() : e.c, label: e.label });
+  for (const k of ['hospital2', 'hospital3']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: 'H', c: '#e0443e', label: '병원' });
+  for (const k of ['police2', 'police3']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: 'P', c: '#4b8fe8', label: '경찰서' });
   if (pl.hospital) out.push({ x: pl.hospital.x, y: pl.hospital.y, ch: 'H', c: '#e0443e', label: '병원' });
   if (pl.clinic) out.push({ x: pl.clinic.x, y: pl.clinic.y, ch: 'H', c: '#e0443e', label: '의원' });
   if (pl.police) out.push({ x: pl.police.x, y: pl.police.y, ch: 'P', c: '#4b8fe8', label: '경찰서' });
@@ -6504,12 +6729,13 @@ function placeIcons() {
   for (const m of World.marinas || []) out.push({ x: m.x, y: m.y, ch: '배', c: '#4fc3f7', label: '마리나(보트)' });
   if (pl.mygarage) out.push({ x: pl.mygarage.x, y: pl.mygarage.y, ch: '차', c: '#9be15d', label: '내 차고' });
   if (pl.dealer) out.push({ x: pl.dealer.x, y: pl.dealer.y, ch: 'D', c: '#c77dff', label: '네온 모터스(차량 매매)' });
-  for (const g of GANG_IDS) if (pl['hq_' + g]) out.push({ x: pl['hq_' + g].x, y: pl['hq_' + g].y, ch: GANGS[g].short, c: GANGS[g].color, label: GANGS[g].name + ' 본부' });
+  for (const g of GANG_IDS) if (pl['hq_' + g]) out.push({ x: pl['hq_' + g].x, y: pl['hq_' + g].y, ch: GANGS[g].short, c: GANGS[g].color, label: GANGS[g].name + ' 보스', crown: !(Gangs.mine === g && Gangs.rank === 2) });
+  if (pl.milgate) out.push({ x: pl.milgate.x, y: pl.milgate.y, ch: '군', c: '#8f9b6a', label: '기지 정문 (후원)' });
   for (const [k, ch, c, l] of [['ammu3', '총', '#ff6b5a', '총포상'], ['burger3', '버', '#ffb347', '버거 샷'], ['burger4', '버', '#ffb347', '버거 샷'], ['mart4', '편', '#7ae68f', '편의점'], ['mart5', '편', '#7ae68f', '편의점'], ['clothes', '옷', '#e07aff', '옷가게'], ['clothes2', '옷', '#e07aff', '옷가게'], ['gym', '체', '#ff9f43', '체육관'], ['pharmacy', '약', '#3ee07a', '약국'], ['pharmacy2', '약', '#3ee07a', '약국'], ['bank', '은', '#ffd700', '은행']]) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch, c, label: l });
   if (pl.ammu2) out.push({ x: pl.ammu2.x, y: pl.ammu2.y, ch: '총', c: '#ff6b5a', label: '총포상' });
   for (const k of ['burger', 'burger2']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '버', c: '#ffb347', label: '버거 샷' });
   for (const k of ['mart', 'mart2', 'mart3']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '편', c: '#7ae68f', label: '편의점' });
-  if (pl.safehouse) out.push({ x: pl.safehouse.x, y: pl.safehouse.y, ch: '집', c: '#9be15d', label: '은신처(저장)' });
+  if (pl.safehouse) out.push({ x: pl.safehouse.x, y: pl.safehouse.y, ch: Empire.own ? GANGS.own.short : '집', c: Empire.own ? GANGS.own.color : '#9be15d', label: Empire.own ? `${Empire.own.name} 본부 (은신처)` : '은신처(저장·내 조직)', crown: !!Empire.own });
   if (pl.jobcenter) out.push({ x: pl.jobcenter.x, y: pl.jobcenter.y, ch: 'J', c: '#6fb6ff', label: '고용센터' });
   if (pl.broker) out.push({ x: pl.broker.x, y: pl.broker.y, ch: '$', c: '#ff5d8f', label: '브로커' });
   return out;
@@ -6557,6 +6783,7 @@ function drawRadar(s) {
   for (const ic of placeIcons()) put(ic.x, ic.y, (x, y) => {
     c.fillStyle = 'rgba(0,0,0,0.75)'; c.beginPath(); c.arc(x, y, 7 * s, 0, TAU); c.fill();
     c.fillStyle = ic.c; c.font = `bold ${9 * s}px ${FONT_KR}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(ic.ch, x, y + 0.5);
+    if (ic.crown) drawCrownMark(c, x, y - 9 * s, 5 * s);
   });
   if (Game.waypoint) put(Game.waypoint.x, Game.waypoint.y, (x, y) => { c.fillStyle = '#c77dff'; c.strokeStyle = '#000'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x, y + 2); c.lineTo(x - 5 * s, y - 8 * s); c.lineTo(x + 5 * s, y - 8 * s); c.closePath(); c.fill(); c.stroke(); }, true);
   // 미션 목표
@@ -6596,11 +6823,26 @@ function drawRadar(s) {
 }
 
 // ---------- 전체 지도 ----------
+const MapView = {
+  z: 1, cx: null, cy: null, drag: null, moved: false,
+  reset() { this.z = 1; this.cx = MW * T / 2; this.cy = MH * T / 2; },
+  clampC() { const hw = MW * T / 2 / this.z, hh = MH * T / 2 / this.z; this.cx = clamp(this.cx, hw, MW * T - hw); this.cy = clamp(this.cy, hh, MH * T - hh); },
+  center(x, y) { this.cx = x; this.cy = y; this.clampC(); },
+  zoomAt(f, sx, sy) {
+    const r = Game.mapRect; if (!r) return;
+    if (sx === undefined) { sx = r.ox + r.size / 2; sy = r.oy + r.size / 2; }
+    const wx = (sx - r.mx) / r.k, wy = (sy - r.my) / r.k;
+    this.z = clamp(this.z * f, 1, 10);
+    const k1 = r.size * this.z / (MW * T);
+    this.cx = wx - (sx - (r.ox + r.size / 2)) / k1; this.cy = wy - (sy - (r.oy + r.size / 2)) / k1; this.clampC();
+  },
+  pan(dx, dy) { const r = Game.mapRect; if (!r) return; this.cx -= dx / r.k; this.cy -= dy / r.k; this.clampC(); },
+};
 function drawFullMap() {
   const c = ctx, P = Game.player;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
   c.fillStyle = 'rgba(6,10,18,0.92)'; c.fillRect(0, 0, CW, CH);
-  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  군사 기지 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)'], ['#9be15d', '차  내 차고 (산 차량 보관·저장)'], ['#4fc3f7', '배  마리나 (제트스키·보트)'], ['#ffd166', '₩  사업체 (사면 1분마다 수입, 초록 = 소유)'], ['#ff5d8f', '♦  다이아몬드 카지노'], ['#e07aff', '옷  옷가게 (변장)'], ['#ff9f43', '체  체육관'], ['#3ee07a', '약  약국'], ['#ffd700', '은  은행 (털 수 있다)'], ['#ff4d4d', '청·파·철·코  조직 본부 (가입)']];
+  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  군사 기지 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)'], ['#9be15d', '차  내 차고 (산 차량 보관·저장)'], ['#4fc3f7', '배  마리나 (제트스키·보트)'], ['#ffd166', '₩  사업체 (사면 1분마다 수입, 초록 = 소유)'], ['#ff5d8f', '♦  다이아몬드 카지노'], ['#e07aff', '옷  옷가게 (변장)'], ['#ff9f43', '체  체육관'], ['#3ee07a', '약  약국'], ['#ffd700', '은  은행 (털 수 있다)'], ['#ff4d4d', '♛  조직 보스 (계약·가입)'], ['#e8e2d0', '시  시청 · 병원 · 경찰서 · 군 정문 = 후원']];
   // 범례 줄 수를 먼저 재서 지도 크기를 정한다 (글자가 지도·도움말과 겹치지 않게)
   const lf = `500 ${12 * UI.s}px ${FONT_KR}`, lh = 18 * Math.max(1, UI.s);
   c.font = lf;
@@ -6608,28 +6850,26 @@ function drawFullMap() {
   let size = Math.min(CW - 40, CH - 110);
   for (let i = 0; i < 3; i++) size = Math.min(CW - 40, CH - 64 - 16 - widthFor(size) * lh - 2 * lh - 8);
   size = Math.max(120, size);
-  const k = size / (MW * T), ox = (CW - size) / 2, oy = 64;
-  Game.mapRect = { ox, oy, size, k };
+  // 확대·이동 (휠·드래그·핀치·+/- 버튼): MapView.z 배율, (cx, cy) 가운데 월드 좌표
+  const ox0 = (CW - size) / 2, oy0 = 64, MV = MapView; if (MV.cx === null) MV.reset();
+  const k = size * MV.z / (MW * T), ox = ox0 + size / 2 - MV.cx * k, oy = oy0 + size / 2 - MV.cy * k;
+  Game.mapRect = { ox: ox0, oy: oy0, size, k, mx: ox, my: oy };
+  c.save(); c.beginPath(); c.rect(ox0, oy0, size, size); c.clip();
   c.imageSmoothingEnabled = false;
-  c.drawImage(World.mini, ox, oy, size, size);
+  c.drawImage(World.mini, ox, oy, MW * T * k, MH * T * k);
   c.imageSmoothingEnabled = true;
-  if (Game.showTurf) drawTurfOverlay(c, ox, oy, k);
-  c.strokeStyle = 'rgba(255,255,255,0.3)'; c.strokeRect(ox, oy, size, size);
-  // [갱단 구역] 버튼 (G)
-  const tb = Game.turfBtn = { x: ox + size - 132, y: Math.max(4, oy - 44), w: 132, h: 34 };
-  c.fillStyle = Game.showTurf ? '#ff4d4d' : 'rgba(20,24,34,0.9)'; roundRect(c, tb.x, tb.y, tb.w, tb.h, 8); c.fill(); c.strokeStyle = '#ff4d4d'; c.lineWidth = 1.5; c.stroke();
-  txt(c, `갱단 구역 ${Game.showTurf ? '끄기' : '보기'}${Input.usingTouch ? '' : ' (G)'}`, tb.x + tb.w / 2, tb.y + 22, `700 13px ${FONT_KR}`, '#fff', null, 0, 'center');
-  txt(c, '네온 하버 지도', CW / 2, 44, `${28 * UI.s}px ${FONT_DISP}`, '#f2c14e', 'rgba(0,0,0,0.9)', 5, 'center');
+  if (Game.showTurf) drawTurfOverlay(c, ox, oy, k, ox0, oy0);
   // 구역 이름
   const acc = {};
-  for (const b of World.blocks) { const d = b.district; acc[d] = acc[d] || [0, 0, 0]; acc[d][0] += (b.x0 + b.x1) / 2; acc[d][1] += (b.y0 + b.y1) / 2; acc[d][2]++; }
-  acc[DIST.HARBOR] = acc[DIST.HARBOR] || [0, 0, 0];
-  for (const d in acc) { const [sx, sy, n] = acc[d]; if (!n) continue; txt(c, DIST_NAMES[d], ox + sx / n * T * k, oy + sy / n * T * k, `${15 * UI.s}px ${FONT_DISP}`, 'rgba(255,255,255,0.85)', 'rgba(0,0,0,0.9)', 4, 'center'); }
+  for (const b of World.blocks) { const d = b.park || (b.district === DIST.PARK ? '' : World.hoods[b.hood].name); if (!d) continue; acc[d] = acc[d] || [0, 0, 0]; acc[d][0] += (b.x0 + b.x1) / 2; acc[d][1] += (b.y0 + b.y1) / 2; acc[d][2]++; }
+  acc[DIST_NAMES[DIST.BASE]] = [(World.base.x0 + World.base.x1) / 2 / T, (World.base.y0 + World.base.y1) / 2 / T, 1];
+  for (const d in acc) { const [sx, sy, n] = acc[d]; if (!n) continue; txt(c, d, ox + sx / n * T * k, oy + sy / n * T * k, `${13 * UI.s}px ${FONT_DISP}`, 'rgba(255,255,255,0.8)', 'rgba(0,0,0,0.9)', 4, 'center'); }
   if (World.base) { const B = World.base; txt(c, '포트 네온 기지', ox + (B.x0 + B.x1) / 2 * k, oy + (B.y0 + B.y1) / 2 * k, `${15 * UI.s}px ${FONT_DISP}`, '#c9d49a', 'rgba(0,0,0,0.9)', 4, 'center'); }
   for (const ic of placeIcons()) {
     const x = ox + ic.x * k, y = oy + ic.y * k;
     c.fillStyle = 'rgba(0,0,0,0.8)'; c.beginPath(); c.arc(x, y, 9, 0, TAU); c.fill();
     c.fillStyle = ic.c; c.font = `bold 11px ${FONT_KR}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(ic.ch, x, y + 0.5);
+    if (ic.crown) drawCrownMark(c, x, y - 12, 7);
   }
   for (const t of allTargets()) { const x = ox + t.x * k, y = oy + t.y * k; c.fillStyle = '#000'; c.beginPath(); c.arc(x, y, 8, 0, TAU); c.fill(); c.fillStyle = t.c; c.beginPath(); c.arc(x, y, 6, 0, TAU); c.fill(); }
   if (Wanted.stars > 0) { c.strokeStyle = 'rgba(255,90,80,0.9)'; c.beginPath(); c.arc(ox + Wanted.lkpX * k, oy + Wanted.lkpY * k, Wanted.radius * k, 0, TAU); c.stroke(); }
@@ -6638,10 +6878,20 @@ function drawFullMap() {
   const px = ox + P.px * k, py = oy + P.py * k;
   c.save(); c.translate(px, py); c.rotate(P.car ? P.car.a : P.a); c.fillStyle = '#fff'; c.strokeStyle = '#000'; c.lineWidth = 2;
   c.beginPath(); c.moveTo(10, 0); c.lineTo(-6, -7); c.lineTo(-3, 0); c.lineTo(-6, 7); c.closePath(); c.stroke(); c.fill(); c.restore();
+  c.restore();
+  c.strokeStyle = 'rgba(255,255,255,0.3)'; c.strokeRect(ox0, oy0, size, size);
+  // [갱단 구역] 버튼 (G) · 확대/축소 버튼
+  const tb = Game.turfBtn = { x: ox0 + size - 132, y: Math.max(4, oy0 - 44), w: 132, h: 34 };
+  const zb = Game.mapZoomBtns = [{ x: ox0, y: Math.max(4, oy0 - 44), w: 40, h: 34, f: 1.5, l: '+' }, { x: ox0 + 46, y: Math.max(4, oy0 - 44), w: 40, h: 34, f: 1 / 1.5, l: '−' }];
+  c.fillStyle = Game.showTurf ? '#ff4d4d' : 'rgba(20,24,34,0.9)'; roundRect(c, tb.x, tb.y, tb.w, tb.h, 8); c.fill(); c.strokeStyle = '#ff4d4d'; c.lineWidth = 1.5; c.stroke();
+  txt(c, `갱단 구역 ${Game.showTurf ? '끄기' : '보기'}${Input.usingTouch ? '' : ' (G)'}`, tb.x + tb.w / 2, tb.y + 22, `700 13px ${FONT_KR}`, '#fff', null, 0, 'center');
+  for (const b of zb) { c.fillStyle = 'rgba(20,24,34,0.9)'; roundRect(c, b.x, b.y, b.w, b.h, 8); c.fill(); c.strokeStyle = '#6fe0ff'; c.lineWidth = 1.5; c.stroke(); txt(c, b.l, b.x + b.w / 2, b.y + 25, `700 22px ${FONT_KR}`, '#fff', null, 0, 'center'); }
+  if (MV.z > 1) txt(c, `×${MV.z.toFixed(1)}`, ox0 + 96, Math.max(4, oy0 - 44) + 22, `600 13px ${FONT_KR}`, '#6fe0ff', null);
+  txt(c, '네온 하버 지도', CW / 2, 44, `${28 * UI.s}px ${FONT_DISP}`, '#f2c14e', 'rgba(0,0,0,0.9)', 5, 'center');
   // 범례
-  let lx = ox, ly = oy + size + 16 + lh * 0.5;
+  let lx = ox0, ly = oy0 + size + 16 + lh * 0.5;
   c.font = lf;
-  for (const [col, l] of legend) { const lw = c.measureText(l).width + 34; if (lx > ox && lx + lw > ox + size) { lx = ox; ly += lh; } c.fillStyle = col; c.fillRect(lx, ly - 9, 10, 10); txt(c, l, lx + 15, ly, lf, '#dfe6ee', null); lx += lw; }
+  for (const [col, l] of legend) { const lw = c.measureText(l).width + 34; if (lx > ox0 && lx + lw > ox0 + size) { lx = ox0; ly += lh; } c.fillStyle = col; c.fillRect(lx, ly - 9, 10, 10); txt(c, l, lx + 15, ly, lf, '#dfe6ee', null); lx += lw; }
   ly += lh;
   txt(c, (Input.usingTouch ? '지도를 눌러 웨이포인트 지정 · 지도 버튼으로 닫기' : '클릭: 웨이포인트 지정/해제 · 지도 밖 클릭/M: 닫기') + `   ·   숨겨진 꾸러미 ${Game.packages.size}/${Game.packageTotal}   ·   스토리 ${Math.min(Missions.idx, Missions.defs.length)}/${Missions.defs.length}`, CW / 2, ly, lf, '#c7b8ff', null, 0, 'center');
 }
@@ -6708,6 +6958,9 @@ const Menu = {
     });
     document.getElementById('shop-close').onclick = () => Shop.close();
     document.getElementById('bag-close').onclick = () => Bag.close();
+    document.getElementById('ward-close').onclick = () => Wardrobe.close();
+    document.getElementById('fin-close').onclick = () => FinUI.close();
+    document.getElementById('ward-buy').onclick = () => Wardrobe.buy();
     document.getElementById('bag-auto').onclick = () => { Bag.useBest(); Bag.render(); };
     document.getElementById('bagui').addEventListener('click', e => { if (e.target.id === 'bagui') Bag.close(); });
   },
@@ -6798,6 +7051,7 @@ const Shop = {
   kind: null,
   open(kind) {
     const S = SHOPS[kind] || SHOPS.ammu, P = Game.player;
+    if (S.panel) { S.panel(); return; } // 전용 패널 (finance.js)
     this.kind = kind;
     Game.state = 'shop';
     document.getElementById('shop-title').textContent = S.title;
@@ -6806,6 +7060,7 @@ const Shop = {
     list.innerHTML = '';
     const items = S.items();
     // 사업체 혜택: 버거 샷 가맹점 → 버거 반값
+    if (kind === 'ammu' && Finance.law('gun')) for (const it of items) if (it.price) { it.price = Math.ceil(it.price * 0.7); it.desc += ' (총기 규제 완화 -30%)'; }
     if (kind === 'burger' && Biz.has('biz_burger')) for (const it of items) { it.price = Math.ceil(it.price / 2); it.desc += ' (가맹점주 반값)'; }
     if ((kind === 'mart' || kind === 'pharmacy') && Biz.has('biz_mart')) for (const it of items) if (it.price) { it.price = Math.ceil(it.price / 2); it.desc += ' (본사 반값)'; }
     const buttons = [], bagBtns = [];
@@ -7077,8 +7332,8 @@ const Bag = {
 };
 
 // ---------- 차량 매매상 ----------
-const VEHICLE_PRICES = { compact: 3000, sedan: 5000, bike: 4500, van: 6000, muscle: 9000, truck: 12000, sports: 18000, super: 42000, taxi: 5000, police: 15000, swat: 30000, ambulance: 12000, armored: 60000, bus: 25000, tank: 180000, milheli: 150000, jet: 220000 };
-const DEALER_STOCK = ['compact', 'sedan', 'bike', 'van', 'muscle', 'sports', 'super', 'truck', 'armored', 'jetski', 'speedboat', 'tank', 'milheli', 'jet'];
+const VEHICLE_PRICES = { compact: 3000, sedan: 5000, bike: 4500, van: 6000, muscle: 9000, truck: 12000, sports: 18000, super: 42000, hyper: 450000, taxi: 5000, police: 15000, swat: 30000, ambulance: 12000, armored: 60000, bus: 25000, tank: 180000, milheli: 150000, jet: 220000 };
+const DEALER_STOCK = ['compact', 'sedan', 'bike', 'van', 'muscle', 'sports', 'super', 'hyper', 'truck', 'armored', 'jetski', 'speedboat', 'tank', 'milheli', 'jet'];
 Object.assign(VEHICLE_PRICES, { jetski: 7000, speedboat: 26000 });
 
 const Dealer = {
@@ -7126,7 +7381,7 @@ const Dealer = {
     Game.cars.push(c); Game.waypoint = { x, y };
     return c;
   },
-  cost(type) { return Math.round(VEHICLE_PRICES[type] * (VTYPES[type].special === 'boat' && Biz.has('biz_surf') ? 0.5 : 1)); },
+  cost(type) { const sp = VTYPES[type].special; return Math.round(VEHICLE_PRICES[type] * (sp === 'boat' && Biz.has('biz_surf') ? 0.5 : 1) * (sp && sp !== 'boat' && Finance.law('mil') ? 0.7 : 1)); },
   buy(type) {
     const P = Game.player, price = this.cost(type);
     if (P.money < price) return;
@@ -7224,7 +7479,7 @@ const Biz = {
   t: 0,
   owned() { return Game.props || (Game.props = {}); },
   lv(k) { const o = this.owned()[k]; return o ? o.lv || 1 : 0; },
-  perMin(k) { const B = BUSINESSES[k], L = this.lv(k); return L ? Math.round(B.perMin * BIZ_MULT[L - 1] * (this.has('biz_tower') && k !== 'biz_tower' ? 1.1 : 1)) : 0; },
+  perMin(k) { const B = BUSINESSES[k], L = this.lv(k); return L ? Math.round(B.perMin * BIZ_MULT[L - 1] * (this.has('biz_tower') && k !== 'biz_tower' ? 1.1 : 1) * (Finance.law('biztax') ? 1.2 : 1)) : 0; },
   total() { return Object.keys(this.owned()).reduce((a, k) => a + (BUSINESSES[k] ? this.perMin(k) : 0), 0); },
   // 실제 플레이 1분마다 소유한 사업체 수입이 바로 입금된다
   update(dt) {
@@ -7311,9 +7566,11 @@ const Gangs = {
   // 처음 구역: 하버 → 청룡파, 해변 → 파도파, 산업단지 → 아이언, 미드타운 동쪽 → 코브라
   initTurf() {
     this.turf = {};
+    // 동네별 첫 주인 (다운타운·주택가·나머지 미드타운은 중립)
+    const HOME = { '하버 포인트': 'dragon', '터미널 아일랜드': 'dragon', '선셋 비치': 'wave', '코랄 베이': 'wave', '팜 쇼어': 'wave', '아이언 밸리': 'iron', '러스트 야드': 'iron', '유니언 스퀘어': 'cobra', '리버사이드': 'cobra' };
     for (const b of World.blocks) {
-      const u = (b.x0 + b.x1) / 2 / MW;
-      const g = b.district === DIST.HARBOR ? 'dragon' : b.district === DIST.BEACH ? 'wave' : b.district === DIST.INDUSTRY ? 'iron' : b.district === DIST.MIDTOWN && u > 0.5 ? 'cobra' : null;
+      if (b.district === DIST.PARK) continue;
+      const g = HOME[World.hoods[b.hood].name];
       if (g) this.turf[b.id] = g;
     }
   },
@@ -7341,6 +7598,7 @@ const Gangs = {
   leave() {
     if (!this.mine) return;
     const g = this.mine; this.mine = null; this.rep = 0; this.rank = 0;
+    if (g === 'own') { UI.toast(`${GANGS.own.name}을(를) 해산했다`); for (const k in this.turf) if (this.turf[k] === 'own') delete this.turf[k]; Empire.own = null; Empire.load(Empire.save()); Save.write(); return; }
     for (const p of Game.peds) if (p.kind === 'gang' && p.gang === g && !p.dead) { if (p.state === 'escort') p.remove = true; }
     UI.toast(`${GANGS[g].name}을(를) 떠났다`); Save.write();
   },
@@ -7354,7 +7612,7 @@ const Gangs = {
     // 파트너·보스 구역 수입 (1분마다)
     if (this.mine && this.rank >= 1) {
       this.incomeT += dt;
-      if (this.incomeT >= 60) { this.incomeT -= 60; const amt = this.count(this.mine) * (this.rank === 2 ? 150 : 30); if (amt > 0) { P.money += amt; Sfx.cash(); UI.toast(`조직 구역 수입 +$${amt.toLocaleString()} (${this.count(this.mine)}블록)`); } }
+      if (this.incomeT >= 60) { this.incomeT -= 60; const amt = Math.round(this.count(this.mine) * (this.rank === 2 ? 150 : 30) * Empire.incomeMul()); if (amt > 0) { P.money += amt; Sfx.cash(); UI.toast(`조직 구역 수입 +$${amt.toLocaleString()} (${this.count(this.mine)}블록)`); } }
     }
     if (this.war) this.updateWar(dt);
     if (this.boss) this.updateBoss();
@@ -7392,7 +7650,8 @@ const Gangs = {
   spawnWave() {
     const w = this.war; w.wave++;
     const L = w.blk.loop;
-    for (const [g, side] of [[w.A, 0], [w.D, 1]]) for (let i = 0; i < 6; i++) {
+    const size = g => g === this.mine ? Math.min(12, 6 + Math.floor(Empire.members(g) / 25)) : 6; // 내 조직은 조직원 수만큼 병력이 는다
+    for (const [g, side] of [[w.A, 0], [w.D, 1]]) for (let i = 0; i < size(g); i++) {
       const [x, y] = loopPoint(L, rand(0, L.P) * 0.5 + side * L.P * 0.5);
       const p = spawnPed('gang', x, y); setGang(p, g);
       Object.assign(p, { persistent: true, war: w, hp: 110, maxHp: 110, state: 'idle', homeX: w.x + rand(-4, 4), homeY: w.y + rand(-4, 4) });
@@ -7438,7 +7697,7 @@ const Gangs = {
     if (!this.mine || this.rank < 1) { UI.toast('파트너 이상만 부하를 부를 수 있다'); return; }
     if (this.callCD > 0) { UI.toast(`부하는 ${Math.ceil(this.callCD)}초 뒤에 부를 수 있다`); return; }
     this.callCD = 45;
-    const n = this.rank === 2 ? 4 : 2;
+    const n = Empire.backupSize();
     for (let i = 0; i < n; i++) {
       const s = sidewalkNear(P.px + rand(-12, 12), P.py + rand(-12, 12), 4);
       const p = spawnPed('gang', s.x, s.y); setGang(p, this.mine);
@@ -7447,7 +7706,20 @@ const Gangs = {
     UI.toast(`부하 ${n}명이 달려온다`); Sfx.tone({ f0: 500, f1: 900, dur: 0.2, type: 'triangle', vol: 0.2 });
   },
 
-  // ---------- 보스 결투: 현재 보스를 쓰러뜨리면 보스가 된다 ----------
+  // 전쟁 선포 (보스): 이웃 라이벌 블록 하나를 골라 습격
+  declareWar(g) {
+    const pr = this.borderPairs().filter(([a, b]) => this.turf[a.id] === g || this.turf[b.id] === g);
+    if (!pr.length) { UI.toast('이웃한 라이벌 구역이 없다'); return; }
+    const [a, b] = pick(pr); this.startWar(g, this.turf[a.id] === g ? b : a);
+  },
+  // 후계 계약: 평판 1000 파트너가 보스에게 은퇴 자금을 주고 자리를 물려받는다 (보스는 공격할 수 없다)
+  succeed() {
+    const P = Game.player, cost = 50000;
+    if (P.money < cost) { UI.toast('은퇴 자금 $50,000이 필요하다'); return; }
+    P.money -= cost; this.rank = 2;
+    UI.big(`${GANGS[this.mine].name}의 보스!`, '후계 계약 체결 — 이제 라이벌 조직이 너를 노린다', 3.5, GANGS[this.mine].color); Sfx.passed(); Save.write();
+  },
+  // ---------- (구버전) 보스 결투 ----------
   challenge() {
     const HQ = World.places[GANGS[this.mine].hq], P = Game.player;
     const b = spawnPed('gang', HQ.x + 4, HQ.y + 4); setGang(b, this.mine);
@@ -7496,16 +7768,18 @@ for (const g of GANG_IDS) {
     items: () => {
       const G = GANGS[g], out = [], mine = Gangs.mine;
       out.push({ id: 'ginfo', name: `${G.name} · 구역 ${Gangs.count(g)}블록`, price: 0, desc: `다음 대규모 전쟁까지 ${Math.max(0, Gangs.nextWar - Gangs.day)}일`, ok: () => false });
-      if (!mine) out.push({ id: 'gjoin', name: `${G.name}에 가입`, price: 0, btn: '가입', desc: '조직원이 된다 — 조직은 하나만 고를 수 있다', ok: () => true, fn: () => { Gangs.join(g); Shop.close(); } });
+      const B = BOSS_INFO[g];
+      out.push({ id: 'gmem', name: `보스: ${B.name} · 조직원 약 ${Empire.members(g)}명`, price: 0, desc: '보스는 누구도 건드릴 수 없다', ok: () => false });
+      if (!mine) out.push({ id: 'gjoin', name: `${B.name}와(과) 계약서에 서명 — 조직원이 된다`, price: 0, btn: '계약', desc: '조직은 하나만 고를 수 있다 · 같은 조직은 아군, 라이벌은 적', ok: () => true, fn: () => { Gangs.join(g); Shop.close(); } });
       else if (mine !== g) out.push({ id: 'grival', name: '라이벌 조직의 본부다', price: 0, desc: `너는 ${GANGS[mine].name}의 ${RANKS[Gangs.rank]}`, ok: () => false });
       else {
-        const nextNeed = Gangs.rank === 0 ? `파트너까지 평판 ${Math.max(0, 300 - Gangs.rep)}` : Gangs.rank === 1 ? (Gangs.rep >= 1000 ? '보스 결투 가능!' : `보스 결투까지 평판 ${1000 - Gangs.rep}`) : '보스';
+        const nextNeed = Gangs.rank === 0 ? `파트너까지 평판 ${Math.max(0, 300 - Gangs.rep)}` : Gangs.rank === 1 ? (Gangs.rep >= 1000 ? '후계 계약 가능!' : `후계 계약까지 평판 ${1000 - Gangs.rep}`) : '보스';
         out.push({ id: 'grank', name: `나: ${RANKS[Gangs.rank]} · 평판 ${Gangs.rep}`, price: 0, desc: nextNeed, ok: () => false });
         out.push({ id: 'gjob1', name: '보호비 수금 — 우리 구역 가게 3곳을 돈다', price: 0, btn: '시작', desc: '평판 +40, 돈 $300씩', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('collect'); } });
         out.push({ id: 'gjob2', name: '구역 습격 — 이웃 라이벌 블록의 조직원 8명 처치', price: 0, btn: '시작', desc: '성공하면 그 블록이 우리 구역, 평판 +150, $3,000', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('raid'); } });
-        if (Gangs.rank >= 1) out.push({ id: 'gcall', name: `부하 부르기 (${Gangs.rank === 2 ? 4 : 2}명)`, price: 0, btn: '호출', desc: '어디서든 PC H 길게 대신 여기서, 또는 일시정지 메뉴', ok: () => true, fn: () => { Shop.close(); Gangs.callBackup(); } });
-        if (Gangs.rank === 1 && Gangs.rep >= 1000) out.push({ id: 'gboss', name: '보스 자리 도전', price: 0, btn: '결투', desc: '현 보스(체력 400)와 경호원 2명을 쓰러뜨린다', ok: () => !Gangs.boss, fn: () => { Shop.close(); Gangs.challenge(); } });
-        if (Gangs.rank === 2) out.push({ id: 'gwar', name: '전쟁 선포 — 이웃 라이벌 블록 습격', price: 0, btn: '선포', desc: '대규모 전쟁을 지금 시작한다', ok: () => !Gangs.war, fn: () => { Shop.close(); const pr = Gangs.borderPairs().filter(([a, b]) => Gangs.turf[a.id] === g || Gangs.turf[b.id] === g); if (!pr.length) { UI.toast('이웃한 라이벌 구역이 없다'); return; } const [a, b] = pick(pr); Gangs.startWar(g, Gangs.turf[a.id] === g ? b : a); } });
+        if (Gangs.rank >= 1) out.push({ id: 'gcall', name: `부하 부르기 (${Empire.backupSize()}명)`, price: 0, btn: '호출', desc: '어디서든 PC H 길게 대신 여기서, 또는 일시정지 메뉴', ok: () => true, fn: () => { Shop.close(); Gangs.callBackup(); } });
+        if (Gangs.rank === 1 && Gangs.rep >= 1000) out.push({ id: 'gboss', name: `후계 계약 — ${BOSS_INFO[g].name}의 자리를 물려받는다`, price: 50000, btn: '계약', desc: '보스가 된다: 부하 최대 10명, 구역 수입 전부, 전쟁 선포 · 대신 라이벌 암살단이 온다', ok: () => true, fn: () => { Shop.close(); Gangs.succeed(); } });
+        if (Gangs.rank === 2) out.push({ id: 'gwar', name: '전쟁 선포 — 이웃 라이벌 블록 습격', price: 0, btn: '선포', desc: '대규모 전쟁을 지금 시작한다', ok: () => !Gangs.war, fn: () => { Shop.close(); Gangs.declareWar(g); } });
         out.push({ id: 'gleave', name: '조직 탈퇴', price: 0, btn: '탈퇴', desc: '계급과 평판을 잃는다', ok: () => true, fn: () => { Gangs.leave(); Shop.close(); } });
       }
       return out;
@@ -7569,7 +7843,7 @@ const GangJob = {
 };
 
 // 전체 지도 위 구역 그리기
-function drawTurfOverlay(c, ox, oy, k) {
+function drawTurfOverlay(c, ox, oy, k, bx = ox, by = oy) {
   for (const b of World.blocks) {
     const g = Gangs.turf[b.id]; if (!g) continue;
     c.fillStyle = GANGS[g].color; c.globalAlpha = 0.42;
@@ -7577,15 +7851,725 @@ function drawTurfOverlay(c, ox, oy, k) {
     c.globalAlpha = 1;
   }
   if (Gangs.war) { const w = Gangs.war; c.strokeStyle = '#ff3b3b'; c.lineWidth = 3; c.strokeRect(ox + w.blk.x0 * T * k, oy + w.blk.y0 * T * k, (w.blk.x1 - w.blk.x0 + 1) * T * k, (w.blk.y1 - w.blk.y0 + 1) * T * k); }
-  let y = oy + 10;
-  c.fillStyle = 'rgba(0,0,0,0.75)'; c.fillRect(ox + 8, y - 4, 230, 20 * GANG_IDS.length + (Gangs.mine ? 26 : 8));
+  let y = by + 10; ox = bx;
+  c.fillStyle = 'rgba(0,0,0,0.75)'; c.fillRect(ox + 8, y - 4, 280, 20 * GANG_IDS.length + (Gangs.mine ? 26 : 8));
   for (const g of GANG_IDS) {
     c.fillStyle = GANGS[g].color; c.fillRect(ox + 16, y + 3, 12, 12);
-    txt(c, `${GANGS[g].name}  ${Gangs.count(g)}블록${Gangs.mine === g ? '  ← 내 조직' : ''}`, ox + 34, y + 14, `600 13px ${FONT_KR}`, '#fff', null);
+    txt(c, `${GANGS[g].name}  ${Gangs.count(g)}블록 · ${Empire.members(g)}명${Gangs.mine === g ? '  ← 내 조직' : ''}`, ox + 34, y + 14, `600 13px ${FONT_KR}`, '#fff', null);
     y += 20;
   }
   if (Gangs.mine) txt(c, `나: ${RANKS[Gangs.rank]} · 평판 ${Gangs.rep} · 전쟁까지 ${Math.max(0, Gangs.nextWar - Gangs.day)}일`, ox + 16, y + 12, `600 12px ${FONT_KR}`, '#ffd166', null);
 }
+
+'use strict';
+/* =====================================================================
+ * empire.js — 조직 보스 · 계약 · 내 조직 세우기 · 조직원 수 · 보스 암살단 · 국가 기관 후원
+ *
+ *  · 각 조직의 보스는 본부 앞에 서 있다(지도에 왕관). 플레이어는 보스를 공격할 수 없다(무적).
+ *    조직 가입 = 보스와 계약. 평판 1000이 되면 보스와 '후계 계약'($50,000)을 맺고 보스가 된다.
+ *  · 조직을 고르지 않고 은신처에서 '내 조직'을 세울 수도 있다($25,000, 이름·색 선택, 처음부터 보스).
+ *  · 플레이어가 보스가 되면 라이벌 조직이 몇 분마다 암살단을 보낸다.
+ *  · 조직원 수 = 구역 × 4 + 경제력(현금 + 사업체·임대 수입 + 자산) + 지지도. 부하 호출 수·구역 수입·전쟁 병력에 반영.
+ *  · 후원: 병원·경찰서·군 기지·시청에 기부하면 시민 지지(civ)·공무원 지지(off)가 오른다.
+ *      병원 → 치료비 면제 / 경찰 → 수배가 빨리 풀리고 벌금·몰수 감면 / 군 → 기지 무단 진입 수배 없음 / 시청 → 둘 다
+ * ===================================================================== */
+
+const BOSS_INFO = {
+  dragon: { name: '용 회장', shirt: '#0f3d24', hat: '#1d1d1f' },
+  wave: { name: '마야 "파도" 리', shirt: '#a8521a', hat: null },
+  iron: { name: '모루 박', shirt: '#2f4760', hat: '#7a7f86' },
+  cobra: { name: '뱀눈 카이', shirt: '#4d1f7a', hat: '#ff5d8f' },
+};
+const OWN_NAMES = ['블랙 선', '네온 울프', '골든 타이거', '크림슨 크로우', '실버 팽', '나이트 아울', '스틸 로터스', '레드 문'];
+const OWN_COLS = ['#d7263d', '#f2c14e', '#2ec4b6', '#e8e8e8', '#ff5d8f', '#9be15d', '#3a86ff', '#ff9f1c'];
+const SUPPORT_SITES = {
+  hospital: { label: '병원', civ: 1, off: 0.3, perk: '치료비 면제 (지지 20 이상)' },
+  police: { label: '경찰', civ: 0.3, off: 1, perk: '수배가 빨리 풀리고 체포 벌금·무기 몰수 감면 (공무원 지지 30 이상)' },
+  military: { label: '군', civ: 0.2, off: 1, perk: '기지에 들어가도 수배되지 않는다 (공무원 지지 60 이상)' },
+  cityhall: { label: '시청', civ: 0.8, off: 0.8, perk: '시민·공무원 지지 모두 오른다' },
+};
+
+const Empire = {
+  support: { civ: 0, off: 0 }, given: {}, own: null, draft: { n: 0, c: 0 }, hitT: 300, hit: null, bossPeds: {}, tick: 0, noHitMsgT: 0,
+  load(sv) {
+    sv = sv || {};
+    this.support = Object.assign({ civ: 0, off: 0 }, sv.support); this.given = sv.given || {};
+    this.own = sv.own || null; this.hitT = 300; this.hit = null; this.bossPeds = {};
+    if (this.own) this.registerOwn();
+    else { delete GANGS.own; const i = GANG_IDS.indexOf('own'); if (i >= 0) GANG_IDS.splice(i, 1); }
+  },
+  save() { return { support: this.support, given: this.given, own: this.own }; },
+  registerOwn() {
+    const o = this.own;
+    GANGS.own = { name: o.name, shirt: o.color, band: shade(o.color, -0.3), pants: '#1d1d1f', color: o.color, hq: 'safehouse', short: o.name[0] };
+    if (!GANG_IDS.includes('own')) GANG_IDS.push('own');
+  },
+  // ---------- 경제력 · 조직원 수 ----------
+  econ() {
+    const P = Game.player;
+    return Math.max(0, P.money) + Biz.total() * 60 + (typeof Finance !== 'undefined' ? Finance.netWorth() : 0);
+  },
+  members(g) {
+    const base = Gangs.count(g) * 4;
+    if (g !== Gangs.mine) return base + 20;
+    const e = this.econ();
+    return base + 6 + Math.floor(Math.sqrt(e / 1000) * 3) + Math.floor((this.support.civ + this.support.off) / 4);
+  },
+  backupSize() {
+    const m = this.members(Gangs.mine);
+    return Gangs.rank === 2 ? Math.min(10, 4 + Math.floor(m / 30)) : Math.min(4, 2 + Math.floor(m / 40));
+  },
+  incomeMul() { return 1 + Math.min(2, this.members(Gangs.mine) / 200); },
+  // ---------- 매 프레임 ----------
+  update(dt) {
+    const P = Game.player;
+    this.tick -= dt;
+    if (this.tick <= 0) { this.tick = 1; this.updateBosses(); }
+    // 경찰 후원: 수배가 빨리 풀린다
+    if (Wanted.stars > 0 && Wanted.evadeT > 0) Wanted.evadeT += dt * ((this.support.off >= 30 ? 0.6 : 0) + (Finance.law('police') ? 0.5 : 0));
+    // 보스가 되면 암살단
+    if (Gangs.mine && Gangs.rank === 2 && !Missions.active && !P.dead) {
+      if (!this.hit) { this.hitT -= dt; if (this.hitT <= 0) this.sendHit(); }
+    }
+    if (this.hit) this.updateHit(dt);
+  },
+  bossOf(g) { return this.bossPeds[g] && !this.bossPeds[g].remove && Game.peds.includes(this.bossPeds[g]) ? this.bossPeds[g] : null; },
+  updateBosses() {
+    const P = Game.player;
+    for (const g of GANG_IDS) {
+      if (g === 'own') continue;
+      const HQ = World.places[GANGS[g].hq]; if (!HQ) continue;
+      const mineBoss = Gangs.mine === g && Gangs.rank === 2; // 내가 보스면 NPC 보스는 없다
+      const d = dist(P.px, P.py, HQ.x, HQ.y), b = this.bossOf(g);
+      if (b && (d > 170 || mineBoss)) { b.remove = true; for (const q of b.guards || []) q.remove = true; delete this.bossPeds[g]; continue; }
+      if (!b && !mineBoss && d < 130) {
+        const I = BOSS_INFO[g], side = HQ.face === 0 || HQ.face === 2 ? [0, 2.4] : [2.4, 0];
+        const p = spawnPed('gang', HQ.x + side[0], HQ.y + side[1]); setGang(p, g);
+        Object.assign(p, { persistent: true, invuln: true, stay: true, state: 'idle', homeX: p.x, homeY: p.y, nameTag: `♛ ${I.name} (${GANGS[g].name} 보스)`, bossNpc: g, shirt: I.shirt, hat: I.hat || undefined, weapon: 'pistol' });
+        p.guards = [];
+        for (const s of [-1, 1]) {
+          const q = spawnPed('gang', p.x + s * 1.6 * (side[1] ? 1 : 0) + (side[0] ? 1.4 : 0), p.y + s * 1.6 * (side[0] ? 1 : 0) + (side[1] ? 1.4 : 0)); setGang(q, g);
+          Object.assign(q, { persistent: true, stay: true, state: 'idle', homeX: q.x, homeY: q.y, weapon: 'rifle', hp: 160, maxHp: 160 });
+          p.guards.push(q);
+        }
+        this.bossPeds[g] = p;
+      }
+    }
+  },
+  // 보스를 때리려 하면 (무적) 한마디
+  bossHit(p) {
+    if (this.noHitMsgT > Game.time) return;
+    this.noHitMsgT = Game.time + 4;
+    Talk.say(p, pick(['감히 누구한테?', '계약서나 읽고 와라.', '내 경호원들이 가만있지 않을 거다.']), 2, true);
+    UI.toast('조직 보스는 공격할 수 없다');
+  },
+  // ---------- 암살단 ----------
+  sendHit() {
+    const P = Game.player;
+    const rivals = GANG_IDS.filter(g => g !== Gangs.mine && Gangs.count(g) > 0);
+    if (!rivals.length) { this.hitT = 300; return; }
+    const g = pick(rivals), n = Math.min(7, 3 + Math.floor(Gangs.count(g) / 20));
+    const men = [];
+    for (let i = 0; i < n; i++) {
+      const s = offscreenWalkSpot(40, 75); if (!s) continue;
+      const q = spawnPed('gang', s.x, s.y); setGang(q, g);
+      Object.assign(q, { persistent: true, state: 'chase', hitman: true, hp: 140, maxHp: 140, armor: 40, weapon: pick(['smg', 'rifle', 'shotgun', 'magnum']) });
+      men.push(q);
+    }
+    if (!men.length) { this.hitT = 30; return; }
+    const off = Math.min(0.5, this.support.off / 200); // 공무원 지지가 높으면 덜 온다
+    this.hitT = rand(200, 380) * (1 + off);
+    this.hit = { g, men, t: 0 };
+    UI.big('암살단 습격!', `${GANGS[g].name}가 보스인 너를 노린다 — ${men.length}명`, 3, '#ff4d4d'); Sfx.tone({ f0: 300, f1: 180, dur: 0.5, type: 'sawtooth', vol: 0.25 });
+  },
+  updateHit(dt) {
+    const H = this.hit, P = Game.player; H.t += dt;
+    for (const q of H.men) if (!q.dead && q.state !== 'chase' && dist2(q.x, q.y, P.px, P.py) < 90 * 90) q.state = 'chase';
+    const left = H.men.filter(q => !q.dead && !q.remove && Game.peds.includes(q)).length;
+    if (P.dead || H.t > 150 || !left) {
+      for (const q of H.men) q.persistent = false;
+      if (!left && !P.dead) { P.money += 2500; Gangs.addRep(80, '암살단 격퇴'); Sfx.passed(); UI.big('암살단 격퇴', '+$2,500', 2.4, '#9be15d'); }
+      this.hit = null;
+    }
+  },
+  targets() {
+    if (!this.hit) return [];
+    return this.hit.men.filter(q => !q.dead).map(q => ({ x: q.x, y: q.y, c: '#ff4d4d' }));
+  },
+  // ---------- 내 조직 세우기 ----------
+  found() {
+    const P = Game.player, cost = 25000;
+    if (Gangs.mine) { UI.toast('이미 조직에 속해 있다 — 먼저 탈퇴해야 한다'); return; }
+    if (P.money < cost) { UI.toast('창설 자금 $25,000이 필요하다'); return; }
+    P.money -= cost;
+    this.own = { name: OWN_NAMES[this.draft.n], color: OWN_COLS[this.draft.c] };
+    this.registerOwn();
+    // 시작 구역: 은신처가 있는 블록 + 이웃 중립 블록 2개
+    const SH = World.places.safehouse, home = blockAt(SH.x, SH.y) || (SH.lot && SH.lot.block);
+    if (home) {
+      Gangs.turf[home.id] = 'own';
+      const cx = (home.x0 + home.x1) / 2, cy = (home.y0 + home.y1) / 2;
+      blocksNear(cx * T, cy * T, 90).filter(b => b !== home && !Gangs.turf[b.id]).sort((a, b) => dist(a.x0, a.y0, cx, cy) - dist(b.x0, b.y0, cx, cy)).slice(0, 2).forEach(b => { Gangs.turf[b.id] = 'own'; });
+    }
+    Gangs.mine = 'own'; Gangs.rank = 2; Gangs.rep = 0;
+    Sfx.passed(); UI.big(`${this.own.name} 창설!`, '너는 보스다 — 라이벌 조직의 암살단을 조심해라', 3.5, this.own.color);
+    Save.write();
+  },
+  // ---------- 후원 ----------
+  donate(site, amt) {
+    const P = Game.player, S = SUPPORT_SITES[site];
+    if (P.money < amt) return;
+    P.money -= amt;
+    const pts = Math.sqrt(amt / 1000) * 3; // 큰 돈일수록 효율은 줄어든다
+    this.support.civ = Math.round((this.support.civ + pts * S.civ) * 10) / 10;
+    this.support.off = Math.round((this.support.off + pts * S.off) * 10) / 10;
+    this.given[site] = (this.given[site] || 0) + amt;
+    Sfx.cash(); UI.toast(`${S.label} 후원 $${amt.toLocaleString()} — 시민 지지 ${Math.round(this.support.civ)} · 공무원 지지 ${Math.round(this.support.off)}`);
+    Save.write();
+  },
+  donateItems(site) {
+    const S = SUPPORT_SITES[site], sup = this.support;
+    return [
+      { id: 'sup_info', name: `${S.label} 후원 — 누적 $${(this.given[site] || 0).toLocaleString()}`, price: 0, desc: `시민 지지 ${Math.round(sup.civ)} · 공무원 지지 ${Math.round(sup.off)} · ${S.perk} · 지지가 높으면 조직원이 늘어난다`, ok: () => false },
+      ...[5000, 25000, 100000].map(a => ({ id: 'sup_' + a, name: `$${a.toLocaleString()} 기부`, price: a, btn: '기부', desc: `지지 +${(Math.sqrt(a / 1000) * 3).toFixed(1)} (시민 ×${S.civ} · 공무원 ×${S.off})`, ok: () => true, fn: () => { this.donate(site, a); Shop.open(this.shopOf(site)); } })),
+    ];
+  },
+  shopOf(site) { return site === 'military' ? 'milgate' : site === 'cityhall' ? 'cityhall' : site === 'police' ? 'police_st' : 'hospital_st'; },
+  // 병원비 면제 여부 · 체포 감면
+  freeHospital() { return this.support.civ >= 20; },
+  lenient() { return this.support.off >= 30; },
+  baseAccess() { return this.support.off >= 60; },
+};
+
+// ---------- 가게(상호작용) ----------
+SHOPS.hospital_st = { title: '병원', sub: '후원하면 시민 지지가 오르고, 지지 20 이상이면 치료비가 무료다', items: () => Empire.donateItems('hospital') };
+SHOPS.police_st = { title: '경찰서', sub: '후원하면 공무원 지지가 오른다 — 지지 30 이상이면 수배가 빨리 풀린다', items: () => Empire.donateItems('police') };
+SHOPS.milgate = { title: '포트 네온 기지 정문', sub: '국방 후원 — 공무원 지지 60 이상이면 기지에 들어가도 수배되지 않는다', items: () => Empire.donateItems('military') };
+SHOPS.cityhall = { title: '네온 시청', sub: '시민과 공무원 모두의 지지를 얻는다', items: () => Empire.donateItems('cityhall') };
+for (const k of ['hospital', 'clinic', 'hospital2', 'hospital3']) EXTRA_PLACES.push([k, 'hospital_st']);
+for (const k of ['police', 'police2', 'police3']) EXTRA_PLACES.push([k, 'police_st']);
+EXTRA_PLACES.push(['cityhall', 'cityhall'], ['milgate', 'milgate']);
+EXTRA_ICONS.push({ key: 'cityhall', ch: '시', c: '#e8e2d0', label: '시청 (후원)' });
+Object.assign(PLACE_MARK, { cityhall: '#e8e2d0', milgate: '#8f9b6a', hospital: '#e0443e', clinic: '#e0443e', hospital2: '#e0443e', hospital3: '#e0443e', police: '#4b8fe8', police2: '#4b8fe8', police3: '#4b8fe8' });
+
+// 은신처: 쉬기·저장 + 내 조직 세우기
+SHOPS.safehouse = {
+  title: '은신처', get sub() { return Empire.own ? `${Empire.own.name} 본부` : '쉬면 저장된다 · 여기서 내 조직을 세울 수 있다'; },
+  items: () => {
+    const out = [{ id: 'rest', name: '6시간 자기 (저장)', price: 0, btn: '자기', desc: '체력 회복 · 수배 중에는 못 잔다', ok: () => Wanted.stars === 0, fn: () => { Shop.close(); Safehouse.use(); } }];
+    if (!Gangs.mine) {
+      const d = Empire.draft;
+      out.push({ id: 'own_name', name: `조직 이름: ${OWN_NAMES[d.n]}`, price: 0, btn: '바꾸기', desc: '다음 이름', ok: () => true, fn: () => { d.n = (d.n + 1) % OWN_NAMES.length; Shop.open('safehouse'); } });
+      out.push({ id: 'own_col', name: '조직 색', price: 0, btn: '바꾸기', desc: `지금: ${OWN_COLS[d.c]}`, ok: () => true, fn: () => { d.c = (d.c + 1) % OWN_COLS.length; Shop.open('safehouse'); } });
+      out.push({ id: 'own_found', name: `'${OWN_NAMES[d.n]}' 창설 — 너는 보스가 된다`, price: 25000, btn: '창설', desc: '은신처 블록과 이웃 2블록이 첫 구역 · 조직원 수는 경제력과 지지도에 비례', ok: () => true, fn: () => { Empire.found(); Shop.close(); } });
+    } else if (Gangs.mine === 'own') {
+      out.push({ id: 'own_info', name: `${Empire.own.name} · 구역 ${Gangs.count('own')}블록 · 조직원 ${Empire.members('own')}명`, price: 0, desc: `평판 ${Gangs.rep} · 부하 호출 ${Empire.backupSize()}명 · 구역 수입 ×${Empire.incomeMul().toFixed(2)}`, ok: () => false });
+      out.push({ id: 'gjob1', name: '보호비 수금', price: 0, btn: '시작', desc: '평판 +40, 돈 $300씩', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('collect'); } });
+      out.push({ id: 'gjob2', name: '구역 습격 — 이웃 라이벌 블록', price: 0, btn: '시작', desc: '성공하면 그 블록이 우리 구역', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('raid'); } });
+      out.push({ id: 'gcall', name: `부하 부르기 (${Empire.backupSize()}명)`, price: 0, btn: '호출', desc: 'K 키 / 일시정지 메뉴에서도 된다', ok: () => true, fn: () => { Shop.close(); Gangs.callBackup(); } });
+      out.push({ id: 'gwar', name: '전쟁 선포 — 이웃 라이벌 블록 습격', price: 0, btn: '선포', desc: '대규모 전쟁을 지금 시작한다', ok: () => !Gangs.war, fn: () => { Shop.close(); Gangs.declareWar('own'); } });
+    }
+    return out;
+  },
+};
+
+'use strict';
+/* =====================================================================
+ * finance.js — 큰돈 버는 방법: 주식 · 부동산 임대 · 무역/밀수 창고 · 대형 강도(헤이스트) · 중앙은행 · 국회 로비
+ *
+ *  장소(world.js): stock 증권거래소 · realty 부동산 · wh_harbor/wh_iron/wh_north 창고 · heist 작전실 ·
+ *                  cbank 중앙은행 · assembly 국회의사당. 모두 FinUI 패널(#finui)로 연다.
+ *  Finance.update(dt)는 main.js에서 매 프레임 호출. 저장은 Finance.save() → Save.write의 finance.
+ *  법(LAWS)은 다른 파일에서 Finance.law('id')로 확인한다 (사업세·총기·군 장비 등).
+ * ===================================================================== */
+
+const COMPANIES = [
+  { id: 'NHT', name: '네온 하버 테크', p: 180, vol: 0.022, biz: 'biz_tower' },
+  { id: 'HBL', name: '하버 물류', p: 64, vol: 0.018, biz: 'biz_logi' },
+  { id: 'SSR', name: '선셋 리조트', p: 92, vol: 0.02, biz: 'biz_hotel' },
+  { id: 'IVS', name: '아이언 밸리 제철', p: 41, vol: 0.016, biz: 'biz_factory' },
+  { id: 'NMB', name: '네온 모터스', p: 128, vol: 0.024, biz: 'biz_auto' },
+  { id: 'DMC', name: '다이아몬드 카지노', p: 240, vol: 0.03, biz: 'biz_casino' },
+];
+const NEWS = [
+  ['신제품 발표로 기대감', 0.12], ['분기 실적 어닝 서프라이즈', 0.18], ['대형 계약 수주', 0.1], ['외국 투자 유치', 0.08],
+  ['CEO 횡령 의혹', -0.16], ['공장 화재', -0.12], ['실적 부진', -0.1], ['규제 당국 조사 착수', -0.14],
+];
+const ESTATES = [
+  { id: 'e_hills', name: '웨스트 힐즈 단독주택', price: 60000, rent: 300 },
+  { id: 'e_studio', name: '노스 게이트 원룸 건물', price: 120000, rent: 650 },
+  { id: 'e_shops', name: '하버 포인트 상가', price: 150000, rent: 800 },
+  { id: 'e_apt', name: '미드타운 아파트 10세대', price: 220000, rent: 1200 },
+  { id: 'e_condo', name: '코랄 베이 해변 콘도', price: 350000, rent: 2000 },
+  { id: 'e_office', name: '다운타운 오피스 한 층', price: 600000, rent: 3500 },
+  { id: 'e_villa', name: '레이크뷰 빌라 단지', price: 900000, rent: 5500 },
+  { id: 'e_pent', name: '스카이라인 펜트하우스', price: 2500000, rent: 16000 },
+];
+const WAREHOUSES = { wh_harbor: { name: '하버 창고', price: 120000 }, wh_iron: { name: '밸리 창고', price: 90000 }, wh_north: { name: '노스 창고', price: 150000 } };
+const WH_CAP = 60;
+const LAWS = {
+  biztax: { name: '사업세 인하법', cost: 150000, desc: '사업체 수입 +20%' },
+  rent: { name: '임대료 상한 폐지법', cost: 120000, desc: '임대 수입 +30%' },
+  gun: { name: '총기 규제 완화법', cost: 80000, desc: '총포상 가격 -30%' },
+  harbor: { name: '항만 규제 완화법', cost: 200000, desc: '창고 단속 확률 절반, 화물 판매가 +15%' },
+  police: { name: '치안 예산 삭감법', cost: 250000, desc: '경찰을 따돌리기 쉬워진다' },
+  mil: { name: '군 장비 민간 판매법', cost: 300000, desc: '전차·헬기·전투기 가격 -30%' },
+};
+const HEISTS = {
+  casino: { name: '다이아몬드 카지노 금고', target: 'biz_casino', payout: 1500000, stars: 4, hold: 20, guards: 8,
+    preps: [{ t: 'pay', name: '드릴 장비 구입', cost: 60000 }, { t: 'fetch', name: '경비 교대표 훔치기', guards: 4 }, { t: 'steal', name: '탈출용 슈퍼카 확보', veh: 'super' }] },
+  cbank: { name: '중앙은행 금고', target: 'cbank', payout: 3000000, stars: 5, hold: 30, guards: 12,
+    preps: [{ t: 'pay', name: '해커 고용', cost: 150000 }, { t: 'fetch', name: '금고 설계도 탈취', guards: 6 }, { t: 'steal', name: '현금수송 장갑차 탈취', veh: 'armored' }] },
+  harbor: { name: '하버 물류 화물 강탈', target: 'biz_logi', payout: 800000, stars: 3, hold: 15, guards: 6,
+    preps: [{ t: 'pay', name: '무기 준비', cost: 30000 }, { t: 'steal', name: '화물 밴 확보', veh: 'van' }] },
+};
+
+const Finance = {
+  cash: null, shares: {}, estate: {}, wh: {}, laws: {}, vote: null, bank: { dep: 0, debt: 0 }, heist: { done: {}, prep: {}, cool: {} },
+  job: null, stockT: 0, newsT: 120, rentT: 0, intT: 0, raidT: 240,
+  load(sv) {
+    sv = sv || {};
+    this.cash = null;
+    this.prices = COMPANIES.map((c, i) => (sv.prices && sv.prices[i]) || c.p);
+    this.hist = this.prices.map(p => [p]);
+    this.shares = sv.shares || {}; this.estate = sv.estate || {}; this.wh = sv.wh || {}; this.laws = sv.laws || {};
+    this.bank = Object.assign({ dep: 0, debt: 0 }, sv.bank);
+    this.heist = Object.assign({ done: {}, prep: {}, cool: {} }, sv.heist);
+    this.vote = null; this.job = null; this.stockT = 0; this.newsT = 120; this.rentT = 0; this.intT = 0; this.raidT = 240;
+  },
+  save() { return { prices: this.prices.map(p => Math.round(p * 100) / 100), shares: this.shares, estate: this.estate, wh: this.wh, laws: this.laws, bank: { dep: Math.round(this.bank.dep), debt: Math.round(this.bank.debt) }, heist: { done: this.heist.done, prep: this.heist.prep, cool: {} } }; },
+  law(id) { return !!this.laws[id]; },
+  rentPerMin() { return Math.round(ESTATES.filter(e => this.estate[e.id]).reduce((a, e) => a + e.rent, 0) * (this.law('rent') ? 1.3 : 1)); },
+  stockValue() { return COMPANIES.reduce((a, c, i) => a + (this.shares[c.id] || 0) * this.prices[i], 0); },
+  netWorth() {
+    const est = ESTATES.filter(e => this.estate[e.id]).reduce((a, e) => a + e.price, 0);
+    const wh = Object.keys(this.wh).filter(k => this.wh[k].owned).reduce((a, k) => a + WAREHOUSES[k].price + this.wh[k].legal * 1000 + this.wh[k].contra * 3000, 0);
+    return Math.round(this.bank.dep - this.bank.debt + this.stockValue() + est + wh);
+  },
+  loanLimit() { return Math.max(50000, Math.round((this.netWorth() + this.bank.debt + Math.max(0, Game.player.money)) * 0.5)); },
+
+  // ---------- 매 프레임 ----------
+  update(dt) {
+    const P = Game.player;
+    // 주가: 20초마다 무작위 걸음 + 가끔 뉴스
+    this.stockT += dt;
+    if (this.stockT >= 20) {
+      this.stockT = 0;
+      COMPANIES.forEach((c, i) => {
+        const g = (Math.random() + Math.random() + Math.random() - 1.5) * 1.4; // 대충 정규분포
+        const own = c.biz && Biz.has(c.biz) ? 0.002 : 0; // 관련 사업체를 가지고 있으면 조금 오른다
+        this.prices[i] = clamp(this.prices[i] * Math.exp(own + 0.0004 + c.vol * g), 2, 99999);
+        this.hist[i].push(this.prices[i]); if (this.hist[i].length > 40) this.hist[i].shift();
+      });
+    }
+    this.newsT -= dt;
+    if (this.newsT <= 0) { this.newsT = rand(150, 300); const i = randi(0, COMPANIES.length - 1), [h, d] = pick(NEWS); this.shock(i, d * rand(0.7, 1.3), h); }
+    // 임대 수입 (1분마다)
+    const rent = this.rentPerMin();
+    if (rent > 0) {
+      this.rentT += dt;
+      if (this.rentT >= 60) {
+        this.rentT -= 60; let amt = rent;
+        if (chance(0.08)) { const fix = Math.round(rent * rand(0.3, 0.8)); amt -= fix; UI.toast(`세입자 민원 — 수리비 -$${fix.toLocaleString()}`); }
+        P.money += amt; Sfx.cash(); UI.toast(`임대 수입 +$${amt.toLocaleString()}`);
+      }
+    }
+    // 중앙은행 이자 (1분마다: 예금 0.2%, 대출 0.6%)
+    this.intT += dt;
+    if (this.intT >= 60) {
+      this.intT -= 60;
+      if (this.bank.dep > 0) this.bank.dep *= 1.002;
+      if (this.bank.debt > 0) {
+        this.bank.debt *= 1.006;
+        if (this.bank.debt > this.loanLimit() * 1.2) { const take = Math.min(this.bank.dep, this.bank.debt); this.bank.dep -= take; this.bank.debt -= take; if (take > 0) UI.toast(`연체 — 예금에서 $${Math.round(take).toLocaleString()} 자동 상환`); }
+      }
+    }
+    // 밀수품 단속
+    if (Object.values(this.wh).some(w => w.owned && w.contra > 0)) {
+      this.raidT -= dt;
+      if (this.raidT <= 0) {
+        this.raidT = 240;
+        const ch = 0.12 * (this.law('harbor') ? 0.5 : 1) * (Empire.support.off >= 40 ? 0.5 : 1);
+        if (chance(ch)) { const k = pick(Object.keys(this.wh).filter(k => this.wh[k].owned && this.wh[k].contra > 0)), w = this.wh[k], lost = Math.ceil(w.contra * 0.3); w.contra -= lost; UI.big('창고 단속!', `${WAREHOUSES[k].name}에서 밀수품 ${lost}상자를 압수당했다`, 3, '#ff4d4d'); Save.write(); }
+      }
+    }
+    // 국회 표결
+    if (this.vote) {
+      this.vote.t -= dt;
+      if (this.vote.t <= 0) {
+        const L = LAWS[this.vote.id], ok = chance(this.passChance());
+        if (ok) { this.laws[this.vote.id] = true; Sfx.passed(); UI.big('법안 통과!', `${L.name} — ${L.desc}`, 3.5, '#9be15d'); }
+        else { Sfx.failed(); UI.big('법안 부결', `${L.name} — 로비 자금은 돌아오지 않는다`, 3, '#ff4d4d'); }
+        this.vote = null; Save.write();
+      }
+    }
+    if (this.job) this.updateJob(dt);
+    Heist.update(dt);
+  },
+  shock(i, d, headline) {
+    this.prices[i] = clamp(this.prices[i] * (1 + d), 2, 99999);
+    this.hist[i].push(this.prices[i]); if (this.hist[i].length > 40) this.hist[i].shift();
+    const c = COMPANIES[i];
+    if (headline) UI.toast(`📈 뉴스: ${c.name}(${c.id}) ${headline} ${d > 0 ? '▲' : '▼'}${Math.abs(d * 100).toFixed(0)}%`);
+  },
+  passChance() { return clamp(0.35 + Empire.support.off / 120 + Empire.support.civ / 300, 0.35, 0.95); },
+
+  // ---------- 주식 ----------
+  buy(i, n) {
+    const P = Game.player, c = COMPANIES[i], cost = Math.ceil(this.prices[i] * n * 1.005);
+    if (P.money < cost) { UI.toast('돈이 모자란다'); return; }
+    P.money -= cost; this.shares[c.id] = (this.shares[c.id] || 0) + n; Sfx.cash();
+    // 큰 매수는 주가를 조금 올린다
+    this.prices[i] *= 1 + Math.min(0.05, cost / 5e6);
+  },
+  sell(i, n) {
+    const P = Game.player, c = COMPANIES[i]; n = Math.min(n, this.shares[c.id] || 0); if (!n) return;
+    const got = Math.floor(this.prices[i] * n * 0.995);
+    this.shares[c.id] -= n; P.money += got; Sfx.cash(); UI.toast(`${c.id} ${n}주 매도 +$${got.toLocaleString()}`);
+    this.prices[i] *= 1 - Math.min(0.05, got / 5e6);
+  },
+
+  // ---------- 창고: 화물 운송 일 ----------
+  startRun(k, kind) {
+    const P = Game.player, W = World.places[k], w = this.wh[k];
+    if (this.job || Heist.active) { UI.toast('이미 진행 중인 일이 있다'); return; }
+    if (kind === 'contra') {
+      if (P.money < 15000) { UI.toast('인수 대금 $15,000이 필요하다'); return; }
+      P.money -= 15000;
+      const m = pick(World.marinas || [W]); const s = roadsideSpot(m.x, m.y, 20, 160);
+      const car = new Car('van', s.x, s.y, s.a, { persistent: true, color: '#3a3f47' }); Game.cars.push(car);
+      this.job = { kind, k, car, dest: W, crates: 10, stage: 'go' };
+      UI.big('밀수품 인수', '부두 근처의 밴을 창고로 가져와라', 2.6, '#ff9f43');
+    } else {
+      const crates = w.legal + w.contra; if (!crates) { UI.toast('팔 화물이 없다'); return; }
+      const s = roadsideSpot(W.x, W.y, 6, 60);
+      const car = new Car('truck', s.x, s.y, s.a, { persistent: true, color: '#b0452f' }); Game.cars.push(car);
+      // 멀리 떨어진 구매자
+      const cands = Object.values(World.places).filter(p => p && p.x !== undefined && dist(p.x, p.y, W.x, W.y) > 600);
+      const B = cands.length ? pick(cands) : { x: MW * T - W.x, y: MH * T - W.y };
+      const dest = sidewalkNear(B.x, B.y);
+      this.job = { kind: 'sell', k, car, dest, legal: w.legal, contra: w.contra, stage: 'go' };
+      w.legal = 0; w.contra = 0;
+      if (this.job.contra > 0 && chance(0.5)) { Wanted.set(Math.max(Wanted.stars, 2)); UI.toast('밀수품 냄새를 맡은 경찰이 따라붙는다!'); }
+      UI.big('화물 판매', '트럭을 구매자에게 몰고 가라', 2.6, '#ffd166');
+    }
+  },
+  updateJob(dt) {
+    const J = this.job, P = Game.player;
+    if (P.dead || J.car.dead || J.car.sunk || !Game.cars.includes(J.car)) {
+      UI.big('운송 실패', '화물 차량을 잃었다', 2.4, '#ff4d4d'); Sfx.failed();
+      if (J.car) J.car.persistent = false; this.job = null; UI.objective(''); return;
+    }
+    const inCar = P.car === J.car;
+    UI.objective(inCar ? (J.kind === 'sell' ? '구매자에게 트럭을 몰고 가라' : '창고로 밴을 몰고 가라') : '화물 차량에 타라');
+    if (inCar && dist(J.car.x, J.car.y, J.dest.x, J.dest.y) < 10 && J.car.speed < 4) {
+      const w = this.wh[J.k];
+      if (J.kind === 'contra') { w.contra = Math.min(WH_CAP - w.legal, w.contra + J.crates); UI.big('밀수품 입고', `+${J.crates}상자 (창고 ${w.legal + w.contra}/${WH_CAP})`, 2.4, '#9be15d'); }
+      else {
+        const mul = this.law('harbor') ? 1.15 : 1, got = Math.round((J.legal * 1350 + J.contra * 4500) * mul);
+        Game.player.money += got; UI.big('화물 판매 완료', `+$${got.toLocaleString()}`, 2.6, '#9be15d');
+      }
+      Sfx.passed(); J.car.persistent = false; exitCar(P, true); this.job = null; UI.objective(''); Save.write();
+    }
+  },
+  targets() {
+    const out = [];
+    if (this.job) out.push(Game.player.car === this.job.car ? { x: this.job.dest.x, y: this.job.dest.y, c: '#ffd166', big: true } : { x: this.job.car.x, y: this.job.car.y, c: '#6fe0ff' });
+    return out.concat(Heist.targets());
+  },
+};
+
+// ---------- 대형 강도 ----------
+const Heist = {
+  active: null,
+  prepDone(id, i) { return !!(Finance.heist.prep[id] && Finance.heist.prep[id][i]); },
+  ready(id) { return HEISTS[id].preps.every((_, i) => this.prepDone(id, i)); },
+  markPrep(id, i) { Finance.heist.prep[id] = Finance.heist.prep[id] || {}; Finance.heist.prep[id][i] = true; Save.write(); },
+  startPrep(id, i) {
+    const H = HEISTS[id], S = H.preps[i], P = Game.player, base = World.places.heist;
+    if (this.active || Finance.job) { UI.toast('이미 진행 중인 일이 있다'); return; }
+    if (S.t === 'pay') { if (P.money < S.cost) { UI.toast('돈이 모자란다'); return; } P.money -= S.cost; Sfx.cash(); this.markPrep(id, i); UI.toast(`준비 완료: ${S.name}`); return; }
+    if (S.t === 'fetch') {
+      const far = Object.values(World.places).filter(p => p && p.x !== undefined && dist(p.x, p.y, P.px, P.py) > 300 && dist(p.x, p.y, P.px, P.py) < 900);
+      const at = sidewalkNear(...(far.length ? (q => [q.x + 20, q.y + 20])(pick(far)) : [P.px + 300, P.py]));
+      this.active = { id, i, kind: 'fetch', at, guards: [], spawned: false };
+      UI.big(S.name, '표시된 곳에서 물건을 빼 와라 — 경비가 있다', 2.6, '#c77dff');
+    } else {
+      const s = roadsideSpot(P.px, P.py, 250, 700);
+      const car = new Car(S.veh, s.x, s.y, s.a, { persistent: true }); Game.cars.push(car);
+      if (S.veh === 'armored') { for (let k = 0; k < 2; k++) { const g = spawnPed('guard', s.x + rand(-4, 4), s.y + rand(-4, 4)); Object.assign(g, { persistent: true, state: 'idle', weapon: 'rifle', homeX: g.x, homeY: g.y }); } }
+      this.active = { id, i, kind: 'steal', car, dest: base };
+      UI.big(S.name, `${VTYPES[S.veh].name}을(를) 작전실로 가져와라`, 2.6, '#c77dff');
+    }
+  },
+  startFinale(id) {
+    const H = HEISTS[id], T0 = World.places[H.target];
+    if (this.active || Finance.job) { UI.toast('이미 진행 중인 일이 있다'); return; }
+    if (!T0) { UI.toast('목표 장소가 없다'); return; }
+    this.active = { id, kind: 'finale', stage: 'go', at: T0, t: 0, wave: 0 };
+    UI.big(`${H.name} 작전 개시`, `목표로 가서 ${H.hold}초 버텨라`, 3, '#ff4d4d');
+  },
+  fail(why) {
+    const A = this.active; if (!A) return;
+    if (A.car) A.car.persistent = false;
+    for (const g of A.guards || []) g.persistent = false;
+    this.active = null; UI.objective(''); Sfx.failed(); UI.big('작전 실패', why, 2.6, '#ff4d4d');
+  },
+  update(dt) {
+    const A = this.active; if (!A) return;
+    const P = Game.player, H = HEISTS[A.id];
+    if (P.dead) { this.fail('쓰러졌다'); return; }
+    if (A.kind === 'fetch') {
+      if (!A.spawned && dist(P.px, P.py, A.at.x, A.at.y) < 80) {
+        A.spawned = true;
+        for (let k = 0; k < H.preps[A.i].guards; k++) { const g = spawnPed('guard', A.at.x + rand(-6, 6), A.at.y + rand(-6, 6)); Object.assign(g, { persistent: true, state: 'idle', weapon: pick(['smg', 'rifle', 'pistol']), homeX: g.x, homeY: g.y }); A.guards.push(g); }
+      }
+      UI.objective(`${H.preps[A.i].name}: 표시된 곳으로`);
+      if (!P.car && dist(P.x, P.y, A.at.x, A.at.y) < 3) {
+        for (const g of A.guards) { g.persistent = false; if (!g.dead) g.state = 'chase'; }
+        this.markPrep(A.id, A.i); this.active = null; UI.objective(''); Sfx.passed(); UI.big('준비 완료', H.preps[A.i].name, 2.4, '#9be15d');
+      }
+    } else if (A.kind === 'steal') {
+      if (A.car.dead || !Game.cars.includes(A.car)) { this.fail('차량이 부서졌다'); return; }
+      const inCar = P.car === A.car;
+      UI.objective(inCar ? '작전실로 몰고 가라' : `${VTYPES[A.car.type].name}에 타라`);
+      if (inCar && dist(A.car.x, A.car.y, A.dest.x, A.dest.y) < 12 && A.car.speed < 4) {
+        if (Wanted.stars > 0) { UI.objective('경찰을 따돌린 뒤 세워라'); return; }
+        A.car.persistent = false; exitCar(P, true); A.car.remove = true;
+        this.markPrep(A.id, A.i); this.active = null; UI.objective(''); Sfx.passed(); UI.big('준비 완료', H.preps[A.i].name, 2.4, '#9be15d');
+      }
+    } else if (A.kind === 'finale') {
+      if (A.stage === 'go') {
+        UI.objective(`${H.name}: 목표로 가라`);
+        if (!P.car && dist(P.x, P.y, A.at.x, A.at.y) < 8) { A.stage = 'hold'; Wanted.set(H.stars); Wanted.seen = true; scarePeds(A.at.x, A.at.y, 50); UI.big('금고 공략 중!', `${H.hold}초 동안 버텨라`, 2, '#ff4d4d'); }
+      } else if (A.stage === 'hold') {
+        A.t += dt;
+        if (dist(P.px, P.py, A.at.x, A.at.y) > 16) { this.fail('목표에서 너무 멀어졌다'); return; }
+        const wave = Math.floor(A.t / (H.hold / 3));
+        if (wave >= A.wave && A.wave < 3) {
+          A.wave++;
+          for (let k = 0; k < Math.ceil(H.guards / 3); k++) { const s = sidewalkNear(A.at.x + rand(-30, 30), A.at.y + rand(-30, 30), 12); const g = spawnPed('guard', s.x, s.y); Object.assign(g, { state: 'chase', weapon: pick(['smg', 'rifle', 'shotgun']), hp: 130, maxHp: 130 }); }
+        }
+        UI.objective(`금고 여는 중… ${Math.min(100, Math.round(A.t / H.hold * 100))}% — 목표 근처를 지켜라`);
+        if (A.t >= H.hold) {
+          A.stage = 'escape';
+          const far = Object.values(World.places).filter(p => p && p.x !== undefined && dist(p.x, p.y, A.at.x, A.at.y) > 700);
+          const d = far.length ? pick(far) : { x: MW * T - A.at.x, y: MH * T - A.at.y };
+          A.drop = sidewalkNear(d.x, d.y);
+          UI.big('금고 확보!', '은신 지점으로 도주 — 경찰을 따돌려라', 2.6, '#ffd166');
+        }
+      } else {
+        UI.objective(Wanted.stars ? '은신 지점으로 도주 — 경찰을 따돌려야 끝난다' : '은신 지점으로 가라');
+        if (dist(P.px, P.py, A.drop.x, A.drop.y) < 10 && Wanted.stars === 0) {
+          const cut = Math.round(H.payout * (Gangs.mine ? 0.9 : 0.8)); // 조직이 있으면 인력 수수료가 적다
+          P.money += cut; Finance.heist.done[A.id] = (Finance.heist.done[A.id] || 0) + 1; Finance.heist.prep[A.id] = {};
+          const ci = COMPANIES.findIndex(c => c.biz === H.target); if (ci >= 0) Finance.shock(ci, -0.25, '강도 피해');
+          this.active = null; UI.objective(''); Sfx.passed(); UI.big(`${H.name} 성공!`, `+$${cut.toLocaleString()} (팀 몫 제외)`, 4, '#9be15d'); Save.write();
+        }
+      }
+    }
+  },
+  targets() {
+    const A = this.active; if (!A) return [];
+    if (A.kind === 'fetch') return [{ x: A.at.x, y: A.at.y, c: '#c77dff', big: true }];
+    if (A.kind === 'steal') return [Game.player.car === A.car ? { x: A.dest.x, y: A.dest.y, c: '#c77dff', big: true } : { x: A.car.x, y: A.car.y, c: '#6fe0ff' }];
+    if (A.stage === 'escape') return [{ x: A.drop.x, y: A.drop.y, c: '#9be15d', big: true }];
+    return [{ x: A.at.x, y: A.at.y, c: '#ff4d4d', big: true }];
+  },
+};
+
+// ---------- 패널 UI ----------
+const FinUI = {
+  kind: null,
+  open(kind) { this.kind = kind; Game.state = 'fin'; document.getElementById('finui').hidden = false; this.render(); },
+  close() { document.getElementById('finui').hidden = true; if (Game.state === 'fin') Game.state = 'play'; Game.shopCool = 4; },
+  render() {
+    const k = this.kind, P = Game.player, F = Finance;
+    const body = document.getElementById('fin-body'); body.innerHTML = '';
+    const set = (t, s) => { document.getElementById('fin-title').textContent = t; document.getElementById('fin-sub').textContent = s; };
+    document.getElementById('fin-money').textContent = `현금 $${Math.round(P.money).toLocaleString()} · 순자산 $${(F.netWorth() + Math.round(P.money)).toLocaleString()}`;
+    const row = (title, desc, btns = [], canvas) => {
+      const r = document.createElement('div'); r.className = 'fin-row';
+      if (canvas) r.append(canvas);
+      const info = document.createElement('div'); info.className = 'fin-info'; info.innerHTML = `<b>${title}</b><span>${desc || ''}</span>`; r.append(info);
+      const box = document.createElement('div'); box.className = 'fin-btns';
+      for (const [label, fn, on = true, cls = ''] of btns) { const b = document.createElement('button'); b.className = 'btn small ' + cls; b.textContent = label; b.disabled = !on; b.onclick = () => { fn(); this.render(); }; box.append(b); }
+      r.append(box); body.append(r);
+    };
+    const $ = n => '$' + Math.round(n).toLocaleString();
+    if (k === 'stock') {
+      set('증권거래소', '20초마다 주가가 움직인다 · 뉴스에 주의 · 관련 사업체를 가지면 주가가 조금씩 오른다 · 수수료 0.5%');
+      COMPANIES.forEach((c, i) => {
+        const h = F.hist[i], p = F.prices[i], ch = h.length > 1 ? (p / h[0] - 1) * 100 : 0, own = F.shares[c.id] || 0;
+        const cv = document.createElement('canvas'); cv.width = 70; cv.height = 34; const g = cv.getContext('2d');
+        const lo = Math.min(...h), hi = Math.max(...h);
+        g.strokeStyle = ch >= 0 ? '#3ee07a' : '#ff5a5a'; g.lineWidth = 1.5; g.beginPath();
+        if (h.length < 2) { g.moveTo(1, 17); g.lineTo(69, 17); }
+        else h.forEach((v, j) => { const x = j / (h.length - 1) * 68 + 1, y = 32 - (hi > lo ? (v - lo) / (hi - lo) : 0.5) * 30; j ? g.lineTo(x, y) : g.moveTo(x, y); });
+        g.stroke();
+        row(`${c.id} ${c.name} · $${p.toFixed(2)} <i style="color:${ch >= 0 ? '#3ee07a' : '#ff5a5a'}">${ch >= 0 ? '▲' : '▼'}${Math.abs(ch).toFixed(1)}%</i>`, `보유 ${own.toLocaleString()}주${own ? ` (${$(own * p)})` : ''}`,
+          [['10주', () => F.buy(i, 10), P.money >= p * 10], ['100주', () => F.buy(i, 100), P.money >= p * 100], ['1000주', () => F.buy(i, 1000), P.money >= p * 1000], ['전부 매도', () => F.sell(i, own), own > 0, 'ghost']], cv);
+      });
+      row('주식 평가액', $(F.stockValue()));
+    } else if (k === 'realty') {
+      set('하버 부동산', `건물을 사 두면 1분마다 임대료가 들어온다${F.law('rent') ? ' · 임대료 상한 폐지법 +30%' : ''}`);
+      row(`임대 수입 합계 ${$(F.rentPerMin())}/분`, '가끔 세입자 수리비가 나간다');
+      for (const e of ESTATES) {
+        const own = F.estate[e.id];
+        row(e.name, `${own ? '소유 중 · ' : ''}임대료 ${$(e.rent * (F.law('rent') ? 1.3 : 1))}/분 · 매입가 ${$(e.price)}`,
+          own ? [['매각', () => { P.money += Math.round(e.price * 0.85); delete F.estate[e.id]; Sfx.cash(); UI.toast(`${e.name} 매각 (+${$(e.price * 0.85)})`); Save.write(); }, true, 'ghost']] :
+            [[$(e.price), () => { if (P.money < e.price) return; P.money -= e.price; F.estate[e.id] = true; Sfx.passed(); UI.toast(`${e.name} 매입!`); Save.write(); }, P.money >= e.price]]);
+      }
+    } else if (WAREHOUSES[k]) {
+      const W = WAREHOUSES[k], w = F.wh[k];
+      set(W.name, '무역품은 안전하고, 밀수품은 비싸게 팔리지만 단속·경찰 추격 위험이 있다');
+      if (!w || !w.owned) { row(`${W.name} 매입`, `용량 ${WH_CAP}상자`, [[$(W.price), () => { if (P.money < W.price) return; P.money -= W.price; F.wh[k] = { owned: true, legal: 0, contra: 0 }; Sfx.passed(); Save.write(); }, P.money >= W.price]]); return; }
+      const n = w.legal + w.contra;
+      row(`재고 ${n}/${WH_CAP}상자`, `무역품 ${w.legal} · 밀수품 ${w.contra} · 예상 판매가 ${$((w.legal * 1350 + w.contra * 4500) * (F.law('harbor') ? 1.15 : 1))}`);
+      row('무역품 10상자 구입', '상자당 $1,000 → 판매 $1,350 (안전)', [['$10,000', () => { if (P.money < 10000 || n + 10 > WH_CAP) return; P.money -= 10000; w.legal += 10; Sfx.cash(); Save.write(); }, P.money >= 10000 && n + 10 <= WH_CAP]]);
+      row('밀수품 인수 작전', '$15,000 선불 · 부두의 밴을 창고로 가져오면 10상자 (판매 상자당 $4,500)', [['시작', () => { this.close(); F.startRun(k, 'contra'); }, n + 10 <= WH_CAP && !F.job && !Heist.active]]);
+      row('화물 판매 운송', '트럭으로 먼 곳의 구매자에게 — 밀수품이 있으면 경찰이 붙을 수 있다', [['출발', () => { this.close(); F.startRun(k, 'sell'); }, n > 0 && !F.job && !Heist.active]]);
+    } else if (k === 'cbank') {
+      const B = F.bank;
+      set('네온 중앙은행', '예금은 1분마다 0.2% 이자 · 대출은 1분마다 0.6% · 연체가 심하면 예금에서 자동 상환');
+      row(`예금 ${$(B.dep)}`, '예금한 돈은 죽거나 잡혀도 잃지 않는다', [['전부 입금', () => { B.dep += P.money; P.money = 0; Sfx.cash(); Save.write(); }, P.money > 0], ['$10,000 입금', () => { B.dep += 10000; P.money -= 10000; Sfx.cash(); Save.write(); }, P.money >= 10000], ['$10,000 출금', () => { B.dep -= 10000; P.money += 10000; Sfx.cash(); Save.write(); }, B.dep >= 10000], ['전부 출금', () => { P.money += Math.floor(B.dep); B.dep = 0; Sfx.cash(); Save.write(); }, B.dep >= 1, 'ghost']]);
+      row(`대출 ${$(B.debt)} / 한도 ${$(F.loanLimit())}`, '한도 = 순자산의 절반 (최소 $50,000)', [['$50,000 대출', () => { B.debt += 50000; P.money += 50000; Sfx.cash(); Save.write(); }, B.debt + 50000 <= F.loanLimit()], ['상환', () => { const r = Math.min(P.money, B.debt); P.money -= r; B.debt -= r; if (B.debt < 1) B.debt = 0; Sfx.cash(); Save.write(); }, B.debt > 0 && P.money > 0, 'ghost']]);
+      row('금고', '중앙은행 금고를 털고 싶다면 작전실에서 준비하라', []);
+    } else if (k === 'assembly') {
+      set('국회의사당', `로비 자금을 대면 법안이 표결에 부쳐진다 · 통과 확률 ${Math.round(F.passChance() * 100)}% (공무원·시민 지지가 높을수록 ↑)`);
+      if (F.vote) row(`표결 중: ${LAWS[F.vote.id].name}`, `${Math.ceil(F.vote.t)}초 뒤 결과`);
+      for (const id in LAWS) {
+        const L = LAWS[id];
+        row(`${L.name}${F.laws[id] ? ' ✔ 시행 중' : ''}`, `${L.desc} · 로비 ${$(L.cost)}`, F.laws[id] ? [] : [['로비', () => { if (P.money < L.cost || F.vote) return; P.money -= L.cost; F.vote = { id, t: 60 }; Sfx.cash(); UI.toast(`${L.name} 표결은 1분 뒤`); }, P.money >= L.cost && !F.vote]]);
+      }
+    } else if (k === 'heist') {
+      set('작전실', '준비 작업을 모두 끝내면 대형 강도를 실행할 수 있다 · 성공하면 몫의 80%(조직이 있으면 90%)');
+      for (const id in HEISTS) {
+        const H = HEISTS[id], rd = Heist.ready(id);
+        row(`${H.name} — ${$(H.payout)}`, `수배 ★${H.stars} · 성공 ${F.heist.done[id] || 0}회`, [['실행', () => { this.close(); Heist.startFinale(id); }, rd && !Heist.active && !F.job, 'primary']]);
+        H.preps.forEach((S, i) => row(`　· ${S.name}${Heist.prepDone(id, i) ? ' ✔' : ''}`, S.t === 'pay' ? `비용 ${$(S.cost)}` : S.t === 'fetch' ? `경비 ${S.guards}명` : `${VTYPES[S.veh].name}을(를) 작전실로`, Heist.prepDone(id, i) ? [] : [[S.t === 'pay' ? $(S.cost) : '시작', () => { if (S.t !== 'pay') this.close(); Heist.startPrep(id, i); }, !Heist.active && !F.job && (S.t !== 'pay' || P.money >= S.cost)]]));
+      }
+    }
+  },
+};
+for (const k of ['stock', 'realty', 'cbank', 'assembly', 'heist', ...Object.keys(WAREHOUSES)]) { SHOPS[k] = { title: '', sub: '', items: () => [], panel: () => FinUI.open(k) }; EXTRA_PLACES.push([k, k]); }
+EXTRA_ICONS.push({ key: 'stock', ch: '주', c: '#6fe0ff', label: '증권거래소' }, { key: 'realty', ch: '부', c: '#ffd166', label: '부동산 (임대)' }, { key: 'cbank', ch: '중', c: '#ffd700', label: '중앙은행 (예금·대출)' }, { key: 'assembly', ch: '국', c: '#e8e2d0', label: '국회 (로비)' }, { key: 'heist', ch: '작', c: '#c77dff', label: '작전실 (대형 강도)' },
+  ...Object.keys(WAREHOUSES).map(k => ({ key: k, ch: '창', c: () => (Finance.wh[k] && Finance.wh[k].owned ? '#7ae68f' : '#b0b8c4'), label: WAREHOUSES[k].name })));
+Object.assign(PLACE_MARK, { stock: '#6fe0ff', realty: '#ffd166', cbank: '#ffd700', assembly: '#e8e2d0', heist: '#c77dff', wh_harbor: '#b0b8c4', wh_iron: '#b0b8c4', wh_north: '#b0b8c4' });
+
+'use strict';
+/* =====================================================================
+ * wardrobe.js — 옷 꾸미기 (옷가게에서 [꾸미기])
+ *
+ * 플레이어 외형: P.shirt · P.pants (색), P.hatType (HAT_TYPES 키), P.hatCol, P.logo (조직 id — 상의·모자에 마크)
+ * 조직 마크는 가입한 조직(또는 내가 세운 조직)의 것만 달 수 있다. 마크를 달면 같은 조직원은 반기고
+ * 라이벌 조직원은 멀리서도 알아보고 덤빈다(gangs.js의 gangSpots).
+ * 2D: drawPlayerStyle(p) (render.js drawPed에서 호출) · 3D: View3D.makePed가 styleKey가 바뀌면 다시 만든다.
+ * ===================================================================== */
+
+const HAT_TYPES = { none: '없음', cap: '야구모자', beanie: '비니', fedora: '페도라', bandana: '반다나', helmet: '헬멧', crown: '보스 왕관' };
+const CLOTH_COLS = ['#f2f2f2', '#1d1d1f', '#2b2d42', '#34495e', '#3b2618', '#7a7f86', '#b03a2e', '#e0443e', '#ff8fab', '#f2c14e', '#e07a1f', '#9be15d', '#1f8a4c', '#1f6f9b', '#6fe0ff', '#8a3bd1'];
+const STYLE_KEYS = ['shirt', 'pants', 'hatType', 'hatCol', 'logo'];
+const WARD_PRICE = { shirt: 150, pants: 120, hatType: 250, hatCol: 80, logo: 400 };
+const styleKey = p => STYLE_KEYS.map(k => p[k] || '').join('|');
+
+// 조직 마크: 조직 색 원 + 흰 테두리 + 약칭 글자
+function drawGangLogo(g, id, x, y, r) {
+  const G = GANGS[id]; if (!G) return;
+  g.save(); g.translate(x, y);
+  g.fillStyle = G.color; g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill();
+  g.strokeStyle = '#fff'; g.lineWidth = Math.max(0.02, r * 0.18); g.stroke();
+  if (r > 3) { g.fillStyle = '#fff'; g.font = `900 ${Math.round(r * 1.15)}px ${FONT_KR}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(G.short, 0, r * 0.08); }
+  else { g.fillStyle = '#fff'; g.beginPath(); g.moveTo(0, -r * 0.55); g.lineTo(r * 0.5, 0); g.lineTo(0, r * 0.55); g.lineTo(-r * 0.5, 0); g.closePath(); g.fill(); }
+  g.restore();
+}
+
+// 탑뷰 2D: 모자·마크 (drawPed 안, 몸 좌표계: +x = 앞)
+function drawPlayerStyle(p) {
+  if (p.logo && GANGS[p.logo]) drawGangLogo(ctx, p.logo, -0.06, 0, 0.1); // 등판 마크
+  const h = p.hatType; if (!h || h === 'none') return;
+  const c = p.hatCol || '#1d1d1f';
+  ctx.fillStyle = c;
+  if (h === 'cap') { ctx.beginPath(); ctx.arc(0.02, 0, 0.17, 0, TAU); ctx.fill(); ctx.fillStyle = shade(c, -0.25); ctx.fillRect(0.12, -0.1, 0.14, 0.2); }
+  else if (h === 'beanie') { ctx.beginPath(); ctx.arc(0.01, 0, 0.175, 0, TAU); ctx.fill(); ctx.fillStyle = shade(c, 0.25); ctx.beginPath(); ctx.arc(0.01, 0, 0.06, 0, TAU); ctx.fill(); }
+  else if (h === 'fedora') { ctx.beginPath(); ctx.arc(0.02, 0, 0.25, 0, TAU); ctx.fill(); ctx.fillStyle = shade(c, -0.3); ctx.beginPath(); ctx.arc(0.02, 0, 0.14, 0, TAU); ctx.fill(); }
+  else if (h === 'bandana') { ctx.beginPath(); ctx.arc(0.02, 0, 0.165, Math.PI * 0.35, Math.PI * 1.65); ctx.fill(); ctx.fillRect(-0.24, -0.04, 0.1, 0.08); }
+  else if (h === 'helmet') { ctx.beginPath(); ctx.arc(0.02, 0, 0.2, 0, TAU); ctx.fill(); ctx.fillStyle = 'rgba(20,30,40,0.8)'; ctx.fillRect(0.1, -0.12, 0.1, 0.24); }
+  else if (h === 'crown') { ctx.fillStyle = '#f2c14e'; for (let k = 0; k < 5; k++) { const a = k * TAU / 5; ctx.beginPath(); ctx.arc(0.02 + Math.cos(a) * 0.12, Math.sin(a) * 0.12, 0.06, 0, TAU); ctx.fill(); } }
+  if (p.logo && GANGS[p.logo] && h !== 'crown') drawGangLogo(ctx, p.logo, 0.04, 0, 0.055);
+}
+
+// 정면 미리보기 (옷 꾸미기 창)
+function drawStylePreview(g, o, W, H) {
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(0, 0, W, H);
+  const cx = W / 2, s = H / 190;
+  g.save(); g.translate(cx, 12 * s); g.scale(s, s);
+  // 다리
+  g.fillStyle = o.pants; g.fillRect(-22, 104, 19, 66); g.fillRect(3, 104, 19, 66);
+  g.fillStyle = '#222'; g.fillRect(-24, 166, 22, 8); g.fillRect(2, 166, 22, 8);
+  // 몸통·팔
+  g.fillStyle = o.shirt; g.fillRect(-28, 44, 56, 64); g.fillRect(-42, 46, 14, 52); g.fillRect(28, 46, 14, 52);
+  g.fillStyle = '#e2b08a'; g.fillRect(-41, 96, 12, 12); g.fillRect(29, 96, 12, 12);
+  if (o.logo && GANGS[o.logo]) drawGangLogo(g, o.logo, -12, 62, 9);
+  // 머리
+  g.fillStyle = '#e2b08a'; g.beginPath(); g.arc(0, 24, 18, 0, TAU); g.fill();
+  g.fillStyle = '#1d1a18'; g.beginPath(); g.arc(0, 20, 18, Math.PI, TAU); g.fill();
+  const h = o.hatType, c = o.hatCol || '#1d1d1f';
+  g.fillStyle = c;
+  if (h === 'cap') { g.beginPath(); g.arc(0, 16, 19, Math.PI, TAU); g.fill(); g.fillStyle = shade(c, -0.25); g.fillRect(-2, 13, 30, 5); }
+  else if (h === 'beanie') { g.beginPath(); g.arc(0, 18, 20, Math.PI, TAU); g.fill(); g.fillRect(-20, 14, 40, 7); g.fillStyle = shade(c, 0.25); g.beginPath(); g.arc(0, -3, 5, 0, TAU); g.fill(); }
+  else if (h === 'fedora') { g.fillRect(-30, 10, 60, 5); g.fillRect(-17, -6, 34, 17); g.fillStyle = shade(c, -0.35); g.fillRect(-17, 6, 34, 4); }
+  else if (h === 'bandana') { g.beginPath(); g.arc(0, 18, 19, Math.PI, TAU); g.fill(); g.fillRect(16, 14, 10, 5); }
+  else if (h === 'helmet') { g.beginPath(); g.arc(0, 22, 23, Math.PI * 0.95, Math.PI * 2.05); g.fill(); g.fillStyle = 'rgba(20,30,40,0.85)'; g.fillRect(-16, 20, 32, 9); }
+  else if (h === 'crown') { g.fillStyle = '#f2c14e'; g.beginPath(); g.moveTo(-16, 8); g.lineTo(-16, -6); g.lineTo(-8, 2); g.lineTo(0, -10); g.lineTo(8, 2); g.lineTo(16, -6); g.lineTo(16, 8); g.closePath(); g.fill(); }
+  if (o.logo && GANGS[o.logo] && (h === 'cap' || h === 'beanie' || h === 'helmet')) drawGangLogo(g, o.logo, 0, h === 'helmet' ? 10 : 8, 5);
+  g.restore();
+}
+
+const Wardrobe = {
+  draft: null,
+  logoChoices() {
+    const out = [''];
+    if (Gangs.mine) out.push(Gangs.mine);
+    return out;
+  },
+  hatChoices() { return Object.keys(HAT_TYPES).filter(k => k !== 'crown' || (Gangs.mine && Gangs.rank >= 2)); },
+  open() {
+    const P = Game.player; if (P.dead) return;
+    this.draft = {}; for (const k of STYLE_KEYS) this.draft[k] = P[k] || (k === 'hatType' ? 'none' : k === 'hatCol' ? '#1d1d1f' : k === 'logo' ? '' : P[k]);
+    Game.state = 'ward'; this.el = document.getElementById('wardui'); this.el.hidden = false;
+    this.render();
+  },
+  close() { if (this.el) this.el.hidden = true; if (Game.state === 'ward') Game.state = 'play'; Game.shopCool = 4; },
+  cost() { const P = Game.player; let c = 0; for (const k of STYLE_KEYS) if ((this.draft[k] || '') !== (P[k] || (k === 'hatType' ? 'none' : k === 'hatCol' ? '#1d1d1f' : ''))) c += WARD_PRICE[k]; return c; },
+  buy() {
+    const P = Game.player, c = this.cost();
+    if (!c) { this.close(); return; }
+    if (P.money < c) { UI.toast('돈이 모자란다'); return; }
+    P.money -= c; for (const k of STYLE_KEYS) P[k] = this.draft[k];
+    Sfx.cash();
+    if (Wanted.stars > 0 && !Wanted.seen) { Wanted.drop(1); UI.toast('옷을 바꿔 입었다 — 변장으로 수배 ★ -1'); } else UI.toast(P.logo ? `${GANGS[P.logo].name} 마크를 달았다` : '새 옷으로 갈아입었다');
+    Save.write(); this.close();
+  },
+  render() {
+    const d = this.draft, P = Game.player;
+    const cv = document.getElementById('ward-prev'); drawStylePreview(cv.getContext('2d'), d, cv.width, cv.height);
+    const c = this.cost();
+    document.getElementById('ward-cost').textContent = c ? `바꾼 것 합계 $${c.toLocaleString()} (가진 돈 $${P.money.toLocaleString()})` : '바꾼 것이 없다';
+    const L = document.getElementById('ward-opts'); L.innerHTML = '';
+    const row = (title, items) => { const r = document.createElement('div'); r.className = 'ward-row'; const t = document.createElement('div'); t.className = 'ward-t'; t.textContent = title; const box = document.createElement('div'); box.className = 'ward-items'; for (const it of items) box.append(it); r.append(t, box); L.append(r); };
+    const sw = (key, col) => { const b = document.createElement('button'); b.className = 'ward-sw' + (d[key] === col ? ' on' : ''); b.style.background = col; b.onclick = () => { d[key] = col; this.render(); }; return b; };
+    const tb = (key, val, label) => { const b = document.createElement('button'); b.className = 'btn small ward-tb' + ((d[key] || '') === val ? ' primary' : ''); b.textContent = label; b.onclick = () => { d[key] = val; this.render(); }; return b; };
+    row(`상의 $${WARD_PRICE.shirt}`, CLOTH_COLS.map(c => sw('shirt', c)));
+    row(`하의 $${WARD_PRICE.pants}`, CLOTH_COLS.map(c => sw('pants', c)));
+    row(`모자 $${WARD_PRICE.hatType}`, this.hatChoices().map(k => tb('hatType', k, HAT_TYPES[k])));
+    if (d.hatType !== 'none' && d.hatType !== 'crown') row(`모자 색 $${WARD_PRICE.hatCol}`, CLOTH_COLS.map(c => sw('hatCol', c)));
+    const lc = this.logoChoices();
+    row(`조직 마크 $${WARD_PRICE.logo}`, lc.length > 1 ? lc.map(g => tb('logo', g, g ? GANGS[g].name : '없음')) : [Object.assign(document.createElement('span'), { className: 'cz-note', textContent: '조직에 들어가거나 조직을 세우면 마크를 달 수 있다' })]);
+  },
+};
+SHOPS.clothes.items = ((base) => () => [{ id: 'wardrobe', name: '옷 꾸미기 — 색 · 모자 · 조직 마크', price: 0, btn: '꾸미기', desc: '상의·하의 색, 모자 7종, 가입한 조직 마크', ok: () => true, fn: () => { Shop.close(); Wardrobe.open(); } }, ...base()])(SHOPS.clothes.items);
 
 'use strict';
 /* =====================================================================
@@ -7766,7 +8750,19 @@ const Game = {
     canvas.addEventListener('mousemove', e => { Input.mouse.x = e.clientX; Input.mouse.y = e.clientY; Input.mouse.moved = true; this.lastMouseMove = this.time; if (document.pointerLockElement === canvas) { Input.mouse.dx += e.movementX || 0; Input.mouse.dy += e.movementY || 0; } });
     canvas.addEventListener('mousedown', e => { if (e.button === 0) { Input.mouse.down = true; Input.mouse.clicked = true; } Sfx.init(); });
     addEventListener('mouseup', e => { if (e.button === 0) Input.mouse.down = false; });
-    canvas.addEventListener('wheel', e => { Input.wheel += sign(e.deltaY); e.preventDefault(); }, { passive: false });
+    canvas.addEventListener('wheel', e => { if (this.state === 'map') MapView.zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.clientX, e.clientY); else Input.wheel += sign(e.deltaY); e.preventDefault(); }, { passive: false });
+    // 전체 지도: 마우스로 끌어서 이동 · 한 손가락 끌기 / 두 손가락 핀치
+    canvas.addEventListener('mousedown', e => { if (this.state === 'map') { MapView.drag = { x: e.clientX, y: e.clientY }; MapView.moved = false; } });
+    window.addEventListener('mousemove', e => { const d = MapView.drag; if (!d || this.state !== 'map') return; const dx = e.clientX - d.x, dy = e.clientY - d.y; if (Math.abs(dx) + Math.abs(dy) > 4) MapView.moved = true; if (MapView.moved) { MapView.pan(dx, dy); d.x = e.clientX; d.y = e.clientY; } });
+    window.addEventListener('mouseup', () => { MapView.drag = null; });
+    let mt = null;
+    canvas.addEventListener('touchstart', e => { if (this.state !== 'map') return; const t = e.touches; mt = t.length >= 2 ? { d: Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY), z: MapView.z } : { x: t[0].clientX, y: t[0].clientY, sx: t[0].clientX, sy: t[0].clientY }; MapView.moved = false; }, { passive: true });
+    canvas.addEventListener('touchmove', e => {
+      if (this.state !== 'map' || !mt) return; const t = e.touches;
+      if (t.length >= 2 && mt.d) { const d = Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); MapView.zoomAt(clamp(mt.z * d / Math.max(20, mt.d), 1, 10) / MapView.z, (t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2); MapView.moved = true; }
+      else if (t.length === 1 && mt.x !== undefined) { const dx = t[0].clientX - mt.x, dy = t[0].clientY - mt.y; if (Math.abs(t[0].clientX - mt.sx) + Math.abs(t[0].clientY - mt.sy) > 8) MapView.moved = true; if (MapView.moved) MapView.pan(dx, dy); mt.x = t[0].clientX; mt.y = t[0].clientY; }
+    }, { passive: true });
+    canvas.addEventListener('touchend', () => { mt = null; }, { passive: true });
     canvas.addEventListener('contextmenu', e => e.preventDefault());
     canvas.addEventListener('click', e => {
       if (this.state === 'map') this.mapClick(e.clientX, e.clientY);
@@ -7792,7 +8788,8 @@ const Game = {
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
     this.fleet = sv ? sv.fleet || [] : [];
     this.props = sv ? sv.props || {} : {};
-    Gangs.load(sv && sv.gangs); GangJob.active = null;
+    Empire.load(sv && sv.empire); Finance.load(sv && sv.finance); Gangs.load(sv && sv.gangs); GangJob.active = null;
+    if (!sv) this.introT = 7;
     if (sv && sv.body) { Object.assign(P, sv.body); P.hp = P.maxHp; }
     placeStaticPickups();
     Military.reset(); AirPatrol.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
@@ -7817,8 +8814,10 @@ const Game = {
   mapClick(sx, sy) {
     const r = this.mapRect; if (!r) return;
     const tb = this.turfBtn; if (tb && sx >= tb.x && sx <= tb.x + tb.w && sy >= tb.y && sy <= tb.y + tb.h) { this.showTurf = !this.showTurf; return; }
+    for (const b of this.mapZoomBtns || []) if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) { MapView.zoomAt(b.f); return; }
+    if (MapView.moved) { MapView.moved = false; return; } // 드래그로 지도를 옮긴 것
     if (sx < r.ox || sy < r.oy || sx > r.ox + r.size || sy > r.oy + r.size) { this.state = 'play'; return; }
-    const x = (sx - r.ox) / r.k, y = (sy - r.oy) / r.k;
+    const x = (sx - r.mx) / r.k, y = (sy - r.my) / r.k;
     if (this.waypoint && dist(x, y, this.waypoint.x, this.waypoint.y) < 25) { this.waypoint = null; UI.toast('웨이포인트 해제'); }
     else { this.waypoint = { x, y }; Sfx.pickup(); }
   },
@@ -7856,11 +8855,14 @@ const Game = {
       if (f) f.textContent = L[0]; if (h) h.textContent = L[1];
     }
     Drive.update(dt);
+    if (st !== 'map') this._mapOpen = false;
     if (st === 'play') {
       if (keyHit('Escape', 'KeyP', 'PadStart')) { this.pause(); }
       else if (keyHit('KeyM', 'Tab', 'PadBack')) { this.state = 'map'; }
       else this.update(dt);
     } else if (st === 'map') {
+      if (this._mapOpen !== true) { this._mapOpen = true; if (MapView.cx === null) MapView.reset(); if (MapView.z > 1) MapView.center(this.player.px, this.player.py); }
+      if (keyHit('Equal', 'NumpadAdd', 'PadRB')) MapView.zoomAt(1.5); if (keyHit('Minus', 'NumpadSubtract', 'PadLB')) MapView.zoomAt(1 / 1.5);
       if (keyHit('Escape', 'KeyM', 'Tab', 'PadBack', 'PadB', 'PadStart')) this.state = 'play';
       if (keyHit('KeyG', 'PadY')) this.showTurf = !this.showTurf;
     } else if (st === 'paused') {
@@ -7872,6 +8874,10 @@ const Game = {
       this.deathT += dt;
       this.update(dt, true);
       if (this.deathT > 4.2) this.respawn(st);
+    } else if (st === 'fin') {
+      if (keyHit('Escape', 'PadB')) FinUI.close();
+    } else if (st === 'ward') {
+      if (keyHit('Escape', 'PadB')) Wardrobe.close();
     } else if (st === 'bag') {
       if (keyHit('Escape', 'KeyB', 'PadB')) Bag.close();
     } else if (st === 'shop') {
@@ -7887,7 +8893,7 @@ const Game = {
       drawWorldTexts3D();
       Rain.draw(this.weather.intensity);
     } else renderScene();
-    if (st === 'play' || st === 'wasted' || st === 'busted' || st === 'shop' || st === 'paused' || st === 'bag') { drawHUD(dt); if (st === 'play') drawLockHUD(); }
+    if (st === 'play' || st === 'wasted' || st === 'busted' || st === 'shop' || st === 'paused' || st === 'bag' || st === 'ward' || st === 'fin') { drawHUD(dt); if (st === 'play') drawLockHUD(); }
     if (st === 'wasted' || st === 'busted') drawDeathScreen(st, this.deathT);
     if (st === 'map') drawFullMap();
   },
@@ -7943,7 +8949,8 @@ const Game = {
     Jay.update(dt);
     Missions.update(dt);
     Jobs.update(dt);
-    Military.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update(); Biz.update(dt); BankRob.update(dt); Gangs.update(dt); GangJob.update(dt);
+    Military.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update(); Biz.update(dt); BankRob.update(dt); Gangs.update(dt); GangJob.update(dt); Empire.update(dt); Finance.update(dt);
+    if (this.introT > 0 && (this.introT -= dt) <= 0) UI.big('조직을 고르자', '지도(M)의 왕관 = 조직 보스 · 찾아가 계약하거나, 은신처(집)에서 내 조직을 세울 수 있다', 5, '#f2c14e');
     Talk.update(dt); Aim.update(dt); EMS.update(dt); Givers.update(); Vendors.update(dt); GPS.update(dt);
     // 체력 자연 회복: 6초 동안 안 다치면 50까지 천천히 (GTA V)
     if (!P.dead && P.hp < 50 && this.time - (P.lastHurt || 0) > 6) P.hp = Math.min(50, P.hp + 2 * dt);
@@ -7957,8 +8964,8 @@ const Game = {
     // 카메라
     this.updateCamera(dt);
     // 지역 이름
-    const d = districtAt(P.px, P.py);
-    if (d !== this.lastDistrict) { this.districtHold += dt; if (this.districtHold > 0.6) { this.lastDistrict = d; this.districtHold = 0; UI.district(DIST_NAMES[d]); } }
+    const d = hoodAt(P.px, P.py);
+    if (d !== this.lastDistrict) { this.districtHold += dt; if (this.districtHold > 0.6) { this.lastDistrict = d; this.districtHold = 0; UI.district(d); } }
     else this.districtHold = 0;
   },
 
@@ -8058,8 +9065,9 @@ const Game = {
     let peds = 0;
     for (const p of this.peds) if (!p.dead && dist(p.x, p.y, f.x, f.y) < kill) peds++;
     tries = initial ? 120 : 6;
-    while (peds < wantPeds && tries-- > 0) {
-      const b = pick(World.blocks);
+    const nearB = blocksNear(f.x, f.y, outer);
+    while (peds < wantPeds && tries-- > 0 && nearB.length) {
+      const b = pick(nearB);
       const L = b.loop, s = rand(0, L.P), [x, y] = loopPoint(L, s);
       const d = dist(x, y, f.x, f.y);
       if (d < inner || d > outer || (!initial && onScreen(x, y, 3))) continue;
@@ -8098,7 +9106,7 @@ const Game = {
     Cam.x = smooth(Cam.x, tx, car ? 4 : 5, dt); Cam.y = smooth(Cam.y, ty, car ? 4 : 5, dt);
     const alt = car ? car.alt || 0 : P.alt || 0;
     const span = (car ? 50 + car.speed * 0.9 + alt * 1.6 : 38 + alt * 1.4) * Cam.zoomMul;
-    Cam.ppm = smooth(Cam.ppm, Math.min(CW, CH) / Math.min(alt > 1.2 ? 220 : 130, span), 1.6, dt);
+    Cam.ppm = smooth(Cam.ppm, Math.min(CW, CH) / Math.min(alt > 1.2 ? 340 : 190, span), 1.6, dt);
     camSetView();
     Cam.shake = Math.max(0, Cam.shake - dt * 1.6);
     Cam.sx = (Math.random() - 0.5) * Cam.shake * 14; Cam.sy = (Math.random() - 0.5) * Cam.shake * 14;
@@ -8132,11 +9140,11 @@ const Game = {
     }
     // 상점 · 직업 게시판 (걸어서 문 앞 마커에 들어가면 열림)
     if (!P.car && !(P.alt > 0) && this.shopCool <= 0 && !(Missions.active && Missions.active.def.noShop)) {
-      for (const [k, kind] of [...GANG_IDS.map(g => ['hq_' + g, 'hq_' + g]), ...Object.keys(BUSINESSES).map(b => [b, b]), ['ammu3', 'ammu'], ['burger3', 'burger'], ['burger4', 'burger'], ['mart4', 'mart'], ['mart5', 'mart'], ['clothes', 'clothes'], ['clothes2', 'clothes'], ['gym', 'gym'], ['pharmacy', 'pharmacy'], ['pharmacy2', 'pharmacy'], ['bank', 'bank'], ['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart']]) {
+      for (const [k, kind] of [...GANG_IDS.map(g => ['hq_' + g, 'hq_' + g]), ...Object.keys(BUSINESSES).map(b => [b, b]), ['ammu3', 'ammu'], ['burger3', 'burger'], ['burger4', 'burger'], ['mart4', 'mart'], ['mart5', 'mart'], ['clothes', 'clothes'], ['clothes2', 'clothes'], ['gym', 'gym'], ['pharmacy', 'pharmacy'], ['pharmacy2', 'pharmacy'], ['bank', 'bank'], ['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart'], ...EXTRA_PLACES]) {
         const S = World.places[k]; if (S && dist(P.x, P.y, S.x, S.y) < 1.8) { Shop.open(kind); return; }
       }
       const SH = World.places.safehouse;
-      if (SH && dist(P.x, P.y, SH.x, SH.y) < 1.8) { Safehouse.use(); return; }
+      if (SH && dist(P.x, P.y, SH.x, SH.y) < 1.8) { Shop.open('safehouse'); return; }
       const JC = World.places.jobcenter, BR = World.places.broker;
       if (JC && dist(P.x, P.y, JC.x, JC.y) < 1.8) Jobs.openBoard(true);
       else if (BR && dist(P.x, P.y, BR.x, BR.y) < 1.8) Jobs.openBoard(false);
@@ -8164,16 +9172,17 @@ const Game = {
     const P = this.player;
     let spot;
     if (kind === 'wasted') {
-      const hs = [World.places.hospital, World.places.clinic].filter(Boolean);
+      const hs = ['hospital', 'clinic', 'hospital2', 'hospital3'].map(k => World.places[k]).filter(Boolean);
       spot = hs.sort((a, b) => dist(a.x, a.y, P.x, P.y) - dist(b.x, b.y, P.x, P.y))[0];
-      P.money = Math.max(0, P.money - 100);
+      if (!Empire.freeHospital()) P.money = Math.max(0, P.money - 100);
     } else {
-      spot = World.places.police;
-      P.money = Math.max(0, P.money - Math.min(P.money, 100 + Wanted.stars * 150));
-      P.inv = { fist: Infinity }; P.weapon = 'fist';
+      spot = ['police', 'police2', 'police3'].map(k => World.places[k]).filter(Boolean).sort((a, b) => dist(a.x, a.y, P.x, P.y) - dist(b.x, b.y, P.x, P.y))[0];
+      const fine = Math.min(P.money, 100 + Wanted.stars * 150);
+      P.money = Math.max(0, P.money - (Empire.lenient() ? Math.round(fine / 2) : fine));
+      if (!Empire.lenient()) { P.inv = { fist: Infinity }; P.weapon = 'fist'; } else UI.toast('경찰 후원 덕분에 무기는 돌려받았다');
     }
     const np = new PlayerPed(spot.x, spot.y);
-    Object.assign(np, { money: P.money, displayMoney: P.money, inv: P.inv, weapon: P.weapon in P.inv ? P.weapon : 'fist', bag: kind === 'wasted' ? P.bag : {}, maxHp: P.maxHp, hp: P.maxHp, endurance: P.endurance, aimSkill: P.aimSkill, shirt: P.shirt, pants: P.pants });
+    Object.assign(np, { money: P.money, displayMoney: P.money, inv: P.inv, weapon: P.weapon in P.inv ? P.weapon : 'fist', bag: kind === 'wasted' ? P.bag : {}, maxHp: P.maxHp, hp: P.maxHp, endurance: P.endurance, aimSkill: P.aimSkill }); for (const k of STYLE_KEYS) np[k] = P[k];
     if (kind === 'wasted') np.inv = P.inv;
     this.player = np;
     Wanted.reset(); Police.reset(); Jay.reset();
@@ -8191,7 +9200,8 @@ const Game = {
 
 function spawnLaneSpot(f, inner, outer, initial) {
   for (let k = 0; k < 6; k++) {
-    const e = pick(World.edgesList), A = World.nodes[e[0]], B = World.nodes[e[1]];
+    const near = edgesNear(f.x, f.y, outer); if (!near.length) return null;
+    const e = pick(near), A = World.nodes[e[0]], B = World.nodes[e[1]];
     const t = rand(0.15, 0.85), x = lerp(A.x, B.x, t), y = lerp(A.y, B.y, t);
     const d = dist(x, y, f.x, f.y);
     if (d < inner || d > outer || (!initial && onScreen(x, y, 8))) continue;

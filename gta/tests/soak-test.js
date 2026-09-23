@@ -34,7 +34,7 @@ const { chromium } = require(process.env.NODE_PATH_PW || 'playwright');
           if (a === 9) Game.clock = R(1440);
         } catch (e) { out.errs.push('action ' + a + ': ' + e.stack.split('\n').slice(0, 3).join(' | ')); }
       }
-      try { if (Game.state === 'shop' || Game.state === 'paused' || Game.state === 'map') { if (Game.state === 'shop') { try { Shop.close(); Jobs.closeBoard(); } catch (e) {} } Game.state = 'play'; } if (step % 4 === 0) Game.frame(1 / 60); else if (Game.state === 'play') Game.update(1 / 60); else Game.frame(1/60); endFrameInput(); } catch (e) { out.errs.push(e.stack.split('\n').slice(0, 4).join(' | ')); if (out.errs.length > 30) break; }
+      try { if (Game.state === 'shop' || Game.state === 'paused' || Game.state === 'map' || Game.state === 'fin' || Game.state === 'ward') { try { FinUI.close(); Wardrobe.close(); } catch (e) {} }; if (Game.state === 'shop' || Game.state === 'paused' || Game.state === 'map') { if (Game.state === 'shop') { try { Shop.close(); Jobs.closeBoard(); } catch (e) {} } Game.state = 'play'; } if (step % 4 === 0) Game.frame(1 / 60); else if (Game.state === 'play') Game.update(1 / 60); else Game.frame(1/60); endFrameInput(); } catch (e) { out.errs.push(e.stack.split('\n').slice(0, 4).join(' | ')); if (out.errs.length > 30) break; }
       if (step % 300 === 0) chk(step);
     }
     out.ms = Math.round(performance.now() - t0); out.cars = Game.cars.length; out.peds = Game.peds.length; out.state2 = Game.state; out.deaths = Game.stats;

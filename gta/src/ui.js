@@ -243,9 +243,19 @@ function drawHUD(dt) {
 
 function roundRect(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
 
+// 조직 보스 위치 표시용 왕관
+function drawCrownMark(c, x, y, r) {
+  c.fillStyle = '#f2c14e'; c.strokeStyle = 'rgba(0,0,0,0.85)'; c.lineWidth = 1.2;
+  c.beginPath(); c.moveTo(x - r, y + r * 0.5); c.lineTo(x - r, y - r * 0.5); c.lineTo(x - r * 0.5, y); c.lineTo(x, y - r * 0.8); c.lineTo(x + r * 0.5, y); c.lineTo(x + r, y - r * 0.5); c.lineTo(x + r, y + r * 0.5); c.closePath(); c.stroke(); c.fill();
+}
+// 다른 파일이 장소를 더할 때: EXTRA_PLACES.push([장소키, SHOPS키]) · EXTRA_ICONS.push({ key, ch, c, label })
+const EXTRA_PLACES = [], EXTRA_ICONS = [];
 function placeIcons() {
   const out = [];
   const pl = World.places;
+  for (const e of EXTRA_ICONS) if (pl[e.key]) out.push({ x: pl[e.key].x, y: pl[e.key].y, ch: e.ch, c: typeof e.c === 'function' ? e.c() : e.c, label: e.label });
+  for (const k of ['hospital2', 'hospital3']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: 'H', c: '#e0443e', label: '병원' });
+  for (const k of ['police2', 'police3']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: 'P', c: '#4b8fe8', label: '경찰서' });
   if (pl.hospital) out.push({ x: pl.hospital.x, y: pl.hospital.y, ch: 'H', c: '#e0443e', label: '병원' });
   if (pl.clinic) out.push({ x: pl.clinic.x, y: pl.clinic.y, ch: 'H', c: '#e0443e', label: '의원' });
   if (pl.police) out.push({ x: pl.police.x, y: pl.police.y, ch: 'P', c: '#4b8fe8', label: '경찰서' });
@@ -257,12 +267,13 @@ function placeIcons() {
   for (const m of World.marinas || []) out.push({ x: m.x, y: m.y, ch: '배', c: '#4fc3f7', label: '마리나(보트)' });
   if (pl.mygarage) out.push({ x: pl.mygarage.x, y: pl.mygarage.y, ch: '차', c: '#9be15d', label: '내 차고' });
   if (pl.dealer) out.push({ x: pl.dealer.x, y: pl.dealer.y, ch: 'D', c: '#c77dff', label: '네온 모터스(차량 매매)' });
-  for (const g of GANG_IDS) if (pl['hq_' + g]) out.push({ x: pl['hq_' + g].x, y: pl['hq_' + g].y, ch: GANGS[g].short, c: GANGS[g].color, label: GANGS[g].name + ' 본부' });
+  for (const g of GANG_IDS) if (pl['hq_' + g]) out.push({ x: pl['hq_' + g].x, y: pl['hq_' + g].y, ch: GANGS[g].short, c: GANGS[g].color, label: GANGS[g].name + ' 보스', crown: !(Gangs.mine === g && Gangs.rank === 2) });
+  if (pl.milgate) out.push({ x: pl.milgate.x, y: pl.milgate.y, ch: '군', c: '#8f9b6a', label: '기지 정문 (후원)' });
   for (const [k, ch, c, l] of [['ammu3', '총', '#ff6b5a', '총포상'], ['burger3', '버', '#ffb347', '버거 샷'], ['burger4', '버', '#ffb347', '버거 샷'], ['mart4', '편', '#7ae68f', '편의점'], ['mart5', '편', '#7ae68f', '편의점'], ['clothes', '옷', '#e07aff', '옷가게'], ['clothes2', '옷', '#e07aff', '옷가게'], ['gym', '체', '#ff9f43', '체육관'], ['pharmacy', '약', '#3ee07a', '약국'], ['pharmacy2', '약', '#3ee07a', '약국'], ['bank', '은', '#ffd700', '은행']]) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch, c, label: l });
   if (pl.ammu2) out.push({ x: pl.ammu2.x, y: pl.ammu2.y, ch: '총', c: '#ff6b5a', label: '총포상' });
   for (const k of ['burger', 'burger2']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '버', c: '#ffb347', label: '버거 샷' });
   for (const k of ['mart', 'mart2', 'mart3']) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: '편', c: '#7ae68f', label: '편의점' });
-  if (pl.safehouse) out.push({ x: pl.safehouse.x, y: pl.safehouse.y, ch: '집', c: '#9be15d', label: '은신처(저장)' });
+  if (pl.safehouse) out.push({ x: pl.safehouse.x, y: pl.safehouse.y, ch: Empire.own ? GANGS.own.short : '집', c: Empire.own ? GANGS.own.color : '#9be15d', label: Empire.own ? `${Empire.own.name} 본부 (은신처)` : '은신처(저장·내 조직)', crown: !!Empire.own });
   if (pl.jobcenter) out.push({ x: pl.jobcenter.x, y: pl.jobcenter.y, ch: 'J', c: '#6fb6ff', label: '고용센터' });
   if (pl.broker) out.push({ x: pl.broker.x, y: pl.broker.y, ch: '$', c: '#ff5d8f', label: '브로커' });
   return out;
@@ -310,6 +321,7 @@ function drawRadar(s) {
   for (const ic of placeIcons()) put(ic.x, ic.y, (x, y) => {
     c.fillStyle = 'rgba(0,0,0,0.75)'; c.beginPath(); c.arc(x, y, 7 * s, 0, TAU); c.fill();
     c.fillStyle = ic.c; c.font = `bold ${9 * s}px ${FONT_KR}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(ic.ch, x, y + 0.5);
+    if (ic.crown) drawCrownMark(c, x, y - 9 * s, 5 * s);
   });
   if (Game.waypoint) put(Game.waypoint.x, Game.waypoint.y, (x, y) => { c.fillStyle = '#c77dff'; c.strokeStyle = '#000'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x, y + 2); c.lineTo(x - 5 * s, y - 8 * s); c.lineTo(x + 5 * s, y - 8 * s); c.closePath(); c.fill(); c.stroke(); }, true);
   // 미션 목표
@@ -349,11 +361,26 @@ function drawRadar(s) {
 }
 
 // ---------- 전체 지도 ----------
+const MapView = {
+  z: 1, cx: null, cy: null, drag: null, moved: false,
+  reset() { this.z = 1; this.cx = MW * T / 2; this.cy = MH * T / 2; },
+  clampC() { const hw = MW * T / 2 / this.z, hh = MH * T / 2 / this.z; this.cx = clamp(this.cx, hw, MW * T - hw); this.cy = clamp(this.cy, hh, MH * T - hh); },
+  center(x, y) { this.cx = x; this.cy = y; this.clampC(); },
+  zoomAt(f, sx, sy) {
+    const r = Game.mapRect; if (!r) return;
+    if (sx === undefined) { sx = r.ox + r.size / 2; sy = r.oy + r.size / 2; }
+    const wx = (sx - r.mx) / r.k, wy = (sy - r.my) / r.k;
+    this.z = clamp(this.z * f, 1, 10);
+    const k1 = r.size * this.z / (MW * T);
+    this.cx = wx - (sx - (r.ox + r.size / 2)) / k1; this.cy = wy - (sy - (r.oy + r.size / 2)) / k1; this.clampC();
+  },
+  pan(dx, dy) { const r = Game.mapRect; if (!r) return; this.cx -= dx / r.k; this.cy -= dy / r.k; this.clampC(); },
+};
 function drawFullMap() {
   const c = ctx, P = Game.player;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
   c.fillStyle = 'rgba(6,10,18,0.92)'; c.fillRect(0, 0, CW, CH);
-  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  군사 기지 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)'], ['#9be15d', '차  내 차고 (산 차량 보관·저장)'], ['#4fc3f7', '배  마리나 (제트스키·보트)'], ['#ffd166', '₩  사업체 (사면 1분마다 수입, 초록 = 소유)'], ['#ff5d8f', '♦  다이아몬드 카지노'], ['#e07aff', '옷  옷가게 (변장)'], ['#ff9f43', '체  체육관'], ['#3ee07a', '약  약국'], ['#ffd700', '은  은행 (털 수 있다)'], ['#ff4d4d', '청·파·철·코  조직 본부 (가입)']];
+  const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  군사 기지 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)'], ['#9be15d', '차  내 차고 (산 차량 보관·저장)'], ['#4fc3f7', '배  마리나 (제트스키·보트)'], ['#ffd166', '₩  사업체 (사면 1분마다 수입, 초록 = 소유)'], ['#ff5d8f', '♦  다이아몬드 카지노'], ['#e07aff', '옷  옷가게 (변장)'], ['#ff9f43', '체  체육관'], ['#3ee07a', '약  약국'], ['#ffd700', '은  은행 (털 수 있다)'], ['#ff4d4d', '♛  조직 보스 (계약·가입)'], ['#e8e2d0', '시  시청 · 병원 · 경찰서 · 군 정문 = 후원']];
   // 범례 줄 수를 먼저 재서 지도 크기를 정한다 (글자가 지도·도움말과 겹치지 않게)
   const lf = `500 ${12 * UI.s}px ${FONT_KR}`, lh = 18 * Math.max(1, UI.s);
   c.font = lf;
@@ -361,28 +388,26 @@ function drawFullMap() {
   let size = Math.min(CW - 40, CH - 110);
   for (let i = 0; i < 3; i++) size = Math.min(CW - 40, CH - 64 - 16 - widthFor(size) * lh - 2 * lh - 8);
   size = Math.max(120, size);
-  const k = size / (MW * T), ox = (CW - size) / 2, oy = 64;
-  Game.mapRect = { ox, oy, size, k };
+  // 확대·이동 (휠·드래그·핀치·+/- 버튼): MapView.z 배율, (cx, cy) 가운데 월드 좌표
+  const ox0 = (CW - size) / 2, oy0 = 64, MV = MapView; if (MV.cx === null) MV.reset();
+  const k = size * MV.z / (MW * T), ox = ox0 + size / 2 - MV.cx * k, oy = oy0 + size / 2 - MV.cy * k;
+  Game.mapRect = { ox: ox0, oy: oy0, size, k, mx: ox, my: oy };
+  c.save(); c.beginPath(); c.rect(ox0, oy0, size, size); c.clip();
   c.imageSmoothingEnabled = false;
-  c.drawImage(World.mini, ox, oy, size, size);
+  c.drawImage(World.mini, ox, oy, MW * T * k, MH * T * k);
   c.imageSmoothingEnabled = true;
-  if (Game.showTurf) drawTurfOverlay(c, ox, oy, k);
-  c.strokeStyle = 'rgba(255,255,255,0.3)'; c.strokeRect(ox, oy, size, size);
-  // [갱단 구역] 버튼 (G)
-  const tb = Game.turfBtn = { x: ox + size - 132, y: Math.max(4, oy - 44), w: 132, h: 34 };
-  c.fillStyle = Game.showTurf ? '#ff4d4d' : 'rgba(20,24,34,0.9)'; roundRect(c, tb.x, tb.y, tb.w, tb.h, 8); c.fill(); c.strokeStyle = '#ff4d4d'; c.lineWidth = 1.5; c.stroke();
-  txt(c, `갱단 구역 ${Game.showTurf ? '끄기' : '보기'}${Input.usingTouch ? '' : ' (G)'}`, tb.x + tb.w / 2, tb.y + 22, `700 13px ${FONT_KR}`, '#fff', null, 0, 'center');
-  txt(c, '네온 하버 지도', CW / 2, 44, `${28 * UI.s}px ${FONT_DISP}`, '#f2c14e', 'rgba(0,0,0,0.9)', 5, 'center');
+  if (Game.showTurf) drawTurfOverlay(c, ox, oy, k, ox0, oy0);
   // 구역 이름
   const acc = {};
-  for (const b of World.blocks) { const d = b.district; acc[d] = acc[d] || [0, 0, 0]; acc[d][0] += (b.x0 + b.x1) / 2; acc[d][1] += (b.y0 + b.y1) / 2; acc[d][2]++; }
-  acc[DIST.HARBOR] = acc[DIST.HARBOR] || [0, 0, 0];
-  for (const d in acc) { const [sx, sy, n] = acc[d]; if (!n) continue; txt(c, DIST_NAMES[d], ox + sx / n * T * k, oy + sy / n * T * k, `${15 * UI.s}px ${FONT_DISP}`, 'rgba(255,255,255,0.85)', 'rgba(0,0,0,0.9)', 4, 'center'); }
+  for (const b of World.blocks) { const d = b.park || (b.district === DIST.PARK ? '' : World.hoods[b.hood].name); if (!d) continue; acc[d] = acc[d] || [0, 0, 0]; acc[d][0] += (b.x0 + b.x1) / 2; acc[d][1] += (b.y0 + b.y1) / 2; acc[d][2]++; }
+  acc[DIST_NAMES[DIST.BASE]] = [(World.base.x0 + World.base.x1) / 2 / T, (World.base.y0 + World.base.y1) / 2 / T, 1];
+  for (const d in acc) { const [sx, sy, n] = acc[d]; if (!n) continue; txt(c, d, ox + sx / n * T * k, oy + sy / n * T * k, `${13 * UI.s}px ${FONT_DISP}`, 'rgba(255,255,255,0.8)', 'rgba(0,0,0,0.9)', 4, 'center'); }
   if (World.base) { const B = World.base; txt(c, '포트 네온 기지', ox + (B.x0 + B.x1) / 2 * k, oy + (B.y0 + B.y1) / 2 * k, `${15 * UI.s}px ${FONT_DISP}`, '#c9d49a', 'rgba(0,0,0,0.9)', 4, 'center'); }
   for (const ic of placeIcons()) {
     const x = ox + ic.x * k, y = oy + ic.y * k;
     c.fillStyle = 'rgba(0,0,0,0.8)'; c.beginPath(); c.arc(x, y, 9, 0, TAU); c.fill();
     c.fillStyle = ic.c; c.font = `bold 11px ${FONT_KR}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(ic.ch, x, y + 0.5);
+    if (ic.crown) drawCrownMark(c, x, y - 12, 7);
   }
   for (const t of allTargets()) { const x = ox + t.x * k, y = oy + t.y * k; c.fillStyle = '#000'; c.beginPath(); c.arc(x, y, 8, 0, TAU); c.fill(); c.fillStyle = t.c; c.beginPath(); c.arc(x, y, 6, 0, TAU); c.fill(); }
   if (Wanted.stars > 0) { c.strokeStyle = 'rgba(255,90,80,0.9)'; c.beginPath(); c.arc(ox + Wanted.lkpX * k, oy + Wanted.lkpY * k, Wanted.radius * k, 0, TAU); c.stroke(); }
@@ -391,10 +416,20 @@ function drawFullMap() {
   const px = ox + P.px * k, py = oy + P.py * k;
   c.save(); c.translate(px, py); c.rotate(P.car ? P.car.a : P.a); c.fillStyle = '#fff'; c.strokeStyle = '#000'; c.lineWidth = 2;
   c.beginPath(); c.moveTo(10, 0); c.lineTo(-6, -7); c.lineTo(-3, 0); c.lineTo(-6, 7); c.closePath(); c.stroke(); c.fill(); c.restore();
+  c.restore();
+  c.strokeStyle = 'rgba(255,255,255,0.3)'; c.strokeRect(ox0, oy0, size, size);
+  // [갱단 구역] 버튼 (G) · 확대/축소 버튼
+  const tb = Game.turfBtn = { x: ox0 + size - 132, y: Math.max(4, oy0 - 44), w: 132, h: 34 };
+  const zb = Game.mapZoomBtns = [{ x: ox0, y: Math.max(4, oy0 - 44), w: 40, h: 34, f: 1.5, l: '+' }, { x: ox0 + 46, y: Math.max(4, oy0 - 44), w: 40, h: 34, f: 1 / 1.5, l: '−' }];
+  c.fillStyle = Game.showTurf ? '#ff4d4d' : 'rgba(20,24,34,0.9)'; roundRect(c, tb.x, tb.y, tb.w, tb.h, 8); c.fill(); c.strokeStyle = '#ff4d4d'; c.lineWidth = 1.5; c.stroke();
+  txt(c, `갱단 구역 ${Game.showTurf ? '끄기' : '보기'}${Input.usingTouch ? '' : ' (G)'}`, tb.x + tb.w / 2, tb.y + 22, `700 13px ${FONT_KR}`, '#fff', null, 0, 'center');
+  for (const b of zb) { c.fillStyle = 'rgba(20,24,34,0.9)'; roundRect(c, b.x, b.y, b.w, b.h, 8); c.fill(); c.strokeStyle = '#6fe0ff'; c.lineWidth = 1.5; c.stroke(); txt(c, b.l, b.x + b.w / 2, b.y + 25, `700 22px ${FONT_KR}`, '#fff', null, 0, 'center'); }
+  if (MV.z > 1) txt(c, `×${MV.z.toFixed(1)}`, ox0 + 96, Math.max(4, oy0 - 44) + 22, `600 13px ${FONT_KR}`, '#6fe0ff', null);
+  txt(c, '네온 하버 지도', CW / 2, 44, `${28 * UI.s}px ${FONT_DISP}`, '#f2c14e', 'rgba(0,0,0,0.9)', 5, 'center');
   // 범례
-  let lx = ox, ly = oy + size + 16 + lh * 0.5;
+  let lx = ox0, ly = oy0 + size + 16 + lh * 0.5;
   c.font = lf;
-  for (const [col, l] of legend) { const lw = c.measureText(l).width + 34; if (lx > ox && lx + lw > ox + size) { lx = ox; ly += lh; } c.fillStyle = col; c.fillRect(lx, ly - 9, 10, 10); txt(c, l, lx + 15, ly, lf, '#dfe6ee', null); lx += lw; }
+  for (const [col, l] of legend) { const lw = c.measureText(l).width + 34; if (lx > ox0 && lx + lw > ox0 + size) { lx = ox0; ly += lh; } c.fillStyle = col; c.fillRect(lx, ly - 9, 10, 10); txt(c, l, lx + 15, ly, lf, '#dfe6ee', null); lx += lw; }
   ly += lh;
   txt(c, (Input.usingTouch ? '지도를 눌러 웨이포인트 지정 · 지도 버튼으로 닫기' : '클릭: 웨이포인트 지정/해제 · 지도 밖 클릭/M: 닫기') + `   ·   숨겨진 꾸러미 ${Game.packages.size}/${Game.packageTotal}   ·   스토리 ${Math.min(Missions.idx, Missions.defs.length)}/${Missions.defs.length}`, CW / 2, ly, lf, '#c7b8ff', null, 0, 'center');
 }
@@ -461,6 +496,9 @@ const Menu = {
     });
     document.getElementById('shop-close').onclick = () => Shop.close();
     document.getElementById('bag-close').onclick = () => Bag.close();
+    document.getElementById('ward-close').onclick = () => Wardrobe.close();
+    document.getElementById('fin-close').onclick = () => FinUI.close();
+    document.getElementById('ward-buy').onclick = () => Wardrobe.buy();
     document.getElementById('bag-auto').onclick = () => { Bag.useBest(); Bag.render(); };
     document.getElementById('bagui').addEventListener('click', e => { if (e.target.id === 'bagui') Bag.close(); });
   },
@@ -551,6 +589,7 @@ const Shop = {
   kind: null,
   open(kind) {
     const S = SHOPS[kind] || SHOPS.ammu, P = Game.player;
+    if (S.panel) { S.panel(); return; } // 전용 패널 (finance.js)
     this.kind = kind;
     Game.state = 'shop';
     document.getElementById('shop-title').textContent = S.title;
@@ -559,6 +598,7 @@ const Shop = {
     list.innerHTML = '';
     const items = S.items();
     // 사업체 혜택: 버거 샷 가맹점 → 버거 반값
+    if (kind === 'ammu' && Finance.law('gun')) for (const it of items) if (it.price) { it.price = Math.ceil(it.price * 0.7); it.desc += ' (총기 규제 완화 -30%)'; }
     if (kind === 'burger' && Biz.has('biz_burger')) for (const it of items) { it.price = Math.ceil(it.price / 2); it.desc += ' (가맹점주 반값)'; }
     if ((kind === 'mart' || kind === 'pharmacy') && Biz.has('biz_mart')) for (const it of items) if (it.price) { it.price = Math.ceil(it.price / 2); it.desc += ' (본사 반값)'; }
     const buttons = [], bagBtns = [];

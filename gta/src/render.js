@@ -159,7 +159,7 @@ function drawGround(amb) {
   if (World.base) {
     const B = World.base;
     if (Cam.y - Cam.vh / 2 < B.y1 + 10) {
-      const ry0 = 9 * T, ry1 = 14 * T, cy = (ry0 + ry1) / 2, rx0 = 12 * T, rx1 = (MW - 13) * T;
+      const ry0 = 9 * T, ry1 = 14 * T, cy = (ry0 + ry1) / 2, rx0 = B.rx0, rx1 = B.rx1;
       ctx.fillStyle = 'rgba(240,240,235,0.85)';
       for (let x = rx0 + 20; x < rx1 - 20; x += 12) ctx.fillRect(x, cy - 0.2, 6, 0.4);
       for (const ex of [rx0 + 2, rx1 - 12]) for (let k = 0; k < 6; k++) ctx.fillRect(ex, ry0 + 1.5 + k * 3, 10, 1.4);
@@ -459,6 +459,7 @@ function drawPed(p, shadow) {
   ctx.fillStyle = p.hair; ctx.beginPath(); ctx.arc(-0.01, 0, 0.155, Math.PI * 0.5, Math.PI * 1.5); ctx.fill();
   if (p.kind === 'cop' || p.kind === 'swat') { ctx.fillStyle = p.kind === 'cop' ? '#15213f' : '#1b1f24'; ctx.beginPath(); ctx.arc(0.02, 0, 0.17, 0, TAU); ctx.fill(); ctx.fillRect(0.1, -0.12, 0.12, 0.24); }
   drawArchHead(p);
+  if (p.kind === 'player') drawPlayerStyle(p);
   ctx.restore();
 }
 

@@ -220,7 +220,8 @@ function gangLook(p, dt) { // idle 상태의 조직원이 라이벌을 찾는다
   if (!chance(dt * 1.5)) return;
   // 플레이어가 라이벌 조직원이면 자기 구역에서 공격해 온다
   const P = Game.player;
-  if (Gangs.mine && Gangs.mine !== p.gang && !P.dead && !(P.car && P.car.alt > 1.2) && Gangs.ownerAt(p.x, p.y) === p.gang && dist2(p.x, p.y, P.px, P.py) < 16 * 16 && losClear(p.x, p.y, P.px, P.py)) {
+  const logo = P.logo && P.logo === Gangs.mine && !P.car, r = logo ? 26 : 16; // 조직 마크를 달면 멀리서도, 어느 구역에서든 알아본다
+  if (Gangs.mine && Gangs.mine !== p.gang && !p.bossNpc && !P.dead && !(P.car && P.car.alt > 1.2) && (logo || Gangs.ownerAt(p.x, p.y) === p.gang) && dist2(p.x, p.y, P.px, P.py) < r * r && losClear(p.x, p.y, P.px, P.py)) {
     p.state = 'chase'; Talk.say(p, pick(['여긴 우리 구역이다!', `${GANGS[Gangs.mine].name} 놈이다!`, '죽여!']), 2, true); return;
   }
   for (const q of Game.peds) {

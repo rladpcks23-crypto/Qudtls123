@@ -28,7 +28,7 @@ bash packaging/desktop/build.sh  # release/NeonHarbor-PC.exe (electron-builder)
 | 파일 | 내용 |
 |---|---|
 | `core.js` | 수학 헬퍼(`clamp` `lerp` `smooth` `dist` `rand` `pick`…), 입력(`Input` `keyDown` `keyHit` `Pad`), `Sfx`(Web Audio), `Radio`, `Settings`(localStorage), `Perf`(성능 모드), `Zoom`, `TUNE` |
-| `world.js` | `genWorld(seed)` 절차적 도시 생성: 타일 `TL`, 구역 `DIST`/`DIST_NAMES`, 도로 그래프 `World.nodes/edgesList`, 건물, 장소 `World.places`(`makePlace`/`makeLotPlace`), 군사 기지 `World.base`, 마리나 `World.marinas`. `solidT`(사람·AI), `solidNoWater`(헤엄치는 플레이어·차), `solidBoat`(보트) |
+| `world.js` | `genWorld(seed)` 절차적 도시 생성: 타일 `TL`, 구역 `DIST`/`DIST_NAMES`, 동네 `HOODS`(보로노이, `hoodAt(x,y)`), 공간 인덱스 `edgesNear/blocksNear/gridQuery`, 도로 그래프 `World.nodes/edgesList`, 건물, 장소 `World.places`(`makePlace`/`makeLotPlace`), 군사 기지 `World.base`, 마리나 `World.marinas`. `solidT`(사람·AI), `solidNoWater`(헤엄치는 플레이어·차), `solidBoat`(보트) |
 | `vehicles.js` | `VTYPES`(차종 표), `class Car`(자전거 모델 물리), 교통 AI(IDM·pure pursuit), 경찰차 추격, `playerDrive`, 물에 빠짐 `sinkCar` |
 | `peds.js` | `WEAPONS`, `class Ped`/`PlayerPed`, `fireWeapon`, `explode(x,y,r,dmg,by,source,alt)`, 유도탄, 보행자 AI, `Particles` `Decals` `Effects`, 픽업 |
 | `police.js` | 수배 `Wanted`, `crime(type,x,y)`, 경찰 배차·헬기, 무단횡단 `Jay` |
@@ -37,10 +37,13 @@ bash packaging/desktop/build.sh  # release/NeonHarbor-PC.exe (electron-builder)
 | `npc.js` | 대사 `Talk`, 구급차 `EMS`, 의뢰인 `Givers`, 노점 `Vendors`, 은신처, `GPS`, 치트 `Cheats` |
 | `military.js` | 전차·헬기·전투기·보트 물리 `specialStep`, 탑승 무기 `VWEAP`/`VSET`/`MilFire`(락온), 군 기지 `Military`, 공중 추격 `AirPatrol`, 낙하산 `Para`, `roofAt` |
 | `render.js` | 2D 렌더(`renderScene`, `drawCar`, `drawPed`, `drawBoat`, 조명 `lightPass`), 카메라 `Cam` |
-| `view3d.js` | Three.js 3D 시점(후면·전면·1인칭). 차량·사람 메시 `makeCar`/`makePed` |
+| `view3d.js` | Three.js 3D 시점(후면·전면·1인칭). **청크 스트리밍**: `CS`=128m, `stream()`이 반경 `drawR`(속도·고도 비례) 안 청크를 `buildChunk`로 만들고 멀면 `disposeChunk`. 차량·사람 메시 `makeCar`/`makePed`(플레이어는 `addStyle`) |
 | `ui.js` | HUD `drawHUD`, 레이더, 전체 지도, 메뉴·일시정지, 상점 `SHOPS`/`Shop`, 터치 조작·핀치 줌 |
 | `economy.js` | 가방 `Bag`(패널), 차량 매매 `Dealer`, 내 차고 `Fleet`, 사업체 `BUSINESSES`/`Biz` |
-| `gangs.js` | 조직 `GANGS`/`GANG_IDS`, 구역·전쟁·계급 `Gangs`(turf = 블록 id → 조직), 조직 일 `GangJob`, 호위 부하 `escortAI`, 지도 구역 `drawTurfOverlay` |
+| `gangs.js` | 조직 `GANGS`/`GANG_IDS`, 구역·전쟁·계급 `Gangs`(turf = 블록 id → 조직, mine, rank 0~2), 후계 계약 `succeed`, 전쟁 선포 `declareWar`, 조직 일 `GangJob`, 호위 부하 `escortAI`, 지도 구역 `drawTurfOverlay` |
+| `empire.js` | `Empire`: 보스 NPC(`bossNpc`, 무적) · 내 조직(`GANGS.own`) · 조직원 수 `members(g)` · 암살단 `sendHit` · 후원 지지도 `support {civ, off}` / `SHOPS.hospital_st·police_st·cityhall·milgate·safehouse` |
+| `finance.js` | `Finance`: 주식 `COMPANIES`, 부동산 `ESTATES`, 창고 `WAREHOUSES`(운송 `startRun`), 중앙은행 `bank`, 국회 `LAWS`(`Finance.law(id)`), 대형 강도 `Heist`/`HEISTS`, 패널 `FinUI`(#finui) |
+| `wardrobe.js` | 옷 꾸미기 `Wardrobe`(#wardui), `STYLE_KEYS`(shirt·pants·hatType·hatCol·logo), 2D `drawPlayerStyle`, 조직 마크 `drawGangLogo` |
 | `casino.js` | 카지노 `Casino`(룰렛·슬롯·블랙잭) |
 | `main.js` | `Game` 루프, 인구 관리 `populate`, 플레이어 조작, 카메라, 사망·체포·리스폰, 장소 진입 `places()` |
 | `shell.html` | 메뉴·상점·카지노 마크업과 **모든 CSS**(모바일 버튼 배치 포함) |
@@ -52,12 +55,13 @@ bash packaging/desktop/build.sh  # release/NeonHarbor-PC.exe (electron-builder)
 - **스토리 미션**: `MISSION_DEFS`에 `{ title, reward, intro, outro, start(m), update(m,dt) → 'pass' | {fail}, noPolice? }` 추가 + `Missions.init`의 `givers`에 의뢰인 위치 하나 추가.
 - **직업**: `JOBS`에 정의(legal, vehicle?) + `Jobs.u_<id>` 함수 + 필요하면 `timeout`/`stop` 정리.
 - **가게/사업체**: `SHOPS[kind] = { title, sub, items: () => [...] }`. 항목에 `fn`이 있으면 **fn이 직접 돈을 처리**한다(Shop은 차감하지 않음 — 이중 결제 버그 방지). 사업체는 `BUSINESSES`에 추가 + `world.js`에서 `makePlace('biz_…', …)`.
-- **장소 추가**: `world.js` 7) 특수 장소 부분의 `makePlace`(건물 문 앞 마커) 또는 `makeLotPlace`(마당형). 지도 아이콘은 `ui.js placeIcons`, 문 앞 고리는 `PLACE_MARK`.
+- **장소 추가**: `world.js` 7) 특수 장소 부분의 `makePlace`(건물 문 앞 마커) 또는 `makeLotPlace`(마당형). 다른 파일에서 `EXTRA_PLACES.push([장소키, SHOPS키])`, 지도 아이콘 `EXTRA_ICONS.push({key, ch, c, label})`, 문 앞 고리 `PLACE_MARK`. 전용 창이 필요하면 `SHOPS[k].panel = () => ...`.
 - **저장 항목 추가**: `Save.write`(missions.js)와 `Game.newGame`(main.js)의 불러오기 부분을 함께 고친다.
 
 ## 주의할 점
 
-- 좌표 단위는 **미터**, 타일 한 칸 `T = 4m`, 맵 `MW×MH = 190×190` 타일. 각도는 라디안, 0 = 동쪽.
+- 좌표 단위는 **미터**, 타일 한 칸 `T = 4m`, 맵 `MW×MH = 480×480` 타일(1.92km). 각도는 라디안, 0 = 동쪽.
+- 맵이 크므로 `World.edgesList`/`World.blocks` 전체에서 무작위로 고르지 말고 `edgesNear(x,y,r)`/`blocksNear(x,y,r)`을 쓴다.
 - 게임 시간: `Game.clock`(분, 실제 1초 = 게임 1분), `Game.time`(초).
 - `P.px/P.py`는 차에 타고 있으면 차 위치. 비행 고도는 `car.alt`, 낙하산은 `P.alt`.
 - 탑승 무기 차량 판정은 `hasVW(car)` (보트는 `V.special==='boat'`지만 무기 없음).

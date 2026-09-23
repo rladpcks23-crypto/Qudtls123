@@ -94,8 +94,8 @@ const Bag = {
 };
 
 // ---------- 차량 매매상 ----------
-const VEHICLE_PRICES = { compact: 3000, sedan: 5000, bike: 4500, van: 6000, muscle: 9000, truck: 12000, sports: 18000, super: 42000, taxi: 5000, police: 15000, swat: 30000, ambulance: 12000, armored: 60000, bus: 25000, tank: 180000, milheli: 150000, jet: 220000 };
-const DEALER_STOCK = ['compact', 'sedan', 'bike', 'van', 'muscle', 'sports', 'super', 'truck', 'armored', 'jetski', 'speedboat', 'tank', 'milheli', 'jet'];
+const VEHICLE_PRICES = { compact: 3000, sedan: 5000, bike: 4500, van: 6000, muscle: 9000, truck: 12000, sports: 18000, super: 42000, hyper: 450000, taxi: 5000, police: 15000, swat: 30000, ambulance: 12000, armored: 60000, bus: 25000, tank: 180000, milheli: 150000, jet: 220000 };
+const DEALER_STOCK = ['compact', 'sedan', 'bike', 'van', 'muscle', 'sports', 'super', 'hyper', 'truck', 'armored', 'jetski', 'speedboat', 'tank', 'milheli', 'jet'];
 Object.assign(VEHICLE_PRICES, { jetski: 7000, speedboat: 26000 });
 
 const Dealer = {
@@ -143,7 +143,7 @@ const Dealer = {
     Game.cars.push(c); Game.waypoint = { x, y };
     return c;
   },
-  cost(type) { return Math.round(VEHICLE_PRICES[type] * (VTYPES[type].special === 'boat' && Biz.has('biz_surf') ? 0.5 : 1)); },
+  cost(type) { const sp = VTYPES[type].special; return Math.round(VEHICLE_PRICES[type] * (sp === 'boat' && Biz.has('biz_surf') ? 0.5 : 1) * (sp && sp !== 'boat' && Finance.law('mil') ? 0.7 : 1)); },
   buy(type) {
     const P = Game.player, price = this.cost(type);
     if (P.money < price) return;
@@ -241,7 +241,7 @@ const Biz = {
   t: 0,
   owned() { return Game.props || (Game.props = {}); },
   lv(k) { const o = this.owned()[k]; return o ? o.lv || 1 : 0; },
-  perMin(k) { const B = BUSINESSES[k], L = this.lv(k); return L ? Math.round(B.perMin * BIZ_MULT[L - 1] * (this.has('biz_tower') && k !== 'biz_tower' ? 1.1 : 1)) : 0; },
+  perMin(k) { const B = BUSINESSES[k], L = this.lv(k); return L ? Math.round(B.perMin * BIZ_MULT[L - 1] * (this.has('biz_tower') && k !== 'biz_tower' ? 1.1 : 1) * (Finance.law('biztax') ? 1.2 : 1)) : 0; },
   total() { return Object.keys(this.owned()).reduce((a, k) => a + (BUSINESSES[k] ? this.perMin(k) : 0), 0); },
   // 실제 플레이 1분마다 소유한 사업체 수입이 바로 입금된다
   update(dt) {

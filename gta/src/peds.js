@@ -73,7 +73,7 @@ class Ped {
   get alive() { return !this.dead; }
 
   damage(amt, by, dx = 0, dy = 0, kind = 'bullet') {
-    if (this.dead || this.invuln) return;
+    if (this.dead || this.invuln) { if (this.bossNpc && by === Game.player) Empire.bossHit(this); return; }
     if (this === Game.player) this.lastHurt = Game.time;
     // 난이도: NPC가 플레이어에게 주는 피해는 줄인다(GTA도 플레이어 피격 배율이 낮다)
     if (this === Game.player && by && by !== this) amt *= 0.4;
@@ -321,7 +321,7 @@ function aggroGang(x, y, kind, gang) {
   for (const p of Game.peds) {
     if (p.dead) continue;
     if (p.kind === 'gang' && gang && p.gang !== gang) continue;
-    if (Gangs.friendly(p) || p.escort) continue; // 내 조직원은 나를 공격하지 않는다
+    if (Gangs.friendly(p) || p.escort || p.bossNpc) continue; // 내 조직원은 나를 공격하지 않는다 · 보스는 제자리
     if ((p.kind === 'gang' || p.kind === 'guard' || (p.kind === 'target' && kind !== 'gang')) && dist2(p.x, p.y, x, y) < 45 * 45) { if (p.kind === 'target' && p.mission && p.mission.onAlert) p.mission.onAlert(); else p.state = 'chase'; }
   }
 }

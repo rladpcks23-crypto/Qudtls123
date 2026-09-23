@@ -14,7 +14,7 @@
 Object.assign(VTYPES, {
   tank: { name: '라이노 전차', L: 7.2, W: 3.5, mass: 40000, Fe: 1, vmax: 11, grip: 3, cs: 6, steer: 0.9, hp: 2200, colors: ['#4b5a3a'], style: 'tank', special: 'tank', armor: 0.15 },
   milheli: { name: '헌터 공격 헬기', L: 9, W: 2.4, mass: 5000, Fe: 1, vmax: 36, grip: 1, cs: 5, steer: 1.5, hp: 700, colors: ['#4a5540'], style: 'milheli', special: 'heli', armor: 0.5 },
-  jet: { name: '라저 전투기', L: 12, W: 3, mass: 9000, Fe: 1, vmax: 78, grip: 1, cs: 5, steer: 0.9, hp: 600, colors: ['#8a929c'], style: 'jet', special: 'jet', armor: 0.5 },
+  jet: { name: '라저 전투기', L: 12, W: 3, mass: 9000, Fe: 1, vmax: 139, grip: 1, cs: 5, steer: 0.9, hp: 600, colors: ['#8a929c'], style: 'jet', special: 'jet', armor: 0.5 },
 });
 // 그 자리 건물 옥상 높이 (건물이 없으면 0)
 function roofAt(x, y) {
@@ -88,7 +88,7 @@ function specialStep(c, dt) {
     c.spd = c.spd || 0;
     const air = c.alt > 1.2;
     if (c.driver && c.burnT <= 0) {
-      if (raw > 0) c.spd += raw * 15 * dt; else if (raw < 0) c.spd += raw * 20 * dt;
+      if (raw > 0) c.spd += raw * (15 + Math.max(0, c.spd - 40) * 0.15) * dt; // 최고 139m/s ≈ 500km/h else if (raw < 0) c.spd += raw * 20 * dt;
       if (!raw && !air) c.spd *= Math.exp(-0.5 * dt);
     } else c.spd *= Math.exp(-2 * dt);
     c.spd = clamp(c.spd, air ? 20 : 0, V.vmax);
@@ -270,7 +270,7 @@ const Military = {
     if (!near) { for (const p of this.soldiers) p.remove = true; this.soldiers = []; }
     // 출입 경보
     const inside = this.inside(P.px, P.py) && !P.dead;
-    if (inside && Wanted.stars < 4 && !Game.noWanted) {
+    if (inside && Wanted.stars < 4 && !Game.noWanted && !Empire.baseAccess()) {
       if (!this.warned) { this.warned = true; UI.big('군사 제한구역', '5초 안에 나가지 않으면 사살 명령이 떨어진다', 2.5, '#ff4d4d'); Sfx.tone({ f0: 900, f1: 600, dur: 0.6, type: 'sawtooth', vol: 0.2 }); }
       this.warnT += dt;
       if (this.warnT > 5) { Wanted.set(4); Wanted.seen = true; UI.toast('기지 경보 발령! 수배 ★★★★'); }

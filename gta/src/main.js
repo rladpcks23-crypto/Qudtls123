@@ -35,7 +35,19 @@ const Game = {
     canvas.addEventListener('mousemove', e => { Input.mouse.x = e.clientX; Input.mouse.y = e.clientY; Input.mouse.moved = true; this.lastMouseMove = this.time; if (document.pointerLockElement === canvas) { Input.mouse.dx += e.movementX || 0; Input.mouse.dy += e.movementY || 0; } });
     canvas.addEventListener('mousedown', e => { if (e.button === 0) { Input.mouse.down = true; Input.mouse.clicked = true; } Sfx.init(); });
     addEventListener('mouseup', e => { if (e.button === 0) Input.mouse.down = false; });
-    canvas.addEventListener('wheel', e => { Input.wheel += sign(e.deltaY); e.preventDefault(); }, { passive: false });
+    canvas.addEventListener('wheel', e => { if (this.state === 'map') MapView.zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.clientX, e.clientY); else Input.wheel += sign(e.deltaY); e.preventDefault(); }, { passive: false });
+    // 전체 지도: 마우스로 끌어서 이동 · 한 손가락 끌기 / 두 손가락 핀치
+    canvas.addEventListener('mousedown', e => { if (this.state === 'map') { MapView.drag = { x: e.clientX, y: e.clientY }; MapView.moved = false; } });
+    window.addEventListener('mousemove', e => { const d = MapView.drag; if (!d || this.state !== 'map') return; const dx = e.clientX - d.x, dy = e.clientY - d.y; if (Math.abs(dx) + Math.abs(dy) > 4) MapView.moved = true; if (MapView.moved) { MapView.pan(dx, dy); d.x = e.clientX; d.y = e.clientY; } });
+    window.addEventListener('mouseup', () => { MapView.drag = null; });
+    let mt = null;
+    canvas.addEventListener('touchstart', e => { if (this.state !== 'map') return; const t = e.touches; mt = t.length >= 2 ? { d: Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY), z: MapView.z } : { x: t[0].clientX, y: t[0].clientY, sx: t[0].clientX, sy: t[0].clientY }; MapView.moved = false; }, { passive: true });
+    canvas.addEventListener('touchmove', e => {
+      if (this.state !== 'map' || !mt) return; const t = e.touches;
+      if (t.length >= 2 && mt.d) { const d = Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); MapView.zoomAt(clamp(mt.z * d / Math.max(20, mt.d), 1, 10) / MapView.z, (t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2); MapView.moved = true; }
+      else if (t.length === 1 && mt.x !== undefined) { const dx = t[0].clientX - mt.x, dy = t[0].clientY - mt.y; if (Math.abs(t[0].clientX - mt.sx) + Math.abs(t[0].clientY - mt.sy) > 8) MapView.moved = true; if (MapView.moved) MapView.pan(dx, dy); mt.x = t[0].clientX; mt.y = t[0].clientY; }
+    }, { passive: true });
+    canvas.addEventListener('touchend', () => { mt = null; }, { passive: true });
     canvas.addEventListener('contextmenu', e => e.preventDefault());
     canvas.addEventListener('click', e => {
       if (this.state === 'map') this.mapClick(e.clientX, e.clientY);
@@ -61,7 +73,8 @@ const Game = {
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
     this.fleet = sv ? sv.fleet || [] : [];
     this.props = sv ? sv.props || {} : {};
-    Gangs.load(sv && sv.gangs); GangJob.active = null;
+    Empire.load(sv && sv.empire); Finance.load(sv && sv.finance); Gangs.load(sv && sv.gangs); GangJob.active = null;
+    if (!sv) this.introT = 7;
     if (sv && sv.body) { Object.assign(P, sv.body); P.hp = P.maxHp; }
     placeStaticPickups();
     Military.reset(); AirPatrol.reset(); Vendors.place(); EMS.car = null; EMS.body = null; EMS.medics = []; Givers.npc = null; Givers.idx = -1;
@@ -86,8 +99,10 @@ const Game = {
   mapClick(sx, sy) {
     const r = this.mapRect; if (!r) return;
     const tb = this.turfBtn; if (tb && sx >= tb.x && sx <= tb.x + tb.w && sy >= tb.y && sy <= tb.y + tb.h) { this.showTurf = !this.showTurf; return; }
+    for (const b of this.mapZoomBtns || []) if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) { MapView.zoomAt(b.f); return; }
+    if (MapView.moved) { MapView.moved = false; return; } // 드래그로 지도를 옮긴 것
     if (sx < r.ox || sy < r.oy || sx > r.ox + r.size || sy > r.oy + r.size) { this.state = 'play'; return; }
-    const x = (sx - r.ox) / r.k, y = (sy - r.oy) / r.k;
+    const x = (sx - r.mx) / r.k, y = (sy - r.my) / r.k;
     if (this.waypoint && dist(x, y, this.waypoint.x, this.waypoint.y) < 25) { this.waypoint = null; UI.toast('웨이포인트 해제'); }
     else { this.waypoint = { x, y }; Sfx.pickup(); }
   },
@@ -125,11 +140,14 @@ const Game = {
       if (f) f.textContent = L[0]; if (h) h.textContent = L[1];
     }
     Drive.update(dt);
+    if (st !== 'map') this._mapOpen = false;
     if (st === 'play') {
       if (keyHit('Escape', 'KeyP', 'PadStart')) { this.pause(); }
       else if (keyHit('KeyM', 'Tab', 'PadBack')) { this.state = 'map'; }
       else this.update(dt);
     } else if (st === 'map') {
+      if (this._mapOpen !== true) { this._mapOpen = true; if (MapView.cx === null) MapView.reset(); if (MapView.z > 1) MapView.center(this.player.px, this.player.py); }
+      if (keyHit('Equal', 'NumpadAdd', 'PadRB')) MapView.zoomAt(1.5); if (keyHit('Minus', 'NumpadSubtract', 'PadLB')) MapView.zoomAt(1 / 1.5);
       if (keyHit('Escape', 'KeyM', 'Tab', 'PadBack', 'PadB', 'PadStart')) this.state = 'play';
       if (keyHit('KeyG', 'PadY')) this.showTurf = !this.showTurf;
     } else if (st === 'paused') {
@@ -141,6 +159,10 @@ const Game = {
       this.deathT += dt;
       this.update(dt, true);
       if (this.deathT > 4.2) this.respawn(st);
+    } else if (st === 'fin') {
+      if (keyHit('Escape', 'PadB')) FinUI.close();
+    } else if (st === 'ward') {
+      if (keyHit('Escape', 'PadB')) Wardrobe.close();
     } else if (st === 'bag') {
       if (keyHit('Escape', 'KeyB', 'PadB')) Bag.close();
     } else if (st === 'shop') {
@@ -156,7 +178,7 @@ const Game = {
       drawWorldTexts3D();
       Rain.draw(this.weather.intensity);
     } else renderScene();
-    if (st === 'play' || st === 'wasted' || st === 'busted' || st === 'shop' || st === 'paused' || st === 'bag') { drawHUD(dt); if (st === 'play') drawLockHUD(); }
+    if (st === 'play' || st === 'wasted' || st === 'busted' || st === 'shop' || st === 'paused' || st === 'bag' || st === 'ward' || st === 'fin') { drawHUD(dt); if (st === 'play') drawLockHUD(); }
     if (st === 'wasted' || st === 'busted') drawDeathScreen(st, this.deathT);
     if (st === 'map') drawFullMap();
   },
@@ -212,7 +234,8 @@ const Game = {
     Jay.update(dt);
     Missions.update(dt);
     Jobs.update(dt);
-    Military.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update(); Biz.update(dt); BankRob.update(dt); Gangs.update(dt); GangJob.update(dt);
+    Military.update(dt); AirPatrol.update(dt); Bag.update(dt); Fleet.update(); Biz.update(dt); BankRob.update(dt); Gangs.update(dt); GangJob.update(dt); Empire.update(dt); Finance.update(dt);
+    if (this.introT > 0 && (this.introT -= dt) <= 0) UI.big('조직을 고르자', '지도(M)의 왕관 = 조직 보스 · 찾아가 계약하거나, 은신처(집)에서 내 조직을 세울 수 있다', 5, '#f2c14e');
     Talk.update(dt); Aim.update(dt); EMS.update(dt); Givers.update(); Vendors.update(dt); GPS.update(dt);
     // 체력 자연 회복: 6초 동안 안 다치면 50까지 천천히 (GTA V)
     if (!P.dead && P.hp < 50 && this.time - (P.lastHurt || 0) > 6) P.hp = Math.min(50, P.hp + 2 * dt);
@@ -226,8 +249,8 @@ const Game = {
     // 카메라
     this.updateCamera(dt);
     // 지역 이름
-    const d = districtAt(P.px, P.py);
-    if (d !== this.lastDistrict) { this.districtHold += dt; if (this.districtHold > 0.6) { this.lastDistrict = d; this.districtHold = 0; UI.district(DIST_NAMES[d]); } }
+    const d = hoodAt(P.px, P.py);
+    if (d !== this.lastDistrict) { this.districtHold += dt; if (this.districtHold > 0.6) { this.lastDistrict = d; this.districtHold = 0; UI.district(d); } }
     else this.districtHold = 0;
   },
 
@@ -327,8 +350,9 @@ const Game = {
     let peds = 0;
     for (const p of this.peds) if (!p.dead && dist(p.x, p.y, f.x, f.y) < kill) peds++;
     tries = initial ? 120 : 6;
-    while (peds < wantPeds && tries-- > 0) {
-      const b = pick(World.blocks);
+    const nearB = blocksNear(f.x, f.y, outer);
+    while (peds < wantPeds && tries-- > 0 && nearB.length) {
+      const b = pick(nearB);
       const L = b.loop, s = rand(0, L.P), [x, y] = loopPoint(L, s);
       const d = dist(x, y, f.x, f.y);
       if (d < inner || d > outer || (!initial && onScreen(x, y, 3))) continue;
@@ -367,7 +391,7 @@ const Game = {
     Cam.x = smooth(Cam.x, tx, car ? 4 : 5, dt); Cam.y = smooth(Cam.y, ty, car ? 4 : 5, dt);
     const alt = car ? car.alt || 0 : P.alt || 0;
     const span = (car ? 50 + car.speed * 0.9 + alt * 1.6 : 38 + alt * 1.4) * Cam.zoomMul;
-    Cam.ppm = smooth(Cam.ppm, Math.min(CW, CH) / Math.min(alt > 1.2 ? 220 : 130, span), 1.6, dt);
+    Cam.ppm = smooth(Cam.ppm, Math.min(CW, CH) / Math.min(alt > 1.2 ? 340 : 190, span), 1.6, dt);
     camSetView();
     Cam.shake = Math.max(0, Cam.shake - dt * 1.6);
     Cam.sx = (Math.random() - 0.5) * Cam.shake * 14; Cam.sy = (Math.random() - 0.5) * Cam.shake * 14;
@@ -401,11 +425,11 @@ const Game = {
     }
     // 상점 · 직업 게시판 (걸어서 문 앞 마커에 들어가면 열림)
     if (!P.car && !(P.alt > 0) && this.shopCool <= 0 && !(Missions.active && Missions.active.def.noShop)) {
-      for (const [k, kind] of [...GANG_IDS.map(g => ['hq_' + g, 'hq_' + g]), ...Object.keys(BUSINESSES).map(b => [b, b]), ['ammu3', 'ammu'], ['burger3', 'burger'], ['burger4', 'burger'], ['mart4', 'mart'], ['mart5', 'mart'], ['clothes', 'clothes'], ['clothes2', 'clothes'], ['gym', 'gym'], ['pharmacy', 'pharmacy'], ['pharmacy2', 'pharmacy'], ['bank', 'bank'], ['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart']]) {
+      for (const [k, kind] of [...GANG_IDS.map(g => ['hq_' + g, 'hq_' + g]), ...Object.keys(BUSINESSES).map(b => [b, b]), ['ammu3', 'ammu'], ['burger3', 'burger'], ['burger4', 'burger'], ['mart4', 'mart'], ['mart5', 'mart'], ['clothes', 'clothes'], ['clothes2', 'clothes'], ['gym', 'gym'], ['pharmacy', 'pharmacy'], ['pharmacy2', 'pharmacy'], ['bank', 'bank'], ['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart'], ...EXTRA_PLACES]) {
         const S = World.places[k]; if (S && dist(P.x, P.y, S.x, S.y) < 1.8) { Shop.open(kind); return; }
       }
       const SH = World.places.safehouse;
-      if (SH && dist(P.x, P.y, SH.x, SH.y) < 1.8) { Safehouse.use(); return; }
+      if (SH && dist(P.x, P.y, SH.x, SH.y) < 1.8) { Shop.open('safehouse'); return; }
       const JC = World.places.jobcenter, BR = World.places.broker;
       if (JC && dist(P.x, P.y, JC.x, JC.y) < 1.8) Jobs.openBoard(true);
       else if (BR && dist(P.x, P.y, BR.x, BR.y) < 1.8) Jobs.openBoard(false);
@@ -433,16 +457,17 @@ const Game = {
     const P = this.player;
     let spot;
     if (kind === 'wasted') {
-      const hs = [World.places.hospital, World.places.clinic].filter(Boolean);
+      const hs = ['hospital', 'clinic', 'hospital2', 'hospital3'].map(k => World.places[k]).filter(Boolean);
       spot = hs.sort((a, b) => dist(a.x, a.y, P.x, P.y) - dist(b.x, b.y, P.x, P.y))[0];
-      P.money = Math.max(0, P.money - 100);
+      if (!Empire.freeHospital()) P.money = Math.max(0, P.money - 100);
     } else {
-      spot = World.places.police;
-      P.money = Math.max(0, P.money - Math.min(P.money, 100 + Wanted.stars * 150));
-      P.inv = { fist: Infinity }; P.weapon = 'fist';
+      spot = ['police', 'police2', 'police3'].map(k => World.places[k]).filter(Boolean).sort((a, b) => dist(a.x, a.y, P.x, P.y) - dist(b.x, b.y, P.x, P.y))[0];
+      const fine = Math.min(P.money, 100 + Wanted.stars * 150);
+      P.money = Math.max(0, P.money - (Empire.lenient() ? Math.round(fine / 2) : fine));
+      if (!Empire.lenient()) { P.inv = { fist: Infinity }; P.weapon = 'fist'; } else UI.toast('경찰 후원 덕분에 무기는 돌려받았다');
     }
     const np = new PlayerPed(spot.x, spot.y);
-    Object.assign(np, { money: P.money, displayMoney: P.money, inv: P.inv, weapon: P.weapon in P.inv ? P.weapon : 'fist', bag: kind === 'wasted' ? P.bag : {}, maxHp: P.maxHp, hp: P.maxHp, endurance: P.endurance, aimSkill: P.aimSkill, shirt: P.shirt, pants: P.pants });
+    Object.assign(np, { money: P.money, displayMoney: P.money, inv: P.inv, weapon: P.weapon in P.inv ? P.weapon : 'fist', bag: kind === 'wasted' ? P.bag : {}, maxHp: P.maxHp, hp: P.maxHp, endurance: P.endurance, aimSkill: P.aimSkill }); for (const k of STYLE_KEYS) np[k] = P[k];
     if (kind === 'wasted') np.inv = P.inv;
     this.player = np;
     Wanted.reset(); Police.reset(); Jay.reset();
@@ -460,7 +485,8 @@ const Game = {
 
 function spawnLaneSpot(f, inner, outer, initial) {
   for (let k = 0; k < 6; k++) {
-    const e = pick(World.edgesList), A = World.nodes[e[0]], B = World.nodes[e[1]];
+    const near = edgesNear(f.x, f.y, outer); if (!near.length) return null;
+    const e = pick(near), A = World.nodes[e[0]], B = World.nodes[e[1]];
     const t = rand(0.15, 0.85), x = lerp(A.x, B.x, t), y = lerp(A.y, B.y, t);
     const d = dist(x, y, f.x, f.y);
     if (d < inner || d > outer || (!initial && onScreen(x, y, 8))) continue;

@@ -10,7 +10,7 @@
 """
 import os
 ROOT = os.path.dirname(os.path.abspath(__file__))
-ORDER = ['core', 'world', 'vehicles', 'peds', 'police', 'missions', 'jobs', 'npc', 'military', 'render', 'view3d', 'ui', 'economy', 'gangs', 'casino', 'main']
+ORDER = ['core', 'world', 'vehicles', 'peds', 'police', 'missions', 'jobs', 'npc', 'military', 'render', 'view3d', 'ui', 'economy', 'gangs', 'empire', 'finance', 'wardrobe', 'casino', 'main']
 JS = '\n'.join(open(os.path.join(ROOT, 'src', f + '.js'), encoding='utf-8').read() for f in ORDER)
 SHELL = open(os.path.join(ROOT, 'src', 'shell.html'), encoding='utf-8').read()
 # Three.js (MIT) — 3D 시점용. 오프라인 APK/EXE에서도 돌도록 파일 안에 넣는다. 첫 줄의 폐기 경고는 뺀다.

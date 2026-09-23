@@ -4,8 +4,8 @@
  *
  * 게임 로직은 그대로 2D(x, y)에서 돌고, 이 모듈은 같은 세계를 Three.js로 다시 그린다.
  *  - 2D 좌표 (x, y) → 3D (x, 높이, z=y). 2D 방향각 a → 메시 rotation.y = −a
- *  - 지면: 기존 2D 지면 그리기 함수로 도시 전체를 한 장의 텍스처로 구워 평면에 입힌다.
- *  - 건물: 전부 하나의 지오메트리로 합쳐 드로우콜 1회. 창문은 반복 텍스처 + 밤에는 발광.
+ *  - 세계는 128m 청크로 나눠 카메라 주변만 만든다(stream). 청크마다 지면 텍스처(2D 지면 렌더러로 굽기) +
+ *    건물 합친 지오메트리 + 나무·가로등·신호등 InstancedMesh. 가까운 청크는 고해상도 텍스처.
  *  - 나무·가로등·신호등: InstancedMesh. 차·사람: 필요할 때 만들고 매 프레임 위치만 갱신.
  *  - 카메라가 벽 뒤로 들어가면 GTA처럼 벽 앞으로 당긴다(2D 광선으로 판정).
  * ===================================================================== */
@@ -24,7 +24,7 @@ const View3D = {
       const R = this.renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: !IS_MOBILE, powerPreference: 'high-performance' });
       R.setPixelRatio(Math.min(window.devicePixelRatio || 1, IS_MOBILE ? 1.25 : 1.75));
       this.scene = new THREE.Scene();
-      this.camera = new THREE.PerspectiveCamera(62, 1, 0.1, 400);
+      this.camera = new THREE.PerspectiveCamera(62, 1, 0.1, 460);
       this.scene.fog = new THREE.Fog(0x9fc7e8, 60, 170);
       this.hemi = new THREE.HemisphereLight(0xdfefff, 0x5a5a48, 0.9); this.scene.add(this.hemi);
       this.sun = new THREE.DirectionalLight(0xffffff, 0.8); this.sun.position.set(-0.5, 1, 0.35); this.scene.add(this.sun);
@@ -42,25 +42,14 @@ const View3D = {
     return this.mats.get(key);
   },
 
-  // ---------- 정적 세계 ----------
+  // ---------- 정적 세계: 마인크래프트처럼 청크(128m) 단위로 스트리밍 ----------
+  // 도시 전체를 한 번에 만들지 않고, 카메라 주변 반경 R 안의 청크만 만들어 두고 멀어지면 버린다.
+  // R은 속도·고도에 따라 넓어져서 500km/h로 달려도 앞쪽이 끊기지 않는다(매 프레임 시간 예산 안에서 몇 개씩 생성).
+  CS: 128,
   buildStatic() {
     const S = this.scene;
-    // 지면 텍스처: 기존 2D 지면 렌더러를 오프스크린 캔버스에 도시 전체 크기로 실행
-    const size = IS_MOBILE ? 2048 : 4096, ppm = size / (MW * T);
-    const gc = document.createElement('canvas'); gc.width = gc.height = size;
-    const g = gc.getContext('2d');
-    const saveCtx = ctx, saveCam = { ...Cam };
-    ctx = g; Object.assign(Cam, { x: MW * T / 2, y: MH * T / 2, ppm, vw: MW * T, vh: MH * T, rot: 0, sx: 0, sy: 0 });
-    g.setTransform(ppm, 0, 0, ppm, 0, 0);
-    try { drawGround([1, 1, 1]); } finally { ctx = saveCtx; Object.assign(Cam, saveCam); }
-    const tex = new THREE.CanvasTexture(gc);
-    tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(MW * T, MH * T), new THREE.MeshLambertMaterial({ map: tex }));
-    ground.rotation.x = -Math.PI / 2; ground.position.set(MW * T / 2, 0, MH * T / 2);
-    S.add(ground);
-    const sea = new THREE.Mesh(new THREE.PlaneGeometry(4000, 4000), new THREE.MeshLambertMaterial({ color: 0x1d5a80 }));
+    const sea = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000), new THREE.MeshLambertMaterial({ color: 0x1d5a80 }));
     sea.rotation.x = -Math.PI / 2; sea.position.set(MW * T / 2, -0.05, MH * T / 2); S.add(sea);
-
     // 창문 텍스처 (흰 바탕 = 정점 색 그대로, 창 = 어두운 유리) + 밤 발광 맵
     const wc = document.createElement('canvas'); wc.width = wc.height = 64;
     const w = wc.getContext('2d'); w.fillStyle = '#ffffff'; w.fillRect(0, 0, 64, 64); w.fillStyle = '#3a4656'; w.fillRect(8, 16, 48, 30); w.fillStyle = 'rgba(255,255,255,0.25)'; w.fillRect(8, 16, 48, 4);
@@ -68,80 +57,174 @@ const View3D = {
     const e = ec.getContext('2d'); e.fillStyle = '#000'; e.fillRect(0, 0, 64, 64); e.fillStyle = '#ffd98a'; e.fillRect(8, 16, 48, 30);
     const winTex = new THREE.CanvasTexture(wc), emTex = new THREE.CanvasTexture(ec);
     for (const t of [winTex, emTex]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; }
-    const pos = [], nor = [], uv = [], col = [];
-    const color = new THREE.Color();
-    const quad = (a, b, c, d, n, uvs, rgb) => {
-      for (const [p, u] of [[a, uvs[0]], [b, uvs[1]], [c, uvs[2]], [a, uvs[0]], [c, uvs[2]], [d, uvs[3]]]) { pos.push(...p); nor.push(...n); uv.push(...u); col.push(rgb.r, rgb.g, rgb.b); }
-    };
-    const SOLID = [[0.02, 0.98], [0.03, 0.98], [0.03, 0.97], [0.02, 0.97]];
-    for (const b of World.buildings) {
-      const X0 = b.x0 * T, Z0 = b.y0 * T, X1 = (b.x1 + 1) * T, Z1 = (b.y1 + 1) * T, H = b.h;
-      const hasWin = b.kind !== 'container' && b.kind !== 'house' && b.kind !== 'warehouse' && H > 5;
-      const wallUV = (len) => hasWin ? [[0, 0], [len / 3, 0], [len / 3, H / 3.4], [0, H / 3.4]] : SOLID;
-      const base = color.set(b.color).clone();
-      const side = f => base.clone().multiplyScalar(f);
-      quad([X0, 0, Z1], [X1, 0, Z1], [X1, H, Z1], [X0, H, Z1], [0, 0, 1], wallUV(X1 - X0), side(0.8));   // 남
-      quad([X1, 0, Z0], [X0, 0, Z0], [X0, H, Z0], [X1, H, Z0], [0, 0, -1], wallUV(X1 - X0), side(0.95)); // 북
-      quad([X1, 0, Z1], [X1, 0, Z0], [X1, H, Z0], [X1, H, Z1], [1, 0, 0], wallUV(Z1 - Z0), side(0.7));   // 동
-      quad([X0, 0, Z0], [X0, 0, Z1], [X0, H, Z1], [X0, H, Z0], [-1, 0, 0], wallUV(Z1 - Z0), side(0.88)); // 서
-      const roofC = b.kind === 'house' ? base.clone().multiplyScalar(0.7) : b.kind === 'hospital' ? color.set('#f4f4f4').clone() : b.kind === 'police' ? color.set('#2c3e66').clone() : base.clone().multiplyScalar(1.05);
-      if (b.kind === 'house') { // 박공지붕
-        const along = (X1 - X0) >= (Z1 - Z0), rH = H + 2.2;
-        if (along) {
-          const zm = (Z0 + Z1) / 2;
-          quad([X0, H, Z1], [X1, H, Z1], [X1, rH, zm], [X0, rH, zm], [0, 0.7, 0.7], SOLID, roofC);
-          quad([X1, H, Z0], [X0, H, Z0], [X0, rH, zm], [X1, rH, zm], [0, 0.7, -0.7], SOLID, roofC.clone().multiplyScalar(0.85));
-          quad([X0, H, Z0], [X0, H, Z1], [X0, rH, zm], [X0, rH, zm], [-1, 0, 0], SOLID, side(0.8));
-          quad([X1, H, Z1], [X1, H, Z0], [X1, rH, zm], [X1, rH, zm], [1, 0, 0], SOLID, side(0.7));
-        } else {
-          const xm = (X0 + X1) / 2;
-          quad([X1, H, Z1], [X1, H, Z0], [xm, rH, Z0], [xm, rH, Z1], [0.7, 0.7, 0], SOLID, roofC);
-          quad([X0, H, Z0], [X0, H, Z1], [xm, rH, Z1], [xm, rH, Z0], [-0.7, 0.7, 0], SOLID, roofC.clone().multiplyScalar(0.85));
-          quad([X0, H, Z1], [X1, H, Z1], [xm, rH, Z1], [xm, rH, Z1], [0, 0, 1], SOLID, side(0.8));
-          quad([X1, H, Z0], [X0, H, Z0], [xm, rH, Z0], [xm, rH, Z0], [0, 0, -1], SOLID, side(0.9));
-        }
-      } else quad([X0, H, Z1], [X1, H, Z1], [X1, H, Z0], [X0, H, Z0], [0, 1, 0], SOLID, roofC);
-    }
-    const geo = new THREE.BufferGeometry();
-    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-    geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
     this.bmat = new THREE.MeshLambertMaterial({ vertexColors: true, map: winTex, emissive: 0xffffff, emissiveMap: emTex, emissiveIntensity: 0 });
-    S.add(new THREE.Mesh(geo, this.bmat));
-
-    // 나무 (줄기 + 수관)
-    const trees = World.trees;
-    const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.18, 0.25, 1, 6), this.mat('#6b4a2a'), trees.length);
-    const crown = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }), trees.length);
-    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), p3 = new THREE.Vector3();
-    trees.forEach((t, i) => {
-      m4.compose(p3.set(t.x, t.h * 0.4, t.y), q.identity(), sc.set(1, t.h * 0.8, 1)); trunk.setMatrixAt(i, m4);
-      const palm = t.kind === 'palm';
-      m4.compose(p3.set(t.x, t.h * (palm ? 0.95 : 0.8), t.y), q.identity(), palm ? sc.set(t.r * 0.9, 0.5, t.r * 0.9) : sc.set(t.r, t.r * 0.9, t.r)); crown.setMatrixAt(i, m4);
-      crown.setColorAt(i, color.set(palm ? '#3f8a3a' : t.hue < 0.33 ? '#3d6e34' : t.hue < 0.66 ? '#467a3a' : '#355f30'));
-    });
-    S.add(trunk, crown);
-    // 가로등
-    const L = World.lamps;
-    const pole = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.08, 0.1, 5, 5), this.mat('#2b2d31'), L.length);
-    this.lampHeads = new THREE.InstancedMesh(new THREE.SphereGeometry(0.28, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffe2a8 }), L.length);
-    L.forEach((l, i) => { m4.makeTranslation(l.x, 2.5, l.y); pole.setMatrixAt(i, m4); m4.makeTranslation(l.x, 5.05, l.y); this.lampHeads.setMatrixAt(i, m4); });
-    S.add(pole, this.lampHeads);
-    // 신호등 (진입로마다 하나, 색은 매 프레임 갱신)
-    this.tl = [];
+    // 청크들이 함께 쓰는 지오메트리·재질
+    this.sg = {
+      trunk: new THREE.CylinderGeometry(0.18, 0.25, 1, 6), crown: new THREE.IcosahedronGeometry(1, 0),
+      pole: new THREE.CylinderGeometry(0.08, 0.1, 5, 5), head: new THREE.SphereGeometry(0.28, 8, 6),
+      tpole: new THREE.CylinderGeometry(0.07, 0.07, 3.6, 5), tbox: new THREE.BoxGeometry(0.4, 0.4, 0.4),
+    };
+    this.crownMat = new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true });
+    this.lampMat = new THREE.MeshBasicMaterial({ color: 0xffe2a8 });
+    this.tlMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    // 신호등 위치 (진입로마다 하나)
+    const tls = [];
     for (const n of World.nodes) {
       if (!n.light) continue;
       for (let d = 0; d < 4; d++) {
         if (n.adj[(d + 2) % 4] < 0) continue;
         const r = rightOf(d);
-        this.tl.push({ n, d, x: n.x - DIRS[d][0] * (2 * T + 0.3) + r[0] * (T + 0.6), y: n.y - DIRS[d][1] * (2 * T + 0.3) + r[1] * (T + 0.6) });
+        tls.push({ n, d, x: n.x - DIRS[d][0] * (2 * T + 0.3) + r[0] * (T + 0.6), y: n.y - DIRS[d][1] * (2 * T + 0.3) + r[1] * (T + 0.6) });
       }
     }
-    const tp = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.07, 0.07, 3.6, 5), this.mat('#1b1d21'), this.tl.length);
-    this.tlHeads = new THREE.InstancedMesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), new THREE.MeshBasicMaterial({ color: 0xffffff }), this.tl.length);
-    this.tl.forEach((t, i) => { m4.makeTranslation(t.x, 1.8, t.y); tp.setMatrixAt(i, m4); m4.makeTranslation(t.x, 3.7, t.y); this.tlHeads.setMatrixAt(i, m4); this.tlHeads.setColorAt(i, color.set('#39e36b')); });
-    S.add(tp, this.tlHeads);
+    // 청크별 물건 목록
+    const CS = this.CS, NCX = this.NCX = Math.ceil(MW * T / CS), NCY = this.NCY = Math.ceil(MH * T / CS);
+    this.bucket = [];
+    for (let i = 0; i < NCX * NCY; i++) this.bucket.push({ b: [], trees: [], lamps: [], tl: [] });
+    const at = (x, y) => this.bucket[clamp(Math.floor(x / CS), 0, NCX - 1) + clamp(Math.floor(y / CS), 0, NCY - 1) * NCX];
+    for (const b of World.buildings) at((b.x0 + b.x1 + 1) / 2 * T, (b.y0 + b.y1 + 1) / 2 * T).b.push(b);
+    for (const t of World.trees) at(t.x, t.y).trees.push(t);
+    for (const l of World.lamps) at(l.x, l.y).lamps.push(l);
+    for (const t of tls) at(t.x, t.y).tl.push(t);
+    this.chunks = new Map();
+    this.drawR = 300;
+  },
+  // 청크 지면 텍스처: 기존 2D 지면 렌더러를 청크 크기 오프스크린 캔버스에 실행
+  chunkTex(cx, cy, px) {
+    const CS = this.CS, ppm = px / CS, X0 = cx * CS, Y0 = cy * CS;
+    const gc = document.createElement('canvas'); gc.width = gc.height = px;
+    const g = gc.getContext('2d');
+    const saveCtx = ctx, saveCam = { ...Cam };
+    ctx = g; Object.assign(Cam, { x: X0 + CS / 2, y: Y0 + CS / 2, ppm, vw: CS, vh: CS, rot: 0, sx: 0, sy: 0 });
+    g.setTransform(ppm, 0, 0, ppm, -X0 * ppm, -Y0 * ppm);
+    try { drawGround([1, 1, 1]); } finally { ctx = saveCtx; Object.assign(Cam, saveCam); }
+    const tex = new THREE.CanvasTexture(gc);
+    tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+  },
+  texPx(hi) { return IS_MOBILE || Perf.low ? (hi ? 512 : 128) : (hi ? 1024 : 256); },
+  buildChunk(cx, cy, hi) {
+    const CS = this.CS, bk = this.bucket[cx + cy * this.NCX], G = new THREE.Group();
+    const tex = this.chunkTex(cx, cy, this.texPx(hi));
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(CS, CS), new THREE.MeshLambertMaterial({ map: tex }));
+    ground.rotation.x = -Math.PI / 2; ground.position.set(cx * CS + CS / 2, 0, cy * CS + CS / 2);
+    G.add(ground);
+    const ch = { cx, cy, hi, G, ground, tl: bk.tl, tlHeads: null };
+    // 건물: 청크 안 건물을 하나의 지오메트리로
+    if (bk.b.length) {
+      const pos = [], nor = [], uv = [], col = [];
+      const color = new THREE.Color();
+      const quad = (a, b, c, d, n, uvs, rgb) => {
+        for (const [p, u] of [[a, uvs[0]], [b, uvs[1]], [c, uvs[2]], [a, uvs[0]], [c, uvs[2]], [d, uvs[3]]]) { pos.push(p[0], p[1], p[2]); nor.push(n[0], n[1], n[2]); uv.push(u[0], u[1]); col.push(rgb.r, rgb.g, rgb.b); }
+      };
+      const SOLID = [[0.02, 0.98], [0.03, 0.98], [0.03, 0.97], [0.02, 0.97]];
+      for (const b of bk.b) {
+        const X0 = b.x0 * T, Z0 = b.y0 * T, X1 = (b.x1 + 1) * T, Z1 = (b.y1 + 1) * T, H = b.h;
+        const hasWin = b.kind !== 'container' && b.kind !== 'house' && b.kind !== 'warehouse' && b.kind !== 'fence' && H > 5;
+        const wallUV = (len) => hasWin ? [[0, 0], [len / 3, 0], [len / 3, H / 3.4], [0, H / 3.4]] : SOLID;
+        const base = color.set(b.color).clone();
+        const side = f => base.clone().multiplyScalar(f);
+        quad([X0, 0, Z1], [X1, 0, Z1], [X1, H, Z1], [X0, H, Z1], [0, 0, 1], wallUV(X1 - X0), side(0.8));   // 남
+        quad([X1, 0, Z0], [X0, 0, Z0], [X0, H, Z0], [X1, H, Z0], [0, 0, -1], wallUV(X1 - X0), side(0.95)); // 북
+        quad([X1, 0, Z1], [X1, 0, Z0], [X1, H, Z0], [X1, H, Z1], [1, 0, 0], wallUV(Z1 - Z0), side(0.7));   // 동
+        quad([X0, 0, Z0], [X0, 0, Z1], [X0, H, Z1], [X0, H, Z0], [-1, 0, 0], wallUV(Z1 - Z0), side(0.88)); // 서
+        const roofC = b.kind === 'house' ? base.clone().multiplyScalar(0.7) : b.kind === 'hospital' ? color.set('#f4f4f4').clone() : b.kind === 'police' ? color.set('#2c3e66').clone() : base.clone().multiplyScalar(1.05);
+        if (b.kind === 'house') { // 박공지붕
+          const along = (X1 - X0) >= (Z1 - Z0), rH = H + 2.2;
+          if (along) {
+            const zm = (Z0 + Z1) / 2;
+            quad([X0, H, Z1], [X1, H, Z1], [X1, rH, zm], [X0, rH, zm], [0, 0.7, 0.7], SOLID, roofC);
+            quad([X1, H, Z0], [X0, H, Z0], [X0, rH, zm], [X1, rH, zm], [0, 0.7, -0.7], SOLID, roofC.clone().multiplyScalar(0.85));
+            quad([X0, H, Z0], [X0, H, Z1], [X0, rH, zm], [X0, rH, zm], [-1, 0, 0], SOLID, side(0.8));
+            quad([X1, H, Z1], [X1, H, Z0], [X1, rH, zm], [X1, rH, zm], [1, 0, 0], SOLID, side(0.7));
+          } else {
+            const xm = (X0 + X1) / 2;
+            quad([X1, H, Z1], [X1, H, Z0], [xm, rH, Z0], [xm, rH, Z1], [0.7, 0.7, 0], SOLID, roofC);
+            quad([X0, H, Z0], [X0, H, Z1], [xm, rH, Z1], [xm, rH, Z0], [-0.7, 0.7, 0], SOLID, roofC.clone().multiplyScalar(0.85));
+            quad([X0, H, Z1], [X1, H, Z1], [xm, rH, Z1], [xm, rH, Z1], [0, 0, 1], SOLID, side(0.8));
+            quad([X1, H, Z0], [X0, H, Z0], [xm, rH, Z0], [xm, rH, Z0], [0, 0, -1], SOLID, side(0.9));
+          }
+        } else quad([X0, H, Z1], [X1, H, Z1], [X1, H, Z0], [X0, H, Z0], [0, 1, 0], SOLID, roofC);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+      geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      geo.computeBoundingSphere();
+      G.add(new THREE.Mesh(geo, this.bmat));
+    }
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), p3 = new THREE.Vector3(), color = new THREE.Color();
+    const inst = (geo, mat, n) => { const m = new THREE.InstancedMesh(geo, mat, n); m.frustumCulled = false; G.add(m); return m; };
+    // 나무 (줄기 + 수관)
+    if (bk.trees.length) {
+      const trunk = inst(this.sg.trunk, this.mat('#6b4a2a'), bk.trees.length), crown = inst(this.sg.crown, this.crownMat, bk.trees.length);
+      bk.trees.forEach((t, i) => {
+        m4.compose(p3.set(t.x, t.h * 0.4, t.y), q.identity(), sc.set(1, t.h * 0.8, 1)); trunk.setMatrixAt(i, m4);
+        const palm = t.kind === 'palm';
+        m4.compose(p3.set(t.x, t.h * (palm ? 0.95 : 0.8), t.y), q.identity(), palm ? sc.set(t.r * 0.9, 0.5, t.r * 0.9) : sc.set(t.r, t.r * 0.9, t.r)); crown.setMatrixAt(i, m4);
+        crown.setColorAt(i, color.set(palm ? '#3f8a3a' : t.hue < 0.33 ? '#3d6e34' : t.hue < 0.66 ? '#467a3a' : '#355f30'));
+      });
+    }
+    // 가로등
+    if (bk.lamps.length) {
+      const pole = inst(this.sg.pole, this.mat('#2b2d31'), bk.lamps.length), heads = inst(this.sg.head, this.lampMat, bk.lamps.length);
+      bk.lamps.forEach((l, i) => { m4.makeTranslation(l.x, 2.5, l.y); pole.setMatrixAt(i, m4); m4.makeTranslation(l.x, 5.05, l.y); heads.setMatrixAt(i, m4); });
+    }
+    // 신호등 (색은 render에서 갱신)
+    if (bk.tl.length) {
+      const tp = inst(this.sg.tpole, this.mat('#1b1d21'), bk.tl.length), th = ch.tlHeads = inst(this.sg.tbox, this.tlMat, bk.tl.length);
+      bk.tl.forEach((t, i) => { m4.makeTranslation(t.x, 1.8, t.y); tp.setMatrixAt(i, m4); m4.makeTranslation(t.x, 3.7, t.y); th.setMatrixAt(i, m4); th.setColorAt(i, color.set('#39e36b')); });
+    }
+    this.scene.add(G);
+    return ch;
+  },
+  disposeChunk(ch) {
+    this.scene.remove(ch.G);
+    ch.G.traverse(o => {
+      if (o === ch.ground) { o.geometry.dispose(); o.material.map.dispose(); o.material.dispose(); }
+      else if (o.isInstancedMesh) o.dispose();
+      else if (o.isMesh) o.geometry.dispose();
+    });
+  },
+  // 카메라 주변 청크 스트리밍. 반경은 속도·고도에 비례 (500km/h ≈ 139m/s 에서도 수 초 앞까지 준비)
+  stream(fx, fy, spd, alt) {
+    const CS = this.CS, low = IS_MOBILE || Perf.low;
+    const base = low ? 220 : 380, cap = low ? 420 : 760;
+    const want = clamp(base + spd * (low ? 1.6 : 2.8) + alt * 3, base, cap);
+    this.drawR = want > this.drawR ? smooth(this.drawR, want, 1.2, 1 / 60) : smooth(this.drawR, want, 0.4, 1 / 60);
+    if (!this.lastF || Math.hypot(fx - this.lastF[0], fy - this.lastF[1]) > 150) this.firstFill = true; // 첫 프레임·순간이동: 주변을 한 번에 채운다
+    this.lastF = [fx, fy];
+    const R = this.drawR, hiR = low ? 90 : 170;
+    // 진행 방향 앞쪽을 먼저 만든다
+    const P = Game.player, car = P.car, lx = car ? car.vx * 1.5 : 0, ly = car ? car.vy * 1.5 : 0;
+    const need = [];
+    const c0 = Math.max(0, Math.floor((fx - R) / CS)), c1 = Math.min(this.NCX - 1, Math.floor((fx + R) / CS));
+    const d0 = Math.max(0, Math.floor((fy - R) / CS)), d1 = Math.min(this.NCY - 1, Math.floor((fy + R) / CS));
+    const rectD = (cx, cy, x, y) => Math.hypot(Math.max(cx * CS - x, 0, x - (cx + 1) * CS), Math.max(cy * CS - y, 0, y - (cy + 1) * CS));
+    for (let cy = d0; cy <= d1; cy++) for (let cx = c0; cx <= c1; cx++) {
+      const d = rectD(cx, cy, fx, fy); if (d > R) continue;
+      const k = cx + cy * this.NCX, ch = this.chunks.get(k), hi = d < hiR;
+      if (!ch) need.push([rectD(cx, cy, fx + lx, fy + ly), cx, cy, hi, k]);
+      else if (hi && !ch.hi) need.push([d + 1000, cx, cy, true, k, ch]);
+    }
+    need.sort((a, b) => a[0] - b[0]);
+    const t0 = performance.now(), budget = this.firstFill ? 400 : low ? 4 : 7;
+    for (const [, cx, cy, hi, k, old] of need) {
+      if (old) { // 가까워진 청크는 지면 텍스처만 고해상도로 교체
+        const tex = this.chunkTex(cx, cy, this.texPx(true));
+        old.ground.material.map.dispose(); old.ground.material.map = tex; old.ground.material.needsUpdate = true; old.hi = true;
+      } else this.chunks.set(k, this.buildChunk(cx, cy, hi));
+      if (performance.now() - t0 > budget) break;
+    }
+    this.firstFill = false;
+    // 멀어진 청크는 버린다 (조금 여유를 둬서 경계에서 깜빡이지 않게)
+    for (const [k, ch] of this.chunks) {
+      const d = rectD(ch.cx, ch.cy, fx, fy);
+      if (d > R + CS * 0.75) { this.disposeChunk(ch); this.chunks.delete(k); }
+      else ch.G.visible = d < R + 8;
+    }
   },
   buildDynamicShared() {
     this.geo = {
@@ -281,8 +364,33 @@ const View3D = {
     const hairC = p.kind === 'cop' ? '#15213f' : p.kind === 'gang' ? (GANGS[p.gang] || GANGS.dragon).band : p.hat || p.hair;
     const hair = new THREE.Mesh(this.geo.head, new THREE.MeshLambertMaterial({ color: hairC })); hair.position.set(-0.03, 1.7, 0); hair.scale.set(1.05, 0.75, 1.1); g.add(hair);
     const gun = new THREE.Mesh(box, this.mat('#1a1a1a')); gun.scale.set(0.5, 0.1, 0.08); gun.position.set(0.45, 1.2, 0.31); gun.visible = false; g.add(gun);
-    g.userData = { legs, arms, gun, shirt, pants, sc: p.shirt };
+    if (p.kind === 'player') this.addStyle(g, p);
+    g.userData = { legs, arms, gun, shirt, pants, sc: p.shirt, style: p.kind === 'player' ? styleKey(p) : '' };
     this.scene.add(g); return g;
+  },
+
+  // 플레이어 모자·조직 마크 (옷 꾸미기)
+  logoTex(id) {
+    this.logoTexs = this.logoTexs || {};
+    if (!this.logoTexs[id]) { const c = document.createElement('canvas'); c.width = c.height = 64; drawGangLogo(c.getContext('2d'), id, 32, 32, 28); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; this.logoTexs[id] = t; }
+    return this.logoTexs[id];
+  },
+  addStyle(g, p) {
+    const box = this.geo.box, h = p.hatType, col = p.hatCol || '#1d1d1f', m = this.mat(col);
+    const add = (mat, sx, sy, sz, x, y, z) => { const o = new THREE.Mesh(box, mat); o.scale.set(sx, sy, sz); o.position.set(x, y, z); g.add(o); return o; };
+    if (h === 'cap') { add(m, 0.32, 0.12, 0.32, -0.02, 1.8, 0); add(m, 0.16, 0.03, 0.26, 0.2, 1.75, 0); }
+    else if (h === 'beanie') { add(m, 0.33, 0.18, 0.33, -0.02, 1.82, 0); }
+    else if (h === 'fedora') { add(m, 0.55, 0.03, 0.55, -0.02, 1.77, 0); add(m, 0.3, 0.16, 0.3, -0.02, 1.86, 0); }
+    else if (h === 'bandana') { add(m, 0.32, 0.08, 0.32, -0.02, 1.78, 0); add(m, 0.12, 0.05, 0.08, -0.2, 1.74, 0); }
+    else if (h === 'helmet') { add(m, 0.4, 0.34, 0.4, 0, 1.72, 0); add(this.mat('#1c2630'), 0.05, 0.14, 0.3, 0.2, 1.7, 0); }
+    else if (h === 'crown') { const gm = new THREE.MeshLambertMaterial({ color: '#f2c14e', emissive: '#5a4210' }); for (let k = 0; k < 5; k++) { const a = k * TAU / 5; add(gm, 0.07, 0.16, 0.07, Math.cos(a) * 0.12, 1.86, Math.sin(a) * 0.12); } add(gm, 0.3, 0.05, 0.3, 0, 1.79, 0); }
+    if (p.logo && GANGS[p.logo]) {
+      const lm = new THREE.MeshBasicMaterial({ map: this.logoTex(p.logo), transparent: true });
+      const pg = new THREE.PlaneGeometry(0.22, 0.22);
+      const back = new THREE.Mesh(pg, lm); back.position.set(-0.155, 1.28, 0); back.rotation.y = -Math.PI / 2; g.add(back);
+      const chest = new THREE.Mesh(pg, lm); chest.scale.setScalar(0.5); chest.position.set(0.155, 1.36, 0.1); chest.rotation.y = Math.PI / 2; g.add(chest);
+      if (h === 'cap' || h === 'beanie' || h === 'helmet') { const hl = new THREE.Mesh(pg, lm); hl.scale.setScalar(0.45); hl.position.set(h === 'helmet' ? 0.205 : 0.15, 1.84, 0); hl.rotation.y = Math.PI / 2; g.add(hl); }
+    }
   },
 
   // ---------- 매 프레임 ----------
@@ -364,16 +472,22 @@ const View3D = {
     const sky = new THREE.Color(lerp(0.62, 0.04, night) * (1 - 0.3 * wet), lerp(0.78, 0.06, night) * (1 - 0.25 * wet), lerp(0.91, 0.14, night) * (1 - 0.1 * wet));
     if (amb[0] > amb[2] + 0.1) sky.lerp(new THREE.Color(0.95, 0.55, 0.35), 0.45);
     this.renderer.setClearColor(sky); S.fog.color.copy(sky);
-    S.fog.far = 170 - wet * 50 + (P.car && P.car.alt || 0) * 2.5;
+    const fc = P.car, fAlt = fc ? fc.alt || 0 : P.alt || 0;
+    this.stream(P.px, P.py, fc ? Math.abs(fc.speed || fc.spd || 0) : 0, fAlt);
+    S.fog.far = this.drawR * (1 - wet * 0.3); S.fog.near = Math.min(90, S.fog.far * 0.4);
+    if (Math.abs(this.camera.far - (this.drawR + 60)) > 20) { this.camera.far = this.drawR + 60; this.camera.updateProjectionMatrix(); }
     this.hemi.intensity = 0.25 + (1 - night) * 0.75; this.sun.intensity = 0.1 + (1 - night) * 0.8;
     this.hemi.color.setRGB(amb[0], amb[1], amb[2]);
     this.bmat.emissiveIntensity = night > 0.35 ? night * 0.9 : 0;
-    this.lampHeads.material.color.setScalar(night > 0.3 ? 1 : 0.55);
+    this.lampMat.color.setScalar(night > 0.3 ? 1 : 0.55);
     // 신호등
     if (!this.tlT || Game.time - this.tlT > 0.4) {
       this.tlT = Game.time; const cc = new THREE.Color();
-      this.tl.forEach((t, i) => { const s = lightState(t.n, t.d); this.tlHeads.setColorAt(i, cc.set(s === 'g' ? '#39e36b' : s === 'y' ? '#ffc933' : '#ff3b3b')); });
-      this.tlHeads.instanceColor.needsUpdate = true;
+      for (const [, ch] of this.chunks) {
+        if (!ch.tlHeads || !ch.G.visible) continue;
+        ch.tl.forEach((t, i) => { const s = lightState(t.n, t.d); ch.tlHeads.setColorAt(i, cc.set(s === 'g' ? '#39e36b' : s === 'y' ? '#ffc933' : '#ff3b3b')); });
+        ch.tlHeads.instanceColor.needsUpdate = true;
+      }
     }
     const R2 = 180 * 180;
     // 차량
@@ -408,6 +522,7 @@ const View3D = {
       if (dist2(p.x, p.y, P.px, P.py) > R2) continue;
       pseen.add(p.id);
       let g = this.peds.get(p.id);
+      if (g && p === P && g.userData.style !== styleKey(P)) { S.remove(g); g = null; } // 옷을 갈아입었다
       if (!g) { g = this.makePed(p); this.peds.set(p.id, g); }
       g.visible = !(p === P && Game.view === 'fps');
       g.position.set(p.x, p.alt || (p.swim ? -1.2 : 0), p.y);
