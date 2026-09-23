@@ -224,6 +224,9 @@ const Police = {
     const sp = Math.min(26, d * 0.8);
     H.vx = smooth(H.vx, dx / d * sp, 1.2, dt); H.vy = smooth(H.vy, dy / d * sp, 1.2, dt);
     H.x += H.vx * dt; H.y += H.vy * dt;
+    // 고층 건물 위로는 높이 올라간다 (앞쪽 지붕까지 미리 본다)
+    const roofAhead = Math.max(roofAt(H.x, H.y), roofAt(H.x + H.vx * 1.5, H.y + H.vy * 1.5));
+    H.alt = smooth(H.alt, Math.max(30, roofAhead + 10), 2, dt);
     const face = Math.atan2(P.py - H.y, P.px - H.x);
     H.a = H.a + angNorm(face - H.a) * Math.min(1, dt * 2);
     H.cd -= dt;

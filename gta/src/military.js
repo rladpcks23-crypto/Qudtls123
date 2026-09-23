@@ -151,6 +151,8 @@ const Military = {
   update(dt) {
     const B = World.base; if (!B) return;
     const P = Game.player;
+    // 전차가 굴러오면 시민들이 달아난다
+    if (P.car && P.car.type === 'tank' && !P.car.dead && chance(dt * 1.5)) scarePeds(P.car.x, P.car.y, P.car.speed > 1 ? 26 : 14);
     const cx = (B.x0 + B.x1) / 2, cy = (B.y0 + B.y1) / 2;
     const near = Math.abs(P.px - cx) < (B.x1 - B.x0) / 2 + 150 && P.py < B.y1 + 160;
     if (!this.slots.length) {

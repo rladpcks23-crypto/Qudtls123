@@ -2691,6 +2691,9 @@ const Police = {
     const sp = Math.min(26, d * 0.8);
     H.vx = smooth(H.vx, dx / d * sp, 1.2, dt); H.vy = smooth(H.vy, dy / d * sp, 1.2, dt);
     H.x += H.vx * dt; H.y += H.vy * dt;
+    // 고층 건물 위로는 높이 올라간다 (앞쪽 지붕까지 미리 본다)
+    const roofAhead = Math.max(roofAt(H.x, H.y), roofAt(H.x + H.vx * 1.5, H.y + H.vy * 1.5));
+    H.alt = smooth(H.alt, Math.max(30, roofAhead + 10), 2, dt);
     const face = Math.atan2(P.py - H.y, P.px - H.x);
     H.a = H.a + angNorm(face - H.a) * Math.min(1, dt * 2);
     H.cd -= dt;
@@ -4277,6 +4280,8 @@ const Military = {
   update(dt) {
     const B = World.base; if (!B) return;
     const P = Game.player;
+    // 전차가 굴러오면 시민들이 달아난다
+    if (P.car && P.car.type === 'tank' && !P.car.dead && chance(dt * 1.5)) scarePeds(P.car.x, P.car.y, P.car.speed > 1 ? 26 : 14);
     const cx = (B.x0 + B.x1) / 2, cy = (B.y0 + B.y1) / 2;
     const near = Math.abs(P.px - cx) < (B.x1 - B.x0) / 2 + 150 && P.py < B.y1 + 160;
     if (!this.slots.length) {
