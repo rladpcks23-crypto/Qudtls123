@@ -255,6 +255,8 @@
     <button class="btn" id="btn-sens">조향 감도: 보통</button>
     <button class="btn only-mobile" id="btn-wheel">핸들 크기: 크게</button>
     <button class="btn" id="btn-camrot">운전 시점: 차 방향으로 회전</button>
+    <button class="btn" id="btn-quality">그래픽: 자동</button>
+    <button class="btn" id="btn-fps">FPS 표시: 끔</button>
     <button class="btn" id="btn-quitjob" hidden>하던 일 그만두기</button>
     <div class="cheat"><input id="cheat-input" type="text" placeholder="치트 코드" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn small" id="cheat-go">입력</button></div>
     <button class="btn" id="btn-quit">메인 메뉴로</button>
@@ -390,13 +392,36 @@ const IS_MOBILE = PLATFORM === 'mobile';
 const TUNE = IS_MOBILE
   ? { dpr: 1.3, light: 1 / 3, cars: [20, 12], peds: [34, 20], particles: 450, rain: 140 }
   : { dpr: 2, light: 1 / 2, cars: [28, 17], peds: [54, 30], particles: 900, rain: 260 };
+const TUNE_BASE = { ...TUNE, cars: [...TUNE.cars], peds: [...TUNE.peds] };
+// 성능 측정 · 절약 모드: 해상도·조명 해상도·교통량·보행자·파티클을 줄인다
+const Perf = {
+  fps: 60, acc: 0, n: 0, slowT: 0, low: false,
+  tick(raw) {
+    if (!(raw > 0) || raw > 0.5) return;
+    this.acc += raw; this.n++;
+    if (this.acc >= 1) { this.fps = this.n / this.acc; this.acc = 0; this.n = 0;
+      if (Settings.quality === 'auto' && !this.low && typeof Game !== 'undefined' && Game.state === 'play') {
+        this.slowT = this.fps < 38 ? this.slowT + 1 : Math.max(0, this.slowT - 1);
+        if (this.slowT >= 4) { this.apply(true); UI.toast('프레임이 낮아 성능 절약 모드로 바꿨다 (일시정지 → 그래픽에서 변경)'); }
+      }
+    }
+  },
+  apply(low) {
+    this.low = low; this.slowT = 0;
+    const B = TUNE_BASE;
+    Object.assign(TUNE, low ? { dpr: 1, light: 1 / 4, cars: B.cars.map(v => Math.round(v * 0.7)), peds: B.peds.map(v => Math.round(v * 0.65)), particles: Math.round(B.particles * 0.5), rain: Math.round(B.rain * 0.5) } : { ...B, cars: [...B.cars], peds: [...B.peds] });
+    if (typeof resize === 'function' && typeof canvas !== 'undefined' && canvas) resize();
+  },
+};
 // 사용자 설정 (브라우저에 저장)
 const Settings = {
   camRot: true, // 운전 중 화면을 차 방향으로 회전
   sens: 1,      // 조향 감도 배율 (0.7 둔하게 · 1 보통 · 1.35 민감하게)
   wheel: 'lg',  // 모바일 핸들 크기 md · lg · xl
-  load() { try { const v = localStorage.getItem('nh.camrot'); if (v !== null) this.camRot = v === '1'; const s = parseFloat(localStorage.getItem('nh.sens')); if (s) this.sens = s; const w = localStorage.getItem('nh.wheel'); if (w) this.wheel = w; } catch (e) { } },
-  save() { try { localStorage.setItem('nh.camrot', this.camRot ? '1' : '0'); localStorage.setItem('nh.sens', String(this.sens)); localStorage.setItem('nh.wheel', this.wheel); } catch (e) { } },
+  quality: 'auto', // 그래픽: auto(느리면 자동으로 낮춤) · high · low
+  fps: false,      // FPS 표시
+  load() { try { const q = localStorage.getItem('nh.quality'); if (q) this.quality = q; this.fps = localStorage.getItem('nh.fps') === '1'; const v = localStorage.getItem('nh.camrot'); if (v !== null) this.camRot = v === '1'; const s = parseFloat(localStorage.getItem('nh.sens')); if (s) this.sens = s; const w = localStorage.getItem('nh.wheel'); if (w) this.wheel = w; } catch (e) { } },
+  save() { try { localStorage.setItem('nh.quality', this.quality); localStorage.setItem('nh.fps', this.fps ? '1' : '0'); localStorage.setItem('nh.camrot', this.camRot ? '1' : '0'); localStorage.setItem('nh.sens', String(this.sens)); localStorage.setItem('nh.wheel', this.wheel); } catch (e) { } },
 };
 Settings.load();
 function buzz(ms) { if (IS_MOBILE && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { } } }
@@ -6056,6 +6081,7 @@ function wrapLines(c, s, maxW) {
 function drawHUD(dt) {
   const c = ctx, P = Game.player;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (Settings.fps) txt(c, `${Math.round(Perf.fps)} FPS${Perf.low ? ' · 절약' : ''}`, CW / 2, CH - 8, `600 12px ${FONT_NUM}`, Perf.fps < 30 ? '#ff8a80' : Perf.fps < 45 ? '#f2c14e' : '#7ae68f', 'rgba(0,0,0,0.9)', 3, 'center');
   const s = UI.s = clamp(Math.min(CW, CH) / 760, 0.62, 1.15);
   const pad = 16 * s + 4;
   const topInset = 8;
@@ -6429,6 +6455,13 @@ const Menu = {
     setLabels();
     sensBtn.onclick = () => { const i = SENS.findIndex(s => s[0] === Settings.sens); Settings.sens = SENS[(i + 1) % SENS.length][0]; Settings.save(); setLabels(); };
     wheelBtn.onclick = () => { const i = WHEEL.findIndex(w => w[0] === Settings.wheel); Settings.wheel = WHEEL[(i + 1) % WHEEL.length][0]; Settings.save(); setLabels(); };
+    const qBtn = document.getElementById('btn-quality'), fBtn = document.getElementById('btn-fps');
+    const QN = { auto: '자동 (느리면 낮춤)', high: '높음', low: '낮음 (성능 절약)' };
+    const qLabel = () => { qBtn.textContent = `그래픽: ${QN[Settings.quality]}${Settings.quality === 'auto' && Perf.low ? ' — 지금 절약 중' : ''}`; fBtn.textContent = `FPS 표시: ${Settings.fps ? '켬' : '끔'}`; };
+    qLabel(); this.qLabel = qLabel;
+    qBtn.onclick = () => { const o = ['auto', 'high', 'low']; Settings.quality = o[(o.indexOf(Settings.quality) + 1) % 3]; Settings.save(); Perf.apply(Settings.quality === 'low'); qLabel(); };
+    fBtn.onclick = () => { Settings.fps = !Settings.fps; Settings.save(); qLabel(); };
+    if (Settings.quality === 'low') Perf.apply(true);
     document.getElementById('btn-view').onclick = () => { this.hidePause(); Game.state = 'play'; cycleView(); };
     document.getElementById('btn-quitjob').onclick = () => { Jobs.stop('일을 그만뒀다'); this.hidePause(); Game.state = 'play'; };
     document.getElementById('jobs-close').onclick = () => Jobs.closeBoard();
@@ -6443,7 +6476,7 @@ const Menu = {
   },
   show() { this.el.hidden = false; const cont = document.getElementById('btn-continue'); cont.hidden = !Save.read(); },
   hide() { this.el.hidden = true; },
-  showPause() { document.getElementById('pause').hidden = false; document.getElementById('btn-quitjob').hidden = !Jobs.active; if (this.camLabel) this.camLabel(); },
+  showPause() { document.getElementById('pause').hidden = false; document.getElementById('btn-quitjob').hidden = !Jobs.active; if (this.camLabel) this.camLabel(); if (this.qLabel) this.qLabel(); },
   hidePause() { document.getElementById('pause').hidden = true; },
 };
 
@@ -6941,7 +6974,8 @@ const Game = {
   },
 
   loop(now) {
-    const dt = Math.min(0.05, (now - (this.last || now)) / 1000); this.last = now;
+    const raw = (now - (this.last || now)) / 1000, dt = Math.min(0.05, raw); this.last = now;
+    Perf.tick(raw);
     try { this.frame(dt); } catch (e) { console.error(e); }
     endFrameInput();
     requestAnimationFrame(t => this.loop(t));

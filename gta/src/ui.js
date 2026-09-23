@@ -50,6 +50,7 @@ function wrapLines(c, s, maxW) {
 function drawHUD(dt) {
   const c = ctx, P = Game.player;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (Settings.fps) txt(c, `${Math.round(Perf.fps)} FPS${Perf.low ? ' · 절약' : ''}`, CW / 2, CH - 8, `600 12px ${FONT_NUM}`, Perf.fps < 30 ? '#ff8a80' : Perf.fps < 45 ? '#f2c14e' : '#7ae68f', 'rgba(0,0,0,0.9)', 3, 'center');
   const s = UI.s = clamp(Math.min(CW, CH) / 760, 0.62, 1.15);
   const pad = 16 * s + 4;
   const topInset = 8;
@@ -423,6 +424,13 @@ const Menu = {
     setLabels();
     sensBtn.onclick = () => { const i = SENS.findIndex(s => s[0] === Settings.sens); Settings.sens = SENS[(i + 1) % SENS.length][0]; Settings.save(); setLabels(); };
     wheelBtn.onclick = () => { const i = WHEEL.findIndex(w => w[0] === Settings.wheel); Settings.wheel = WHEEL[(i + 1) % WHEEL.length][0]; Settings.save(); setLabels(); };
+    const qBtn = document.getElementById('btn-quality'), fBtn = document.getElementById('btn-fps');
+    const QN = { auto: '자동 (느리면 낮춤)', high: '높음', low: '낮음 (성능 절약)' };
+    const qLabel = () => { qBtn.textContent = `그래픽: ${QN[Settings.quality]}${Settings.quality === 'auto' && Perf.low ? ' — 지금 절약 중' : ''}`; fBtn.textContent = `FPS 표시: ${Settings.fps ? '켬' : '끔'}`; };
+    qLabel(); this.qLabel = qLabel;
+    qBtn.onclick = () => { const o = ['auto', 'high', 'low']; Settings.quality = o[(o.indexOf(Settings.quality) + 1) % 3]; Settings.save(); Perf.apply(Settings.quality === 'low'); qLabel(); };
+    fBtn.onclick = () => { Settings.fps = !Settings.fps; Settings.save(); qLabel(); };
+    if (Settings.quality === 'low') Perf.apply(true);
     document.getElementById('btn-view').onclick = () => { this.hidePause(); Game.state = 'play'; cycleView(); };
     document.getElementById('btn-quitjob').onclick = () => { Jobs.stop('일을 그만뒀다'); this.hidePause(); Game.state = 'play'; };
     document.getElementById('jobs-close').onclick = () => Jobs.closeBoard();
@@ -437,7 +445,7 @@ const Menu = {
   },
   show() { this.el.hidden = false; const cont = document.getElementById('btn-continue'); cont.hidden = !Save.read(); },
   hide() { this.el.hidden = true; },
-  showPause() { document.getElementById('pause').hidden = false; document.getElementById('btn-quitjob').hidden = !Jobs.active; if (this.camLabel) this.camLabel(); },
+  showPause() { document.getElementById('pause').hidden = false; document.getElementById('btn-quitjob').hidden = !Jobs.active; if (this.camLabel) this.camLabel(); if (this.qLabel) this.qLabel(); },
   hidePause() { document.getElementById('pause').hidden = true; },
 };
 

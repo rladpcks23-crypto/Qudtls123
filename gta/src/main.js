@@ -95,7 +95,8 @@ const Game = {
   },
 
   loop(now) {
-    const dt = Math.min(0.05, (now - (this.last || now)) / 1000); this.last = now;
+    const raw = (now - (this.last || now)) / 1000, dt = Math.min(0.05, raw); this.last = now;
+    Perf.tick(raw);
     try { this.frame(dt); } catch (e) { console.error(e); }
     endFrameInput();
     requestAnimationFrame(t => this.loop(t));

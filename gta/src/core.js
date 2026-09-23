@@ -56,13 +56,36 @@ const IS_MOBILE = PLATFORM === 'mobile';
 const TUNE = IS_MOBILE
   ? { dpr: 1.3, light: 1 / 3, cars: [20, 12], peds: [34, 20], particles: 450, rain: 140 }
   : { dpr: 2, light: 1 / 2, cars: [28, 17], peds: [54, 30], particles: 900, rain: 260 };
+const TUNE_BASE = { ...TUNE, cars: [...TUNE.cars], peds: [...TUNE.peds] };
+// 성능 측정 · 절약 모드: 해상도·조명 해상도·교통량·보행자·파티클을 줄인다
+const Perf = {
+  fps: 60, acc: 0, n: 0, slowT: 0, low: false,
+  tick(raw) {
+    if (!(raw > 0) || raw > 0.5) return;
+    this.acc += raw; this.n++;
+    if (this.acc >= 1) { this.fps = this.n / this.acc; this.acc = 0; this.n = 0;
+      if (Settings.quality === 'auto' && !this.low && typeof Game !== 'undefined' && Game.state === 'play') {
+        this.slowT = this.fps < 38 ? this.slowT + 1 : Math.max(0, this.slowT - 1);
+        if (this.slowT >= 4) { this.apply(true); UI.toast('프레임이 낮아 성능 절약 모드로 바꿨다 (일시정지 → 그래픽에서 변경)'); }
+      }
+    }
+  },
+  apply(low) {
+    this.low = low; this.slowT = 0;
+    const B = TUNE_BASE;
+    Object.assign(TUNE, low ? { dpr: 1, light: 1 / 4, cars: B.cars.map(v => Math.round(v * 0.7)), peds: B.peds.map(v => Math.round(v * 0.65)), particles: Math.round(B.particles * 0.5), rain: Math.round(B.rain * 0.5) } : { ...B, cars: [...B.cars], peds: [...B.peds] });
+    if (typeof resize === 'function' && typeof canvas !== 'undefined' && canvas) resize();
+  },
+};
 // 사용자 설정 (브라우저에 저장)
 const Settings = {
   camRot: true, // 운전 중 화면을 차 방향으로 회전
   sens: 1,      // 조향 감도 배율 (0.7 둔하게 · 1 보통 · 1.35 민감하게)
   wheel: 'lg',  // 모바일 핸들 크기 md · lg · xl
-  load() { try { const v = localStorage.getItem('nh.camrot'); if (v !== null) this.camRot = v === '1'; const s = parseFloat(localStorage.getItem('nh.sens')); if (s) this.sens = s; const w = localStorage.getItem('nh.wheel'); if (w) this.wheel = w; } catch (e) { } },
-  save() { try { localStorage.setItem('nh.camrot', this.camRot ? '1' : '0'); localStorage.setItem('nh.sens', String(this.sens)); localStorage.setItem('nh.wheel', this.wheel); } catch (e) { } },
+  quality: 'auto', // 그래픽: auto(느리면 자동으로 낮춤) · high · low
+  fps: false,      // FPS 표시
+  load() { try { const q = localStorage.getItem('nh.quality'); if (q) this.quality = q; this.fps = localStorage.getItem('nh.fps') === '1'; const v = localStorage.getItem('nh.camrot'); if (v !== null) this.camRot = v === '1'; const s = parseFloat(localStorage.getItem('nh.sens')); if (s) this.sens = s; const w = localStorage.getItem('nh.wheel'); if (w) this.wheel = w; } catch (e) { } },
+  save() { try { localStorage.setItem('nh.quality', this.quality); localStorage.setItem('nh.fps', this.fps ? '1' : '0'); localStorage.setItem('nh.camrot', this.camRot ? '1' : '0'); localStorage.setItem('nh.sens', String(this.sens)); localStorage.setItem('nh.wheel', this.wheel); } catch (e) { } },
 };
 Settings.load();
 function buzz(ms) { if (IS_MOBILE && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { } } }
