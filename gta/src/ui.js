@@ -50,6 +50,7 @@ function wrapLines(c, s, maxW) {
 function drawHUD(dt) {
   const c = ctx, P = Game.player;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (UI.zoomT > 0) { UI.zoomT -= dt; txt(c, `화면 거리 ${Math.round(Settings.zoom * 100)}%`, CW / 2, CH * 0.3, `700 16px ${FONT_KR}`, '#fff', 'rgba(0,0,0,0.9)', 4, 'center'); }
   if (Settings.fps) txt(c, `${Math.round(Perf.fps)} FPS${Perf.low ? ' · 절약' : ''}`, CW / 2, CH - 8, `600 12px ${FONT_NUM}`, Perf.fps < 30 ? '#ff8a80' : Perf.fps < 45 ? '#f2c14e' : '#7ae68f', 'rgba(0,0,0,0.9)', 3, 'center');
   const s = UI.s = clamp(Math.min(CW, CH) / 760, 0.62, 1.15);
   const pad = 16 * s + 4;
@@ -428,7 +429,13 @@ const Menu = {
     wheelBtn.onclick = () => { const i = WHEEL.findIndex(w => w[0] === Settings.wheel); Settings.wheel = WHEEL[(i + 1) % WHEEL.length][0]; Settings.save(); setLabels(); };
     const qBtn = document.getElementById('btn-quality'), fBtn = document.getElementById('btn-fps');
     const QN = { auto: '자동 (느리면 낮춤)', high: '높음', low: '낮음 (성능 절약)' };
-    const qLabel = () => { qBtn.textContent = `그래픽: ${QN[Settings.quality]}${Settings.quality === 'auto' && Perf.low ? ' — 지금 절약 중' : ''}`; fBtn.textContent = `FPS 표시: ${Settings.fps ? '켬' : '끔'}`; };
+    let qLabel = () => { qBtn.textContent = `그래픽: ${QN[Settings.quality]}${Settings.quality === 'auto' && Perf.low ? ' — 지금 절약 중' : ''}`; fBtn.textContent = `FPS 표시: ${Settings.fps ? '켬' : '끔'}`; };
+    const zBtn = document.getElementById('btn-zoom');
+    const ZP = [[0.55, '아주 가깝게'], [0.75, '가깝게'], [1, '보통'], [1.4, '멀게']];
+    const zLabel = () => { const cur = ZP.reduce((a, b) => Math.abs(b[0] - Settings.zoom) < Math.abs(a[0] - Settings.zoom) ? b : a); zBtn.textContent = `화면 거리: ${cur[1]} (${Math.round(Settings.zoom * 100)}%) — ${Input.usingTouch ? '두 손가락으로도 조절' : '휠·+/−로도 조절'}`; };
+    zBtn.onclick = () => { const i = ZP.findIndex(p => p[0] > Settings.zoom + 0.01); Zoom.set((ZP[i] || ZP[0])[0], true); zLabel(); };
+    const qL0 = qLabel;
+    qLabel = () => { qL0(); zLabel(); };
     qLabel(); this.qLabel = qLabel;
     qBtn.onclick = () => { const o = ['auto', 'high', 'low']; Settings.quality = o[(o.indexOf(Settings.quality) + 1) % 3]; Settings.save(); Perf.apply(Settings.quality === 'low'); qLabel(); };
     fBtn.onclick = () => { Settings.fps = !Settings.fps; Settings.save(); qLabel(); };
@@ -587,6 +594,25 @@ const Touch = {
     };
     const tap = (id, fn) => { const b = document.getElementById(id); b.addEventListener('touchstart', e => { e.preventDefault(); enable(); fn(); }, { passive: false }); };
     hold('t-fire', 'fire'); hold('t-hb', 'hb'); hold('t-run', 'run');
+    // 두 손가락 벌리기/오므리기 = 확대/축소 (버튼·핸들·페달 위에서는 무시)
+    const freeTouch = t => !(t.target && t.target.closest && t.target.closest('.tb, #wheel, .pedal, #drive, .overlay, .card, button'));
+    let pinch = null;
+    document.addEventListener('touchstart', e => {
+      const ts = [...e.touches].filter(freeTouch);
+      if (ts.length >= 2 && Game.state === 'play') {
+        pinch = { d: Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY), z: Settings.zoom, ids: [ts[0].identifier, ts[1].identifier] };
+        T_.on = false; T_.jx = T_.jy = 0; T_.stickId = null; knob.style.transform = ''; stick.classList.remove('active');
+      }
+    }, { passive: true });
+    document.addEventListener('touchmove', e => {
+      if (!pinch) return;
+      const a = [...e.touches].find(t => t.identifier === pinch.ids[0]), b = [...e.touches].find(t => t.identifier === pinch.ids[1]);
+      if (!a || !b) return;
+      const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      if (pinch.d > 20) Zoom.set(pinch.z * pinch.d / Math.max(20, d));
+    }, { passive: true });
+    const endPinch = e => { if (pinch && ![...e.touches].some(t => pinch.ids.includes(t.identifier))) pinch = null; else if (pinch && e.touches.length < 2) pinch = null; };
+    document.addEventListener('touchend', endPinch, { passive: true }); document.addEventListener('touchcancel', endPinch, { passive: true });
     tap('t-steal', () => { if (Pick.target) Pick.attempt(); });
     tap('t-enter', () => { Input.pressed['KeyF'] = true; });
     tap('t-weapon', () => { Input.pressed['KeyE'] = true; });

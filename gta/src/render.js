@@ -10,7 +10,7 @@
  * ===================================================================== */
 
 // rot: 화면 회전(운전 중 차 방향이 화면 위쪽). vw/vh는 회전된 화면을 감싸는 월드 축 정렬 영역(컬링용).
-const Cam = { x: 0, y: 0, ppm: 8, vw: 100, vh: 60, sw: 100, sh: 60, rot: 0, shake: 0, sx: 0, sy: 0, H: 150, zoomMul: 1 };
+const Cam = { x: 0, y: 0, ppm: 8, vw: 100, vh: 60, sw: 100, sh: 60, rot: 0, shake: 0, sx: 0, sy: 0, H: 150, zoomMul: 0.75 };
 function camSetView() {
   Cam.sw = CW / Cam.ppm; Cam.sh = CH / Cam.ppm;
   const c = Math.abs(Math.cos(Cam.rot)), s = Math.abs(Math.sin(Cam.rot));

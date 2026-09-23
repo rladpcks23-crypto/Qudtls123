@@ -205,7 +205,8 @@
         <dt>X</dt><dd>하던 직업 그만두기</dd>
         <dt>C</dt><dd>시점 전환: 탑뷰 → 3인칭 후면 → 3인칭 전면 → 1인칭 (3D에선 화면 클릭 후 마우스로 둘러보기)</dd>
         <dt>V</dt><dd>탑뷰 운전 시점 (차 방향 회전 / 북쪽 고정)</dd>
-        <dt>Q · E · 휠 · 1–8</dt><dd>무기 교체</dd>
+        <dt>Q · E · 1–8</dt><dd>무기 교체</dd>
+        <dt>휠 · + / − · Z</dt><dd>화면 확대/축소 (모바일: 두 손가락)</dd>
         <dt>R</dt><dd>라디오 채널 (차 안)</dd>
         <dt>H · G</dt><dd>경적 · 경찰차 사이렌</dd>
         <dt>M · TAB</dt><dd>전체 지도</dd>
@@ -261,6 +262,7 @@
     <button class="btn" id="btn-camrot">운전 시점: 차 방향으로 회전</button>
     <button class="btn" id="btn-quality">그래픽: 자동</button>
     <button class="btn" id="btn-fps">FPS 표시: 끔</button>
+    <button class="btn" id="btn-zoom">화면 거리: 가깝게</button>
     <button class="btn" id="btn-quitjob" hidden>하던 일 그만두기</button>
     <div class="cheat"><input id="cheat-input" type="text" placeholder="치트 코드" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn small" id="cheat-go">입력</button></div>
     <button class="btn" id="btn-quit">메인 메뉴로</button>
@@ -396,6 +398,17 @@ const IS_MOBILE = PLATFORM === 'mobile';
 const TUNE = IS_MOBILE
   ? { dpr: 1.3, light: 1 / 3, cars: [20, 12], peds: [34, 20], particles: 450, rain: 140 }
   : { dpr: 2, light: 1 / 2, cars: [28, 17], peds: [54, 30], particles: 900, rain: 260 };
+// 화면 확대/축소 (마우스 휠 · 두 손가락 · Z · 일시정지 메뉴)
+const Zoom = {
+  MIN: 0.4, MAX: 2.2, saveT: 0,
+  set(z, quiet) {
+    Settings.zoom = clamp(z, this.MIN, this.MAX);
+    if (typeof Cam !== 'undefined') Cam.zoomMul = Settings.zoom;
+    clearTimeout(this.saveT); this.saveT = setTimeout(() => Settings.save(), 600);
+    if (!quiet && typeof UI !== 'undefined') UI.zoomT = 1.2;
+  },
+  by(f) { this.set(Settings.zoom * f); },
+};
 const TUNE_BASE = { ...TUNE, cars: [...TUNE.cars], peds: [...TUNE.peds] };
 // 성능 측정 · 절약 모드: 해상도·조명 해상도·교통량·보행자·파티클을 줄인다
 const Perf = {
@@ -424,8 +437,9 @@ const Settings = {
   wheel: 'lg',  // 모바일 핸들 크기 md · lg · xl
   quality: 'auto', // 그래픽: auto(느리면 자동으로 낮춤) · high · low
   fps: false,      // FPS 표시
-  load() { try { const q = localStorage.getItem('nh.quality'); if (q) this.quality = q; this.fps = localStorage.getItem('nh.fps') === '1'; const v = localStorage.getItem('nh.camrot'); if (v !== null) this.camRot = v === '1'; const s = parseFloat(localStorage.getItem('nh.sens')); if (s) this.sens = s; const w = localStorage.getItem('nh.wheel'); if (w) this.wheel = w; } catch (e) { } },
-  save() { try { localStorage.setItem('nh.quality', this.quality); localStorage.setItem('nh.fps', this.fps ? '1' : '0'); localStorage.setItem('nh.camrot', this.camRot ? '1' : '0'); localStorage.setItem('nh.sens', String(this.sens)); localStorage.setItem('nh.wheel', this.wheel); } catch (e) { } },
+  zoom: 0.75,      // 화면 거리 배율 (작을수록 가깝게) — 휠·두 손가락으로 조절
+  load() { try { const q = localStorage.getItem('nh.quality'); if (q) this.quality = q; this.fps = localStorage.getItem('nh.fps') === '1'; const z = parseFloat(localStorage.getItem('nh.zoom')); if (z) this.zoom = z; const v = localStorage.getItem('nh.camrot'); if (v !== null) this.camRot = v === '1'; const s = parseFloat(localStorage.getItem('nh.sens')); if (s) this.sens = s; const w = localStorage.getItem('nh.wheel'); if (w) this.wheel = w; } catch (e) { } },
+  save() { try { localStorage.setItem('nh.quality', this.quality); localStorage.setItem('nh.fps', this.fps ? '1' : '0'); localStorage.setItem('nh.zoom', String(this.zoom)); localStorage.setItem('nh.camrot', this.camRot ? '1' : '0'); localStorage.setItem('nh.sens', String(this.sens)); localStorage.setItem('nh.wheel', this.wheel); } catch (e) { } },
 };
 Settings.load();
 function buzz(ms) { if (IS_MOBILE && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { } } }
@@ -4777,7 +4791,7 @@ function airTargetAlong(c, ang) {
  * ===================================================================== */
 
 // rot: 화면 회전(운전 중 차 방향이 화면 위쪽). vw/vh는 회전된 화면을 감싸는 월드 축 정렬 영역(컬링용).
-const Cam = { x: 0, y: 0, ppm: 8, vw: 100, vh: 60, sw: 100, sh: 60, rot: 0, shake: 0, sx: 0, sy: 0, H: 150, zoomMul: 1 };
+const Cam = { x: 0, y: 0, ppm: 8, vw: 100, vh: 60, sw: 100, sh: 60, rot: 0, shake: 0, sx: 0, sy: 0, H: 150, zoomMul: 0.75 };
 function camSetView() {
   Cam.sw = CW / Cam.ppm; Cam.sh = CH / Cam.ppm;
   const c = Math.abs(Math.cos(Cam.rot)), s = Math.abs(Math.sin(Cam.rot));
@@ -6164,6 +6178,7 @@ function wrapLines(c, s, maxW) {
 function drawHUD(dt) {
   const c = ctx, P = Game.player;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (UI.zoomT > 0) { UI.zoomT -= dt; txt(c, `화면 거리 ${Math.round(Settings.zoom * 100)}%`, CW / 2, CH * 0.3, `700 16px ${FONT_KR}`, '#fff', 'rgba(0,0,0,0.9)', 4, 'center'); }
   if (Settings.fps) txt(c, `${Math.round(Perf.fps)} FPS${Perf.low ? ' · 절약' : ''}`, CW / 2, CH - 8, `600 12px ${FONT_NUM}`, Perf.fps < 30 ? '#ff8a80' : Perf.fps < 45 ? '#f2c14e' : '#7ae68f', 'rgba(0,0,0,0.9)', 3, 'center');
   const s = UI.s = clamp(Math.min(CW, CH) / 760, 0.62, 1.15);
   const pad = 16 * s + 4;
@@ -6542,7 +6557,13 @@ const Menu = {
     wheelBtn.onclick = () => { const i = WHEEL.findIndex(w => w[0] === Settings.wheel); Settings.wheel = WHEEL[(i + 1) % WHEEL.length][0]; Settings.save(); setLabels(); };
     const qBtn = document.getElementById('btn-quality'), fBtn = document.getElementById('btn-fps');
     const QN = { auto: '자동 (느리면 낮춤)', high: '높음', low: '낮음 (성능 절약)' };
-    const qLabel = () => { qBtn.textContent = `그래픽: ${QN[Settings.quality]}${Settings.quality === 'auto' && Perf.low ? ' — 지금 절약 중' : ''}`; fBtn.textContent = `FPS 표시: ${Settings.fps ? '켬' : '끔'}`; };
+    let qLabel = () => { qBtn.textContent = `그래픽: ${QN[Settings.quality]}${Settings.quality === 'auto' && Perf.low ? ' — 지금 절약 중' : ''}`; fBtn.textContent = `FPS 표시: ${Settings.fps ? '켬' : '끔'}`; };
+    const zBtn = document.getElementById('btn-zoom');
+    const ZP = [[0.55, '아주 가깝게'], [0.75, '가깝게'], [1, '보통'], [1.4, '멀게']];
+    const zLabel = () => { const cur = ZP.reduce((a, b) => Math.abs(b[0] - Settings.zoom) < Math.abs(a[0] - Settings.zoom) ? b : a); zBtn.textContent = `화면 거리: ${cur[1]} (${Math.round(Settings.zoom * 100)}%) — ${Input.usingTouch ? '두 손가락으로도 조절' : '휠·+/−로도 조절'}`; };
+    zBtn.onclick = () => { const i = ZP.findIndex(p => p[0] > Settings.zoom + 0.01); Zoom.set((ZP[i] || ZP[0])[0], true); zLabel(); };
+    const qL0 = qLabel;
+    qLabel = () => { qL0(); zLabel(); };
     qLabel(); this.qLabel = qLabel;
     qBtn.onclick = () => { const o = ['auto', 'high', 'low']; Settings.quality = o[(o.indexOf(Settings.quality) + 1) % 3]; Settings.save(); Perf.apply(Settings.quality === 'low'); qLabel(); };
     fBtn.onclick = () => { Settings.fps = !Settings.fps; Settings.save(); qLabel(); };
@@ -6701,6 +6722,25 @@ const Touch = {
     };
     const tap = (id, fn) => { const b = document.getElementById(id); b.addEventListener('touchstart', e => { e.preventDefault(); enable(); fn(); }, { passive: false }); };
     hold('t-fire', 'fire'); hold('t-hb', 'hb'); hold('t-run', 'run');
+    // 두 손가락 벌리기/오므리기 = 확대/축소 (버튼·핸들·페달 위에서는 무시)
+    const freeTouch = t => !(t.target && t.target.closest && t.target.closest('.tb, #wheel, .pedal, #drive, .overlay, .card, button'));
+    let pinch = null;
+    document.addEventListener('touchstart', e => {
+      const ts = [...e.touches].filter(freeTouch);
+      if (ts.length >= 2 && Game.state === 'play') {
+        pinch = { d: Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY), z: Settings.zoom, ids: [ts[0].identifier, ts[1].identifier] };
+        T_.on = false; T_.jx = T_.jy = 0; T_.stickId = null; knob.style.transform = ''; stick.classList.remove('active');
+      }
+    }, { passive: true });
+    document.addEventListener('touchmove', e => {
+      if (!pinch) return;
+      const a = [...e.touches].find(t => t.identifier === pinch.ids[0]), b = [...e.touches].find(t => t.identifier === pinch.ids[1]);
+      if (!a || !b) return;
+      const d = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      if (pinch.d > 20) Zoom.set(pinch.z * pinch.d / Math.max(20, d));
+    }, { passive: true });
+    const endPinch = e => { if (pinch && ![...e.touches].some(t => pinch.ids.includes(t.identifier))) pinch = null; else if (pinch && e.touches.length < 2) pinch = null; };
+    document.addEventListener('touchend', endPinch, { passive: true }); document.addEventListener('touchcancel', endPinch, { passive: true });
     tap('t-steal', () => { if (Pick.target) Pick.attempt(); });
     tap('t-enter', () => { Input.pressed['KeyF'] = true; });
     tap('t-weapon', () => { Input.pressed['KeyE'] = true; });
@@ -7030,6 +7070,7 @@ const Game = {
     canvas = document.getElementById('game'); ctx = canvas.getContext('2d');
     lightCanvas = document.createElement('canvas'); lctx = lightCanvas.getContext('2d');
     resize(); addEventListener('resize', () => { resize(); View3D.resize(); });
+    Cam.zoomMul = Settings.zoom;
     genWorld(90210);
     Missions.init();
     const g = Missions.givers[0];
@@ -7195,15 +7236,18 @@ const Game = {
       if (keyHit('KeyV')) { Settings.camRot = !Settings.camRot; Settings.save(); UI.toast(Settings.camRot ? '운전 시점: 차 방향으로 회전' : '운전 시점: 북쪽 고정'); }
       if (keyHit('KeyF', 'Enter', 'PadY')) { if (P.car) exitCar(P); else if (!(P.alt > 0)) tryEnterCar(P); }
       const vc = hasVW(P.car) ? P.car : null; // 전차·헬기·전투기: 탑승 무기 교체
-      if (keyHit('KeyE') || Input.wheel > 0 || ((!P.car || vc) && keyHit('PadRight'))) { if (vc) cycleVWeapon(vc, 1); else cycleWeapon(P, 1); }
-      if (keyHit('KeyQ') || Input.wheel < 0 || ((!P.car || vc) && keyHit('PadLeft'))) { if (vc) cycleVWeapon(vc, -1); else cycleWeapon(P, -1); }
+      if (keyHit('KeyE') || ((!P.car || vc) && keyHit('PadRight'))) { if (vc) cycleVWeapon(vc, 1); else cycleWeapon(P, 1); }
+      if (keyHit('KeyQ') || ((!P.car || vc) && keyHit('PadLeft'))) { if (vc) cycleVWeapon(vc, -1); else cycleWeapon(P, -1); }
+      // 마우스 휠 = 확대/축소 (무기는 Q/E · 숫자키)
+      if (Input.wheel) Zoom.by(Input.wheel > 0 ? 1.12 : 1 / 1.12);
+      if (keyHit('Equal', 'NumpadAdd')) Zoom.by(1 / 1.15); if (keyHit('Minus', 'NumpadSubtract')) Zoom.by(1.15);
       if (!P.car && keyHit('PadRB')) cycleWeapon(P, 1);
       if (!P.car && keyHit('PadLB')) cycleWeapon(P, -1);
       for (let i = 1; i <= 8; i++) if (keyHit('Digit' + i)) { const w = WEAPON_ORDER[i - 1]; if (P.inv[w] > 0) { P.weapon = w; UI.weaponFlash = 1; } }
       if (keyHit('KeyR', 'PadDown') && P.car) { Radio.cycle(); }
       if (keyHit('KeyB')) Bag.useBest();
       if (keyHit('KeyC', 'PadUp')) cycleView();
-      if (keyHit('KeyZ')) Cam.zoomMul = Cam.zoomMul === 1 ? 1.45 : Cam.zoomMul === 1.45 ? 0.8 : 1;
+      if (keyHit('KeyZ')) Zoom.set(Settings.zoom < 0.7 ? 0.75 : Settings.zoom < 1.1 ? 1.4 : 0.55);
       if (P.car && (P.car.type === 'police' || P.car.type === 'ambulance') && keyHit('KeyG', 'PadLeft')) { P.car.siren = !P.car.siren; }
       if (P.car) updatePlayerInCar(P, dt); else if (P.alt > 0) Para.update(P, dt); else updatePlayerFoot(P, dt);
     }
@@ -7366,7 +7410,7 @@ const Game = {
     }
     Cam.x = smooth(Cam.x, tx, car ? 4 : 5, dt); Cam.y = smooth(Cam.y, ty, car ? 4 : 5, dt);
     const alt = car ? car.alt || 0 : P.alt || 0;
-    const span = (car ? 56 + car.speed * 1.05 + alt * 1.6 : 38 + alt * 1.4) * Cam.zoomMul;
+    const span = (car ? 50 + car.speed * 0.9 + alt * 1.6 : 38 + alt * 1.4) * Cam.zoomMul;
     Cam.ppm = smooth(Cam.ppm, Math.min(CW, CH) / Math.min(alt > 1.2 ? 220 : 130, span), 1.6, dt);
     camSetView();
     Cam.shake = Math.max(0, Cam.shake - dt * 1.6);

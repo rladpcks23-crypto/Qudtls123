@@ -17,6 +17,7 @@ const Game = {
     canvas = document.getElementById('game'); ctx = canvas.getContext('2d');
     lightCanvas = document.createElement('canvas'); lctx = lightCanvas.getContext('2d');
     resize(); addEventListener('resize', () => { resize(); View3D.resize(); });
+    Cam.zoomMul = Settings.zoom;
     genWorld(90210);
     Missions.init();
     const g = Missions.givers[0];
@@ -182,15 +183,18 @@ const Game = {
       if (keyHit('KeyV')) { Settings.camRot = !Settings.camRot; Settings.save(); UI.toast(Settings.camRot ? '운전 시점: 차 방향으로 회전' : '운전 시점: 북쪽 고정'); }
       if (keyHit('KeyF', 'Enter', 'PadY')) { if (P.car) exitCar(P); else if (!(P.alt > 0)) tryEnterCar(P); }
       const vc = hasVW(P.car) ? P.car : null; // 전차·헬기·전투기: 탑승 무기 교체
-      if (keyHit('KeyE') || Input.wheel > 0 || ((!P.car || vc) && keyHit('PadRight'))) { if (vc) cycleVWeapon(vc, 1); else cycleWeapon(P, 1); }
-      if (keyHit('KeyQ') || Input.wheel < 0 || ((!P.car || vc) && keyHit('PadLeft'))) { if (vc) cycleVWeapon(vc, -1); else cycleWeapon(P, -1); }
+      if (keyHit('KeyE') || ((!P.car || vc) && keyHit('PadRight'))) { if (vc) cycleVWeapon(vc, 1); else cycleWeapon(P, 1); }
+      if (keyHit('KeyQ') || ((!P.car || vc) && keyHit('PadLeft'))) { if (vc) cycleVWeapon(vc, -1); else cycleWeapon(P, -1); }
+      // 마우스 휠 = 확대/축소 (무기는 Q/E · 숫자키)
+      if (Input.wheel) Zoom.by(Input.wheel > 0 ? 1.12 : 1 / 1.12);
+      if (keyHit('Equal', 'NumpadAdd')) Zoom.by(1 / 1.15); if (keyHit('Minus', 'NumpadSubtract')) Zoom.by(1.15);
       if (!P.car && keyHit('PadRB')) cycleWeapon(P, 1);
       if (!P.car && keyHit('PadLB')) cycleWeapon(P, -1);
       for (let i = 1; i <= 8; i++) if (keyHit('Digit' + i)) { const w = WEAPON_ORDER[i - 1]; if (P.inv[w] > 0) { P.weapon = w; UI.weaponFlash = 1; } }
       if (keyHit('KeyR', 'PadDown') && P.car) { Radio.cycle(); }
       if (keyHit('KeyB')) Bag.useBest();
       if (keyHit('KeyC', 'PadUp')) cycleView();
-      if (keyHit('KeyZ')) Cam.zoomMul = Cam.zoomMul === 1 ? 1.45 : Cam.zoomMul === 1.45 ? 0.8 : 1;
+      if (keyHit('KeyZ')) Zoom.set(Settings.zoom < 0.7 ? 0.75 : Settings.zoom < 1.1 ? 1.4 : 0.55);
       if (P.car && (P.car.type === 'police' || P.car.type === 'ambulance') && keyHit('KeyG', 'PadLeft')) { P.car.siren = !P.car.siren; }
       if (P.car) updatePlayerInCar(P, dt); else if (P.alt > 0) Para.update(P, dt); else updatePlayerFoot(P, dt);
     }
@@ -353,7 +357,7 @@ const Game = {
     }
     Cam.x = smooth(Cam.x, tx, car ? 4 : 5, dt); Cam.y = smooth(Cam.y, ty, car ? 4 : 5, dt);
     const alt = car ? car.alt || 0 : P.alt || 0;
-    const span = (car ? 56 + car.speed * 1.05 + alt * 1.6 : 38 + alt * 1.4) * Cam.zoomMul;
+    const span = (car ? 50 + car.speed * 0.9 + alt * 1.6 : 38 + alt * 1.4) * Cam.zoomMul;
     Cam.ppm = smooth(Cam.ppm, Math.min(CW, CH) / Math.min(alt > 1.2 ? 220 : 130, span), 1.6, dt);
     camSetView();
     Cam.shake = Math.max(0, Cam.shake - dt * 1.6);

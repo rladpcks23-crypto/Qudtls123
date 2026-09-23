@@ -56,6 +56,17 @@ const IS_MOBILE = PLATFORM === 'mobile';
 const TUNE = IS_MOBILE
   ? { dpr: 1.3, light: 1 / 3, cars: [20, 12], peds: [34, 20], particles: 450, rain: 140 }
   : { dpr: 2, light: 1 / 2, cars: [28, 17], peds: [54, 30], particles: 900, rain: 260 };
+// 화면 확대/축소 (마우스 휠 · 두 손가락 · Z · 일시정지 메뉴)
+const Zoom = {
+  MIN: 0.4, MAX: 2.2, saveT: 0,
+  set(z, quiet) {
+    Settings.zoom = clamp(z, this.MIN, this.MAX);
+    if (typeof Cam !== 'undefined') Cam.zoomMul = Settings.zoom;
+    clearTimeout(this.saveT); this.saveT = setTimeout(() => Settings.save(), 600);
+    if (!quiet && typeof UI !== 'undefined') UI.zoomT = 1.2;
+  },
+  by(f) { this.set(Settings.zoom * f); },
+};
 const TUNE_BASE = { ...TUNE, cars: [...TUNE.cars], peds: [...TUNE.peds] };
 // 성능 측정 · 절약 모드: 해상도·조명 해상도·교통량·보행자·파티클을 줄인다
 const Perf = {
@@ -84,8 +95,9 @@ const Settings = {
   wheel: 'lg',  // 모바일 핸들 크기 md · lg · xl
   quality: 'auto', // 그래픽: auto(느리면 자동으로 낮춤) · high · low
   fps: false,      // FPS 표시
-  load() { try { const q = localStorage.getItem('nh.quality'); if (q) this.quality = q; this.fps = localStorage.getItem('nh.fps') === '1'; const v = localStorage.getItem('nh.camrot'); if (v !== null) this.camRot = v === '1'; const s = parseFloat(localStorage.getItem('nh.sens')); if (s) this.sens = s; const w = localStorage.getItem('nh.wheel'); if (w) this.wheel = w; } catch (e) { } },
-  save() { try { localStorage.setItem('nh.quality', this.quality); localStorage.setItem('nh.fps', this.fps ? '1' : '0'); localStorage.setItem('nh.camrot', this.camRot ? '1' : '0'); localStorage.setItem('nh.sens', String(this.sens)); localStorage.setItem('nh.wheel', this.wheel); } catch (e) { } },
+  zoom: 0.75,      // 화면 거리 배율 (작을수록 가깝게) — 휠·두 손가락으로 조절
+  load() { try { const q = localStorage.getItem('nh.quality'); if (q) this.quality = q; this.fps = localStorage.getItem('nh.fps') === '1'; const z = parseFloat(localStorage.getItem('nh.zoom')); if (z) this.zoom = z; const v = localStorage.getItem('nh.camrot'); if (v !== null) this.camRot = v === '1'; const s = parseFloat(localStorage.getItem('nh.sens')); if (s) this.sens = s; const w = localStorage.getItem('nh.wheel'); if (w) this.wheel = w; } catch (e) { } },
+  save() { try { localStorage.setItem('nh.quality', this.quality); localStorage.setItem('nh.fps', this.fps ? '1' : '0'); localStorage.setItem('nh.zoom', String(this.zoom)); localStorage.setItem('nh.camrot', this.camRot ? '1' : '0'); localStorage.setItem('nh.sens', String(this.sens)); localStorage.setItem('nh.wheel', this.wheel); } catch (e) { } },
 };
 Settings.load();
 function buzz(ms) { if (IS_MOBILE && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { } } }
