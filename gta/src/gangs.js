@@ -36,7 +36,7 @@ const Gangs = {
     }
   },
   load(sv) {
-    this.war = null; this.callCD = 0; this.incomeT = 0; this.boss = null;
+    this.war = null; this.exp = null; this.callCD = 0; this.incomeT = 0; this.boss = null;
     if (sv) { this.turf = sv.turf || {}; this.mine = sv.mine || null; this.rep = sv.rep || 0; this.rank = sv.rank || 0; this.day = sv.day || 0; this.nextWar = sv.nextWar || this.day + 5; this.fallen = sv.fallen || {}; if (!Object.keys(this.turf).length) this.initTurf(); }
     else { this.initTurf(); this.fallen = {}; this.mine = null; this.rep = 0; this.rank = 0; this.day = 0; this.nextWar = 5; }
     this.lastClock = Game.clock;
@@ -76,6 +76,7 @@ const Gangs = {
       if (this.incomeT >= 60) { this.incomeT -= 60; const amt = Math.round(this.count(this.mine) * (this.rank === 2 ? 150 : 30) * Empire.incomeMul()); if (amt > 0) { P.money += amt; Sfx.cash(); UI.toast(`조직 구역 수입 +$${amt.toLocaleString()} (${this.count(this.mine)}블록)`); } }
     }
     if (this.war) this.updateWar(dt);
+    if (this.exp) this.updateExp(dt);
     if (this.boss) this.updateBoss();
   },
 
@@ -259,6 +260,57 @@ const Gangs = {
     if (!target) { const pr = this.borderPairs().filter(([a, b]) => this.turf[a.id] === g || this.turf[b.id] === g); if (!pr.length) { UI.toast('맞닿은 라이벌 구역이 없다 — 먼저 구역을 넓혀라'); return; } const [a, b] = pick(pr); target = this.turf[a.id] === g ? this.turf[b.id] : this.turf[a.id]; }
     this.startWar(g, target);
   },
+  // ---------- 부하 파견: 이웃 블록 여러 곳을 부하들이 한꺼번에 차지하러 간다 (플레이어는 안 가도 된다) ----------
+  // 주인 없는 블록은 거의 성공, 라이벌 블록은 우리와 상대 조직원 수에 따라 성공률이 정해진다.
+  expCost(b) { return this.turf[b.id] ? 12000 : 4000; },
+  expChance(b) {
+    const r = this.turf[b.id]; if (!r) return 0.92;
+    const a = Empire.members(this.mine), d = Empire.members(r);
+    return clamp(0.3 + 0.5 * a / (a + d), 0.4, 0.85);
+  },
+  // 우리 구역에서 바깥으로 자라듯 n곳을 고른다 (고른 블록도 다음 블록의 이웃으로 친다)
+  expPlan(n) {
+    const g = this.mine, P = Game.player, taken = new Set(World.blocks.filter(b => this.turf[b.id] === g).map(b => b.id)), out = [];
+    const touch = (a, b) => a.x0 <= b.x1 + 3 && b.x0 <= a.x1 + 3 && a.y0 <= b.y1 + 3 && b.y0 <= a.y1 + 3;
+    const mine = () => World.blocks.filter(b => taken.has(b.id));
+    for (let i = 0; i < n; i++) {
+      const own = mine();
+      let best = null, bs = Infinity;
+      for (const b of World.blocks) {
+        if (taken.has(b.id) || !b.loop || b.airport || b.district === DIST.AIRPORT || b.district === DIST.PARK) continue;
+        if (own.length && !own.some(a => touch(a, b))) continue;
+        const d = dist((b.x0 + b.x1) / 2 * T, (b.y0 + b.y1) / 2 * T, P.px, P.py) * (this.turf[b.id] ? 1.6 : 1); // 주인 없는 곳 먼저
+        if (d < bs) { bs = d; best = b; }
+      }
+      if (!best) break;
+      taken.add(best.id); out.push(best);
+    }
+    return out;
+  },
+  expedition(n) {
+    if (this.exp) { UI.toast('이미 부하들이 나가 있다'); return; }
+    const list = this.expPlan(n); if (!list.length) { UI.toast('넓힐 수 있는 이웃 블록이 없다'); return; }
+    const cost = list.reduce((a, b) => a + this.expCost(b), 0), P = Game.player;
+    if (P.money < cost) { UI.toast(`파견 비용 $${cost.toLocaleString()}이 필요하다`); return; }
+    P.money -= cost;
+    this.exp = { list, t: 40 + 8 * list.length, T: 40 + 8 * list.length };
+    UI.big('부하 파견', `${list.length}곳으로 출발 — ${Math.round(this.exp.t)}초 뒤 결과 (지도에 주황 테두리)`, 3, GANGS[this.mine].color);
+  },
+  updateExp(dt) {
+    const E = this.exp; E.t -= dt;
+    if (E.t > 0) return;
+    this.exp = null;
+    if (!this.mine) return;
+    let ok = 0, fail = 0;
+    for (const b of E.list) {
+      if (this.turf[b.id] === this.mine) { ok++; continue; }
+      if (chance(this.expChance(b))) { this.turf[b.id] = this.mine; ok++; } else fail++;
+    }
+    if (ok) this.addRep(20 * ok, '부하 파견');
+    UI.big('부하 파견 결과', `${ok}곳 차지${fail ? ` · ${fail}곳 실패 (라이벌에게 밀렸다)` : ''} — 우리 구역 ${this.count(this.mine)}블록`, 3.5, GANGS[this.mine].color);
+    Save.write();
+  },
+  expStatus() { const E = this.exp; return E ? `부하 파견 중: ${E.list.length}곳 · ${Math.max(0, Math.ceil(E.t))}초 뒤 결과` : null; },
   // 우리 구역에 맞닿은 블록인가 (구역 넓히기 대상). 구역이 하나도 없으면 아무 블록이나
   raidable(b) {
     const g = this.mine; if (!g || !b || !b.loop || b.airport || b.district === DIST.AIRPORT || b.district === DIST.PARK || this.turf[b.id] === g) return false;
@@ -405,7 +457,11 @@ const GangJob = {
       const left = J.foes.filter(q => !q.dead).length;
       UI.objective(J.spawned ? `${J.neutral ? '건달' : '라이벌 조직원'} 처치: 남은 ${left}명` : J.neutral ? '주인 없는 이웃 블록으로 가라' : `${GANGS[J.rival].name} 구역으로 가라`);
       if (J.spawned && !left) {
-        Gangs.turf[J.blk.id] = Gangs.mine; Gangs.addRep(J.neutral ? 80 : 150, J.neutral ? '구역 넓히기 성공' : '구역 습격 성공'); P.money += J.neutral ? 1500 : 3000; Sfx.passed();
+        Gangs.turf[J.blk.id] = Gangs.mine;
+        const extra = World.blocks.filter(b => !Gangs.turf[b.id] && b.loop && !b.airport && b.district !== DIST.PARK && b.district !== DIST.AIRPORT && b.x0 <= J.blk.x1 + 3 && J.blk.x0 <= b.x1 + 3 && b.y0 <= J.blk.y1 + 3 && J.blk.y0 <= b.y1 + 3).slice(0, 2);
+        for (const b of extra) Gangs.turf[b.id] = Gangs.mine; // 소문이 나서 옆의 주인 없는 블록도 따라온다
+        if (extra.length) UI.toast(`소문이 퍼져 옆의 주인 없는 블록 ${extra.length}곳도 우리 구역이 됐다`);
+        Gangs.addRep(J.neutral ? 80 : 150, J.neutral ? '구역 넓히기 성공' : '구역 습격 성공'); P.money += J.neutral ? 1500 : 3000; Sfx.passed();
         UI.big('구역 확보!', `${GANGS[Gangs.mine].name} 구역 ${Gangs.count(Gangs.mine)}블록`, 3, GANGS[Gangs.mine].color);
         for (const q of J.foes) q.persistent = false;
         this.active = null; UI.objective(''); Save.write();
@@ -440,6 +496,12 @@ SHOPS.gang = {
     }
     if (GangJob.active) out.push({ id: 'gstop', name: '진행 중인 조직 활동 그만두기', price: 0, btn: '그만두기', desc: GangJob.active.kind === 'collect' ? '보호비 수금' : '구역 습격', ok: () => true, fn: () => { for (const q of GangJob.active.foes || []) q.persistent = false; GangJob.active = null; UI.objective(''); Shop.close(); } });
     out.push({ id: 'gpick', name: '구역 넓히기 — 지도에서 블록 고르기', price: 0, btn: '지도', desc: '우리 구역에 맞닿은 블록(노란 테두리)을 누르면 습격 시작 · 라이벌 8명 / 주인 없는 블록 5명', ok: () => !GangJob.active, fn: openTurfPicker });
+    if (Gangs.rank >= 1) for (const n of [3, 6, 12]) {
+      const plan = Gangs.expPlan(n), cost = plan.reduce((a, b) => a + Gangs.expCost(b), 0), riv = plan.filter(b => Gangs.turf[b.id]).length;
+      out.push({ id: 'gexp' + n, name: `부하 파견 — 이웃 블록 ${plan.length}곳 한꺼번에 (나는 안 가도 된다)`, price: cost, btn: '파견', desc: plan.length ? `주인 없는 곳 ${plan.length - riv} (성공 92%) · 라이벌 ${riv}${riv ? ` (성공 ${Math.round(Gangs.expChance(plan.find(b => Gangs.turf[b.id])) * 100)}% 안팎)` : ''} · ${40 + 8 * plan.length}초 뒤 결과` : '넓힐 수 있는 블록이 없다', ok: () => !Gangs.exp && plan.length > 0, fn: () => { Shop.close(); Gangs.expedition(n); } });
+    }
+    else out.push({ id: 'gexpno', name: '부하 파견은 파트너부터', price: 0, desc: '평판 300이면 파트너 · 조직을 직접 세우면 처음부터 보스', ok: () => false });
+    if (Gangs.exp) out.push({ id: 'gexpst', name: Gangs.expStatus(), price: 0, desc: '결과가 나오면 알려 준다', ok: () => false });
     out.push({ id: 'graid', name: '구역 습격 — 가까운 이웃 블록 자동 선택', price: 0, btn: '시작', desc: '라이벌 블록이 있으면 그쪽, 없으면 주인 없는 블록', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('raid'); } });
     out.push({ id: 'gcol', name: '보호비 수금 — 우리 구역 가게 3곳', price: 0, btn: '시작', desc: '평판 +40, 가게마다 $300', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('collect'); } });
     if (Gangs.rank >= 1) out.push({ id: 'gcall2', name: `부하 부르기 (${Empire.backupSize()}명)`, price: 0, btn: '호출', desc: 'K 키로도 부른다', ok: () => true, fn: () => { Shop.close(); Gangs.callBackup(); } });
@@ -461,6 +523,7 @@ function drawTurfOverlay(c, ox, oy, k, bx = ox, by = oy) {
     c.fillRect(ox + b.x0 * T * k, oy + b.y0 * T * k, (b.x1 - b.x0 + 1) * T * k, (b.y1 - b.y0 + 1) * T * k);
     c.globalAlpha = 1;
   }
+  if (Gangs.exp) { c.strokeStyle = '#ff9f1c'; c.lineWidth = 2.5; for (const b of Gangs.exp.list) c.strokeRect(ox + b.x0 * T * k, oy + b.y0 * T * k, (b.x1 - b.x0 + 1) * T * k, (b.y1 - b.y0 + 1) * T * k); }
   if (Gangs.war) { const w = Gangs.war; c.strokeStyle = '#ff3b3b'; c.lineWidth = 3; c.strokeRect(ox + w.blk.x0 * T * k, oy + w.blk.y0 * T * k, (w.blk.x1 - w.blk.x0 + 1) * T * k, (w.blk.y1 - w.blk.y0 + 1) * T * k); }
   let y = by + 10; ox = bx;
   c.fillStyle = 'rgba(0,0,0,0.75)'; c.fillRect(ox + 8, y - 4, 280, 20 * GANG_IDS.length + (Gangs.mine ? 26 : 8));
