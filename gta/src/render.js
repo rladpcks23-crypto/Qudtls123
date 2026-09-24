@@ -127,7 +127,14 @@ function drawGround(amb) {
           if (top && lft) ctx.fillRect(X + T - 0.35, Y, 0.28, T);
         }
       }
-      if (k === 6 || k === 7) { // 고속도로 바깥 차선: 차선 점선 + 가장자리 흰 실선
+      if (k === 6 || k === 7) { // 고속도로 바깥 차선: 차선 점선 + 가장자리 흰 실선 (교차로 옆이면 횡단보도가 바깥 차선까지 이어진다)
+        const xw = k === 6 ? (rk[i - 1] === 3 || rk[i + 1] === 3) : (rk[i - MW] === 3 || rk[i + MW] === 3);
+        if (xw) {
+          ctx.fillStyle = 'rgba(235,235,230,0.8)';
+          if (k === 6) { const l = rk[i - 1] === 3, low = rk[i - MW] === 2; for (let s = 0.2; s < T; s += 0.8) ctx.fillRect(X + (l ? 0.3 : 1.2), Y + s, 2.4, 0.45); if (low && !l) ctx.fillRect(X + 0.07, Y, 0.28, T); if (!low && l) ctx.fillRect(X + T - 0.35, Y, 0.28, T); } // 정지선
+          else { const a = rk[i - MW] === 3, lf = rk[i + 1] === 1; for (let s = 0.2; s < T; s += 0.8) ctx.fillRect(X + s, Y + (a ? 0.3 : 1.2), 0.45, 2.4); if (!lf && a) ctx.fillRect(X, Y + T - 0.35, T, 0.28); if (lf && !a) ctx.fillRect(X, Y + 0.07, T, 0.28); }
+          continue;
+        }
         ctx.fillStyle = 'rgba(235,235,230,0.75)';
         if (k === 6) { const inner = rk[i + MW] === 2 ? Y + T - 0.1 : Y; for (let s = 0; s < T; s += 2) ctx.fillRect(X + s, inner, 1, 0.1); ctx.fillRect(X, rk[i + MW] === 2 ? Y + 0.15 : Y + T - 0.25, T + ov, 0.12); }
         else { const inner = rk[i + 1] === 1 ? X + T - 0.1 : X; for (let s = 0; s < T; s += 2) ctx.fillRect(inner, Y + s, 0.1, 1); ctx.fillRect(rk[i + 1] === 1 ? X + 0.15 : X + T - 0.25, Y, 0.12, T + ov); }
@@ -220,8 +227,8 @@ function drawStreetFurniture() {
     if (!n.light) continue;
     for (let d = 0; d < 4; d++) {
       if (n.adj[(d + 2) % 4] < 0) continue; // d 방향으로 들어오는 진입로
-      const r = rightOf(d);
-      const x = n.x - DIRS[d][0] * (2 * T + 0.3) + r[0] * (T + 0.6), y = n.y - DIRS[d][1] * (2 * T + 0.3) + r[1] * (T + 0.6);
+      const r = rightOf(d), g = signalGeom(n, d);
+      const x = n.x - DIRS[d][0] * (g.back + 0.3) + r[0] * (g.half + 0.6), y = n.y - DIRS[d][1] * (g.back + 0.3) + r[1] * (g.half + 0.6);
       const st = lightState(n, d);
       ctx.fillStyle = '#1b1d21'; ctx.fillRect(x - 0.35, y - 0.35, 0.7, 0.7);
       ctx.fillStyle = st === 'g' ? '#39e36b' : st === 'y' ? '#ffc933' : '#ff3b3b';
@@ -231,9 +238,9 @@ function drawStreetFurniture() {
     for (let d = 0; d < 4; d++) {
       if (n.adj[(d + 2) % 4] < 0) continue;
       const walk = lightState(n, d) === 'r';
-      const r = rightOf(d);
+      const r = rightOf(d), g = signalGeom(n, d);
       for (const side of [-1, 1]) {
-        const x = n.x - DIRS[d][0] * T * 1.5 + r[0] * side * (T + 0.55), y = n.y - DIRS[d][1] * T * 1.5 + r[1] * side * (T + 0.55);
+        const x = n.x - DIRS[d][0] * g.mid + r[0] * side * (g.half + 0.55), y = n.y - DIRS[d][1] * g.mid + r[1] * side * (g.half + 0.55);
         ctx.fillStyle = '#15171b'; ctx.fillRect(x - 0.28, y - 0.28, 0.56, 0.56);
         ctx.fillStyle = walk ? '#6dff9a' : '#ff5a4a'; ctx.fillRect(x - 0.18, y - 0.18, 0.36, 0.36);
       }

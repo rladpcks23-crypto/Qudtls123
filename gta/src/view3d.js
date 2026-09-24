@@ -73,8 +73,8 @@ const View3D = {
       if (!n.light) continue;
       for (let d = 0; d < 4; d++) {
         if (n.adj[(d + 2) % 4] < 0) continue;
-        const r = rightOf(d);
-        tls.push({ n, d, x: n.x - DIRS[d][0] * (2 * T + 0.3) + r[0] * (T + 0.6), y: n.y - DIRS[d][1] * (2 * T + 0.3) + r[1] * (T + 0.6) });
+        const r = rightOf(d), g = signalGeom(n, d);
+        tls.push({ n, d, x: n.x - DIRS[d][0] * (g.back + 0.3) + r[0] * (g.half + 0.6), y: n.y - DIRS[d][1] * (g.back + 0.3) + r[1] * (g.half + 0.6) });
       }
     }
     // 청크별 물건 목록

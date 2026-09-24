@@ -1077,6 +1077,93 @@ function genWorld(seed) {
   // 7-9) 계획해 둔 길을 이제 포장한다 (모든 건물·장소를 앉힌 뒤)
   W.guardRoads = false;
   { const _t = performance.now(); paveRoads(); W.genT.paveRoads = Math.round(performance.now() - _t); }
+  { const _t = performance.now(); fixRoads(); W.genT.fixRoads = Math.round(performance.now() - _t); }
+
+  // 4-9) 끊긴 길 정리 (모든 생성이 끝난 뒤): 공항·군사섬·부두·주차장·해안 숲이 나중에 도로를 덮어 생긴 틈을 메우거나,
+  //      도로가 거의 없어진 구간은 길 그래프에서 빼서 차·GPS가 풀밭을 달리지 않게 하고, 남은 짧은 도로 토막은 인도로 바꾼다.
+  function fixRoads() {
+    const R = TL.ROAD, rk = W.roadK, isR = (x, y) => get(x, y) === R;
+    const paint = (x, y, k) => { const i = tIdx(x, y); W.tiles[i] = R; if (rk[i] !== 3) rk[i] = k; if (W.bIndex) W.bIndex[i] = -1; };
+    let repaired = 0, removed = 0, trimmed = 0;
+    const keep = [], dead = [];
+    for (const e of W.edgesList) {
+      const A = W.nodes[e[0]], B = W.nodes[e[1]], horiz = A.j === B.j;
+      const tl = [];
+      if (horiz) { const x0 = W.VX[Math.min(A.i, B.i)], x1 = W.VX[Math.max(A.i, B.i)] + 1; for (let x = x0; x <= x1; x++) for (let d = 0; d < 2; d++) tl.push([x, W.HY[A.j] + d]); }
+      else { const y0 = W.HY[Math.min(A.j, B.j)], y1 = W.HY[Math.max(A.j, B.j)] + 1; for (let y = y0; y <= y1; y++) for (let d = 0; d < 2; d++) tl.push([W.VX[A.i] + d, y]); }
+      const miss = tl.filter(([x, y]) => !isR(x, y));
+      if (!miss.length) { keep.push(e); continue; }
+      const blocked = miss.some(([x, y]) => get(x, y) === TL.BUILD || get(x, y) === TL.RUNWAY);
+      if (!blocked && miss.length <= tl.length * 0.5) { // 대부분 남아 있으면 틈을 메운다 (물 위는 다리)
+        for (const [x, y] of miss) paint(x, y, horiz ? 2 : 1);
+        repaired++; keep.push(e); continue;
+      }
+      // 길 그래프에서 빼고, 남은 도로 조각은 주변 땅으로 되돌린다 (교차로 칸은 둔다)
+      const [a, b] = [A, B], da = horiz ? (B.i > A.i ? 0 : 2) : (B.j > A.j ? 1 : 3);
+      a.adj[da] = -1; b.adj[(da + 2) % 4] = -1; removed++;
+      const cnt = {}; for (const [x, y] of miss) { const t = get(x, y); if (t !== TL.BUILD && t !== TL.WATER && t !== TL.RUNWAY) cnt[t] = (cnt[t] || 0) + 1; }
+      const fill = +(Object.keys(cnt).sort((p, q) => cnt[q] - cnt[p])[0] ?? TL.WALK);
+      dead.push({ tl, fill, horiz });
+    }
+    for (const { tl, fill, horiz } of dead) for (const [x, y] of tl) {
+      const i = tIdx(x, y); if (W.tiles[i] !== R || rk[i] === 3) continue;
+      if (rk[i] === (horiz ? 2 : 1)) { W.tiles[i] = fill; rk[i] = 0; trimmed++; }
+      for (const [ox, oy] of horiz ? [[0, -1], [0, 1]] : [[-1, 0], [1, 0]]) { const j = tIdx(x + ox, y + oy); if (W.tiles[j] === R && rk[j] === (horiz ? 6 : 7)) { W.tiles[j] = fill; rk[j] = 0; trimmed++; } }
+    }
+    W.edgesList = keep;
+    for (const n of W.nodes) { n.deg = n.adj.filter(a => a >= 0).length; if (n.deg < 3) n.light = null; else if (!n.light) n.light = { off: rr(0, LIGHT_CYCLE) }; }
+    // 고속도로 바깥 차선인데 옆에 본선이 없는 칸 → 인도
+    for (let y = 1; y < MH - 1; y++) for (let x = 1; x < MW - 1; x++) {
+      const i = tIdx(x, y); if (W.tiles[i] !== R) continue;
+      const k = rk[i], main = j => W.tiles[j] === R && (rk[j] === 1 || rk[j] === 2 || rk[j] === 3);
+      if (k === 6 && !main(i - MW) && !main(i + MW)) { W.tiles[i] = TL.WALK; rk[i] = 0; trimmed++; }
+      if (k === 7 && !main(i - 1) && !main(i + 1)) { W.tiles[i] = TL.WALK; rk[i] = 0; trimmed++; }
+    }
+    // 짧은 막다른 토막(3칸 이하, 교차로에서 삐져나온 것) → 인도. 여러 번 반복
+    for (let pass = 0; pass < 4; pass++) {
+      let ch = 0;
+      for (let y = 2; y < MH - 2; y++) for (let x = 2; x < MW - 2; x++) {
+        const i = tIdx(x, y); if (W.tiles[i] !== R) continue; const k = rk[i];
+        if (k !== 1 && k !== 2) continue;
+        const [dx, dy] = k === 1 ? [0, 1] : [1, 0];
+        for (const s of [1, -1]) {
+          if (isR(x + dx * s, y + dy * s)) continue; // 이 방향이 막혔다
+          let run = 1; while (run <= 4 && isR(x - dx * s * run, y - dy * s * run) && rk[tIdx(x - dx * s * run, y - dy * s * run)] === k) run++;
+          if (run <= 3) { for (let r = 0; r < run; r++) { const j = tIdx(x - dx * s * r, y - dy * s * r); W.tiles[j] = TL.WALK; rk[j] = 0; } ch += run; }
+          break;
+        }
+      }
+      trimmed += ch; if (!ch) break;
+    }
+    // 고속도로가 끝나는 T자 교차로: 바깥 차선이 교차로 옆에서 막혀 있으면 교차로 칸으로 넓힌다
+    for (let pass = 0; pass < 3; pass++) for (let y = 1; y < MH - 1; y++) for (let x = 1; x < MW - 1; x++) {
+      const i = tIdx(x, y); if (W.tiles[i] !== R) continue; const k = rk[i];
+      if (k === 7 && (!isR(x, y - 1) || !isR(x, y + 1)) && (rk[i - 1] === 3 || rk[i + 1] === 3)) rk[i] = 3;
+      else if (k === 6 && (!isR(x - 1, y) || !isR(x + 1, y)) && (rk[i - MW] === 3 || rk[i + MW] === 3)) rk[i] = 3;
+    }
+    // 어디에도 이어지지 않은 작은 도로 섬(60칸 미만) → 풀밭
+    const seen = new Uint8Array(MW * MH); let islands = 0;
+    for (let s0 = 0; s0 < MW * MH; s0++) {
+      if (seen[s0] || W.tiles[s0] !== R) continue;
+      const comp = [s0]; seen[s0] = 1;
+      for (let q = 0; q < comp.length && comp.length < 60; q++) { const c = comp[q], cx = c % MW, cy = (c / MW) | 0; for (const [dx, dy] of DIRS) { const X = cx + dx, Y = cy + dy; if (X < 0 || Y < 0 || X >= MW || Y >= MH) continue; const j = X + Y * MW; if (!seen[j] && W.tiles[j] === R) { seen[j] = 1; comp.push(j); } } }
+      if (comp.length >= 60) { // 큰 덩어리는 끝까지 표시만 해 둔다
+        for (let q = 0; q < comp.length; q++) { const c = comp[q], cx = c % MW, cy = (c / MW) | 0; for (const [dx, dy] of DIRS) { const X = cx + dx, Y = cy + dy; if (X < 0 || Y < 0 || X >= MW || Y >= MH) continue; const j = X + Y * MW; if (!seen[j] && W.tiles[j] === R) { seen[j] = 1; comp.push(j); } } }
+        continue;
+      }
+      if (comp.some(c => rk[c] === 4 || rk[c] === 5)) continue; // 골목·대로 조각은 원래 따로 떨어져 있다
+      for (const c of comp) { W.tiles[c] = TL.GRASS; rk[c] = 0; } islands++; trimmed += comp.length;
+    }
+    // 정리 뒤에도 도로가 빠진 간선은 그래프에서 뺀다
+    W.edgesList = W.edgesList.filter(e => {
+      const A = W.nodes[e[0]], B = W.nodes[e[1]], L = dist(A.x, A.y, B.x, B.y); let bad = 0, n = 0;
+      for (let q = 2; q < L - 2; q += 2) { n++; if (!isR(Math.floor((A.x + (B.x - A.x) * q / L) / T), Math.floor((A.y + (B.y - A.y) * q / L) / T))) bad++; }
+      if (!bad) return true;
+      const da = A.j === B.j ? (B.i > A.i ? 0 : 2) : (B.j > A.j ? 1 : 3); A.adj[da] = -1; B.adj[(da + 2) % 4] = -1; removed++; return false;
+    });
+    for (const n of W.nodes) { n.deg = n.adj.filter(a => a >= 0).length; if (n.deg < 3) n.light = null; }
+    W.roadFix = { repaired, removed, trimmed, islands };
+  }
 
   // 8) 가로등: 교차로 모서리 + 긴 구간 중간
   for (const n of W.nodes) for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
@@ -1260,14 +1347,23 @@ function laneSpot(edge, forward, s) {
   return { x: A.x + DIRS[d][0] * s + r[0] * T * 0.5, y: A.y + DIRS[d][1] * s + r[1] * T * 0.5, a: Math.atan2(DIRS[d][1], DIRS[d][0]), A, B, d };
 }
 
+// 신호등 자리: 진입로 d의 횡단보도 깊이(교차로 칸 수)와 도로 반폭 — 고속도로(4차선)·넓은 교차로에서도 인도 쪽에 선다
+function signalGeom(n, d) {
+  const c = n.sg || (n.sg = []); if (c[d]) return c[d];
+  const dx = -DIRS[d][0], dy = -DIRS[d][1], r = rightOf(d), tileK = (x, y) => { const tx = Math.floor(x / T), ty = Math.floor(y / T); const i = tIdx(tx, ty); return World.tiles[i] === TL.ROAD ? World.roadK[i] : -1; };
+  let k = 1; while (k < 5 && tileK(n.x + dx * (k - 0.5) * T, n.y + dy * (k - 0.5) * T) === 3) k++;
+  const cx = n.x + dx * (k - 0.5) * T, cy = n.y + dy * (k - 0.5) * T;
+  let m = 1; while (m < 4 && tileK(cx + r[0] * (m + 0.5) * T, cy + r[1] * (m + 0.5) * T) >= 0) m++;
+  return (c[d] = { back: k * T, mid: (k - 0.5) * T, half: m * T });
+}
 // ---------- 보행자 횡단 규칙 ----------
 // 횡단보도 = 교차로 바로 옆 도로 칸(흰 줄무늬). 그 도로의 차량 신호가 빨간불일 때만 건널 수 있다.
 function isCrosswalk(tx, ty) {
   if (tx < 1 || ty < 1 || tx >= MW - 1 || ty >= MH - 1) return false;
   const i = tIdx(tx, ty), rk = World.roadK;
   if (World.tiles[i] !== TL.ROAD) return false;
-  if (rk[i] === 1) return rk[i - MW] === 3 || rk[i + MW] === 3;
-  if (rk[i] === 2) return rk[i - 1] === 3 || rk[i + 1] === 3;
+  if (rk[i] === 1 || rk[i] === 7) return rk[i - MW] === 3 || rk[i + MW] === 3;
+  if (rk[i] === 2 || rk[i] === 6) return rk[i - 1] === 3 || rk[i + 1] === 3;
   return false;
 }
 // 0: 도로 아님, 1: 합법 횡단(횡단보도 + 보행 신호), 2: 무단횡단
@@ -1278,6 +1374,6 @@ function jayStatus(x, y) {
   if (!isCrosswalk(tx, ty)) return 2;
   const n = nearestNode(x, y);
   if (!n.light) return 1;
-  const carDir = World.roadK[tIdx(tx, ty)] === 1 ? 1 : 0; // 세로 도로면 남북 신호
+  const carDir = World.roadK[tIdx(tx, ty)] === 1 || World.roadK[tIdx(tx, ty)] === 7 ? 1 : 0; // 세로 도로면 남북 신호
   return lightState(n, carDir) === 'r' ? 1 : 2;
 }
