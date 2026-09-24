@@ -171,6 +171,14 @@ function drawHUD(dt) {
     txt(c, line, pad + 12 * s, hy + 18 * s, `700 ${13 * s}px ${FONT_KR}`, J.def.legal ? '#bcdcff' : '#ffc2d6', null);
     hy += 32 * s;
   }
+  const ws = Gangs.warStatus();
+  if (ws) {
+    c.font = `700 ${13 * s}px ${FONT_KR}`;
+    const lines = wrapLines(c, ws, 420 * s), w = Math.max(...lines.map(l => c.measureText(l).width)) + 24 * s, h = lines.length * 18 * s + 10 * s;
+    c.fillStyle = 'rgba(90,15,15,0.78)'; roundRect(c, pad, hy, w, h, 6 * s); c.fill();
+    lines.forEach((l, i) => txt(c, l, pad + 12 * s, hy + 19 * s + i * 18 * s, `700 ${13 * s}px ${FONT_KR}`, '#ffd0d0', null));
+    hy += h + 6 * s;
+  }
   if (m && m.objective && UI.objT <= 0) {
     c.font = `600 ${13 * s}px ${FONT_KR}`;
     const w = c.measureText(m.objective).width + 28 * s;

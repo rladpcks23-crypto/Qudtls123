@@ -121,7 +121,9 @@ const Gangs = {
     const w = this.war, P = Game.player;
     w.t += dt;
     if (!w.sim && dist(w.x, w.y, P.px, P.py) < 250) { w.sim = true; this.spawnWave(); }
-    if (!w.sim) { if (w.t > 90) this.endWar(chance(this.count(w.A) / (this.count(w.A) + this.count(w.D) + 0.01)) ? w.A : w.D); return; }
+    const ours = this.mine && (w.A === this.mine || w.D === this.mine);
+    // 멀리 있으면 싸움은 보이지 않고, 시간이 지나면 두 조직의 구역 크기로 승패가 난다 (우리 전쟁은 달려갈 시간을 더 준다)
+    if (!w.sim) { if (w.t > (ours ? 240 : 90)) { w.auto = true; this.endWar(chance(this.count(w.A) / (this.count(w.A) + this.count(w.D) + 0.01)) ? w.A : w.D); } return; }
     const alive = g => Game.peds.filter(p => p.war === w && p.gang === g && !p.dead).length;
     const a = alive(w.A), d = alive(w.D);
     // 전투원을 서로에게 붙인다
@@ -133,6 +135,16 @@ const Gangs = {
     if ((a === 0 || d === 0) && w.wave < 3 && w.t < 150) { this.spawnWave(); return; }
     if (a === 0 || d === 0 || w.t > 180) this.endWar(a > d ? w.A : w.D);
   },
+  // HUD에 띄울 전쟁 상황 한 줄 (우리 전쟁이거나 가까운 전쟁만)
+  warStatus() {
+    const w = this.war; if (!w) return null;
+    const P = Game.player, d = Math.round(dist(w.x, w.y, P.px, P.py)), ours = this.mine && (w.A === this.mine || w.D === this.mine);
+    if (!ours && d > 300) return null;
+    const side = !ours ? '' : w.A === this.mine ? ' — 우리가 공격' : ' — 우리가 방어';
+    if (!w.sim) return `갱 전쟁: ${GANGS[w.A].name} → ${GANGS[w.D].name}${side} · 전쟁터까지 ${d}m (250m 안에 들어가면 싸움 시작 · ${Math.max(0, Math.ceil((ours ? 240 : 90) - w.t))}초 뒤 자동 판정)`;
+    const alive = g => Game.peds.filter(p => p.war === w && p.gang === g && !p.dead).length;
+    return `갱 전쟁 ${w.wave}/3차${side} · ${GANGS[w.A].name} ${alive(w.A)}명 vs ${GANGS[w.D].name} ${alive(w.D)}명 · 남은 ${Math.max(0, Math.ceil(180 - w.t))}초 (한쪽이 3차까지 다 쓰러지면 끝)`;
+  },
   endWar(win) {
     const w = this.war; if (!w) return;
     this.war = null;
@@ -142,6 +154,9 @@ const Gangs = {
     UI.big(`${GANGS[win].name} 승리`, win === w.A ? '구역을 빼앗았다' : '구역을 지켜냈다', 3, GANGS[win].color);
     if (this.mine === win) { this.addRep(200, '전쟁 승리'); Game.player.money += 5000; UI.toast('전쟁 승리 보너스 +$5,000'); }
     else if (this.mine === lose) this.addRep(-50, '전쟁 패배');
+    // 무슨 일이 있었는지 한 줄로 알려 준다
+    const what = win === w.A ? `${GANGS[w.A].name}가 ${GANGS[w.D].name}의 블록 1개를 빼앗았다` : `${GANGS[w.D].name}가 블록을 지켜냈다 (구역 변화 없음)`;
+    UI.toast(`갱 전쟁 결과: ${what}${w.auto ? ' — 현장에 없어서 두 조직의 구역 크기로 승패가 났다' : ''} · 지도(M → G)에서 구역 확인`);
     Save.write();
   },
   onKill(p, by) {
