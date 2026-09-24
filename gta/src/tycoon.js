@@ -227,7 +227,7 @@ const LUXURY = [
     if (st) W.places.holdings = near(st, 30, 10);
     if (re) W.places.devco = near(re, -30, 12);
     // 저택: 웨스트 힐즈(주택가)의 조용한 곳
-    let best = null, bd = 1e9; for (const b of W.blocks) { if (b.district !== DIST.RESID) continue; const d = Math.hypot((b.x0 + b.x1) / 2 / MW - 0.2, (b.y0 + b.y1) / 2 / MH - 0.45); if (d < bd) { bd = d; best = b; } }
+    let best = null, bd = 1e9; for (const b of W.blocks) { if (b.district !== DIST.RESID) continue; const d = Math.hypot((b.x0 + b.x1) / 2 / CITY_W - 0.2, (b.y0 + b.y1) / 2 / CITY_H - 0.45); if (d < bd) { bd = d; best = b; } }
     if (best) W.places.mansion = sidewalkNear((best.x0 + best.x1) / 2 * T, (best.y0 + best.y1) / 2 * T, 2);
     for (const [k, ch, c, l] of [['holdings', '홀', '#ffd166', '네온 홀딩스 (기업 인수)'], ['devco', '개', '#9be15d', '하버 개발 (부동산 개발)'], ['mansion', '저', '#f2d479', '힐탑 저택 (금고·수집품)']]) {
       if (!W.places[k]) continue; PLACE_MARK[k] = c; EXTRA_ICONS.push({ key: k, ch, c, label: l }); EXTRA_PLACES.push([k, k]);

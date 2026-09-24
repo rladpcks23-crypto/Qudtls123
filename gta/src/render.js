@@ -64,7 +64,11 @@ const GROUND = {
   [TL.BUILD]: ['#2a2e35'],
   [TL.WATER]: ['#1d5a80'],
   [TL.RUNWAY]: ['#2c2e33', '#2a2c31'],
+  [TL.ROCK]: ['#8a6f55'],
 };
+// 산 음영: 북서쪽에서 빛이 온다고 보고 경사에 따라 밝게/어둡게
+function rockSlope(tx, ty) { const h = World.rockH, i = tx + ty * MW, a = h[i - 1 - MW] || 0, b = h[i + 1 + MW] || 0; return clamp((a - b) * 0.012, -0.25, 0.25); }
+function shadeHex(hex, f) { const n = parseInt(hex.slice(1), 16); const c = v => clamp(Math.round(f > 0 ? v + (255 - v) * f : v * (1 + f)), 0, 255); return `rgb(${c(n >> 16 & 255)},${c(n >> 8 & 255)},${c(n & 255)})`; }
 function drawGround(amb) {
   const ppm = Cam.ppm;
   const x0 = Math.max(0, Math.floor((Cam.x - Cam.vw / 2 - 2) / T)), x1 = Math.min(MW - 1, Math.floor((Cam.x + Cam.vw / 2 + 2) / T));
@@ -78,7 +82,7 @@ function drawGround(amb) {
     const t = tiles[tx + ty * MW];
     if (t === TL.WATER) continue;
     const pal = GROUND[t];
-    ctx.fillStyle = pal[Math.floor(hash2(tx, ty) * pal.length)];
+    ctx.fillStyle = t === TL.ROCK ? shadeHex(rockColor(World.rockH[tx + ty * MW]), (hash2(tx, ty) - 0.5) * 0.12 + rockSlope(tx, ty)) : pal[Math.floor(hash2(tx, ty) * pal.length)];
     ctx.fillRect(tx * T, ty * T, T + ov, T + ov);
   }
   const tt = Game.time;
@@ -631,6 +635,15 @@ function drawTrees(amb) {
         ctx.beginPath(); ctx.ellipse(x + Math.cos(a) * 1.1 * f, y + Math.sin(a) * 1.1 * f, 1.3 * f, 0.35 * f, a, 0, TAU); ctx.fill();
       }
       ctx.fillStyle = tint('#5a4a2a', amb); ctx.beginPath(); ctx.arc(x, y, 0.35 * f, 0, TAU); ctx.fill();
+    } else if (t.kind === 'cactus') { // 사막 선인장: 몸통 + 팔 두 개
+      ctx.strokeStyle = tint('#3f7a45', amb); ctx.lineCap = 'round'; ctx.lineWidth = 0.55 * f;
+      ctx.beginPath(); ctx.moveTo(t.x, t.y); ctx.lineTo(x, y); ctx.stroke();
+      ctx.lineWidth = 0.38 * f; const s = t.hue > 0.5 ? 1 : -1;
+      ctx.beginPath(); ctx.moveTo(lerp(t.x, x, 0.45), lerp(t.y, y, 0.45)); ctx.lineTo(lerp(t.x, x, 0.45) + 0.7 * s, lerp(t.y, y, 0.45)); ctx.lineTo(lerp(t.x, x, 0.8) + 0.7 * s, lerp(t.y, y, 0.8)); ctx.stroke();
+      ctx.lineCap = 'butt';
+    } else if (t.kind === 'pine') { // 침엽수: 짙은 녹색 겹 원뿔
+      const base = t.hue < 0.5 ? '#24462a' : '#2c5230';
+      for (let k = 0; k < 3; k++) { const q = 1 - k * 0.3; ctx.fillStyle = tint(base, amb, -0.1 + k * 0.1); ctx.beginPath(); ctx.arc(lerp(t.x, x, 0.5 + k * 0.25), lerp(t.y, y, 0.5 + k * 0.25), t.r * q * f, 0, TAU); ctx.fill(); }
     } else {
       const base = t.hue < 0.33 ? '#3d6e34' : t.hue < 0.66 ? '#467a3a' : '#355f30';
       ctx.fillStyle = tint(base, amb, -0.15); ctx.beginPath(); ctx.arc(x, y, t.r * f, 0, TAU); ctx.fill();

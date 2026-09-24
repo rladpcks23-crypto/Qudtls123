@@ -35,7 +35,7 @@ const Missions = {
   idx: 0, active: null, givers: [], cool: 0,
   defs: [],
   init() {
-    const at = (u, v) => sidewalkNear(u * MW * T, v * MH * T);
+    const at = (u, v) => sidewalkNear(u * CITY_W * T, v * CITY_H * T);
     this.givers = [at(0.4, 0.36), at(0.55, 0.3), at(0.3, 0.62), at(0.66, 0.5), at(0.45, 0.48), at(0.62, 0.22), at(0.28, 0.4), at(0.5, 0.62), at(0.58, 0.44), at(0.35, 0.25), at(0.7, 0.66), at(0.24, 0.55), at(0.5, 0.42), at(0.42, 0.7)];
     this.defs = MISSION_DEFS;
     // 미션 마커가 가게·고용센터 입구와 겹치면 둘이 동시에 열리므로 조금 옮긴다
@@ -157,7 +157,7 @@ function assassinDef(o) {
   return {
     title: o.title, reward: o.reward, intro: o.intro, outro: o.outro, noPolice: o.noPolice,
     start(m) {
-      const base = sidewalkNear(o.u * MW * T, o.v * MH * T);
+      const base = sidewalkNear(o.u * CITY_W * T, o.v * CITY_H * T);
       m.target = missionPed(m, 'target', base.x, base.y);
       m.target.hp = m.target.maxHp = o.targetHp; if (o.targetLook) Object.assign(m.target, o.targetLook);
       m.blipT = blip(m, { ent: m.target, c: '#ff4d4d', big: true });
@@ -236,7 +236,7 @@ const MISSION_DEFS = [
     start(m) {
       const P = Game.player;
       m.A = sidewalkNear(P.px + rand(-120, 120), P.py + rand(-120, 120), 60);
-      const far = [[0.2, 0.2], [0.8, 0.2], [0.2, 0.8], [0.75, 0.75]].map(([u, v]) => ({ x: u * MW * T, y: v * MH * T })).sort((a, b) => dist(b.x, b.y, m.A.x, m.A.y) - dist(a.x, a.y, m.A.x, m.A.y))[0];
+      const far = [[0.2, 0.2], [0.8, 0.2], [0.2, 0.8], [0.75, 0.75]].map(([u, v]) => ({ x: u * CITY_W * T, y: v * CITY_H * T })).sort((a, b) => dist(b.x, b.y, m.A.x, m.A.y) - dist(a.x, a.y, m.A.x, m.A.y))[0];
       m.B = sidewalkNear(far.x, far.y);
       blip(m, { x: m.A.x, y: m.A.y, c: '#4fe38a', big: true });
     },
@@ -268,7 +268,7 @@ const MISSION_DEFS = [
     outro: [['조니 박', '항구가 조용해졌네. 청룡파도 한동안은 얌전하겠지.']],
     start(m) {
       giveWeapon(Game.player, 'smg', 300); Game.player.weapon = 'smg';
-      m.center = sidewalkNear(0.8 * MW * T, 0.35 * MH * T);
+      m.center = sidewalkNear(0.8 * CITY_W * T, 0.35 * CITY_H * T);
       m.blips.push({ x: m.center.x, y: m.center.y, c: '#4fe38a', big: true });
       m.stage = 0;
     },
@@ -432,10 +432,10 @@ const MISSION_DEFS = [
     intro: [['마담 윤', '청룡파 회계사가 우리 쪽으로 넘어오겠대. 녀석들이 가만있지 않겠지.'], ['마담 윤', '차로 데리러 가서 선셋 비치 은신처까지 무사히 데려와. 차가 터지면 끝이야.']],
     outro: [['마담 윤', '회계사가 장부를 전부 넘겼어. 청룡파 금고가 훤히 보이네.']],
     start(m) {
-      const s = sidewalkNear(0.22 * MW * T, 0.3 * MH * T);
+      const s = sidewalkNear(0.22 * CITY_W * T, 0.3 * CITY_H * T);
       m.w = missionPed(m, 'civ', s.x, s.y); m.w.state = 'idle'; m.w.shirt = '#e8d9b0'; m.w.pants = '#3b3b3b';
       m.wb = blip(m, { ent: m.w, c: '#6fe0ff', big: true });
-      m.safe = sidewalkNear(0.78 * MW * T, 0.8 * MH * T); m.spawnT = 0;
+      m.safe = sidewalkNear(0.78 * CITY_W * T, 0.8 * CITY_H * T); m.spawnT = 0;
     },
     update(m, dt) {
       const P = Game.player;
@@ -472,7 +472,7 @@ const MISSION_DEFS = [
     start(m) {
       const P = Game.player, sp = roadsideSpot(P.px, P.py, 8, 35);
       m.van = missionCar(m, 'van', sp.x, sp.y, sp.a, { color: '#6b2f2f', hp: 320 }); m.van.label = '폭탄 밴';
-      m.dest = sidewalkNear((World.VX[World.NX - 1] + 2) * T, 0.72 * MH * T);
+      m.dest = sidewalkNear((World.VX[World.NX - 1] + 2) * T, 0.72 * CITY_H * T);
       blip(m, { ent: m.van, c: '#ff4d4d', big: true }); m.slow = 0;
     },
     update(m, dt) {

@@ -12,8 +12,11 @@
 const ORGANIC_ROADS = false; // v2.13: 구불구불한 옛길·해안도로·에투알 방사로를 끈다 (네모난 격자 도로 + 직선 고속도로·골목만)
 const ENABLE_BASE = false; // v2.8: 군 기지는 잠시 뺀다 (군 장비는 공항 군수 화물 구역에)
 const T = 4;               // 타일 한 칸 = 4m (차선 폭)
-const MW = 640, MH = 640;  // 타일 수 → 2560m × 2560m 섬 (v2.8에서 480 → 640 확장; 3D는 청크 단위로 스트리밍)
-const TL = { WATER: 0, ROAD: 1, WALK: 2, BUILD: 3, GRASS: 4, SAND: 5, LOT: 6, PLAZA: 7, DOCK: 8, RUNWAY: 9 };
+// 도시 섬 640×640 타일(2560m) + v2.17 동쪽 바다 건너 레드 카운티(사막·호수·산·시골 마을) → 전체 1400×640 타일(5.6km × 2.56km)
+//   MW/MH는 생성 중에만 바뀐다: 도시는 예전과 똑같이 640×640으로 만든 뒤(저장된 구역·건물 번호 유지) 배열을 넓히고 카운티를 붙인다
+const CITY_W = 640, CITY_H = 640, FULL_W = 1400, FULL_H = 640;
+let MW = CITY_W, MH = CITY_H;
+const TL = { WATER: 0, ROAD: 1, WALK: 2, BUILD: 3, GRASS: 4, SAND: 5, LOT: 6, PLAZA: 7, DOCK: 8, RUNWAY: 9, ROCK: 10 }; // ROCK = 산·메사 (막힘, 높이는 World.rockH)
 const DIST = { DOWNTOWN: 0, MIDTOWN: 1, RESID: 2, HARBOR: 3, BEACH: 4, PARK: 5, COAST: 6, BASE: 7, INDUSTRY: 8, AIRPORT: 9 };
 const DIST_NAMES = ['다운타운', '미드타운', '웨스트 힐즈', '하버 포인트', '선셋 비치', '센트럴 파크', '해안 산책로', '포트 네온 기지', '아이언 밸리', '네온 국제공항'];
 // 동네: 이름 · 구역 종류 · 씨앗 위치(맵 비율) · w(작을수록 넓게 퍼짐)
@@ -43,17 +46,17 @@ function tileAt(x, y) {
   return World.tiles[tx + ty * MW];
 }
 // 사람이 헤엄칠 수 있는 판정(물은 막히지 않음) · 보트 판정(물이 아닌 곳은 전부 막힘)
-function solidNoWater(tx, ty) { if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return true; return World.tiles[tx + ty * MW] === TL.BUILD; }
+function solidNoWater(tx, ty) { if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return true; const t = World.tiles[tx + ty * MW]; return t === TL.BUILD || t === TL.ROCK; }
 function solidBoat(tx, ty) { if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return false; return World.tiles[tx + ty * MW] !== TL.WATER; }
 function solidTile(tx, ty) { return solidT(tx, ty); }
 function solidT(tx, ty) {
   if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return true;
   const t = World.tiles[tx + ty * MW];
-  return t === TL.WATER || t === TL.BUILD;
+  return t === TL.WATER || t === TL.BUILD || t === TL.ROCK;
 }
 function blocksSight(tx, ty) {
   if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return true;
-  return World.tiles[tx + ty * MW] === TL.BUILD;
+  const t = World.tiles[tx + ty * MW]; return t === TL.BUILD || t === TL.ROCK;
 }
 // 현재 위치의 동네 이름 (블록 밖이면 구역 이름)
 function hoodAt(x, y) {
@@ -96,6 +99,16 @@ function losClear(x0, y0, x1, y1) {
 
 // ---------------------------------------------------------------------
 function genWorld(seed) {
+  MW = CITY_W; MH = CITY_H;
+  genCity(seed);
+  widenWorld(FULL_W, FULL_H);
+  { const _t = performance.now(); genCounty(seed); World.genT.county = Math.round(performance.now() - _t); }
+  const W = World;
+  W.treeGrid = new Map();
+  for (const t of W.trees) { const k = Math.floor(t.x / 8) + ',' + Math.floor(t.y / 8); if (!W.treeGrid.has(k)) W.treeGrid.set(k, []); W.treeGrid.get(k).push(t); }
+  buildSpatial(); buildMinimap();
+}
+function genCity(seed) {
   const R = mulberry32(seed);
   const rr = (a, b) => a + R() * (b - a), ri = (a, b) => Math.floor(rr(a, b + 1));
   const rpick = a => a[Math.floor(R() * a.length)];
@@ -1183,8 +1196,7 @@ function genWorld(seed) {
   W.treeGrid = new Map();
   for (const t of W.trees) { const k = Math.floor(t.x / 8) + ',' + Math.floor(t.y / 8); if (!W.treeGrid.has(k)) W.treeGrid.set(k, []); W.treeGrid.get(k).push(t); }
 
-  { const _t = performance.now(); buildSpatial(); W.genT['buildSpatial'] = Math.round(performance.now() - _t); }
-  { const _t = performance.now(); buildMinimap(); W.genT['buildMinimap'] = Math.round(performance.now() - _t); }
+  // 공간 인덱스·미니맵은 카운티까지 붙인 뒤 genWorld에서 만든다
 }
 
 // ---------- 공간 인덱스 (맵이 커져서 '전체 목록에서 무작위로 고르기'·'전체 훑기'를 피한다) ----------
@@ -1221,13 +1233,16 @@ function treesNear(x, y) {
   return out;
 }
 
-const MINI_COL = { [TL.WATER]: '#1d4e6e', [TL.ROAD]: '#c9ccd2', [TL.WALK]: '#8b8f96', [TL.BUILD]: '#39404c', [TL.GRASS]: '#3f6b3a', [TL.SAND]: '#c9b37c', [TL.LOT]: '#5d6168', [TL.PLAZA]: '#8f8577', [TL.DOCK]: '#6b6f73', [TL.RUNWAY]: '#2a2c30' };
+const MINI_COL = { [TL.WATER]: '#1d4e6e', [TL.ROAD]: '#c9ccd2', [TL.WALK]: '#8b8f96', [TL.BUILD]: '#39404c', [TL.GRASS]: '#3f6b3a', [TL.SAND]: '#c9b37c', [TL.LOT]: '#5d6168', [TL.PLAZA]: '#8f8577', [TL.DOCK]: '#6b6f73', [TL.RUNWAY]: '#2a2c30', [TL.ROCK]: '#7a6a58' };
+// 산 색: 높이에 따라 흙 → 바위 → 눈
+function rockColor(h) { return h > 95 ? '#eef1f4' : h > 70 ? '#a7a39c' : h > 40 ? '#8c7f70' : h > 18 ? '#8a6f55' : '#94744f'; }
 function buildMinimap() {
   const c = document.createElement('canvas'); c.width = MW; c.height = MH;
   const g = c.getContext('2d'), img = g.createImageData(MW, MH);
   const bm = World.boulevardMask, E = World.etoile;
   for (let i = 0; i < MW * MH; i++) {
     let col = MINI_COL[World.tiles[i]];
+    if (World.tiles[i] === TL.ROCK) col = rockColor(World.rockH[i]);
     // 지도 색: 옛길·해안도로·방사로·골목은 일반 도로와 같은 색 계열(골목은 조금 어둡게), 고속도로만 주황
     if (bm && bm[i] === 2) col = '#aeb2b9';
     else if (World.tiles[i] === TL.ROAD && (World.roadK[i] >= 6 || (World.hwLine && World.hwLine[i]))) col = '#f0a04b';
@@ -1242,6 +1257,8 @@ function buildMinimap() {
 // 고속도로 구간인가 (노드 id 두 개)
 function edgeHighway(a, b) {
   const A = World.nodes[a], B = World.nodes[b]; if (!A || !B || !World.hwH) return false;
+  if (World.hwEdges && World.hwEdges.has(Math.min(a, b) + ',' + Math.max(a, b))) return true; // 카운티 다리·간선
+  if (A.county || B.county) return false;
   return A.j === B.j ? World.hwH.has(A.j) : A.i === B.i ? World.hwV.has(A.i) : false;
 }
 // ---------- 도로 그래프 질의 ----------

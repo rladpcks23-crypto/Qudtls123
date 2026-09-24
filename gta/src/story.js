@@ -60,7 +60,7 @@ Object.assign(CHAR_LOOK, {
 GANGS.lotus = { name: '블랙 로터스', shirt: '#15151a', band: '#e8e8e8', pants: '#0d0d10', color: '#e8e8e8', short: '로' };
 
 // ---------- 단계 엔진 ----------
-const at = (u, v) => sidewalkNear(u * MW * T, v * MH * T);
+const at = (u, v) => sidewalkNear(u * CITY_W * T, v * CITY_H * T);
 const placeOr = (k, u, v) => { const q = World.places[k]; return q ? sidewalkNear(q.x, q.y, 9) : at(u, v); }; // 가게·장소 마커 위는 피한다 (도착하자마자 상점 창이 열리지 않게)
 function stepsDef(o) {
   return {
@@ -346,7 +346,7 @@ MISSION_DEFS.push(...CH2);
   Missions.init = function () {
     oInit();
     const extra = [[0.62, 0.52], [0.46, 0.3], [0.72, 0.4], [0.36, 0.6], [0.52, 0.46], [0.58, 0.68], [0.44, 0.56], [0.3, 0.44], [0.66, 0.6], [0.56, 0.36], [0.4, 0.4], [0.5, 0.5]];
-    while (this.givers.length < MISSION_DEFS.length) { const [u, v] = extra[(this.givers.length - 14) % extra.length]; this.givers.push(sidewalkNear(u * MW * T + rand(-20, 20), v * MH * T + rand(-20, 20))); }
+    while (this.givers.length < MISSION_DEFS.length) { const [u, v] = extra[(this.givers.length - 14) % extra.length]; this.givers.push(sidewalkNear(u * CITY_W * T + rand(-20, 20), v * CITY_H * T + rand(-20, 20))); }
     this.defs = MISSION_DEFS;
   };
   // 미션 시작 대사를 컷신으로 (1부 포함 모든 미션)

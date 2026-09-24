@@ -315,6 +315,7 @@ const Gangs = {
   raidable(b) {
     const g = this.mine; if (!g || !b || !b.loop || b.airport || b.district === DIST.AIRPORT || b.district === DIST.PARK || this.turf[b.id] === g) return false;
     const own = World.blocks.filter(a => this.turf[a.id] === g);
+    if (b.county && !own.some(a => a.county)) return true; // 레드 카운티: 아직 발판이 없으면 아무 마을 블록이나 첫 거점으로 칠 수 있다
     return !own.length || own.some(a => a.x0 <= b.x1 + 3 && b.x0 <= a.x1 + 3 && a.y0 <= b.y1 + 3 && b.y0 <= a.y1 + 3);
   },
   // 후계 계약: 평판 1000 파트너가 보스에게 은퇴 자금을 주고 자리를 물려받는다 (보스는 공격할 수 없다)

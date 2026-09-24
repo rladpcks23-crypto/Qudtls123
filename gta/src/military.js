@@ -22,7 +22,14 @@ function roofAt(x, y) {
   const tx = Math.floor(x / T), ty = Math.floor(y / T);
   if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return 0;
   const bi = World.bIndex[tIdx(tx, ty)];
-  return bi >= 0 && World.buildings[bi] ? World.buildings[bi].h : 0;
+  return Math.max(bi >= 0 && World.buildings[bi] ? World.buildings[bi].h : 0, World.rockH ? World.rockH[tIdx(tx, ty)] : 0); // 산 높이 포함
+}
+// 앞쪽 산 높이 (지금 위치와 1·2.5초 뒤 위치 중 가장 높은 곳) — 비행기·헬기가 산을 넘을 때 쓴다
+function terrainAhead(c) {
+  if (!World.rockH) return 0;
+  let h = 0;
+  for (const t of [0, 1, 2.5]) { const tx = Math.floor((c.x + (c.vx || 0) * t) / T), ty = Math.floor((c.y + (c.vy || 0) * t) / T); if (tx >= 0 && ty >= 0 && tx < MW && ty < MH) h = Math.max(h, World.rockH[tIdx(tx, ty)]); }
+  return h;
 }
 // 막힌 칸(건물·물) 안에 있을 때 가장 가까운 빈 칸 중심 (옥상에 내린 사람을 길로 내려보낼 때)
 function openSpotNear(x, y) {
@@ -59,7 +66,7 @@ function specialStep(c, dt) {
     // 옥상 착륙: 수직으로 내려오면 지붕 위에 선다 (옆에서 들이받으면 아래 충돌 판정으로 추락)
     const roof = roofAt(c.x, c.y);
     const flying = c.driver && !c.landing && c.burnT <= 0 && (c.alt - roof > 0.5 || Math.abs(raw) > 0.1 || Math.abs(inp.st) > 0.1 || inp.up);
-    const target = flying ? 72 : roof;
+    const target = flying ? Math.max(72, terrainAhead(c) + 14) : roof; // 산 위로는 자동으로 올라간다
     c.alt = c.alt < target ? Math.min(target, c.alt + 8 * dt) : Math.max(target, c.alt - (c.landing ? 7 : 5) * dt);
     if (c.landing && c.alt <= roof + 0.05) { c.landing = false; if (c.driver === 'player') UI.toast(roof > 0 ? '옥상에 착륙했다' : '착륙 완료'); }
     c.rotor = (c.rotor || 0) + dt * (c.alt > 0.1 || flying ? 42 : 4);
@@ -96,7 +103,7 @@ function specialStep(c, dt) {
     if (c.landing) c.spd = Math.max(air ? 20 : 0, c.spd - 6 * dt);
     const takeoff = 34;
     if (c.landing) c.alt = Math.max(0, c.alt - 7 * dt);
-    else if (c.spd >= takeoff) c.alt = Math.min(95, c.alt + (c.spd - 30) * 0.35 * dt * 2);
+    else if (c.spd >= takeoff) c.alt = Math.min(Math.max(95, terrainAhead(c) + 18), c.alt + (c.spd - 30) * 0.35 * dt * 2);
     else if (c.alt > 0) c.alt = Math.max(0, c.alt - ((takeoff - c.spd) * 0.6 + 2) * dt);
     if (c.landing && c.alt <= 0.05) { c.landing = false; UI.toast('착륙 완료 — 브레이크로 멈춘 뒤 내려라'); }
     c.w = inp.st * V.steer * (air ? 1 : clamp(c.spd / 12, 0, 0.45));
@@ -114,10 +121,12 @@ function specialStep(c, dt) {
     if (isAir(c)) { c.a = angNorm(c.a + Math.PI * 0.9); if (c.driver === 'player') UI.toast('작전 구역 끝 — 기수를 돌린다'); }
   }
   // 공중 충돌: 현재 고도보다 높은 건물
+  if (c.alt > 1.2 && !c.dead && c.driver !== 'player' && World.rockH) { const th = terrainAhead(c); if (th && c.alt < th + 10) c.alt = th + 10; } // AI 비행기·헬기는 산을 넘는다
   if (c.alt > 1.2 && !c.dead) {
     const tx = Math.floor(c.x / T), ty = Math.floor(c.y / T);
     const bi = tx >= 0 && ty >= 0 && tx < MW && ty < MH ? World.bIndex[tIdx(tx, ty)] : -1;
     if (bi >= 0 && World.buildings[bi] && World.buildings[bi].h > c.alt + 0.3) { c.damage(9999, null); c.burnT = 0.01; if (c.driver === 'player') UI.toast('건물에 충돌했다!'); }
+    else if (World.rockH && tx >= 0 && ty >= 0 && tx < MW && ty < MH && World.rockH[tIdx(tx, ty)] > c.alt + 0.5) { c.damage(9999, null); c.burnT = 0.01; if (c.driver === 'player') UI.toast('산에 충돌했다!'); }
   }
 }
 

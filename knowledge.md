@@ -1,5 +1,7 @@
 # 네온 하버 (Neon Harbor) — AI 코딩 도구용 프로젝트 안내
 
+> 게임 전체 기능·업데이트 역사·앞으로의 계획 요약은 `gta/AI_BRIEF.md`.
+
 GTA 1·2 스타일 탑뷰 오픈월드 게임. **순수 JavaScript + Canvas 2D (+ Three.js 3D 시점)**, 번들러·npm 의존성 없음.
 UI·대사·주석은 전부 **한국어**. 새 문자열도 한국어로 쓴다.
 
@@ -28,7 +30,7 @@ bash packaging/desktop/build.sh  # release/NeonHarbor-PC.exe (electron-builder)
 | 파일 | 내용 |
 |---|---|
 | `core.js` | 수학 헬퍼(`clamp` `lerp` `smooth` `dist` `rand` `pick`…), 입력(`Input` `keyDown` `keyHit` `Pad`), `Sfx`(Web Audio), `Radio`, `Settings`(localStorage), `Perf`(성능 모드), `Zoom`, `TUNE` |
-| `world.js` | `genWorld(seed)` 절차적 도시 생성: 타일 `TL`, 구역 `DIST`/`DIST_NAMES`, **섬**: 블록 칸 단위 땅/바다 `W.cellLand`/`cellRiver`(`landAt`·`riverAt` in genWorld), 고속도로 `W.hwH`/`hwV`(roadK 6·7, `edgeHighway`), 대로 roadK 4, 골목 roadK 5, 해안 6), 동네 `HOODS`(보로노이, `hoodAt(x,y)`), 방사형 구조 `buildEtoile`/`carveBoulevards`(`World.etoile`, `boulevardMask`)·랜드마크 `buildLandmarks`(`World.decos` → 3D `View3D.addDeco`, `World.landmarks`), 동네 생활 시설 `World.branches`, 공간 인덱스 `edgesNear/blocksNear/gridQuery`, 도로 그래프 `World.nodes/edgesList`, 건물, 장소 `World.places`(`makePlace`/`makeLotPlace`), 군사 기지 `World.base`, 마리나 `World.marinas`. `solidT`(사람·AI), `solidNoWater`(헤엄치는 플레이어·차), `solidBoat`(보트) |
+| `world.js` | `genWorld(seed)` = `genCity`(도시 640×640) → `widenWorld` → `genCounty`. 절차적 도시 생성: 타일 `TL`, 구역 `DIST`/`DIST_NAMES`, **섬**: 블록 칸 단위 땅/바다 `W.cellLand`/`cellRiver`(`landAt`·`riverAt` in genWorld), 고속도로 `W.hwH`/`hwV`(roadK 6·7, `edgeHighway`), 대로 roadK 4, 골목 roadK 5, 해안 6), 동네 `HOODS`(보로노이, `hoodAt(x,y)`), 방사형 구조 `buildEtoile`/`carveBoulevards`(`World.etoile`, `boulevardMask`)·랜드마크 `buildLandmarks`(`World.decos` → 3D `View3D.addDeco`, `World.landmarks`), 동네 생활 시설 `World.branches`, 공간 인덱스 `edgesNear/blocksNear/gridQuery`, 도로 그래프 `World.nodes/edgesList`, 건물, 장소 `World.places`(`makePlace`/`makeLotPlace`), 군사 기지 `World.base`, 마리나 `World.marinas`. `solidT`(사람·AI), `solidNoWater`(헤엄치는 플레이어·차), `solidBoat`(보트) |
 | `vehicles.js` | `VTYPES`(차종 표), `class Car`(자전거 모델 물리), 교통 AI(IDM·pure pursuit), 경찰차 추격, `playerDrive`, 물에 빠짐 `sinkCar` |
 | `peds.js` | `WEAPONS`, `class Ped`/`PlayerPed`, `fireWeapon`, `explode(x,y,r,dmg,by,source,alt)`, 유도탄, 보행자 AI, `Particles` `Decals` `Effects`, 픽업 |
 | `police.js` | 수배 `Wanted`, `crime(type,x,y)`, 경찰 배차·헬기, 무단횡단 `Jay` |
@@ -45,6 +47,12 @@ bash packaging/desktop/build.sh  # release/NeonHarbor-PC.exe (electron-builder)
 | `finance.js` | `Finance`: 주식 `COMPANIES`, 부동산 `ESTATES`, 창고 `WAREHOUSES`(운송 `startRun`), 중앙은행 `bank`, 국회 `LAWS`(`Finance.law(id)`), 대형 강도 `Heist`/`HEISTS`, 패널 `FinUI`(#finui) |
 | `wardrobe.js` | 옷 꾸미기 `Wardrobe`(#wardui), `STYLE_KEYS`(shirt·pants·hatType·hatCol·logo), 2D `drawPlayerStyle`, 조직 마크 `drawGangLogo` |
 | `casino.js` | 카지노 `Casino`(룰렛·슬롯·블랙잭) |
+| `county.js` | v2.17 레드 카운티: `widenWorld`(도시 배열을 넓힘), `genCounty`(다리·국도·마을 블록·산 `World.mountains`/`rockH`/`mountainH`·호수·사막·숲·농장·비행장·주유소·장소), 지명 `World.mapLabels`, 4차선 `World.hwEdges` |
+| `events.js` | 공용 소품 `Props`, 날씨 `Weather`, 경찰 추격 강화 `Pursuit`, 화재 `Blazes`·소방관·물대포, 랜덤 이벤트 `Events` |
+| `stunts.js` | 차 파손 `CarDamage`, 점프 물리, 스턴트 점프 `Stunts`, 레이스 `Races` |
+| `life.js` | 여자친구 `GF`/`GF_DEFS`, 문자 `Msgs`, 업적 `ACH`/`Achieve`, 휴대폰 `Phone`(I) |
+| `story.js` | 컷신 `Cutscene`, 2장 미션 15~26(`stepsDef` 단계 엔진), 선택 분기 `Story.flags` |
+| `tycoon.js` | 인수합병 `Tycoon`, 사업 이벤트, 대저택·수집품 `LUXURY`, 시장 선거, 하버 개발 `Dev`/`DEV_KINDS` |
 | `main.js` | `Game` 루프, 인구 관리 `populate`, 플레이어 조작, 카메라, 사망·체포·리스폰, 장소 진입 `places()` |
 | `shell.html` | 메뉴·상점·카지노 마크업과 **모든 CSS**(모바일 버튼 배치 포함) |
 
@@ -60,7 +68,7 @@ bash packaging/desktop/build.sh  # release/NeonHarbor-PC.exe (electron-builder)
 
 ## 주의할 점
 
-- 좌표 단위는 **미터**, 타일 한 칸 `T = 4m`, 맵 `MW×MH = 480×480` 타일(1.92km). 각도는 라디안, 0 = 동쪽.
+- 좌표 단위는 **미터**, 타일 한 칸 `T = 4m`. 맵 `MW×MH = 1400×640` 타일(5.6km × 2.56km): 서쪽 도시 섬 `CITY_W×CITY_H = 640×640` + 동쪽 레드 카운티(v2.17). 도시 기준 비율 좌표(`u * CITY_W * T`)는 `CITY_W/CITY_H`를 쓴다. 각도는 라디안, 0 = 동쪽.
 - 맵이 크므로 `World.edgesList`/`World.blocks` 전체에서 무작위로 고르지 말고 `edgesNear(x,y,r)`/`blocksNear(x,y,r)`을 쓴다.
 - 게임 시간: `Game.clock`(분, 실제 1초 = 게임 1분), `Game.time`(초).
 - `P.px/P.py`는 차에 타고 있으면 차 위치. 비행 고도는 `car.alt`, 낙하산은 `P.alt`.

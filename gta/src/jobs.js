@@ -230,7 +230,7 @@ const Jobs = {
   u_smuggle(j, dt, P) {
     if (j.stage === 'start' || j.stage === 'pickup') {
       j.stage = 'pickup';
-      if (!j.pick) j.pick = sidewalkNear((World.VX[World.NX - 1] + 3) * T, rand(0.25, 0.7) * MH * T);
+      if (!j.pick) j.pick = sidewalkNear((World.VX[World.NX - 1] + 3) * T, rand(0.25, 0.7) * CITY_H * T);
       j.blips = [{ x: j.pick.x, y: j.pick.y, c: '#ff5d8f', big: true }];
       this.obj(j, '부두에서 밀수품을 받아라');
       if (dist(P.px, P.py, j.pick.x, j.pick.y) < 4 && (!P.car || P.car.speed < 3)) {

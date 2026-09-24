@@ -167,7 +167,7 @@ const Races = {
     const picks = [];
     const target = [[0.35, 0.35], [0.62, 0.55], [0.4, 0.72]];
     for (const [u, v] of target) {
-      let best = null, bd = 1e9; for (const n of nodes) { const d = dist(n.x, n.y, u * MW * T, v * MH * T); if (d < bd && !picks.some(p => dist(p.x, p.y, n.x, n.y) < 300)) { bd = d; best = n; } }
+      let best = null, bd = 1e9; for (const n of nodes) { const d = dist(n.x, n.y, u * CITY_W * T, v * CITY_H * T); if (d < bd && !picks.some(p => dist(p.x, p.y, n.x, n.y) < 300)) { bd = d; best = n; } }
       if (best) picks.push(best);
     }
     this.starts = [];
@@ -201,18 +201,18 @@ const Races = {
     return nodes;
   },
   loopPts(s, n, radius, alt) { // 보트·항공: 섬 둘레를 따라가는 점
-    const cx = MW * T / 2, cy = MH * T / 2, a0 = Math.atan2(s.y - cy, s.x - cx), pts = [];
+    const cx = CITY_W * T / 2, cy = CITY_H * T / 2, a0 = Math.atan2(s.y - cy, s.x - cx), pts = [];
     for (let k = 1; k <= n; k++) {
       const a = a0 + k * (s.kind === 'air' ? TAU / n : 1.9 / n);
       if (s.kind === 'air') { pts.push({ x: cx + Math.cos(a) * radius, y: cy + Math.sin(a) * radius * 0.9, alt }); continue; }
       // 보트: 중심에서 바깥으로 가다 첫 바다 칸 + 30m
-      let r = 100, x = 0, y = 0; for (; r < MW * T; r += 8) { x = cx + Math.cos(a) * r; y = cy + Math.sin(a) * r; if (tileAt(x, y) === TL.WATER && tileAt(x + Math.cos(a) * 16, y + Math.sin(a) * 16) === TL.WATER) break; }
-      pts.push({ x: clamp(x + Math.cos(a) * 30, 30, MW * T - 30), y: clamp(y + Math.sin(a) * 30, 30, MH * T - 30) });
+      let r = 100, x = 0, y = 0; for (; r < CITY_W * T; r += 8) { x = cx + Math.cos(a) * r; y = cy + Math.sin(a) * r; if (tileAt(x, y) === TL.WATER && tileAt(x + Math.cos(a) * 16, y + Math.sin(a) * 16) === TL.WATER) break; }
+      pts.push({ x: clamp(x + Math.cos(a) * 30, 30, CITY_W * T - 30), y: clamp(y + Math.sin(a) * 30, 30, CITY_H * T - 30) });
     }
     return pts;
   },
   goldTime(s) {
-    const pts = s.kind === 'boat' ? this.loopPts(s, 8, 0, 0) : this.loopPts(s, 10, Math.min(MW, MH) * T * 0.34, 22);
+    const pts = s.kind === 'boat' ? this.loopPts(s, 8, 0, 0) : this.loopPts(s, 10, Math.min(CITY_W, CITY_H) * T * 0.34, 22);
     let L = 0, px = s.x, py = s.y; for (const p of pts) { L += dist(px, py, p.x, p.y); px = p.x; py = p.y; }
     return L / (s.kind === 'boat' ? 24 : 30) * 1.15;
   },
@@ -245,7 +245,7 @@ const Races = {
       R.place = place;
     } else {
       const boat = s.kind === 'boat';
-      R.cps = boat ? this.loopPts(s, 8, 0, 0) : this.loopPts(s, 10, Math.min(MW, MH) * T * 0.34, 22);
+      R.cps = boat ? this.loopPts(s, 8, 0, 0) : this.loopPts(s, 10, Math.min(CITY_W, CITY_H) * T * 0.34, 22);
       if (P.car) exitCar(P, true);
       let x = s.x, y = s.y;
       if (boat) { const m = World.marinas[0]; const a = m.a; x = m.x + Math.cos(a) * 14; y = m.y + Math.sin(a) * 14; }

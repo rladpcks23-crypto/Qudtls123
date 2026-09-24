@@ -106,7 +106,7 @@ const Game = {
     const bb = this.bizBtn; if (bb && sx >= bb.x && sx <= bb.x + bb.w && sy >= bb.y && sy <= bb.y + bb.h) { this.showBiz = !this.showBiz; return; }
     for (const b of this.mapZoomBtns || []) if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) { MapView.zoomAt(b.f); return; }
     if (MapView.moved) { MapView.moved = false; return; } // 드래그로 지도를 옮긴 것
-    if (sx < r.ox || sy < r.oy || sx > r.ox + r.size || sy > r.oy + r.size) { this.state = 'play'; this.pickTurf = false; return; }
+    if (sx < r.ox || sy < r.oy || sx > r.ox + (r.w || r.size) || sy > r.oy + (r.h || r.size)) { this.state = 'play'; this.pickTurf = false; return; }
     const x = (sx - r.mx) / r.k, y = (sy - r.my) / r.k;
     if (this.pickTurf) { // 구역 넓히기: 고른 블록으로 습격
       const b = blockAt(x, y);
@@ -673,7 +673,7 @@ function exitCar(P, force) {
 // ---------- 고정 픽업 ----------
 function placeStaticPickups() {
   const R = mulberry32(777);
-  const at = (u, v) => { const s = sidewalkNear(u * MW * T, v * MH * T); return s; };
+  const at = (u, v) => { const s = sidewalkNear(u * CITY_W * T, v * CITY_H * T); return s; };
   const pl = World.places;
   if (pl.hospital) addPickup('health', pl.hospital.x, pl.hospital.y + (pl.hospital.face === 1 ? 0 : 0), { respawn: 60 });
   if (pl.clinic) addPickup('health', pl.clinic.x, pl.clinic.y, { respawn: 60 });

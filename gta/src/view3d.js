@@ -48,8 +48,35 @@ const View3D = {
   CS: 128,
   buildStatic() {
     const S = this.scene;
-    const sea = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000), new THREE.MeshLambertMaterial({ color: 0x1d5a80 }));
-    sea.rotation.x = -Math.PI / 2; sea.position.set(MW * T / 2, -0.05, MH * T / 2); S.add(sea);
+    // 바다·거친 지면은 잘게 나누고 조금 낮춘 뒤 깊이를 뒤로 민다 (거대한 삼각형 두 개면 청크 지면과 깊이 싸움을 한다)
+    const backMat = o => new THREE.MeshLambertMaterial({ ...o, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 4 });
+    const sea = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000, 48, 48), backMat({ color: 0x1d5a80 }));
+    sea.rotation.x = -Math.PI / 2; sea.position.set(MW * T / 2, -0.3, MH * T / 2); S.add(sea);
+    // 아직 안 만든 청크 자리에 바다 대신 보이는 거친 지면 (미니맵 한 장을 통째로 깐다)
+    if (World.mini) {
+      const mt = new THREE.CanvasTexture(World.mini); mt.colorSpace = THREE.SRGBColorSpace; mt.magFilter = THREE.LinearFilter;
+      const under = new THREE.Mesh(new THREE.PlaneGeometry(MW * T, MH * T, 56, 26), backMat({ map: mt }));
+      under.rotation.x = -Math.PI / 2; under.position.set(MW * T / 2, -0.15, MH * T / 2); S.add(under);
+    }
+    // 레드 카운티의 산·메사: 높이 함수(mountainH)로 만든 지형 메시 (한 번만 만들어 둔다)
+    for (const m of World.mountains || []) {
+      const size = 2 * m.rMax * T + 16, seg = Math.min(128, Math.ceil(size / 5));
+      const geo = new THREE.PlaneGeometry(size, size, seg, seg); geo.rotateX(-Math.PI / 2);
+      const pos = geo.attributes.position, cx = m.x * T, cz = m.y * T;
+      for (let k = 0; k < pos.count; k++) { const x = pos.getX(k) + cx, z = pos.getZ(k) + cz, h = mountainH(x / T, z / T); pos.setXYZ(k, x, h > 0.25 ? h : -1.5, z); }
+      geo.computeVertexNormals();
+      const nor = geo.attributes.normal, col = new Float32Array(pos.count * 3), c = new THREE.Color();
+      for (let k = 0; k < pos.count; k++) {
+        const h = pos.getY(k), steep = 1 - nor.getY(k);
+        if (m.mesa) c.set(steep > 0.35 ? (Math.floor(h / 3.5) % 2 ? '#b0643a' : '#9a5532') : '#c98a55');
+        else c.set(h > 98 ? '#f1f3f6' : h > 76 ? (steep > 0.45 ? '#8f8b85' : '#d9dde2') : steep > 0.5 ? '#7d7266' : h < 28 ? '#5c7a44' : h < 55 ? '#4f6b3c' : '#7c7a6c');
+        col[k * 3] = c.r; col[k * 3 + 1] = c.g; col[k * 3 + 2] = c.b;
+      }
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      this.mtMat = this.mtMat || new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, fog: false });
+      const mesh = new THREE.Mesh(geo, this.mtMat);
+      S.add(mesh);
+    }
     // 창문 텍스처 (흰 바탕 = 정점 색 그대로, 창 = 어두운 유리) + 밤 발광 맵
     const wc = document.createElement('canvas'); wc.width = wc.height = 64;
     const w = wc.getContext('2d'); w.fillStyle = '#ffffff'; w.fillRect(0, 0, 64, 64); w.fillStyle = '#3a4656'; w.fillRect(8, 16, 48, 30); w.fillStyle = 'rgba(255,255,255,0.25)'; w.fillRect(8, 16, 48, 4);
@@ -60,7 +87,7 @@ const View3D = {
     this.bmat = new THREE.MeshLambertMaterial({ vertexColors: true, map: winTex, emissive: 0xffffff, emissiveMap: emTex, emissiveIntensity: 0 });
     // 청크들이 함께 쓰는 지오메트리·재질
     this.sg = {
-      trunk: new THREE.CylinderGeometry(0.18, 0.25, 1, 6), crown: new THREE.IcosahedronGeometry(1, 0),
+      trunk: new THREE.CylinderGeometry(0.18, 0.25, 1, 6), crown: new THREE.IcosahedronGeometry(1, 0), cone: new THREE.ConeGeometry(1, 1, 7),
       pole: new THREE.CylinderGeometry(0.08, 0.1, 5, 5), head: new THREE.SphereGeometry(0.28, 8, 6),
       tpole: new THREE.CylinderGeometry(0.07, 0.07, 3.6, 5), tbox: new THREE.BoxGeometry(0.4, 0.4, 0.4),
     };
@@ -186,13 +213,32 @@ const View3D = {
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), p3 = new THREE.Vector3(), color = new THREE.Color();
     const inst = (geo, mat, n) => { const m = new THREE.InstancedMesh(geo, mat, n); m.frustumCulled = false; G.add(m); return m; };
     // 나무 (줄기 + 수관)
-    if (bk.trees.length) {
-      const trunk = inst(this.sg.trunk, this.mat('#6b4a2a'), bk.trees.length), crown = inst(this.sg.crown, this.crownMat, bk.trees.length);
-      bk.trees.forEach((t, i) => {
+    const broad = bk.trees.filter(t => t.kind !== 'pine' && t.kind !== 'cactus'), pines = bk.trees.filter(t => t.kind === 'pine'), cacti = bk.trees.filter(t => t.kind === 'cactus');
+    if (broad.length) {
+      const trunk = inst(this.sg.trunk, this.mat('#6b4a2a'), broad.length), crown = inst(this.sg.crown, this.crownMat, broad.length);
+      broad.forEach((t, i) => {
         m4.compose(p3.set(t.x, t.h * 0.4, t.y), q.identity(), sc.set(1, t.h * 0.8, 1)); trunk.setMatrixAt(i, m4);
         const palm = t.kind === 'palm';
         m4.compose(p3.set(t.x, t.h * (palm ? 0.95 : 0.8), t.y), q.identity(), palm ? sc.set(t.r * 0.9, 0.5, t.r * 0.9) : sc.set(t.r, t.r * 0.9, t.r)); crown.setMatrixAt(i, m4);
         crown.setColorAt(i, color.set(palm ? '#3f8a3a' : t.hue < 0.33 ? '#3d6e34' : t.hue < 0.66 ? '#467a3a' : '#355f30'));
+      });
+    }
+    if (pines.length) { // 침엽수 (산비탈이면 그 높이에 선다)
+      const trunk = inst(this.sg.trunk, this.mat('#5a3d24'), pines.length), cone = inst(this.sg.cone, this.crownMat, pines.length);
+      pines.forEach((t, i) => {
+        const z = t.z || 0;
+        m4.compose(p3.set(t.x, z + t.h * 0.15, t.y), q.identity(), sc.set(1, t.h * 0.3, 1)); trunk.setMatrixAt(i, m4);
+        m4.compose(p3.set(t.x, z + t.h * 0.6, t.y), q.identity(), sc.set(t.r, t.h * 0.85, t.r)); cone.setMatrixAt(i, m4);
+        cone.setColorAt(i, color.set(t.hue < 0.5 ? '#24462a' : '#2e5632'));
+      });
+    }
+    if (cacti.length) { // 선인장: 몸통 + 팔
+      const body = inst(this.sg.trunk, this.mat('#3f7a45'), cacti.length * 3);
+      cacti.forEach((t, i) => {
+        m4.compose(p3.set(t.x, t.h / 2, t.y), q.identity(), sc.set(2.2, t.h, 2.2)); body.setMatrixAt(i * 3, m4);
+        const s = t.hue > 0.5 ? 1 : -1;
+        m4.compose(p3.set(t.x + 0.55 * s, t.h * 0.62, t.y), q.identity(), sc.set(1.5, t.h * 0.4, 1.5)); body.setMatrixAt(i * 3 + 1, m4);
+        m4.compose(p3.set(t.x - 0.5 * s, t.h * 0.5, t.y + 0.2), q.identity(), sc.set(1.4, t.h * 0.32, 1.4)); body.setMatrixAt(i * 3 + 2, m4);
       });
     }
     // 가로등
@@ -297,7 +343,7 @@ const View3D = {
   // 카메라 주변 청크 스트리밍. 반경은 속도·고도에 비례 (500km/h ≈ 139m/s 에서도 수 초 앞까지 준비)
   stream(fx, fy, spd, alt) {
     const CS = this.CS, low = IS_MOBILE || Perf.low;
-    const base = low ? 220 : 380, cap = low ? 420 : 760;
+    const base = low ? 170 : 260, cap = low ? 300 : 480; // v2.17: 시야를 줄여 넓어진 맵에서도 가볍게 (산은 멀리서도 보인다)
     const want = clamp(base + spd * (low ? 1.6 : 2.8) + alt * 3, base, cap);
     this.drawR = want > this.drawR ? smooth(this.drawR, want, 1.2, 1 / 60) : smooth(this.drawR, want, 0.4, 1 / 60);
     if (!this.lastF || Math.hypot(fx - this.lastF[0], fy - this.lastF[1]) > 150) this.firstFill = true; // 첫 프레임·순간이동: 주변을 한 번에 채운다
@@ -671,7 +717,9 @@ const View3D = {
     this.stream(P.px, P.py, fc ? Math.abs(fc.speed || fc.spd || 0) : 0, fAlt);
     S.fog.far = this.drawR * (1 - Math.min(1, wet) * 0.3) * (1 - 0.7 * Weather.fog); S.fog.near = Math.min(90, S.fog.far * (0.4 - 0.3 * Weather.fog));
     if (Weather.fog > 0.05) S.fog.color.lerp(new THREE.Color(0.75, 0.78, 0.82), Weather.fog * (1 - night * 0.7));
-    if (Math.abs(this.camera.far - (this.drawR + 60)) > 20) { this.camera.far = this.drawR + 60; this.camera.updateProjectionMatrix(); }
+    const farW = (World.mountains && World.mountains.length) ? Math.max(this.drawR + 60, 2600) : this.drawR + 60; // 산은 멀리서도 보인다 (나머지는 안개와 청크 반경이 가린다)
+    if (Math.abs(this.camera.far - farW) > 20) { this.camera.far = farW; this.camera.updateProjectionMatrix(); }
+    if (this.mtMat) { this.mtMat.color.copy(S.fog.color).lerp(this._white || (this._white = new THREE.Color(1, 1, 1)), 0.62); } // 먼 산 대기 원근: 하늘색으로 살짝 바랜다
     this.hemi.intensity = 0.25 + (1 - night) * 0.75; this.sun.intensity = 0.1 + (1 - night) * 0.8;
     this.hemi.color.setRGB(amb[0], amb[1], amb[2]);
     this.bmat.emissiveIntensity = night > 0.35 ? night * 0.9 : 0;

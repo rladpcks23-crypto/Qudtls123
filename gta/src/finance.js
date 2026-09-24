@@ -184,7 +184,7 @@ const Finance = {
       const car = new Car('truck', s.x, s.y, s.a, { persistent: true, color: '#b0452f' }); Game.cars.push(car);
       // 멀리 떨어진 구매자
       const cands = Object.values(World.places).filter(p => p && p.x !== undefined && dist(p.x, p.y, W.x, W.y) > 600);
-      const B = cands.length ? pick(cands) : { x: MW * T - W.x, y: MH * T - W.y };
+      const B = cands.length ? pick(cands) : { x: CITY_W * T - W.x, y: CITY_H * T - W.y };
       const dest = sidewalkNear(B.x, B.y);
       this.job = { kind: 'sell', k, car, dest, legal: w.legal, contra: w.contra, stage: 'go' };
       w.legal = 0; w.contra = 0;
@@ -292,7 +292,7 @@ const Heist = {
         if (A.t >= H.hold) {
           A.stage = 'escape';
           const far = Object.values(World.places).filter(p => p && p.x !== undefined && dist(p.x, p.y, A.at.x, A.at.y) > 700);
-          const d = far.length ? pick(far) : { x: MW * T - A.at.x, y: MH * T - A.at.y };
+          const d = far.length ? pick(far) : { x: CITY_W * T - A.at.x, y: CITY_H * T - A.at.y };
           A.drop = sidewalkNear(d.x, d.y);
           UI.big('금고 확보!', '은신 지점으로 도주 — 경찰을 따돌려라', 2.6, '#ffd166');
         }

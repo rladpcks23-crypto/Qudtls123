@@ -841,8 +841,11 @@ const Radio = {
 const ORGANIC_ROADS = false; // v2.13: 구불구불한 옛길·해안도로·에투알 방사로를 끈다 (네모난 격자 도로 + 직선 고속도로·골목만)
 const ENABLE_BASE = false; // v2.8: 군 기지는 잠시 뺀다 (군 장비는 공항 군수 화물 구역에)
 const T = 4;               // 타일 한 칸 = 4m (차선 폭)
-const MW = 640, MH = 640;  // 타일 수 → 2560m × 2560m 섬 (v2.8에서 480 → 640 확장; 3D는 청크 단위로 스트리밍)
-const TL = { WATER: 0, ROAD: 1, WALK: 2, BUILD: 3, GRASS: 4, SAND: 5, LOT: 6, PLAZA: 7, DOCK: 8, RUNWAY: 9 };
+// 도시 섬 640×640 타일(2560m) + v2.17 동쪽 바다 건너 레드 카운티(사막·호수·산·시골 마을) → 전체 1400×640 타일(5.6km × 2.56km)
+//   MW/MH는 생성 중에만 바뀐다: 도시는 예전과 똑같이 640×640으로 만든 뒤(저장된 구역·건물 번호 유지) 배열을 넓히고 카운티를 붙인다
+const CITY_W = 640, CITY_H = 640, FULL_W = 1400, FULL_H = 640;
+let MW = CITY_W, MH = CITY_H;
+const TL = { WATER: 0, ROAD: 1, WALK: 2, BUILD: 3, GRASS: 4, SAND: 5, LOT: 6, PLAZA: 7, DOCK: 8, RUNWAY: 9, ROCK: 10 }; // ROCK = 산·메사 (막힘, 높이는 World.rockH)
 const DIST = { DOWNTOWN: 0, MIDTOWN: 1, RESID: 2, HARBOR: 3, BEACH: 4, PARK: 5, COAST: 6, BASE: 7, INDUSTRY: 8, AIRPORT: 9 };
 const DIST_NAMES = ['다운타운', '미드타운', '웨스트 힐즈', '하버 포인트', '선셋 비치', '센트럴 파크', '해안 산책로', '포트 네온 기지', '아이언 밸리', '네온 국제공항'];
 // 동네: 이름 · 구역 종류 · 씨앗 위치(맵 비율) · w(작을수록 넓게 퍼짐)
@@ -872,17 +875,17 @@ function tileAt(x, y) {
   return World.tiles[tx + ty * MW];
 }
 // 사람이 헤엄칠 수 있는 판정(물은 막히지 않음) · 보트 판정(물이 아닌 곳은 전부 막힘)
-function solidNoWater(tx, ty) { if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return true; return World.tiles[tx + ty * MW] === TL.BUILD; }
+function solidNoWater(tx, ty) { if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return true; const t = World.tiles[tx + ty * MW]; return t === TL.BUILD || t === TL.ROCK; }
 function solidBoat(tx, ty) { if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return false; return World.tiles[tx + ty * MW] !== TL.WATER; }
 function solidTile(tx, ty) { return solidT(tx, ty); }
 function solidT(tx, ty) {
   if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return true;
   const t = World.tiles[tx + ty * MW];
-  return t === TL.WATER || t === TL.BUILD;
+  return t === TL.WATER || t === TL.BUILD || t === TL.ROCK;
 }
 function blocksSight(tx, ty) {
   if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return true;
-  return World.tiles[tx + ty * MW] === TL.BUILD;
+  const t = World.tiles[tx + ty * MW]; return t === TL.BUILD || t === TL.ROCK;
 }
 // 현재 위치의 동네 이름 (블록 밖이면 구역 이름)
 function hoodAt(x, y) {
@@ -925,6 +928,16 @@ function losClear(x0, y0, x1, y1) {
 
 // ---------------------------------------------------------------------
 function genWorld(seed) {
+  MW = CITY_W; MH = CITY_H;
+  genCity(seed);
+  widenWorld(FULL_W, FULL_H);
+  { const _t = performance.now(); genCounty(seed); World.genT.county = Math.round(performance.now() - _t); }
+  const W = World;
+  W.treeGrid = new Map();
+  for (const t of W.trees) { const k = Math.floor(t.x / 8) + ',' + Math.floor(t.y / 8); if (!W.treeGrid.has(k)) W.treeGrid.set(k, []); W.treeGrid.get(k).push(t); }
+  buildSpatial(); buildMinimap();
+}
+function genCity(seed) {
   const R = mulberry32(seed);
   const rr = (a, b) => a + R() * (b - a), ri = (a, b) => Math.floor(rr(a, b + 1));
   const rpick = a => a[Math.floor(R() * a.length)];
@@ -2012,8 +2025,7 @@ function genWorld(seed) {
   W.treeGrid = new Map();
   for (const t of W.trees) { const k = Math.floor(t.x / 8) + ',' + Math.floor(t.y / 8); if (!W.treeGrid.has(k)) W.treeGrid.set(k, []); W.treeGrid.get(k).push(t); }
 
-  { const _t = performance.now(); buildSpatial(); W.genT['buildSpatial'] = Math.round(performance.now() - _t); }
-  { const _t = performance.now(); buildMinimap(); W.genT['buildMinimap'] = Math.round(performance.now() - _t); }
+  // 공간 인덱스·미니맵은 카운티까지 붙인 뒤 genWorld에서 만든다
 }
 
 // ---------- 공간 인덱스 (맵이 커져서 '전체 목록에서 무작위로 고르기'·'전체 훑기'를 피한다) ----------
@@ -2050,13 +2062,16 @@ function treesNear(x, y) {
   return out;
 }
 
-const MINI_COL = { [TL.WATER]: '#1d4e6e', [TL.ROAD]: '#c9ccd2', [TL.WALK]: '#8b8f96', [TL.BUILD]: '#39404c', [TL.GRASS]: '#3f6b3a', [TL.SAND]: '#c9b37c', [TL.LOT]: '#5d6168', [TL.PLAZA]: '#8f8577', [TL.DOCK]: '#6b6f73', [TL.RUNWAY]: '#2a2c30' };
+const MINI_COL = { [TL.WATER]: '#1d4e6e', [TL.ROAD]: '#c9ccd2', [TL.WALK]: '#8b8f96', [TL.BUILD]: '#39404c', [TL.GRASS]: '#3f6b3a', [TL.SAND]: '#c9b37c', [TL.LOT]: '#5d6168', [TL.PLAZA]: '#8f8577', [TL.DOCK]: '#6b6f73', [TL.RUNWAY]: '#2a2c30', [TL.ROCK]: '#7a6a58' };
+// 산 색: 높이에 따라 흙 → 바위 → 눈
+function rockColor(h) { return h > 95 ? '#eef1f4' : h > 70 ? '#a7a39c' : h > 40 ? '#8c7f70' : h > 18 ? '#8a6f55' : '#94744f'; }
 function buildMinimap() {
   const c = document.createElement('canvas'); c.width = MW; c.height = MH;
   const g = c.getContext('2d'), img = g.createImageData(MW, MH);
   const bm = World.boulevardMask, E = World.etoile;
   for (let i = 0; i < MW * MH; i++) {
     let col = MINI_COL[World.tiles[i]];
+    if (World.tiles[i] === TL.ROCK) col = rockColor(World.rockH[i]);
     // 지도 색: 옛길·해안도로·방사로·골목은 일반 도로와 같은 색 계열(골목은 조금 어둡게), 고속도로만 주황
     if (bm && bm[i] === 2) col = '#aeb2b9';
     else if (World.tiles[i] === TL.ROAD && (World.roadK[i] >= 6 || (World.hwLine && World.hwLine[i]))) col = '#f0a04b';
@@ -2071,6 +2086,8 @@ function buildMinimap() {
 // 고속도로 구간인가 (노드 id 두 개)
 function edgeHighway(a, b) {
   const A = World.nodes[a], B = World.nodes[b]; if (!A || !B || !World.hwH) return false;
+  if (World.hwEdges && World.hwEdges.has(Math.min(a, b) + ',' + Math.max(a, b))) return true; // 카운티 다리·간선
+  if (A.county || B.county) return false;
   return A.j === B.j ? World.hwH.has(A.j) : A.i === B.i ? World.hwV.has(A.i) : false;
 }
 // ---------- 도로 그래프 질의 ----------
@@ -2206,6 +2223,377 @@ function jayStatus(x, y) {
   if (!n.light) return 1;
   const carDir = World.roadK[tIdx(tx, ty)] === 1 || World.roadK[tIdx(tx, ty)] === 7 ? 1 : 0; // 세로 도로면 남북 신호
   return lightState(n, carDir) === 'r' ? 1 : 2;
+}
+
+'use strict';
+/* =====================================================================
+ * county.js — 레드 카운티: 도시 섬 동쪽 바다 건너의 시골 (v2.17)
+ *
+ * GTA5의 블레인 카운티를 참고한 구성: 긴 다리 두 개로 도시 고속도로와 이어지고,
+ *   사막(레드 메사) · 호수(솔트 레이크) · 큰 산(실버 피크)과 작은 산(블랙 리지) · 메사 ·
+ *   침엽수 숲(블랙우드) · 농장(골든 필즈) · 사막 마을(샌디 밸리)과 경비행장 · 북쪽 어촌(파인 베이).
+ * 도시는 genCity가 예전과 똑같이 640×640으로 만든다 → widenWorld가 배열을 넓힌다 → genCounty가 붙인다.
+ * 도시 쪽 번호(블록·건물·노드)는 그대로라 예전 저장(조직 구역·개발 필지)이 깨지지 않는다.
+ * ===================================================================== */
+
+// 배열 폭을 넓힌다 (도시 칸은 그대로 복사, 새 칸은 바다)
+function widenWorld(nw, nh) {
+  const W = World, ow = MW, oh = MH, n0 = ow * oh;
+  const fillOf = { tiles: TL.WATER, region: -1, bIndex: -1, dist: DIST.COAST, hoodT: 255 };
+  for (const k of Object.keys(W)) {
+    const a = W[k];
+    if (!ArrayBuffer.isView(a) || a.length !== n0) continue;
+    const b = new a.constructor(nw * nh); if (fillOf[k] !== undefined) b.fill(fillOf[k]);
+    for (let y = 0; y < oh; y++) b.set(a.subarray(y * ow, y * ow + ow), y * nw);
+    W[k] = b;
+  }
+  MW = nw; MH = nh;
+}
+
+// 산 높이(m) — 타일 좌표(실수). 3D 산 메시와 막힌 칸(ROCK)이 같은 함수를 쓴다
+function mountainH(tx, ty) {
+  let h = 0;
+  for (const m of World.mountains || []) {
+    const dx = tx - m.x, dy = ty - m.y, d2 = dx * dx + dy * dy;
+    if (d2 >= m.rMax * m.rMax) continue;
+    const a = Math.atan2(dy, dx), r = m.r * (1 + m.n1 * Math.sin(3 * a + m.p1) + m.n2 * Math.sin(7 * a + m.p2) + 0.04 * Math.sin(13 * a + m.p1 * 2));
+    const q = Math.sqrt(d2) / r; if (q >= 1) continue;
+    let v;
+    if (m.mesa) { const s = clamp((1 - q) / 0.28, 0, 1); v = m.h * s * s * (3 - 2 * s) * (0.95 + 0.05 * Math.sin(dx * 0.7) * Math.cos(dy * 0.6)); }
+    else v = m.h * Math.pow(1 - q, 1.45) * (1 + 0.13 * Math.sin(dx * 0.29 + m.p1) * Math.sin(dy * 0.25 + m.p2));
+    if (v > h) h = v;
+  }
+  return h;
+}
+
+const COUNTY_ZONES = [ // 동네 이름 (카운티 칸의 위치 이름) · w가 작을수록 좁다
+  { name: '샌디 밸리', x: 900, y: 438, w: 0.55 },
+  { name: '파인 베이', x: 1300, y: 58, w: 0.55 },
+  { name: '골든 필즈', x: 1235, y: 470, w: 0.9 },
+  { name: '레드 메사 사막', x: 830, y: 530, w: 1 },
+  { name: '실버 피크', x: 975, y: 112, w: 0.8 },
+  { name: '솔트 레이크', x: 1010, y: 335, w: 0.9 },
+  { name: '블랙우드 숲', x: 1170, y: 120, w: 1 },
+  { name: '블랙 리지', x: 1250, y: 290, w: 0.8 },
+  { name: '레드 카운티 평원', x: 790, y: 240, w: 1 },
+  { name: '레드 록', x: 720, y: 304, w: 0.5 },
+];
+
+function genCounty(seed) {
+  const W = World, R = mulberry32((seed ^ 0x2c1b3c6d) >>> 0), rr = (a, b) => a + R() * (b - a), ri = (a, b) => Math.floor(rr(a, b + 1));
+  const rpick = a => a[Math.floor(R() * a.length)];
+  const inMap = (x, y) => x >= 0 && y >= 0 && x < MW && y < MH;
+  const set = (x, y, t) => { if (inMap(x, y)) W.tiles[x + y * MW] = t; };
+  const get = (x, y) => inMap(x, y) ? W.tiles[x + y * MW] : TL.WATER;
+  const ph = [0, 0, 0, 0, 0, 0].map(() => R() * TAU);
+  W.rockH = new Uint8Array(MW * MH);
+  W.hwEdges = new Set();
+  W.mapLabels = [];
+  W.county = { x0: CITY_W };
+
+  // ---------- 1) 땅: 도시 땅에서 34칸 넘게 떨어진 해안선 ----------
+  const cityMaxX = new Int16Array(MH).fill(-1);
+  for (let y = 0; y < CITY_H; y++) for (let x = CITY_W - 1; x >= CITY_W - 260; x--) if (W.tiles[x + y * MW] !== TL.WATER) { cityMaxX[y] = x; break; }
+  const westX = new Int16Array(MH);
+  for (let y = 0; y < MH; y++) {
+    let m = -1; for (let d = -34; d <= 34; d++) { const yy = y + d; if (yy >= 0 && yy < MH) m = Math.max(m, cityMaxX[yy]); }
+    westX[y] = Math.max(Math.round(664 + 7 * Math.sin(y * 0.023 + ph[0]) + 4 * Math.sin(y * 0.071 + ph[1])), m + 36);
+  }
+  const eastX = y => Math.round(MW - 20 + 6 * Math.sin(y * 0.031 + ph[2]) + 3 * Math.sin(y * 0.09 + ph[3]));
+  const northY = x => Math.round(9 + 4 * Math.sin(x * 0.027 + ph[4]) + 2 * Math.sin(x * 0.083));
+  const southY = x => Math.round(MH - 17 + 5 * Math.sin(x * 0.029 + ph[5]) + 2 * Math.sin(x * 0.11 + ph[0]));
+  const land = (x, y) => y >= 0 && y < MH && x >= westX[y] && x <= eastX(y) && y >= northY(x) && y <= southY(x);
+  const lake = { x: 1010, y: 335, rx: 100, ry: 52 };
+  const lakeR = (x, y) => { const a = Math.atan2(y - lake.y, x - lake.x); return Math.hypot((x - lake.x) / lake.rx, (y - lake.y) / lake.ry) / (1 + 0.08 * Math.sin(3 * a + ph[1]) + 0.05 * Math.sin(5 * a + ph[2])); };
+  const desert = (x, y) => { const n = 16 * Math.sin(x * 0.021 + ph[3]) + 12 * Math.sin(y * 0.026 + ph[4]); return (y > 382 + n && x < 1140 + n) || (x < 830 + n && y > 290 + n); };
+  const zone = new Uint8Array(MW * MH).fill(255);
+  const hood0 = W.hoods.length;
+  for (const z of COUNTY_ZONES) W.hoods.push({ name: z.name, d: DIST.COAST, u: z.x / MW, v: z.y / MH, county: true });
+  for (let y = 0; y < MH; y++) for (let x = CITY_W; x < MW; x++) {
+    if (!land(x, y)) continue;
+    const i = x + y * MW, lr = lakeR(x, y);
+    let t = desert(x, y) ? TL.SAND : TL.GRASS;
+    if (lr < 1) t = TL.WATER;
+    else if (lr < 1.07) t = TL.SAND; // 호숫가 모래
+    else if (!land(x + 3, y) || !land(x - 3, y) || !land(x, y + 3) || !land(x, y - 3)) t = TL.SAND; // 바닷가
+    W.tiles[i] = t;
+    let best = 0, bd = 1e9;
+    COUNTY_ZONES.forEach((z, k) => { const d = Math.hypot(x - z.x, y - z.y) * z.w; if (d < bd) { bd = d; best = k; } });
+    W.hoodT[i] = hood0 + best;
+  }
+  for (const z of COUNTY_ZONES) W.mapLabels.push({ name: z.name, x: z.x * T, y: z.y * T });
+
+  // ---------- 2) 산 · 메사 ----------
+  W.mountains = [
+    { name: '실버 피크', x: 975, y: 112, r: 58, h: 125 },
+    { name: '블랙 리지', x: 1250, y: 290, r: 34, h: 62 },
+    { x: 780, y: 330, r: 17, h: 34, mesa: true },
+    { x: 790, y: 545, r: 15, h: 28, mesa: true },
+    { x: 1080, y: 440, r: 13, h: 24, mesa: true },
+  ];
+  for (const m of W.mountains) { m.n1 = m.mesa ? rr(0.05, 0.1) : rr(0.07, 0.11); m.n2 = rr(0.03, 0.05); m.p1 = R() * TAU; m.p2 = R() * TAU; m.rMax = m.r * (1 + m.n1 + m.n2 + 0.04); }
+  for (const m of W.mountains) {
+    const r = Math.ceil(m.rMax) + 1;
+    for (let y = m.y - r; y <= m.y + r; y++) for (let x = m.x - r; x <= m.x + r; x++) {
+      if (!inMap(x, y) || get(x, y) === TL.WATER) continue;
+      const h = mountainH(x + 0.5, y + 0.5), i = x + y * MW;
+      if (h >= 2) { W.tiles[i] = TL.ROCK; W.rockH[i] = Math.min(255, Math.round(h)); }
+      else if (h > 0.3 && W.tiles[i] === TL.GRASS && !m.mesa) W.tiles[i] = TL.SAND; // 산기슭 흙
+    }
+  }
+
+  // ---------- 3) 다리: 도시 고속도로 두 줄의 동쪽 끝에서 바다를 건넌다 ----------
+  let maxWest = 0; for (let y = 30; y < MH - 30; y++) maxWest = Math.max(maxWest, westX[y]);
+  const XA = Math.max(700, maxWest + 10), X2 = 880, X3 = 1150, XB = 1330, YN = 40, YS = 590;
+  const onAirport = (x, y) => W.airport && x >= W.airport.bx0 && x <= W.airport.bx1 && y >= W.airport.by0 && y <= W.airport.by1;
+  const bridgeOK = n => {
+    const y0 = W.HY[n.j];
+    for (let x = W.VX[n.i] + 2; x < XA; x++) for (let y = y0 - 1; y <= y0 + 2; y++) {
+      const t = get(x, y);
+      if (t === TL.BUILD || t === TL.RUNWAY || t === TL.ROCK || onAirport(x, y)) return false; // 해안 부두(DOCK) 칸은 다리가 지나가도 된다
+      if (x < CITY_W && W.region[x + y * MW] >= 0) return false; // 도시 블록 안을 가로지르지 않는다
+      if (x >= CITY_W && y0 > 150 && y0 < 560 && t === TL.WATER && x > westX[y] + 2) return false; // 카운티 호수로 빠지지 않게
+    }
+    return true;
+  };
+  const endNode = j => { let best = null; for (const n of W.nodes) if (n.deg && n.j === j && (!best || n.i > best.i)) best = n; return best; };
+  const pickBridge = (target, lo, hi) => {
+    let best = null, bs = 1e9;
+    for (let j = 1; j < W.NY - 1; j++) {
+      const y = W.HY[j]; if (y < lo || y > hi) continue;
+      const n = endNode(j); if (!n || n.adj[0] >= 0 || !bridgeOK(n)) continue;
+      const sc = Math.abs(y - target) + (W.hwH.has(j) ? 0 : 60);
+      if (sc < bs) { bs = sc; best = n; }
+    }
+    return best;
+  };
+  const bN = pickBridge(0.3 * CITY_H, 110, 300), bS = pickBridge(0.76 * CITY_H, 380, 560);
+  const yN = bN ? W.HY[bN.j] : 192, yS = bS ? W.HY[bS.j] : 486;
+
+  // ---------- 4) 길: 선(가로·세로) → 교차점마다 노드 ----------
+  const HL = [], VL = [];
+  VL.push({ x: XA, y0: YN, y1: YS }, { x: X2, y0: yN, y1: YS }, { x: X3, y0: YN, y1: YS }, { x: XB, y0: YN, y1: YS });
+  HL.push({ y: YN, x0: XA, x1: XB }, { y: YS, x0: XA, x1: XB });
+  VL.push({ x: 1060, y0: YN, y1: yN }); // 블랙우드 숲길 (실버 피크 동쪽)
+  HL.push({ y: 304, x0: XA + 36, x1: X2 }, { y: 380, x0: X3, x1: XB }); // 평원 가로길 · 목장길
+  HL.push({ y: yN, x0: bN ? W.VX[bN.i] : XA, x1: XB, hw: true, from: bN }, { y: yS, x0: bS ? W.VX[bS.i] : XA, x1: XB, hw: true, from: bS });
+  const towns = [
+    { name: '샌디 밸리', xs: [X2, X2 + 12, X2 + 24, X2 + 36, X2 + 48], ys: [420, 432, 444, 456] },
+    { name: '레드 록', xs: [XA, XA + 12, XA + 24, XA + 36], ys: [292, 304, 316] },
+    { name: '파인 베이', xs: [XB - 60, XB - 48, XB - 36, XB - 24, XB - 12, XB], ys: [YN, YN + 12, YN + 24, YN + 36] },
+    { name: '골든 필즈', xs: [X3, X3 + 12, X3 + 24, X3 + 36], ys: [400, 412, 424] },
+  ];
+  for (const tw of towns) {
+    const x0 = tw.xs[0], x1 = tw.xs[tw.xs.length - 1], y0 = tw.ys[0], y1 = tw.ys[tw.ys.length - 1];
+    for (const x of tw.xs) if (!VL.some(l => l.x === x && l.y0 <= y0 && l.y1 >= y1)) VL.push({ x, y0, y1, town: tw });
+    for (const y of tw.ys) if (!HL.some(l => l.y === y && l.x0 <= x0 && l.x1 >= x1)) HL.push({ y, x0, x1, town: tw });
+    tw.box = { x0, y0, x1: x1 + 1, y1: y1 + 1 };
+  }
+  // 노드
+  const nodeAt = new Map(), cNodes = [];
+  const key = (x, y) => x + ',' + y;
+  const addNode = (x, y) => {
+    const k = key(x, y); if (nodeAt.has(k)) return nodeAt.get(k);
+    const n = { id: W.nodes.length, i: -1, j: -1, x: (x + 1) * T, y: (y + 1) * T, tx: x, ty: y, adj: [-1, -1, -1, -1], light: null, county: true };
+    W.nodes.push(n); nodeAt.set(k, n); cNodes.push(n); return n;
+  };
+  for (const l of HL) if (l.from) { const n = l.from; n.tx = W.VX[n.i]; n.ty = W.HY[n.j]; nodeAt.set(key(n.tx, n.ty), n); }
+  for (const h of HL) for (const v of VL) if (v.x >= h.x0 && v.x <= h.x1 && h.y >= v.y0 && h.y <= v.y1) addNode(v.x, h.y);
+  for (const h of HL) { addNode(h.x1, h.y); if (!h.from) addNode(h.x0, h.y); }
+  for (const v of VL) { addNode(v.x, v.y0); addNode(v.x, v.y1); }
+  // 도로 칠하기
+  const bridgeTiles = [];
+  const paint = (x, y, k) => { if (!inMap(x, y)) return; const i = x + y * MW; if (x < CITY_W) bridgeTiles.push(i); W.tiles[i] = TL.ROAD; W.rockH[i] = 0; if (W.roadK[i] !== 3) W.roadK[i] = (W.roadK[i] && W.roadK[i] !== k) ? 3 : k; };
+  const link = (A, B, horiz, hw) => {
+    if (horiz) { A.adj[0] = B.id; B.adj[2] = A.id; for (let x = A.tx + 2; x < B.tx; x++) { paint(x, A.ty, 2); paint(x, A.ty + 1, 2); } }
+    else { A.adj[1] = B.id; B.adj[3] = A.id; for (let y = A.ty + 2; y < B.ty; y++) { paint(A.tx, y, 1); paint(A.tx + 1, y, 1); } }
+    W.edgesList.push([A.id, B.id]);
+    if (hw) W.hwEdges.add(Math.min(A.id, B.id) + ',' + Math.max(A.id, B.id));
+  };
+  for (const n of cNodes) for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) { const i = (n.tx + a) + (n.ty + b) * MW; W.tiles[i] = TL.ROAD; W.roadK[i] = 3; W.rockH[i] = 0; }
+  for (const h of HL) {
+    const ns = [...nodeAt.values()].filter(n => n.ty === h.y && n.tx >= h.x0 && n.tx <= h.x1).sort((a, b) => a.tx - b.tx);
+    for (let k = 0; k + 1 < ns.length; k++) link(ns[k], ns[k + 1], true, h.hw);
+  }
+  for (const v of VL) {
+    const ns = [...nodeAt.values()].filter(n => n.tx === v.x && n.ty >= v.y0 && n.ty <= v.y1).sort((a, b) => a.ty - b.ty);
+    for (let k = 0; k + 1 < ns.length; k++) link(ns[k], ns[k + 1], false, false);
+  }
+  // 4차선 다리·간선: 바깥 차선 + 지도 주황색
+  const hwLane = (x, y) => { if (!inMap(x, y)) return; const i = x + y * MW; if (x < CITY_W) bridgeTiles.push(i); if (W.tiles[i] === TL.ROAD) { if (W.roadK[i] !== 6) W.roadK[i] = 3; return; } W.tiles[i] = TL.ROAD; W.roadK[i] = 6; W.rockH[i] = 0; };
+  for (const h of HL) if (h.hw) {
+    const xs = h.from ? W.VX[h.from.i] + 2 : h.x0;
+    for (let x = xs; x <= h.x1 + 1; x++) { hwLane(x, h.y - 1); hwLane(x, h.y + 2); for (let d = 0; d < 2; d++) W.hwLine[x + (h.y + d) * MW] = 1; }
+  }
+  for (const n of [...nodeAt.values()]) {
+    n.deg = n.adj.filter(a => a >= 0).length;
+    const town = towns.find(tw => n.tx >= tw.box.x0 && n.tx <= tw.box.x1 && n.ty >= tw.box.y0 && n.ty <= tw.box.y1);
+    if (n.county && n.deg >= 3 && town) n.light = { off: rr(0, LIGHT_CYCLE) };
+  }
+  const roadAt = (x, y) => get(x, y) === TL.ROAD;
+  const nearRoad = (x0, y0, x1, y1, m) => { for (let y = y0 - m; y <= y1 + m; y++) for (let x = x0 - m; x <= x1 + m; x++) if (roadAt(x, y)) return true; return false; };
+
+  // ---------- 5) 마을 블록 ----------
+  const PALH = ['#c65d4a', '#9c5a3c', '#5e6f86', '#7b8c5a', '#a8744f', '#6b5b7b', '#b8864e', '#d9c7a0', '#8aa0a8'];
+  const addBuilding = (x0, y0, x1, y1, h, kind, color) => {
+    const b = { id: W.buildings.length, x0, y0, x1, y1, h, kind, color, seed: R(), lit: R(), county: true };
+    W.buildings.push(b);
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) { const i = x + y * MW; W.tiles[i] = TL.BUILD; W.bIndex[i] = b.id; }
+    return b;
+  };
+  const clearArea = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (get(x, y) === TL.ROAD || get(x, y) === TL.BUILD || get(x, y) === TL.ROCK || get(x, y) === TL.WATER || get(x, y) === TL.RUNWAY) return false; return true; };
+  const places = []; // [key, shop, x, y, label, mark, icon]
+  const townSpecial = {
+    '샌디 밸리': [['c_mart1', 'mart', '#7ae68f', '#39404c', '편', '샌디 밸리 편의점'], ['c_burger1', 'burger', '#ffb347', '#c65d4a', '버', '사막 다이너'], ['c_ammu1', 'ammu', '#ff6b5a', '#6b6f73', '총', '샌디 밸리 총포상'], ['c_clinic1', 'hospital_st', '#e0443e', '#e9ecef', 'H', '샌디 밸리 의원'], ['c_sheriff1', 'police_st', '#4b8fe8', '#2c3e66', 'P', '카운티 보안관']],
+    '파인 베이': [['c_mart2', 'mart', '#7ae68f', '#39404c', '편', '파인 베이 잡화점'], ['c_burger2', 'burger', '#ffb347', '#5e6f86', '버', '어부의 식당'], ['c_clothes1', 'clothes', '#e07aff', '#7b5a8c', '옷', '파인 베이 옷가게'], ['c_clinic2', 'hospital_st', '#e0443e', '#e9ecef', 'H', '파인 베이 의원'], ['c_sheriff2', 'police_st', '#4b8fe8', '#2c3e66', 'P', '파인 베이 보안관']],
+    '골든 필즈': [['c_mart3', 'mart', '#7ae68f', '#39404c', '편', '골든 필즈 농협 마트']],
+    '레드 록': [['c_burger3', 'burger', '#ffb347', '#a8744f', '버', '레드 록 바비큐'], ['c_ammu2', 'ammu', '#ff6b5a', '#6b6f73', '총', '레드 록 사냥용품']],
+  };
+  for (const tw of towns) {
+    const specials = [...(townSpecial[tw.name] || [])], z = COUNTY_ZONES.findIndex(q => q.name === tw.name);
+    const cells = [];
+    for (let a = 0; a + 1 < tw.xs.length; a++) for (let c = 0; c + 1 < tw.ys.length; c++) cells.push([tw.xs[a], tw.ys[c]]);
+    let lotLeft = 2;
+    cells.forEach(([gx, gy], ci) => {
+      const x0 = gx + 2, y0 = gy + 2, x1 = gx + 11, y1 = gy + 11;
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (get(x, y) === TL.ROAD || get(x, y) === TL.ROCK) return;
+      const id = W.blocks.length;
+      const b = { id, x0, y0, x1, y1, district: DIST.RESID, hood: hood0 + z, area: 100, county: true, lots: [] };
+      W.blocks.push(b);
+      for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+        const i = x + y * MW; W.region[i] = id; W.dist[i] = DIST.RESID; W.hoodT[i] = hood0 + z; W.bIndex[i] = -1;
+        W.tiles[i] = (x === x0 || x === x1 || y === y0 || y === y1) ? TL.WALK : TL.GRASS;
+      }
+      b.loop = { x0: (x0 + 0.5) * T, y0: (y0 + 0.5) * T, x1: (x1 + 0.5) * T, y1: (y1 + 0.5) * T };
+      b.loop.w = b.loop.x1 - b.loop.x0; b.loop.h = b.loop.y1 - b.loop.y0; b.loop.P = 2 * (b.loop.w + b.loop.h);
+      for (const [qx, qy] of [[0, 0], [1, 0], [0, 1], [1, 1]]) {
+        const lx0 = x0 + 1 + qx * 4, ly0 = y0 + 1 + qy * 4, L = { x0: lx0, y0: ly0, x1: lx0 + 3, y1: ly0 + 3, edge: true, used: false, b: null };
+        b.lots.push(L);
+        if (lotLeft > 0 && ci % 3 === 1 && qx === 1 && qy === 1) { // 빈 필지(주차장) — 하버 개발로 건물을 올릴 수 있다
+          lotLeft--; L.kind = 'lot';
+          for (let y = L.y0; y <= L.y1; y++) for (let x = L.x0; x <= L.x1; x++) W.tiles[x + y * MW] = TL.LOT;
+          W.parking.push({ x: (L.x0 + 1) * T, y: (L.y0 + 1) * T, a: -Math.PI / 2, car: null, cd: 0 }, { x: (L.x0 + 3) * T, y: (L.y0 + 1) * T, a: -Math.PI / 2, car: null, cd: 0 });
+          continue;
+        }
+        // 건물은 인도 쪽 모서리에 붙인다 (문 = 바로 앞 인도 칸)
+        const bx0 = qx ? lx0 + 1 : lx0, by0 = qy ? ly0 + 1 : ly0, bx1 = bx0 + 2, by1 = by0 + 2;
+        const doorX = bx0 + 1, doorY = qy ? y1 : y0;
+        const sp = specials.length && (ci + qx + qy) % 2 === 0 ? specials.shift() : null;
+        if (sp) {
+          const kind = sp[1] === 'hospital_st' ? 'hospital' : sp[1] === 'police_st' ? 'police' : 'shop';
+          L.b = addBuilding(bx0, by0, bx1, by1, kind === 'shop' ? 6 : 8, kind, sp[3]); L.b.label = sp[5]; L.used = true;
+          places.push({ key: sp[0], shop: sp[1], x: (doorX + 0.5) * T, y: (doorY + 0.5) * T, label: sp[5], mark: sp[2], ch: sp[4] });
+        } else {
+          const shop = R() < 0.3;
+          L.b = addBuilding(bx0, by0, bx1, by1, shop ? rr(6, 9) : rr(4, 6), shop ? 'mid' : 'house', shop ? rpick(['#a38e70', '#8b6f6a', '#b09a7c', '#6f7f8f']) : rpick(PALH));
+          if (!shop && R() < 0.6) W.trees.push({ x: (qx ? lx0 : lx0 + 3) * T + T / 2, y: (qy ? ly0 : ly0 + 3) * T + T / 2, kind: tw.name === '파인 베이' ? 'pine' : tw.name === '샌디 밸리' ? 'palm' : 'tree', r: rr(1.8, 2.4), h: rr(5, 8), hue: R() });
+        }
+      }
+    });
+    // 교차로 모서리 가로등
+    for (const n of cNodes) {
+      if (!(n.tx >= tw.box.x0 && n.tx <= tw.box.x1 && n.ty >= tw.box.y0 && n.ty <= tw.box.y1)) continue;
+      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { const x = n.x + sx * T * 1.5, y = n.y + sy * T * 1.5; if (tileAt(x, y) === TL.WALK) W.lamps.push({ x, y }); }
+    }
+  }
+  // 파인 베이 교회 첨탑
+  { const b = W.buildings.find(q => q.county && q.kind === 'house' && W.hoods[W.hoodT[q.x0 + q.y0 * MW]]?.name === '파인 베이'); if (b) { b.kind = 'church'; b.h = 9; b.color = '#e8e2d0'; W.decos.push({ t: 'spire', x: (b.x0 + 1.5) * T, y: (b.y0 + 1.5) * T, z: 9, h: 12, c: '#e8e2d0' }); } }
+
+  // ---------- 6) 길가 시설: 주유소 · 농가 · 목장 ----------
+  // 길 옆 빈 땅 찾기: (x, y)에서 가장 가까운, 크기 w×h이고 길에서 1칸 떨어진 곳
+  const spotNear = (x, y, w, h, side) => {
+    for (let r = 0; r < 14; r++) for (const [dx, dy] of side) {
+      const X = x + dx * (r + 1), Y = y + dy * (r + 1), x0 = dx < 0 ? X - w + 1 : dx > 0 ? X : X - (w >> 1), y0 = dy < 0 ? Y - h + 1 : dy > 0 ? Y : Y - (h >> 1);
+      if (clearArea(x0 - 1, y0 - 1, x0 + w, y0 + h) && x0 >= CITY_W) return { x0, y0, x1: x0 + w - 1, y1: y0 + h - 1 };
+    }
+    return null;
+  };
+  const gas = (key, label, x, y, side) => {
+    const s = spotNear(x, y, 8, 6, side); if (!s) return;
+    for (let yy = s.y0; yy <= s.y1; yy++) for (let xx = s.x0; xx <= s.x1; xx++) W.tiles[xx + yy * MW] = TL.LOT;
+    const b = addBuilding(s.x0 + 5, s.y0 + 1, s.x0 + 7, s.y0 + 3, 4.5, 'shop', '#f2f4f7'); b.label = label;
+    W.decos.push({ t: 'lintel', x0: (s.x0 + 0.6) * T, x1: (s.x0 + 4.4) * T, y0: (s.y0 + 1) * T, y1: (s.y0 + 4.8) * T, z0: 4.2, z1: 4.8, c: '#d33b2c' }); // 주유 캐노피
+    places.push({ key, shop: 'mart', x: (s.x0 + 4.5) * T, y: (s.y0 + 2.5) * T, label, mark: '#7ae68f', ch: '편' });
+    W.parking.push({ x: (s.x0 + 1.5) * T, y: (s.y0 + 5) * T, a: 0, car: null, cd: 0 });
+  };
+  gas('c_gas1', '68번 국도 주유소', XA + 2, yN + 12, [[1, 0], [0, 1]]);
+  gas('c_gas2', '사막 휴게소', X2 + 2, yS - 6, [[1, 0], [0, -1]]);
+  gas('c_gas3', '호숫가 주유소', X3 - 1, yN + 30, [[-1, 0]]);
+  gas('c_gas4', '해안 주유소', XB - 1, YS - 6, [[-1, 0], [0, -1]]);
+  // 농가 (집 + 붉은 헛간 + 사일로)
+  const farm = (x, y, side) => {
+    const s = spotNear(x, y, 12, 10, side); if (!s) return;
+    for (let yy = s.y0; yy <= s.y1; yy++) for (let xx = s.x0; xx <= s.x1; xx++) W.tiles[xx + yy * MW] = TL.SAND;
+    addBuilding(s.x0 + 1, s.y0 + 1, s.x0 + 3, s.y0 + 3, rr(4, 5), 'house', rpick(['#e8e2d0', '#c65d4a', '#d9c7a0']));
+    addBuilding(s.x0 + 6, s.y0 + 1, s.x0 + 10, s.y0 + 5, 7, 'warehouse', '#9c3b2e');
+    addBuilding(s.x0 + 7, s.y0 + 7, s.x0 + 8, s.y0 + 8, 9, 'tank', '#b8bcb4');
+    W.decos.push({ t: 'tankcyl', x: (s.x0 + 8) * T, y: (s.y0 + 8) * T, r: 4, z: 9, c: '#c9ccc4' });
+  };
+  for (const [x, y, sd] of [[X3 + 2, 220, [[1, 0]]], [X3 + 2, 300, [[1, 0]]], [XB - 1, 360, [[-1, 0]]], [X3 + 2, 520, [[1, 0]]], [XB - 1, 540, [[-1, 0]]], [1240, YS - 1, [[0, -1]]], [XA + 2, 380, [[1, 0]]], [1100, YN + 1, [[0, 1]]]]) farm(x, y, sd);
+  // 외딴 집 (목장·오두막)
+  for (let k = 0; k < 26; k++) {
+    const l = rpick(VL.filter(v => !v.town)), y = ri(l.y0 + 8, l.y1 - 8), sd = R() < 0.5 ? [[1, 0]] : [[-1, 0]];
+    const s = spotNear(l.x + (sd[0][0] > 0 ? 2 : -1), y, 4, 4, sd); if (!s) continue;
+    addBuilding(s.x0, s.y0, s.x0 + 2, s.y0 + 2, rr(3.5, 5), 'house', rpick(PALH));
+  }
+  // 밭: 골든 필즈 동쪽·남쪽 (흙 이랑)
+  for (let y = 436; y < 584; y++) for (let x = 1192; x < 1322; x++) {
+    const i = x + y * MW; if (W.tiles[i] !== TL.GRASS && W.tiles[i] !== TL.SAND) continue;
+    if (nearRoad(x, y, x, y, 1)) continue;
+    const field = (Math.floor(x / 24) + Math.floor(y / 20)) % 3;
+    if (field === 0) W.tiles[i] = (y % 2) ? TL.SAND : TL.GRASS; else if (field === 1) W.tiles[i] = (x % 2) ? TL.SAND : TL.GRASS;
+  }
+
+  // ---------- 7) 경비행장 (샌디 밸리 남쪽) ----------
+  {
+    const ry0 = 560, rx0 = 940, rx1 = 1110;
+    for (let y = ry0; y < ry0 + 4; y++) for (let x = rx0; x <= rx1; x++) if (get(x, y) !== TL.ROAD) set(x, y, TL.RUNWAY);
+    for (let y = ry0 + 4; y <= ry0 + 12; y++) for (let x = 996; x <= 1030; x++) if (get(x, y) !== TL.ROAD) set(x, y, TL.LOT);
+    for (let y = ry0 + 13; y < YS; y++) for (let x = 1016; x <= 1018; x++) if (get(x, y) !== TL.ROAD) set(x, y, TL.LOT);
+    const hg = addBuilding(1000, ry0 + 6, 1009, ry0 + 11, 8, 'hangar', '#8a929c'); hg.label = '샌디 밸리 비행장';
+    W.decos.push({ t: 'vault', x0: 1000 * T, x1: 1010 * T, y0: (ry0 + 6) * T, y1: (ry0 + 12) * T, z: 8, c: '#9aa3ad' });
+    W.runways.push({ x0: rx0 * T, y0: ry0 * T, x1: (rx1 + 1) * T, y1: (ry0 + 4) * T, county: true });
+    W.places.c_airfield = { x: 1020 * T, y: (ry0 + 8) * T, label: '샌디 밸리 비행장' };
+    W.mapLabels.push({ name: '비행장', x: 1025 * T, y: (ry0 - 4) * T, small: true });
+  }
+
+  // ---------- 8) 장소 등록 ----------
+  const hasPM = typeof PLACE_MARK !== 'undefined', hasEP = typeof EXTRA_PLACES !== 'undefined';
+  for (const p of places) {
+    W.places[p.key] = { x: p.x, y: p.y, label: p.label };
+    if (p.shop === 'hospital_st' || p.shop === 'police_st') { W.branches = W.branches || []; W.branches.push({ key: p.key, kind: p.shop, ch: p.ch, c: p.mark, label: p.label }); }
+    else if (hasEP) { EXTRA_PLACES.push([p.key, p.shop]); EXTRA_ICONS.push({ key: p.key, ch: p.ch, c: p.mark, label: p.label }); }
+    if (hasPM) PLACE_MARK[p.key] = p.mark;
+  }
+  W.landmarks.push({ name: '실버 피크', x: 975 * T, y: 112 * T }, { name: '솔트 레이크', x: lake.x * T, y: lake.y * T });
+
+  // ---------- 9) 나무: 블랙우드 침엽수림 · 초원 · 사막 선인장 · 해변 야자 ----------
+  const treeOK = (x, y) => { const t = get(x, y); return (t === TL.GRASS || t === TL.SAND) && !nearRoad(x, y, x, y, 2) && W.region[x + y * MW] < 0 && W.bIndex[x + y * MW] < 0; };
+  const forest = (x, y) => { const n = 14 * Math.sin(x * 0.05 + ph[2]) + 10 * Math.sin(y * 0.07 + ph[5]); return x > 1050 + n && x < 1262 + n && y > 52 + n * 0.5 && y < 205 + n; };
+  for (let y = 0; y < MH; y++) for (let x = CITY_W; x < MW; x++) {
+    const i = x + y * MW, t = W.tiles[i]; if (t !== TL.GRASS && t !== TL.SAND) continue;
+    const h = hash2(x * 7 + 3, y * 11 + 5);
+    if (t === TL.GRASS && forest(x, y)) { if (h < 0.075 && treeOK(x, y)) W.trees.push({ x: (x + rr(0.2, 0.8)) * T, y: (y + rr(0.2, 0.8)) * T, kind: 'pine', r: rr(1.6, 2.3), h: rr(8, 13), hue: R() }); }
+    else if (t === TL.GRASS) { if (h < 0.006 && treeOK(x, y)) W.trees.push({ x: (x + 0.5) * T, y: (y + 0.5) * T, kind: 'tree', r: rr(2, 2.9), h: rr(5, 8), hue: R() }); }
+    else if (desert(x, y) && lakeR(x, y) > 1.12) { if (h < 0.0045 && treeOK(x, y)) W.trees.push({ x: (x + 0.5) * T, y: (y + 0.5) * T, kind: 'cactus', r: 0.5, h: rr(2.4, 4.2), hue: R() }); }
+    else if (h < 0.012 && y > 560 && treeOK(x, y)) W.trees.push({ x: (x + 0.5) * T, y: (y + 0.5) * T, kind: 'palm', r: 2.2, h: rr(7, 9), hue: R() });
+  }
+  // 산에 가까운 침엽수 (실버 피크 기슭)
+  for (let k = 0; k < 900; k++) {
+    const a = R() * TAU, m = W.mountains[0], d = m.r * rr(0.55, 1.25), x = Math.floor(m.x + Math.cos(a) * d), y = Math.floor(m.y + Math.sin(a) * d);
+    if (!inMap(x, y)) continue;
+    const h = mountainH(x + 0.5, y + 0.5);
+    if (get(x, y) === TL.ROCK && h > 55) continue;
+    if (get(x, y) === TL.ROCK || treeOK(x, y)) W.trees.push({ x: (x + 0.5) * T, y: (y + 0.5) * T, kind: 'pine', r: rr(1.5, 2.1), h: rr(7, 11), hue: R(), z: h });
+  }
+
+  // ---------- 10) 다리에 덮인 도시 쪽 나무·가로등·주차칸 치우기 ----------
+  const bt = new Set(bridgeTiles);
+  const onBridge = (x, y) => bt.has(Math.floor(x / T) + Math.floor(y / T) * MW);
+  W.trees = W.trees.filter(t => !onBridge(t.x, t.y));
+  W.lamps = W.lamps.filter(l => !onBridge(l.x, l.y));
+  W.parking = W.parking.filter(p => !onBridge(p.x, p.y));
+  W.countyInfo = { bridges: [bN && bN.id, bS && bS.id], yN, yS, XA, nodes: cNodes.length, blocks: W.blocks.filter(b => b.county).length };
 }
 
 'use strict';
@@ -3941,7 +4329,7 @@ const Missions = {
   idx: 0, active: null, givers: [], cool: 0,
   defs: [],
   init() {
-    const at = (u, v) => sidewalkNear(u * MW * T, v * MH * T);
+    const at = (u, v) => sidewalkNear(u * CITY_W * T, v * CITY_H * T);
     this.givers = [at(0.4, 0.36), at(0.55, 0.3), at(0.3, 0.62), at(0.66, 0.5), at(0.45, 0.48), at(0.62, 0.22), at(0.28, 0.4), at(0.5, 0.62), at(0.58, 0.44), at(0.35, 0.25), at(0.7, 0.66), at(0.24, 0.55), at(0.5, 0.42), at(0.42, 0.7)];
     this.defs = MISSION_DEFS;
     // 미션 마커가 가게·고용센터 입구와 겹치면 둘이 동시에 열리므로 조금 옮긴다
@@ -4063,7 +4451,7 @@ function assassinDef(o) {
   return {
     title: o.title, reward: o.reward, intro: o.intro, outro: o.outro, noPolice: o.noPolice,
     start(m) {
-      const base = sidewalkNear(o.u * MW * T, o.v * MH * T);
+      const base = sidewalkNear(o.u * CITY_W * T, o.v * CITY_H * T);
       m.target = missionPed(m, 'target', base.x, base.y);
       m.target.hp = m.target.maxHp = o.targetHp; if (o.targetLook) Object.assign(m.target, o.targetLook);
       m.blipT = blip(m, { ent: m.target, c: '#ff4d4d', big: true });
@@ -4142,7 +4530,7 @@ const MISSION_DEFS = [
     start(m) {
       const P = Game.player;
       m.A = sidewalkNear(P.px + rand(-120, 120), P.py + rand(-120, 120), 60);
-      const far = [[0.2, 0.2], [0.8, 0.2], [0.2, 0.8], [0.75, 0.75]].map(([u, v]) => ({ x: u * MW * T, y: v * MH * T })).sort((a, b) => dist(b.x, b.y, m.A.x, m.A.y) - dist(a.x, a.y, m.A.x, m.A.y))[0];
+      const far = [[0.2, 0.2], [0.8, 0.2], [0.2, 0.8], [0.75, 0.75]].map(([u, v]) => ({ x: u * CITY_W * T, y: v * CITY_H * T })).sort((a, b) => dist(b.x, b.y, m.A.x, m.A.y) - dist(a.x, a.y, m.A.x, m.A.y))[0];
       m.B = sidewalkNear(far.x, far.y);
       blip(m, { x: m.A.x, y: m.A.y, c: '#4fe38a', big: true });
     },
@@ -4174,7 +4562,7 @@ const MISSION_DEFS = [
     outro: [['조니 박', '항구가 조용해졌네. 청룡파도 한동안은 얌전하겠지.']],
     start(m) {
       giveWeapon(Game.player, 'smg', 300); Game.player.weapon = 'smg';
-      m.center = sidewalkNear(0.8 * MW * T, 0.35 * MH * T);
+      m.center = sidewalkNear(0.8 * CITY_W * T, 0.35 * CITY_H * T);
       m.blips.push({ x: m.center.x, y: m.center.y, c: '#4fe38a', big: true });
       m.stage = 0;
     },
@@ -4338,10 +4726,10 @@ const MISSION_DEFS = [
     intro: [['마담 윤', '청룡파 회계사가 우리 쪽으로 넘어오겠대. 녀석들이 가만있지 않겠지.'], ['마담 윤', '차로 데리러 가서 선셋 비치 은신처까지 무사히 데려와. 차가 터지면 끝이야.']],
     outro: [['마담 윤', '회계사가 장부를 전부 넘겼어. 청룡파 금고가 훤히 보이네.']],
     start(m) {
-      const s = sidewalkNear(0.22 * MW * T, 0.3 * MH * T);
+      const s = sidewalkNear(0.22 * CITY_W * T, 0.3 * CITY_H * T);
       m.w = missionPed(m, 'civ', s.x, s.y); m.w.state = 'idle'; m.w.shirt = '#e8d9b0'; m.w.pants = '#3b3b3b';
       m.wb = blip(m, { ent: m.w, c: '#6fe0ff', big: true });
-      m.safe = sidewalkNear(0.78 * MW * T, 0.8 * MH * T); m.spawnT = 0;
+      m.safe = sidewalkNear(0.78 * CITY_W * T, 0.8 * CITY_H * T); m.spawnT = 0;
     },
     update(m, dt) {
       const P = Game.player;
@@ -4378,7 +4766,7 @@ const MISSION_DEFS = [
     start(m) {
       const P = Game.player, sp = roadsideSpot(P.px, P.py, 8, 35);
       m.van = missionCar(m, 'van', sp.x, sp.y, sp.a, { color: '#6b2f2f', hp: 320 }); m.van.label = '폭탄 밴';
-      m.dest = sidewalkNear((World.VX[World.NX - 1] + 2) * T, 0.72 * MH * T);
+      m.dest = sidewalkNear((World.VX[World.NX - 1] + 2) * T, 0.72 * CITY_H * T);
       blip(m, { ent: m.van, c: '#ff4d4d', big: true }); m.slow = 0;
     },
     update(m, dt) {
@@ -4695,7 +5083,7 @@ const Jobs = {
   u_smuggle(j, dt, P) {
     if (j.stage === 'start' || j.stage === 'pickup') {
       j.stage = 'pickup';
-      if (!j.pick) j.pick = sidewalkNear((World.VX[World.NX - 1] + 3) * T, rand(0.25, 0.7) * MH * T);
+      if (!j.pick) j.pick = sidewalkNear((World.VX[World.NX - 1] + 3) * T, rand(0.25, 0.7) * CITY_H * T);
       j.blips = [{ x: j.pick.x, y: j.pick.y, c: '#ff5d8f', big: true }];
       this.obj(j, '부두에서 밀수품을 받아라');
       if (dist(P.px, P.py, j.pick.x, j.pick.y) < 4 && (!P.car || P.car.speed < 3)) {
@@ -5314,7 +5702,14 @@ function roofAt(x, y) {
   const tx = Math.floor(x / T), ty = Math.floor(y / T);
   if (tx < 0 || ty < 0 || tx >= MW || ty >= MH) return 0;
   const bi = World.bIndex[tIdx(tx, ty)];
-  return bi >= 0 && World.buildings[bi] ? World.buildings[bi].h : 0;
+  return Math.max(bi >= 0 && World.buildings[bi] ? World.buildings[bi].h : 0, World.rockH ? World.rockH[tIdx(tx, ty)] : 0); // 산 높이 포함
+}
+// 앞쪽 산 높이 (지금 위치와 1·2.5초 뒤 위치 중 가장 높은 곳) — 비행기·헬기가 산을 넘을 때 쓴다
+function terrainAhead(c) {
+  if (!World.rockH) return 0;
+  let h = 0;
+  for (const t of [0, 1, 2.5]) { const tx = Math.floor((c.x + (c.vx || 0) * t) / T), ty = Math.floor((c.y + (c.vy || 0) * t) / T); if (tx >= 0 && ty >= 0 && tx < MW && ty < MH) h = Math.max(h, World.rockH[tIdx(tx, ty)]); }
+  return h;
 }
 // 막힌 칸(건물·물) 안에 있을 때 가장 가까운 빈 칸 중심 (옥상에 내린 사람을 길로 내려보낼 때)
 function openSpotNear(x, y) {
@@ -5351,7 +5746,7 @@ function specialStep(c, dt) {
     // 옥상 착륙: 수직으로 내려오면 지붕 위에 선다 (옆에서 들이받으면 아래 충돌 판정으로 추락)
     const roof = roofAt(c.x, c.y);
     const flying = c.driver && !c.landing && c.burnT <= 0 && (c.alt - roof > 0.5 || Math.abs(raw) > 0.1 || Math.abs(inp.st) > 0.1 || inp.up);
-    const target = flying ? 72 : roof;
+    const target = flying ? Math.max(72, terrainAhead(c) + 14) : roof; // 산 위로는 자동으로 올라간다
     c.alt = c.alt < target ? Math.min(target, c.alt + 8 * dt) : Math.max(target, c.alt - (c.landing ? 7 : 5) * dt);
     if (c.landing && c.alt <= roof + 0.05) { c.landing = false; if (c.driver === 'player') UI.toast(roof > 0 ? '옥상에 착륙했다' : '착륙 완료'); }
     c.rotor = (c.rotor || 0) + dt * (c.alt > 0.1 || flying ? 42 : 4);
@@ -5388,7 +5783,7 @@ function specialStep(c, dt) {
     if (c.landing) c.spd = Math.max(air ? 20 : 0, c.spd - 6 * dt);
     const takeoff = 34;
     if (c.landing) c.alt = Math.max(0, c.alt - 7 * dt);
-    else if (c.spd >= takeoff) c.alt = Math.min(95, c.alt + (c.spd - 30) * 0.35 * dt * 2);
+    else if (c.spd >= takeoff) c.alt = Math.min(Math.max(95, terrainAhead(c) + 18), c.alt + (c.spd - 30) * 0.35 * dt * 2);
     else if (c.alt > 0) c.alt = Math.max(0, c.alt - ((takeoff - c.spd) * 0.6 + 2) * dt);
     if (c.landing && c.alt <= 0.05) { c.landing = false; UI.toast('착륙 완료 — 브레이크로 멈춘 뒤 내려라'); }
     c.w = inp.st * V.steer * (air ? 1 : clamp(c.spd / 12, 0, 0.45));
@@ -5406,10 +5801,12 @@ function specialStep(c, dt) {
     if (isAir(c)) { c.a = angNorm(c.a + Math.PI * 0.9); if (c.driver === 'player') UI.toast('작전 구역 끝 — 기수를 돌린다'); }
   }
   // 공중 충돌: 현재 고도보다 높은 건물
+  if (c.alt > 1.2 && !c.dead && c.driver !== 'player' && World.rockH) { const th = terrainAhead(c); if (th && c.alt < th + 10) c.alt = th + 10; } // AI 비행기·헬기는 산을 넘는다
   if (c.alt > 1.2 && !c.dead) {
     const tx = Math.floor(c.x / T), ty = Math.floor(c.y / T);
     const bi = tx >= 0 && ty >= 0 && tx < MW && ty < MH ? World.bIndex[tIdx(tx, ty)] : -1;
     if (bi >= 0 && World.buildings[bi] && World.buildings[bi].h > c.alt + 0.3) { c.damage(9999, null); c.burnT = 0.01; if (c.driver === 'player') UI.toast('건물에 충돌했다!'); }
+    else if (World.rockH && tx >= 0 && ty >= 0 && tx < MW && ty < MH && World.rockH[tIdx(tx, ty)] > c.alt + 0.5) { c.damage(9999, null); c.burnT = 0.01; if (c.driver === 'player') UI.toast('산에 충돌했다!'); }
   }
 }
 
@@ -5837,7 +6234,11 @@ const GROUND = {
   [TL.BUILD]: ['#2a2e35'],
   [TL.WATER]: ['#1d5a80'],
   [TL.RUNWAY]: ['#2c2e33', '#2a2c31'],
+  [TL.ROCK]: ['#8a6f55'],
 };
+// 산 음영: 북서쪽에서 빛이 온다고 보고 경사에 따라 밝게/어둡게
+function rockSlope(tx, ty) { const h = World.rockH, i = tx + ty * MW, a = h[i - 1 - MW] || 0, b = h[i + 1 + MW] || 0; return clamp((a - b) * 0.012, -0.25, 0.25); }
+function shadeHex(hex, f) { const n = parseInt(hex.slice(1), 16); const c = v => clamp(Math.round(f > 0 ? v + (255 - v) * f : v * (1 + f)), 0, 255); return `rgb(${c(n >> 16 & 255)},${c(n >> 8 & 255)},${c(n & 255)})`; }
 function drawGround(amb) {
   const ppm = Cam.ppm;
   const x0 = Math.max(0, Math.floor((Cam.x - Cam.vw / 2 - 2) / T)), x1 = Math.min(MW - 1, Math.floor((Cam.x + Cam.vw / 2 + 2) / T));
@@ -5851,7 +6252,7 @@ function drawGround(amb) {
     const t = tiles[tx + ty * MW];
     if (t === TL.WATER) continue;
     const pal = GROUND[t];
-    ctx.fillStyle = pal[Math.floor(hash2(tx, ty) * pal.length)];
+    ctx.fillStyle = t === TL.ROCK ? shadeHex(rockColor(World.rockH[tx + ty * MW]), (hash2(tx, ty) - 0.5) * 0.12 + rockSlope(tx, ty)) : pal[Math.floor(hash2(tx, ty) * pal.length)];
     ctx.fillRect(tx * T, ty * T, T + ov, T + ov);
   }
   const tt = Game.time;
@@ -6404,6 +6805,15 @@ function drawTrees(amb) {
         ctx.beginPath(); ctx.ellipse(x + Math.cos(a) * 1.1 * f, y + Math.sin(a) * 1.1 * f, 1.3 * f, 0.35 * f, a, 0, TAU); ctx.fill();
       }
       ctx.fillStyle = tint('#5a4a2a', amb); ctx.beginPath(); ctx.arc(x, y, 0.35 * f, 0, TAU); ctx.fill();
+    } else if (t.kind === 'cactus') { // 사막 선인장: 몸통 + 팔 두 개
+      ctx.strokeStyle = tint('#3f7a45', amb); ctx.lineCap = 'round'; ctx.lineWidth = 0.55 * f;
+      ctx.beginPath(); ctx.moveTo(t.x, t.y); ctx.lineTo(x, y); ctx.stroke();
+      ctx.lineWidth = 0.38 * f; const s = t.hue > 0.5 ? 1 : -1;
+      ctx.beginPath(); ctx.moveTo(lerp(t.x, x, 0.45), lerp(t.y, y, 0.45)); ctx.lineTo(lerp(t.x, x, 0.45) + 0.7 * s, lerp(t.y, y, 0.45)); ctx.lineTo(lerp(t.x, x, 0.8) + 0.7 * s, lerp(t.y, y, 0.8)); ctx.stroke();
+      ctx.lineCap = 'butt';
+    } else if (t.kind === 'pine') { // 침엽수: 짙은 녹색 겹 원뿔
+      const base = t.hue < 0.5 ? '#24462a' : '#2c5230';
+      for (let k = 0; k < 3; k++) { const q = 1 - k * 0.3; ctx.fillStyle = tint(base, amb, -0.1 + k * 0.1); ctx.beginPath(); ctx.arc(lerp(t.x, x, 0.5 + k * 0.25), lerp(t.y, y, 0.5 + k * 0.25), t.r * q * f, 0, TAU); ctx.fill(); }
     } else {
       const base = t.hue < 0.33 ? '#3d6e34' : t.hue < 0.66 ? '#467a3a' : '#355f30';
       ctx.fillStyle = tint(base, amb, -0.15); ctx.beginPath(); ctx.arc(x, y, t.r * f, 0, TAU); ctx.fill();
@@ -6723,8 +7133,35 @@ const View3D = {
   CS: 128,
   buildStatic() {
     const S = this.scene;
-    const sea = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000), new THREE.MeshLambertMaterial({ color: 0x1d5a80 }));
-    sea.rotation.x = -Math.PI / 2; sea.position.set(MW * T / 2, -0.05, MH * T / 2); S.add(sea);
+    // 바다·거친 지면은 잘게 나누고 조금 낮춘 뒤 깊이를 뒤로 민다 (거대한 삼각형 두 개면 청크 지면과 깊이 싸움을 한다)
+    const backMat = o => new THREE.MeshLambertMaterial({ ...o, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 4 });
+    const sea = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000, 48, 48), backMat({ color: 0x1d5a80 }));
+    sea.rotation.x = -Math.PI / 2; sea.position.set(MW * T / 2, -0.3, MH * T / 2); S.add(sea);
+    // 아직 안 만든 청크 자리에 바다 대신 보이는 거친 지면 (미니맵 한 장을 통째로 깐다)
+    if (World.mini) {
+      const mt = new THREE.CanvasTexture(World.mini); mt.colorSpace = THREE.SRGBColorSpace; mt.magFilter = THREE.LinearFilter;
+      const under = new THREE.Mesh(new THREE.PlaneGeometry(MW * T, MH * T, 56, 26), backMat({ map: mt }));
+      under.rotation.x = -Math.PI / 2; under.position.set(MW * T / 2, -0.15, MH * T / 2); S.add(under);
+    }
+    // 레드 카운티의 산·메사: 높이 함수(mountainH)로 만든 지형 메시 (한 번만 만들어 둔다)
+    for (const m of World.mountains || []) {
+      const size = 2 * m.rMax * T + 16, seg = Math.min(128, Math.ceil(size / 5));
+      const geo = new THREE.PlaneGeometry(size, size, seg, seg); geo.rotateX(-Math.PI / 2);
+      const pos = geo.attributes.position, cx = m.x * T, cz = m.y * T;
+      for (let k = 0; k < pos.count; k++) { const x = pos.getX(k) + cx, z = pos.getZ(k) + cz, h = mountainH(x / T, z / T); pos.setXYZ(k, x, h > 0.25 ? h : -1.5, z); }
+      geo.computeVertexNormals();
+      const nor = geo.attributes.normal, col = new Float32Array(pos.count * 3), c = new THREE.Color();
+      for (let k = 0; k < pos.count; k++) {
+        const h = pos.getY(k), steep = 1 - nor.getY(k);
+        if (m.mesa) c.set(steep > 0.35 ? (Math.floor(h / 3.5) % 2 ? '#b0643a' : '#9a5532') : '#c98a55');
+        else c.set(h > 98 ? '#f1f3f6' : h > 76 ? (steep > 0.45 ? '#8f8b85' : '#d9dde2') : steep > 0.5 ? '#7d7266' : h < 28 ? '#5c7a44' : h < 55 ? '#4f6b3c' : '#7c7a6c');
+        col[k * 3] = c.r; col[k * 3 + 1] = c.g; col[k * 3 + 2] = c.b;
+      }
+      geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+      this.mtMat = this.mtMat || new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true, fog: false });
+      const mesh = new THREE.Mesh(geo, this.mtMat);
+      S.add(mesh);
+    }
     // 창문 텍스처 (흰 바탕 = 정점 색 그대로, 창 = 어두운 유리) + 밤 발광 맵
     const wc = document.createElement('canvas'); wc.width = wc.height = 64;
     const w = wc.getContext('2d'); w.fillStyle = '#ffffff'; w.fillRect(0, 0, 64, 64); w.fillStyle = '#3a4656'; w.fillRect(8, 16, 48, 30); w.fillStyle = 'rgba(255,255,255,0.25)'; w.fillRect(8, 16, 48, 4);
@@ -6735,7 +7172,7 @@ const View3D = {
     this.bmat = new THREE.MeshLambertMaterial({ vertexColors: true, map: winTex, emissive: 0xffffff, emissiveMap: emTex, emissiveIntensity: 0 });
     // 청크들이 함께 쓰는 지오메트리·재질
     this.sg = {
-      trunk: new THREE.CylinderGeometry(0.18, 0.25, 1, 6), crown: new THREE.IcosahedronGeometry(1, 0),
+      trunk: new THREE.CylinderGeometry(0.18, 0.25, 1, 6), crown: new THREE.IcosahedronGeometry(1, 0), cone: new THREE.ConeGeometry(1, 1, 7),
       pole: new THREE.CylinderGeometry(0.08, 0.1, 5, 5), head: new THREE.SphereGeometry(0.28, 8, 6),
       tpole: new THREE.CylinderGeometry(0.07, 0.07, 3.6, 5), tbox: new THREE.BoxGeometry(0.4, 0.4, 0.4),
     };
@@ -6861,13 +7298,32 @@ const View3D = {
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), p3 = new THREE.Vector3(), color = new THREE.Color();
     const inst = (geo, mat, n) => { const m = new THREE.InstancedMesh(geo, mat, n); m.frustumCulled = false; G.add(m); return m; };
     // 나무 (줄기 + 수관)
-    if (bk.trees.length) {
-      const trunk = inst(this.sg.trunk, this.mat('#6b4a2a'), bk.trees.length), crown = inst(this.sg.crown, this.crownMat, bk.trees.length);
-      bk.trees.forEach((t, i) => {
+    const broad = bk.trees.filter(t => t.kind !== 'pine' && t.kind !== 'cactus'), pines = bk.trees.filter(t => t.kind === 'pine'), cacti = bk.trees.filter(t => t.kind === 'cactus');
+    if (broad.length) {
+      const trunk = inst(this.sg.trunk, this.mat('#6b4a2a'), broad.length), crown = inst(this.sg.crown, this.crownMat, broad.length);
+      broad.forEach((t, i) => {
         m4.compose(p3.set(t.x, t.h * 0.4, t.y), q.identity(), sc.set(1, t.h * 0.8, 1)); trunk.setMatrixAt(i, m4);
         const palm = t.kind === 'palm';
         m4.compose(p3.set(t.x, t.h * (palm ? 0.95 : 0.8), t.y), q.identity(), palm ? sc.set(t.r * 0.9, 0.5, t.r * 0.9) : sc.set(t.r, t.r * 0.9, t.r)); crown.setMatrixAt(i, m4);
         crown.setColorAt(i, color.set(palm ? '#3f8a3a' : t.hue < 0.33 ? '#3d6e34' : t.hue < 0.66 ? '#467a3a' : '#355f30'));
+      });
+    }
+    if (pines.length) { // 침엽수 (산비탈이면 그 높이에 선다)
+      const trunk = inst(this.sg.trunk, this.mat('#5a3d24'), pines.length), cone = inst(this.sg.cone, this.crownMat, pines.length);
+      pines.forEach((t, i) => {
+        const z = t.z || 0;
+        m4.compose(p3.set(t.x, z + t.h * 0.15, t.y), q.identity(), sc.set(1, t.h * 0.3, 1)); trunk.setMatrixAt(i, m4);
+        m4.compose(p3.set(t.x, z + t.h * 0.6, t.y), q.identity(), sc.set(t.r, t.h * 0.85, t.r)); cone.setMatrixAt(i, m4);
+        cone.setColorAt(i, color.set(t.hue < 0.5 ? '#24462a' : '#2e5632'));
+      });
+    }
+    if (cacti.length) { // 선인장: 몸통 + 팔
+      const body = inst(this.sg.trunk, this.mat('#3f7a45'), cacti.length * 3);
+      cacti.forEach((t, i) => {
+        m4.compose(p3.set(t.x, t.h / 2, t.y), q.identity(), sc.set(2.2, t.h, 2.2)); body.setMatrixAt(i * 3, m4);
+        const s = t.hue > 0.5 ? 1 : -1;
+        m4.compose(p3.set(t.x + 0.55 * s, t.h * 0.62, t.y), q.identity(), sc.set(1.5, t.h * 0.4, 1.5)); body.setMatrixAt(i * 3 + 1, m4);
+        m4.compose(p3.set(t.x - 0.5 * s, t.h * 0.5, t.y + 0.2), q.identity(), sc.set(1.4, t.h * 0.32, 1.4)); body.setMatrixAt(i * 3 + 2, m4);
       });
     }
     // 가로등
@@ -6972,7 +7428,7 @@ const View3D = {
   // 카메라 주변 청크 스트리밍. 반경은 속도·고도에 비례 (500km/h ≈ 139m/s 에서도 수 초 앞까지 준비)
   stream(fx, fy, spd, alt) {
     const CS = this.CS, low = IS_MOBILE || Perf.low;
-    const base = low ? 220 : 380, cap = low ? 420 : 760;
+    const base = low ? 170 : 260, cap = low ? 300 : 480; // v2.17: 시야를 줄여 넓어진 맵에서도 가볍게 (산은 멀리서도 보인다)
     const want = clamp(base + spd * (low ? 1.6 : 2.8) + alt * 3, base, cap);
     this.drawR = want > this.drawR ? smooth(this.drawR, want, 1.2, 1 / 60) : smooth(this.drawR, want, 0.4, 1 / 60);
     if (!this.lastF || Math.hypot(fx - this.lastF[0], fy - this.lastF[1]) > 150) this.firstFill = true; // 첫 프레임·순간이동: 주변을 한 번에 채운다
@@ -7346,7 +7802,9 @@ const View3D = {
     this.stream(P.px, P.py, fc ? Math.abs(fc.speed || fc.spd || 0) : 0, fAlt);
     S.fog.far = this.drawR * (1 - Math.min(1, wet) * 0.3) * (1 - 0.7 * Weather.fog); S.fog.near = Math.min(90, S.fog.far * (0.4 - 0.3 * Weather.fog));
     if (Weather.fog > 0.05) S.fog.color.lerp(new THREE.Color(0.75, 0.78, 0.82), Weather.fog * (1 - night * 0.7));
-    if (Math.abs(this.camera.far - (this.drawR + 60)) > 20) { this.camera.far = this.drawR + 60; this.camera.updateProjectionMatrix(); }
+    const farW = (World.mountains && World.mountains.length) ? Math.max(this.drawR + 60, 2600) : this.drawR + 60; // 산은 멀리서도 보인다 (나머지는 안개와 청크 반경이 가린다)
+    if (Math.abs(this.camera.far - farW) > 20) { this.camera.far = farW; this.camera.updateProjectionMatrix(); }
+    if (this.mtMat) { this.mtMat.color.copy(S.fog.color).lerp(this._white || (this._white = new THREE.Color(1, 1, 1)), 0.62); } // 먼 산 대기 원근: 하늘색으로 살짝 바랜다
     this.hemi.intensity = 0.25 + (1 - night) * 0.75; this.sun.intensity = 0.1 + (1 - night) * 0.8;
     this.hemi.color.setRGB(amb[0], amb[1], amb[2]);
     this.bmat.emissiveIntensity = night > 0.35 ? night * 0.9 : 0;
@@ -7983,12 +8441,12 @@ function drawRadar(s) {
 // ---------- 전체 지도 ----------
 // 전체 지도 '사업체 가격' 보기: 사업체마다 가격 · 1분 수입 (가진 곳은 초록, 단계 표시). 글자가 겹치면 뒤의 것은 생략
 const fmtM = v => v >= 1e6 ? `$${(v / 1e6).toFixed(v >= 1e7 ? 0 : 1)}M` : `$${Math.round(v / 1000)}K`;
-function drawBizPrices(c, ox, oy, k, ox0, oy0, size) {
+function drawBizPrices(c, ox, oy, k, ox0, oy0, size, sizeH = size) {
   const P = World.places, keys = Object.keys(BUSINESSES).filter(b => P[b]).sort((a, b) => BUSINESSES[b].price - BUSINESSES[a].price);
   const rects = [], big = MapView.z >= 2.2;
   for (const key of keys) {
     const B = BUSINESSES[key], pl = P[key], L = Biz.lv(key), x = ox + pl.x * k, y = oy + pl.y * k;
-    if (x < ox0 || y < oy0 || x > ox0 + size || y > oy0 + size) continue;
+    if (x < ox0 || y < oy0 || x > ox0 + size || y > oy0 + sizeH) continue;
     const l1 = big ? B.name : fmtM(B.price), l2 = L ? `보유 ${L}단계 · ${fmtM(Biz.perMin(key))}/분` : big ? `${fmtM(B.price)} · ${fmtM(B.perMin)}/분` : `${fmtM(B.perMin)}/분`;
     c.font = `700 ${big ? 12 : 11}px ${FONT_KR}`; const w = Math.max(c.measureText(l1).width, c.measureText(l2).width) + 12, h = big ? 34 : 30;
     const r = { x: x - w / 2, y: y - 12 - h, w, h };
@@ -8009,15 +8467,15 @@ function drawBizPrices(c, ox, oy, k, ox0, oy0, size) {
 const MapView = {
   z: 1, cx: null, cy: null, drag: null, moved: false,
   reset() { this.z = 1; this.cx = MW * T / 2; this.cy = MH * T / 2; },
-  clampC() { const hw = MW * T / 2 / this.z, hh = MH * T / 2 / this.z; this.cx = clamp(this.cx, hw, MW * T - hw); this.cy = clamp(this.cy, hh, MH * T - hh); },
+  clampC() { const r = Game.mapRect, k = r ? r.k0 * this.z : 1, hw = r ? r.w / 2 / k : MW * T / 2, hh = r ? r.h / 2 / k : MH * T / 2; this.cx = hw * 2 >= MW * T ? MW * T / 2 : clamp(this.cx, hw, MW * T - hw); this.cy = hh * 2 >= MH * T ? MH * T / 2 : clamp(this.cy, hh, MH * T - hh); },
   center(x, y) { this.cx = x; this.cy = y; this.clampC(); },
   zoomAt(f, sx, sy) {
     const r = Game.mapRect; if (!r) return;
-    if (sx === undefined) { sx = r.ox + r.size / 2; sy = r.oy + r.size / 2; }
+    if (sx === undefined) { sx = r.ox + r.w / 2; sy = r.oy + r.h / 2; }
     const wx = (sx - r.mx) / r.k, wy = (sy - r.my) / r.k;
     this.z = clamp(this.z * f, 1, 10);
-    const k1 = r.size * this.z / (MW * T);
-    this.cx = wx - (sx - (r.ox + r.size / 2)) / k1; this.cy = wy - (sy - (r.oy + r.size / 2)) / k1; this.clampC();
+    const k1 = r.k0 * this.z;
+    this.cx = wx - (sx - (r.ox + r.w / 2)) / k1; this.cy = wy - (sy - (r.oy + r.h / 2)) / k1; this.clampC();
   },
   pan(dx, dy) { const r = Game.mapRect; if (!r) return; this.cx -= dx / r.k; this.cy -= dy / r.k; this.clampC(); },
 };
@@ -8027,18 +8485,16 @@ function drawFullMap() {
   c.fillStyle = 'rgba(6,10,18,0.92)'; c.fillRect(0, 0, CW, CH);
   const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  포트 네온 기지 — 남쪽 바다의 군사 섬 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)'], ['#9be15d', '차  내 차고 (산 차량 보관·저장)'], ['#4fc3f7', '배  마리나 (제트스키·보트)'], ['#ffd166', '₩  사업체 (사면 1분마다 수입, 초록 = 소유)'], ['#ff5d8f', '♦  다이아몬드 카지노'], ['#e07aff', '옷  옷가게 (변장)'], ['#ff9f43', '체  체육관'], ['#3ee07a', '약  약국'], ['#ffd700', '은  은행 (털 수 있다)'], ['#ff4d4d', '♛  조직 보스 (계약·가입)'], ['#e8e2d0', '시  시청 · 병원 · 경찰서 · 소방서(소) = 후원'], ['#e0a060', '학  학교 (경영 강의)']];
   for (const e of EXTRA_ICONS) { if (!World.places[e.key] || legend.some(([, l]) => l.startsWith(e.ch + ' ') || l.includes(e.label))) continue; legend.push([typeof e.c === "function" ? e.c() : e.c, `${e.ch}  ${e.ch === "창" ? "창고 (무역·밀수)" : e.label}`]); } // 다른 파일이 더한 장소(작전실·증권거래소 등)도 범례에
-  // 범례 줄 수를 먼저 재서 지도 크기를 정한다 (글자가 지도·도움말과 겹치지 않게)
-  const lf = `500 ${12 * UI.s}px ${FONT_KR}`, lh = 18 * Math.max(1, UI.s);
+  // v2.17: 맵이 가로로 길어져서 지도는 왼쪽 직사각형, 범례는 오른쪽 세로 칸(넘치면 두 칸)
+  const lf = `500 ${11.5 * UI.s}px ${FONT_KR}`, lh = 16 * Math.max(1, UI.s);
   c.font = lf;
-  const widthFor = (w) => { let lx = 0, rows = 1; for (const [, l] of legend) { const lw = c.measureText(l).width + 34; if (lx && lx + lw > w) { lx = 0; rows++; } lx += lw; } return rows; };
-  let size = Math.min(CW - 40, CH - 110);
-  for (let i = 0; i < 3; i++) size = Math.min(CW - 40, CH - 64 - 16 - widthFor(size) * lh - 2 * lh - 8);
-  size = Math.max(120, size);
-  // 확대·이동 (휠·드래그·핀치·+/- 버튼): MapView.z 배율, (cx, cy) 가운데 월드 좌표
-  const ox0 = (CW - size) / 2, oy0 = 64, MV = MapView; if (MV.cx === null) MV.reset();
-  const k = size * MV.z / (MW * T), ox = ox0 + size / 2 - MV.cx * k, oy = oy0 + size / 2 - MV.cy * k;
-  Game.mapRect = { ox: ox0, oy: oy0, size, k, mx: ox, my: oy };
-  c.save(); c.beginPath(); c.rect(ox0, oy0, size, size); c.clip();
+  const colW = Math.min(250 * Math.max(1, UI.s), Math.max(...legend.map(([, l]) => c.measureText(l).width + 24)));
+  const oy0 = 64, mh = Math.max(120, CH - oy0 - 34);
+  const perCol = Math.max(1, Math.floor((mh - 4) / lh)), nCol = Math.min(2, Math.ceil(legend.length / perCol)), legW = nCol * colW + 8;
+  const mw = Math.max(160, CW - 36 - legW - 14), ox0 = 18, size = mw, MV = MapView; if (MV.cx === null) MV.reset();
+  const k0 = Math.min(mw / (MW * T), mh / (MH * T)), k = k0 * MV.z, ox = ox0 + mw / 2 - MV.cx * k, oy = oy0 + mh / 2 - MV.cy * k;
+  Game.mapRect = { ox: ox0, oy: oy0, size: mw, w: mw, h: mh, k, k0, mx: ox, my: oy };
+  c.save(); c.beginPath(); c.rect(ox0, oy0, mw, mh); c.clip();
   c.imageSmoothingEnabled = false;
   c.drawImage(World.mini, ox, oy, MW * T * k, MH * T * k);
   c.imageSmoothingEnabled = true;
@@ -8054,6 +8510,7 @@ function drawFullMap() {
   if (World.airport) acc['네온 국제공항'] = [World.airport.cx, World.airport.cy + World.airport.ry * 0.15, 1];
   if (World.base) acc[DIST_NAMES[DIST.BASE]] = [(World.base.x0 + World.base.x1) / 2 / T, (World.base.y0 + World.base.y1) / 2 / T, 1];
   for (const d in acc) { const [sx, sy, n] = acc[d]; if (!n) continue; txt(c, d, ox + sx / n * T * k, oy + sy / n * T * k, `${13 * UI.s}px ${FONT_DISP}`, 'rgba(255,255,255,0.8)', 'rgba(0,0,0,0.9)', 4, 'center'); }
+  for (const L of World.mapLabels || []) if (!acc[L.name]) txt(c, L.name, ox + L.x * k, oy + L.y * k, `${(L.small ? 11 : 14) * UI.s}px ${FONT_DISP}`, L.small ? 'rgba(255,255,255,0.7)' : 'rgba(255,236,200,0.85)', 'rgba(0,0,0,0.9)', 4, 'center'); // 카운티 지명
   if (World.base) { const B = World.base; txt(c, '포트 네온 기지', ox + (B.x0 + B.x1) / 2 * k, oy + (B.y0 + B.y1) / 2 * k, `${15 * UI.s}px ${FONT_DISP}`, '#c9d49a', 'rgba(0,0,0,0.9)', 4, 'center'); }
   for (const ic of placeIcons()) {
     const x = ox + ic.x * k, y = oy + ic.y * k;
@@ -8062,7 +8519,7 @@ function drawFullMap() {
     if (ic.crown) drawCrownMark(c, x, y - 12, 7);
     if (ic.lv) { const t = `${ic.lv}단계`; c.font = `700 10px ${FONT_KR}`; const w = c.measureText(t).width + 8; c.fillStyle = ic.lv >= 5 ? '#ffd166' : '#7ae68f'; roundRect(c, x + 7, y - 16, w, 13, 4); c.fill(); txt(c, t, x + 7 + w / 2, y - 6, `700 10px ${FONT_KR}`, '#10141c', null, 0, 'center'); }
   }
-  if (Game.showBiz) drawBizPrices(c, ox, oy, k, ox0, oy0, size);
+  if (Game.showBiz) drawBizPrices(c, ox, oy, k, ox0, oy0, mw, mh);
   for (const t of allTargets()) { const x = ox + t.x * k, y = oy + t.y * k; c.fillStyle = '#000'; c.beginPath(); c.arc(x, y, 8, 0, TAU); c.fill(); c.fillStyle = t.c; c.beginPath(); c.arc(x, y, 6, 0, TAU); c.fill(); }
   if (Wanted.stars > 0) { c.strokeStyle = 'rgba(255,90,80,0.9)'; c.beginPath(); c.arc(ox + Wanted.lkpX * k, oy + Wanted.lkpY * k, Wanted.radius * k, 0, TAU); c.stroke(); }
   c.save(); c.translate(ox, oy); GPS.draw(c, k, 0, 0, 3); c.restore();
@@ -8071,7 +8528,7 @@ function drawFullMap() {
   c.save(); c.translate(px, py); c.rotate(P.car ? P.car.a : P.a); c.fillStyle = '#fff'; c.strokeStyle = '#000'; c.lineWidth = 2;
   c.beginPath(); c.moveTo(10, 0); c.lineTo(-6, -7); c.lineTo(-3, 0); c.lineTo(-6, 7); c.closePath(); c.stroke(); c.fill(); c.restore();
   c.restore();
-  c.strokeStyle = 'rgba(255,255,255,0.3)'; c.strokeRect(ox0, oy0, size, size);
+  c.strokeStyle = 'rgba(255,255,255,0.3)'; c.strokeRect(ox0, oy0, mw, mh);
   // [갱단 구역] 버튼 (G) · 확대/축소 버튼
   const tb = Game.turfBtn = { x: ox0 + size - 132, y: Math.max(4, oy0 - 44), w: 132, h: 34 };
   const bb = Game.bizBtn = { x: tb.x - 142, y: tb.y, w: 134, h: 34 };
@@ -8082,14 +8539,12 @@ function drawFullMap() {
   txt(c, `갱단 구역 ${Game.showTurf ? '끄기' : '보기'}${Input.usingTouch ? '' : ' (G)'}`, tb.x + tb.w / 2, tb.y + 22, `700 13px ${FONT_KR}`, '#fff', null, 0, 'center');
   for (const b of zb) { c.fillStyle = 'rgba(20,24,34,0.9)'; roundRect(c, b.x, b.y, b.w, b.h, 8); c.fill(); c.strokeStyle = '#6fe0ff'; c.lineWidth = 1.5; c.stroke(); txt(c, b.l, b.x + b.w / 2, b.y + 25, `700 22px ${FONT_KR}`, '#fff', null, 0, 'center'); }
   if (MV.z > 1) txt(c, `×${MV.z.toFixed(1)}`, ox0 + 96, Math.max(4, oy0 - 44) + 22, `600 13px ${FONT_KR}`, '#6fe0ff', null);
-  if (Game.pickTurf) { const m = '넓힐 블록을 누르세요 — 노란 테두리 = 우리 구역에 맞닿은 블록 · Esc 취소'; c.font = `700 14px ${FONT_KR}`; const w = c.measureText(m).width + 24; c.fillStyle = 'rgba(120,90,0,0.92)'; roundRect(c, CW / 2 - w / 2, oy0 + size - 40, w, 30, 8); c.fill(); txt(c, m, CW / 2, oy0 + size - 20, `700 14px ${FONT_KR}`, '#fff', null, 0, 'center'); }
+  if (Game.pickTurf) { const m = '넓힐 블록을 누르세요 — 노란 테두리 = 우리 구역에 맞닿은 블록 · Esc 취소'; c.font = `700 14px ${FONT_KR}`; const w = c.measureText(m).width + 24; c.fillStyle = 'rgba(120,90,0,0.92)'; roundRect(c, ox0 + mw / 2 - w / 2, oy0 + mh - 40, w, 30, 8); c.fill(); txt(c, m, ox0 + mw / 2, oy0 + mh - 20, `700 14px ${FONT_KR}`, '#fff', null, 0, 'center'); }
   { c.font = `${28 * UI.s}px ${FONT_DISP}`; const tw = c.measureText('네온 하버 지도').width; if (CW / 2 + tw / 2 < bb.x - 8 && CW / 2 - tw / 2 > ox0 + 130) txt(c, '네온 하버 지도', CW / 2, 44, `${28 * UI.s}px ${FONT_DISP}`, '#f2c14e', 'rgba(0,0,0,0.9)', 5, 'center'); } // 버튼과 겹치면 제목은 생략
-  // 범례
-  let lx = ox0, ly = oy0 + size + 16 + lh * 0.5;
+  // 범례 (오른쪽 칸)
   c.font = lf;
-  for (const [col, l] of legend) { const lw = c.measureText(l).width + 34; if (lx > ox0 && lx + lw > ox0 + size) { lx = ox0; ly += lh; } c.fillStyle = col; c.fillRect(lx, ly - 9, 10, 10); txt(c, l, lx + 15, ly, lf, '#dfe6ee', null); lx += lw; }
-  ly += lh;
-  txt(c, (Input.usingTouch ? '지도를 눌러 웨이포인트 지정 · 지도 버튼으로 닫기' : '클릭: 웨이포인트 지정/해제 · 지도 밖 클릭/M: 닫기') + `   ·   숨겨진 꾸러미 ${Game.packages.size}/${Game.packageTotal}   ·   스토리 ${Math.min(Missions.idx, Missions.defs.length)}/${Missions.defs.length}`, CW / 2, ly, lf, '#c7b8ff', null, 0, 'center');
+  legend.forEach(([col, l], n) => { const lx = ox0 + mw + 14 + Math.floor(n / perCol) * colW, ly = oy0 + 8 + (n % perCol) * lh; c.fillStyle = col; c.fillRect(lx, ly - 8, 9, 9); txt(c, l, lx + 13, ly, lf, '#dfe6ee', null); });
+  txt(c, (Input.usingTouch ? '지도를 눌러 웨이포인트 지정 · 지도 버튼으로 닫기' : '클릭: 웨이포인트 지정/해제 · 휠: 확대 · 드래그: 이동 · 지도 밖 클릭/M: 닫기') + `   ·   숨겨진 꾸러미 ${Game.packages.size}/${Game.packageTotal}   ·   스토리 ${Math.min(Missions.idx, Missions.defs.length)}/${Missions.defs.length}`, ox0 + mw / 2, oy0 + mh + 20, lf, '#c7b8ff', null, 0, 'center');
 }
 
 // ---------- WASTED / BUSTED ----------
@@ -9099,6 +9554,7 @@ const Gangs = {
   raidable(b) {
     const g = this.mine; if (!g || !b || !b.loop || b.airport || b.district === DIST.AIRPORT || b.district === DIST.PARK || this.turf[b.id] === g) return false;
     const own = World.blocks.filter(a => this.turf[a.id] === g);
+    if (b.county && !own.some(a => a.county)) return true; // 레드 카운티: 아직 발판이 없으면 아무 마을 블록이나 첫 거점으로 칠 수 있다
     return !own.length || own.some(a => a.x0 <= b.x1 + 3 && b.x0 <= a.x1 + 3 && a.y0 <= b.y1 + 3 && b.y0 <= a.y1 + 3);
   },
   // 후계 계약: 평판 1000 파트너가 보스에게 은퇴 자금을 주고 자리를 물려받는다 (보스는 공격할 수 없다)
@@ -9721,7 +10177,7 @@ const Finance = {
       const car = new Car('truck', s.x, s.y, s.a, { persistent: true, color: '#b0452f' }); Game.cars.push(car);
       // 멀리 떨어진 구매자
       const cands = Object.values(World.places).filter(p => p && p.x !== undefined && dist(p.x, p.y, W.x, W.y) > 600);
-      const B = cands.length ? pick(cands) : { x: MW * T - W.x, y: MH * T - W.y };
+      const B = cands.length ? pick(cands) : { x: CITY_W * T - W.x, y: CITY_H * T - W.y };
       const dest = sidewalkNear(B.x, B.y);
       this.job = { kind: 'sell', k, car, dest, legal: w.legal, contra: w.contra, stage: 'go' };
       w.legal = 0; w.contra = 0;
@@ -9829,7 +10285,7 @@ const Heist = {
         if (A.t >= H.hold) {
           A.stage = 'escape';
           const far = Object.values(World.places).filter(p => p && p.x !== undefined && dist(p.x, p.y, A.at.x, A.at.y) > 700);
-          const d = far.length ? pick(far) : { x: MW * T - A.at.x, y: MH * T - A.at.y };
+          const d = far.length ? pick(far) : { x: CITY_W * T - A.at.x, y: CITY_H * T - A.at.y };
           A.drop = sidewalkNear(d.x, d.y);
           UI.big('금고 확보!', '은신 지점으로 도주 — 경찰을 따돌려라', 2.6, '#ffd166');
         }
@@ -10782,7 +11238,7 @@ const Races = {
     const picks = [];
     const target = [[0.35, 0.35], [0.62, 0.55], [0.4, 0.72]];
     for (const [u, v] of target) {
-      let best = null, bd = 1e9; for (const n of nodes) { const d = dist(n.x, n.y, u * MW * T, v * MH * T); if (d < bd && !picks.some(p => dist(p.x, p.y, n.x, n.y) < 300)) { bd = d; best = n; } }
+      let best = null, bd = 1e9; for (const n of nodes) { const d = dist(n.x, n.y, u * CITY_W * T, v * CITY_H * T); if (d < bd && !picks.some(p => dist(p.x, p.y, n.x, n.y) < 300)) { bd = d; best = n; } }
       if (best) picks.push(best);
     }
     this.starts = [];
@@ -10816,18 +11272,18 @@ const Races = {
     return nodes;
   },
   loopPts(s, n, radius, alt) { // 보트·항공: 섬 둘레를 따라가는 점
-    const cx = MW * T / 2, cy = MH * T / 2, a0 = Math.atan2(s.y - cy, s.x - cx), pts = [];
+    const cx = CITY_W * T / 2, cy = CITY_H * T / 2, a0 = Math.atan2(s.y - cy, s.x - cx), pts = [];
     for (let k = 1; k <= n; k++) {
       const a = a0 + k * (s.kind === 'air' ? TAU / n : 1.9 / n);
       if (s.kind === 'air') { pts.push({ x: cx + Math.cos(a) * radius, y: cy + Math.sin(a) * radius * 0.9, alt }); continue; }
       // 보트: 중심에서 바깥으로 가다 첫 바다 칸 + 30m
-      let r = 100, x = 0, y = 0; for (; r < MW * T; r += 8) { x = cx + Math.cos(a) * r; y = cy + Math.sin(a) * r; if (tileAt(x, y) === TL.WATER && tileAt(x + Math.cos(a) * 16, y + Math.sin(a) * 16) === TL.WATER) break; }
-      pts.push({ x: clamp(x + Math.cos(a) * 30, 30, MW * T - 30), y: clamp(y + Math.sin(a) * 30, 30, MH * T - 30) });
+      let r = 100, x = 0, y = 0; for (; r < CITY_W * T; r += 8) { x = cx + Math.cos(a) * r; y = cy + Math.sin(a) * r; if (tileAt(x, y) === TL.WATER && tileAt(x + Math.cos(a) * 16, y + Math.sin(a) * 16) === TL.WATER) break; }
+      pts.push({ x: clamp(x + Math.cos(a) * 30, 30, CITY_W * T - 30), y: clamp(y + Math.sin(a) * 30, 30, CITY_H * T - 30) });
     }
     return pts;
   },
   goldTime(s) {
-    const pts = s.kind === 'boat' ? this.loopPts(s, 8, 0, 0) : this.loopPts(s, 10, Math.min(MW, MH) * T * 0.34, 22);
+    const pts = s.kind === 'boat' ? this.loopPts(s, 8, 0, 0) : this.loopPts(s, 10, Math.min(CITY_W, CITY_H) * T * 0.34, 22);
     let L = 0, px = s.x, py = s.y; for (const p of pts) { L += dist(px, py, p.x, p.y); px = p.x; py = p.y; }
     return L / (s.kind === 'boat' ? 24 : 30) * 1.15;
   },
@@ -10860,7 +11316,7 @@ const Races = {
       R.place = place;
     } else {
       const boat = s.kind === 'boat';
-      R.cps = boat ? this.loopPts(s, 8, 0, 0) : this.loopPts(s, 10, Math.min(MW, MH) * T * 0.34, 22);
+      R.cps = boat ? this.loopPts(s, 8, 0, 0) : this.loopPts(s, 10, Math.min(CITY_W, CITY_H) * T * 0.34, 22);
       if (P.car) exitCar(P, true);
       let x = s.x, y = s.y;
       if (boat) { const m = World.marinas[0]; const a = m.a; x = m.x + Math.cos(a) * 14; y = m.y + Math.sin(a) * 14; }
@@ -11311,7 +11767,7 @@ Object.assign(CHAR_LOOK, {
 GANGS.lotus = { name: '블랙 로터스', shirt: '#15151a', band: '#e8e8e8', pants: '#0d0d10', color: '#e8e8e8', short: '로' };
 
 // ---------- 단계 엔진 ----------
-const at = (u, v) => sidewalkNear(u * MW * T, v * MH * T);
+const at = (u, v) => sidewalkNear(u * CITY_W * T, v * CITY_H * T);
 const placeOr = (k, u, v) => { const q = World.places[k]; return q ? sidewalkNear(q.x, q.y, 9) : at(u, v); }; // 가게·장소 마커 위는 피한다 (도착하자마자 상점 창이 열리지 않게)
 function stepsDef(o) {
   return {
@@ -11597,7 +12053,7 @@ MISSION_DEFS.push(...CH2);
   Missions.init = function () {
     oInit();
     const extra = [[0.62, 0.52], [0.46, 0.3], [0.72, 0.4], [0.36, 0.6], [0.52, 0.46], [0.58, 0.68], [0.44, 0.56], [0.3, 0.44], [0.66, 0.6], [0.56, 0.36], [0.4, 0.4], [0.5, 0.5]];
-    while (this.givers.length < MISSION_DEFS.length) { const [u, v] = extra[(this.givers.length - 14) % extra.length]; this.givers.push(sidewalkNear(u * MW * T + rand(-20, 20), v * MH * T + rand(-20, 20))); }
+    while (this.givers.length < MISSION_DEFS.length) { const [u, v] = extra[(this.givers.length - 14) % extra.length]; this.givers.push(sidewalkNear(u * CITY_W * T + rand(-20, 20), v * CITY_H * T + rand(-20, 20))); }
     this.defs = MISSION_DEFS;
   };
   // 미션 시작 대사를 컷신으로 (1부 포함 모든 미션)
@@ -11846,7 +12302,7 @@ const LUXURY = [
     if (st) W.places.holdings = near(st, 30, 10);
     if (re) W.places.devco = near(re, -30, 12);
     // 저택: 웨스트 힐즈(주택가)의 조용한 곳
-    let best = null, bd = 1e9; for (const b of W.blocks) { if (b.district !== DIST.RESID) continue; const d = Math.hypot((b.x0 + b.x1) / 2 / MW - 0.2, (b.y0 + b.y1) / 2 / MH - 0.45); if (d < bd) { bd = d; best = b; } }
+    let best = null, bd = 1e9; for (const b of W.blocks) { if (b.district !== DIST.RESID) continue; const d = Math.hypot((b.x0 + b.x1) / 2 / CITY_W - 0.2, (b.y0 + b.y1) / 2 / CITY_H - 0.45); if (d < bd) { bd = d; best = b; } }
     if (best) W.places.mansion = sidewalkNear((best.x0 + best.x1) / 2 * T, (best.y0 + best.y1) / 2 * T, 2);
     for (const [k, ch, c, l] of [['holdings', '홀', '#ffd166', '네온 홀딩스 (기업 인수)'], ['devco', '개', '#9be15d', '하버 개발 (부동산 개발)'], ['mansion', '저', '#f2d479', '힐탑 저택 (금고·수집품)']]) {
       if (!W.places[k]) continue; PLACE_MARK[k] = c; EXTRA_ICONS.push({ key: k, ch, c, label: l }); EXTRA_PLACES.push([k, k]);
@@ -12020,7 +12476,7 @@ const Game = {
     const bb = this.bizBtn; if (bb && sx >= bb.x && sx <= bb.x + bb.w && sy >= bb.y && sy <= bb.y + bb.h) { this.showBiz = !this.showBiz; return; }
     for (const b of this.mapZoomBtns || []) if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) { MapView.zoomAt(b.f); return; }
     if (MapView.moved) { MapView.moved = false; return; } // 드래그로 지도를 옮긴 것
-    if (sx < r.ox || sy < r.oy || sx > r.ox + r.size || sy > r.oy + r.size) { this.state = 'play'; this.pickTurf = false; return; }
+    if (sx < r.ox || sy < r.oy || sx > r.ox + (r.w || r.size) || sy > r.oy + (r.h || r.size)) { this.state = 'play'; this.pickTurf = false; return; }
     const x = (sx - r.mx) / r.k, y = (sy - r.my) / r.k;
     if (this.pickTurf) { // 구역 넓히기: 고른 블록으로 습격
       const b = blockAt(x, y);
@@ -12587,7 +13043,7 @@ function exitCar(P, force) {
 // ---------- 고정 픽업 ----------
 function placeStaticPickups() {
   const R = mulberry32(777);
-  const at = (u, v) => { const s = sidewalkNear(u * MW * T, v * MH * T); return s; };
+  const at = (u, v) => { const s = sidewalkNear(u * CITY_W * T, v * CITY_H * T); return s; };
   const pl = World.places;
   if (pl.hospital) addPickup('health', pl.hospital.x, pl.hospital.y + (pl.hospital.face === 1 ? 0 : 0), { respawn: 60 });
   if (pl.clinic) addPickup('health', pl.clinic.x, pl.clinic.y, { respawn: 60 });
