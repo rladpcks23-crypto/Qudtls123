@@ -98,6 +98,47 @@ function drawBizLabels(s) {
   }
 }
 
+// 싸우는 상대: 전면전의 상대 조직원, 습격 대상, 나를 쫓거나 공격하는 사람 (경찰은 레이더에 따로 표시)
+function isEnemy(p) {
+  if (p.dead || p.hidden || p.car || p.kind === 'cop' || p.kind === 'swat' || p.kind === 'dog' || p.escort || Gangs.friendly(p)) return false;
+  const w = Gangs.war;
+  if (p.war && w && p.war === w) return Gangs.ours(w) && p.gang !== Gangs.mine;
+  return !!(p.raid || p.state === 'chase' || p.state === 'fight' || (p.foe && p.foe === Game.player));
+}
+// 적 위치 표시: 머리 위 빨간 표시 + 화면 밖이면 가장자리 화살표 + 주변 적 수
+function drawEnemyMarks(s) {
+  const P = Game.player, v3 = Game.view !== 'top' && View3D.ok, t = performance.now() / 1000;
+  const list = []; for (const p of Game.peds) if (isEnemy(p)) { const d = dist(p.x, p.y, P.px, P.py); if (d < 90) list.push([p, d]); }
+  if (!list.length) return;
+  list.sort((a, b) => a[1] - b[1]);
+  const m = 28 * s, bob = Math.sin(t * 6) * 2 * s;
+  let edge = 0;
+  for (const [p, d] of list) {
+    const pr = v3 ? View3D.project(p.x, p.y, 2.6) : toScreen(p.x, p.y);
+    const on = pr && pr[0] > m && pr[1] > m && pr[0] < CW - m && pr[1] < CH - m;
+    if (on) { // 머리 위 빨간 역삼각형
+      const x = pr[0], y = pr[1] - (v3 ? 4 * s : 22 * s) + bob, r = 7 * s;
+      ctx.fillStyle = '#ff2d2d'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x - r, y - r * 1.2); ctx.lineTo(x + r, y - r * 1.2); ctx.lineTo(x, y); ctx.closePath(); ctx.stroke(); ctx.fill();
+      continue;
+    }
+    if (edge >= 10) continue; edge++;
+    // 화면 밖: 플레이어 기준 방향으로 가장자리에 화살표 + 거리
+    let a;
+    if (v3) a = Math.atan2(p.y - P.py, p.x - P.px) - View3D.yaw - Math.PI / 2; // 화면 위 = 카메라 앞
+    else { const [sx, sy] = toScreen(p.x, p.y), [cx, cy] = toScreen(P.px, P.py); a = Math.atan2(sy - cy, sx - cx); }
+    const cx = CW / 2, cy = CH / 2, dx = Math.cos(a), dy = Math.sin(a);
+    const k = Math.min((CW / 2 - m) / Math.max(1e-3, Math.abs(dx)), (CH / 2 - m) / Math.max(1e-3, Math.abs(dy)));
+    const x = cx + dx * k, y = cy + dy * k, r = 11 * s;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(a);
+    ctx.fillStyle = '#ff2d2d'; ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(r, 0); ctx.lineTo(-r * 0.7, -r * 0.75); ctx.lineTo(-r * 0.35, 0); ctx.lineTo(-r * 0.7, r * 0.75); ctx.closePath(); ctx.stroke(); ctx.fill();
+    ctx.restore();
+    txt(ctx, `${Math.round(d)}m`, x - dx * 22 * s, y - dy * 22 * s + 4 * s, `700 ${11 * s}px ${FONT_NUM}`, '#ffb3b3', 'rgba(0,0,0,0.9)', 3, 'center');
+  }
+  txt(ctx, `적 ${list.length}명`, CW / 2, 26 * s + 8, `800 ${15 * s}px ${FONT_KR}`, '#ff5a5a', 'rgba(0,0,0,0.9)', 4, 'center');
+}
+
 function drawHUD(dt) {
   const c = ctx, P = Game.player;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -208,6 +249,7 @@ function drawHUD(dt) {
   }
 
   drawBizLabels(s);
+  drawEnemyMarks(s);
   // ---- 우측: 키 안내 (F1로 숨기기/보이기) ----
   if (!Input.usingTouch) drawKeyHelp(c, s, ty, pad);
 
@@ -390,6 +432,7 @@ function drawRadar(s) {
   // 경찰
   const fl = Math.floor(Game.time * 4) % 2;
   for (const car of Game.cars) if (car.driverKind === 'cop' && !car.dead && car.driver === 'ai') put(car.x, car.y, (x, y) => { c.fillStyle = car.siren ? (fl ? '#ff3b3b' : '#4b8fe8') : '#4b8fe8'; c.fillRect(x - 3, y - 3, 6, 6); });
+  for (const p of Game.peds) if (isEnemy(p)) put(p.x, p.y, (x, y) => { c.fillStyle = '#ff2d2d'; c.strokeStyle = '#000'; c.lineWidth = 1; c.beginPath(); c.arc(x, y, 3, 0, TAU); c.fill(); c.stroke(); });
   for (const p of Game.peds) if ((p.kind === 'cop' || p.kind === 'swat') && !p.dead && p.state === 'chase') put(p.x, p.y, (x, y) => { c.fillStyle = fl ? '#ff3b3b' : '#4b8fe8'; c.beginPath(); c.arc(x, y, 2.2, 0, TAU); c.fill(); });
   for (const u of AirPatrol.units) put(u.x, u.y, (x, y) => { c.fillStyle = fl ? '#ff3b3b' : '#ffd24d'; c.font = `bold ${12 * s}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('✈', x, y); }, true);
   if (Police.heli && !Police.heli.dead) put(Police.heli.x, Police.heli.y, (x, y) => { c.fillStyle = '#fff'; c.font = `bold ${11 * s}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('✚', x, y); }, true);
