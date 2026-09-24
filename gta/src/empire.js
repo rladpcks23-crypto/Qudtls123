@@ -205,9 +205,10 @@ SHOPS.safehouse = {
     } else if (Gangs.mine === 'own') {
       out.push({ id: 'own_info', name: `${Empire.own.name} · 구역 ${Gangs.count('own')}블록 · 조직원 ${Empire.members('own')}명`, price: 0, desc: `평판 ${Gangs.rep} · 부하 호출 ${Empire.backupSize()}명 · 구역 수입 ×${Empire.incomeMul().toFixed(2)}`, ok: () => false });
       out.push({ id: 'gjob1', name: '보호비 수금', price: 0, btn: '시작', desc: '평판 +40, 돈 $300씩', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('collect'); } });
-      out.push({ id: 'gjob2', name: '구역 습격 — 이웃 블록 차지', price: 0, btn: '시작', desc: '라이벌이 없으면 주인 없는 블록의 건달을 몰아낸다 · 성공하면 우리 구역', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('raid'); } });
+      out.push({ id: 'gpick', name: '구역 넓히기 — 지도에서 블록 고르기', price: 0, btn: '지도', desc: '우리 구역에 맞닿은 블록(노란 테두리)을 누른다', ok: () => !GangJob.active, fn: openTurfPicker });
+      out.push({ id: 'gjob2', name: '구역 습격 — 이웃 블록 자동 선택', price: 0, btn: '시작', desc: '라이벌이 없으면 주인 없는 블록의 건달을 몰아낸다 · 성공하면 우리 구역', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('raid'); } });
       out.push({ id: 'gcall', name: `부하 부르기 (${Empire.backupSize()}명)`, price: 0, btn: '호출', desc: 'K 키 / 일시정지 메뉴에서도 된다', ok: () => true, fn: () => { Shop.close(); Gangs.callBackup(); } });
-      out.push({ id: 'gwar', name: '전쟁 선포 — 이웃 라이벌 블록 습격', price: 0, btn: '선포', desc: '대규모 전쟁을 지금 시작한다', ok: () => !Gangs.war, fn: () => { Shop.close(); Gangs.declareWar('own'); } });
+      out.push({ id: 'gwar', name: '전면전 선포 — 상대 조직 고르기', price: 0, btn: '열기', desc: '조직 전체 대 전체 · 어디서나 O 키로도 연다', ok: () => true, fn: () => { Shop.open('gang'); } });
     }
     return out;
   },

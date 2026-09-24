@@ -105,8 +105,13 @@ const Game = {
     const bb = this.bizBtn; if (bb && sx >= bb.x && sx <= bb.x + bb.w && sy >= bb.y && sy <= bb.y + bb.h) { this.showBiz = !this.showBiz; return; }
     for (const b of this.mapZoomBtns || []) if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) { MapView.zoomAt(b.f); return; }
     if (MapView.moved) { MapView.moved = false; return; } // 드래그로 지도를 옮긴 것
-    if (sx < r.ox || sy < r.oy || sx > r.ox + r.size || sy > r.oy + r.size) { this.state = 'play'; return; }
+    if (sx < r.ox || sy < r.oy || sx > r.ox + r.size || sy > r.oy + r.size) { this.state = 'play'; this.pickTurf = false; return; }
     const x = (sx - r.mx) / r.k, y = (sy - r.my) / r.k;
+    if (this.pickTurf) { // 구역 넓히기: 고른 블록으로 습격
+      const b = blockAt(x, y);
+      if (!Gangs.raidable(b)) { UI.toast(b && Gangs.turf[b.id] === Gangs.mine ? '이미 우리 구역이다' : '우리 구역에 맞닿은 블록(노란 테두리)을 골라라'); return; }
+      this.pickTurf = false; this.state = 'play'; GangJob.start('raid', b); return;
+    }
     if (this.waypoint && dist(x, y, this.waypoint.x, this.waypoint.y) < 25) { this.waypoint = null; UI.toast('웨이포인트 해제'); }
     else { this.waypoint = { x, y }; Sfx.pickup(); }
   },
@@ -152,7 +157,7 @@ const Game = {
     } else if (st === 'map') {
       if (this._mapOpen !== true) { this._mapOpen = true; if (MapView.cx === null) MapView.reset(); if (MapView.z > 1) MapView.center(this.player.px, this.player.py); }
       if (keyHit('Equal', 'NumpadAdd', 'PadRB')) MapView.zoomAt(1.5); if (keyHit('Minus', 'NumpadSubtract', 'PadLB')) MapView.zoomAt(1 / 1.5);
-      if (keyHit('Escape', 'KeyM', 'Tab', 'PadBack', 'PadB', 'PadStart')) this.state = 'play';
+      if (keyHit('Escape', 'KeyM', 'Tab', 'PadBack', 'PadB', 'PadStart')) { this.state = 'play'; this.pickTurf = false; }
       if (keyHit('KeyG', 'PadY')) this.showTurf = !this.showTurf;
       if (keyHit('KeyV')) this.showBiz = !this.showBiz;
     } else if (st === 'paused') {
@@ -227,6 +232,7 @@ const Game = {
       for (let i = 0; i <= 9; i++) if (keyHit('Digit' + i)) { const own = WEAPON_ORDER.filter(w => P.inv[w] > 0), w = own[(i + 9) % 10]; if (w) { P.weapon = w; UI.weaponFlash = 1; } }
       if (keyHit('KeyR', 'PadDown') && P.car) { Radio.cycle(); }
       if (keyHit('KeyB')) Bag.open();
+      if (keyHit('KeyO')) Shop.open('gang');
       if (keyHit('F1')) toggleKeyHelp();
       if (keyHit('KeyK')) Gangs.callBackup();
       if (keyHit('KeyC', 'PadUp')) cycleView();

@@ -323,6 +323,7 @@ window.addEventListener('error', function (e) { var b = document.getElementById(
     <button class="btn" id="btn-fps">FPS 표시: 끔</button>
     <button class="btn" id="btn-zoom">화면 거리: 가깝게</button>
     <button class="btn" id="btn-quitjob" hidden>하던 일 그만두기</button>
+    <button class="btn" id="btn-gang">조직 관리 (PC: O)</button>
     <button class="btn" id="btn-backup" hidden>조직 부하 부르기 (PC: K)</button>
     <button class="btn ghost" id="btn-savecode">저장 코드 (다른 버전·파일로 옮기기)</button>
     <div class="cheat"><input id="cheat-input" type="text" placeholder="치트 코드" autocomplete="off" autocapitalize="characters" spellcheck="false"><button class="btn small" id="cheat-go">입력</button></div>
@@ -7291,7 +7292,7 @@ function drawKeyHelp(c, s, top, pad) {
   } else {
     rows.push(['WASD', '이동'], ['Shift', '달리기'], ['클릭/Ctrl', '공격'], ['Q/E · 1~0', '무기 바꾸기'], ['F', '차 타기'], ['T', '소매치기']);
   }
-  rows.push(['B', '가방'], ['K', '부하 부르기'], ['C', '시점 바꾸기'], ['Z · +/−', '화면 거리']);
+  rows.push(['B', '가방'], ['O', '조직 관리'], ['K', '부하 부르기'], ['C', '시점 바꾸기'], ['Z · +/−', '화면 거리']);
   if (Jobs.active) rows.push(['X', '일 그만두기']);
   rows.push(['M', '지도 (G 구역 · V 사업체)'], ['P/Esc', '일시정지 · 저장'], ['F1', '이 안내 숨기기']);
   let y = Math.max(top + 24 * s, CH * 0.5 - rows.length * lh / 2);
@@ -7706,6 +7707,11 @@ function drawFullMap() {
   c.drawImage(World.mini, ox, oy, MW * T * k, MH * T * k);
   c.imageSmoothingEnabled = true;
   if (Game.showTurf) drawTurfOverlay(c, ox, oy, k, ox0, oy0);
+  if (Game.pickTurf) { // 구역 넓히기: 고를 수 있는 블록에 노란 테두리
+    const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 200);
+    c.strokeStyle = `rgba(255,230,0,${pulse})`; c.lineWidth = 3; c.fillStyle = `rgba(255,230,0,${0.18 + 0.12 * pulse})`;
+    for (const b of World.blocks) if (Gangs.raidable(b)) { const x = ox + b.x0 * T * k + 1.5, y = oy + b.y0 * T * k + 1.5, w = (b.x1 - b.x0 + 1) * T * k - 3, h = (b.y1 - b.y0 + 1) * T * k - 3; c.fillRect(x, y, w, h); c.strokeRect(x, y, w, h); }
+  }
   // 구역 이름
   const acc = {};
   for (const b of World.blocks) { const d = b.smallPark ? World.hoods[b.hood].name : b.park || (b.district === DIST.PARK ? '' : World.hoods[b.hood].name); if (!d) continue; acc[d] = acc[d] || [0, 0, 0]; acc[d][0] += (b.x0 + b.x1) / 2; acc[d][1] += (b.y0 + b.y1) / 2; acc[d][2]++; }
@@ -7739,7 +7745,8 @@ function drawFullMap() {
   txt(c, `갱단 구역 ${Game.showTurf ? '끄기' : '보기'}${Input.usingTouch ? '' : ' (G)'}`, tb.x + tb.w / 2, tb.y + 22, `700 13px ${FONT_KR}`, '#fff', null, 0, 'center');
   for (const b of zb) { c.fillStyle = 'rgba(20,24,34,0.9)'; roundRect(c, b.x, b.y, b.w, b.h, 8); c.fill(); c.strokeStyle = '#6fe0ff'; c.lineWidth = 1.5; c.stroke(); txt(c, b.l, b.x + b.w / 2, b.y + 25, `700 22px ${FONT_KR}`, '#fff', null, 0, 'center'); }
   if (MV.z > 1) txt(c, `×${MV.z.toFixed(1)}`, ox0 + 96, Math.max(4, oy0 - 44) + 22, `600 13px ${FONT_KR}`, '#6fe0ff', null);
-  txt(c, '네온 하버 지도', CW / 2, 44, `${28 * UI.s}px ${FONT_DISP}`, '#f2c14e', 'rgba(0,0,0,0.9)', 5, 'center');
+  if (Game.pickTurf) { const m = '넓힐 블록을 누르세요 — 노란 테두리 = 우리 구역에 맞닿은 블록 · Esc 취소'; c.font = `700 14px ${FONT_KR}`; const w = c.measureText(m).width + 24; c.fillStyle = 'rgba(120,90,0,0.92)'; roundRect(c, CW / 2 - w / 2, oy0 + size - 40, w, 30, 8); c.fill(); txt(c, m, CW / 2, oy0 + size - 20, `700 14px ${FONT_KR}`, '#fff', null, 0, 'center'); }
+  { c.font = `${28 * UI.s}px ${FONT_DISP}`; const tw = c.measureText('네온 하버 지도').width; if (CW / 2 + tw / 2 < bb.x - 8 && CW / 2 - tw / 2 > ox0 + 130) txt(c, '네온 하버 지도', CW / 2, 44, `${28 * UI.s}px ${FONT_DISP}`, '#f2c14e', 'rgba(0,0,0,0.9)', 5, 'center'); } // 버튼과 겹치면 제목은 생략
   // 범례
   let lx = ox0, ly = oy0 + size + 16 + lh * 0.5;
   c.font = lf;
@@ -7814,6 +7821,7 @@ const Menu = {
     fBtn.onclick = () => { Settings.fps = !Settings.fps; Settings.save(); qLabel(); };
     if (Settings.quality === 'low') Perf.apply(true);
     document.getElementById('btn-view').onclick = () => { this.hidePause(); Game.state = 'play'; cycleView(); };
+    document.getElementById('btn-gang').onclick = () => { this.hidePause(); Game.state = 'play'; Shop.open('gang'); };
     document.getElementById('btn-backup').onclick = () => { this.hidePause(); Game.state = 'play'; Gangs.callBackup(); };
     document.getElementById('btn-quitjob').onclick = () => { Jobs.stop('일을 그만뒀다'); this.hidePause(); Game.state = 'play'; };
     document.getElementById('jobs-close').onclick = () => Jobs.closeBoard();
@@ -8438,10 +8446,12 @@ function drawVehIcon(g, type) {
  * gangs.js — 네 조직의 구역(블록 단위) · 5일마다 대규모 갱 전쟁 · 플레이어의 조직 생활
  *
  *  · 구역: 도시 블록마다 주인 조직이 있다(없으면 중립). 지도에서 [갱단 구역]으로 본다.
- *  · 전쟁: 게임 날짜로 5일마다 이웃한 두 조직이 경계 블록에서 크게 붙는다. 이긴 쪽이 블록을 가져간다.
+ *  · 전면전: 5일마다(또는 보스가 선포) 두 조직이 전체 병력으로 붙는다. 맞닿은 블록마다 전선 전투,
+ *    병력이 바닥난 쪽은 궤멸해 남은 구역을 모두 잃고 7일 뒤 본거지에서 재건한다.
+ *  · 조직 관리: 어디서나 O 키 — 지도에서 넓힐 블록을 골라 습격할 수 있다.
  *  · 플레이어: 조직 하나에만 들어갈 수 있다. 조직원 → 파트너(평판 300) → 보스(평판 1000 + 보스 결투)
  *    조직원: 같은 조직은 아군, 라이벌은 자기 구역에서 공격해 온다 / 파트너: 부하 2명 호출, 구역 수입 일부
- *    보스: 부하 4명 호출, 구역 수입 전부, 전쟁 선포
+ *    보스: 부하 호출, 구역 수입 전부, 전면전 선포·휴전
  * ===================================================================== */
 
 Object.assign(GANGS, {
@@ -8456,7 +8466,7 @@ const GANG_IDS = ['dragon', 'wave', 'iron', 'cobra'];
 const RANKS = ['조직원', '파트너', '보스'];
 
 const Gangs = {
-  turf: {}, mine: null, rep: 0, rank: 0, day: 0, lastClock: 0, nextWar: 5, war: null, callCD: 0, incomeT: 0, boss: null,
+  turf: {}, fallen: {}, mine: null, rep: 0, rank: 0, day: 0, lastClock: 0, nextWar: 5, war: null, callCD: 0, incomeT: 0, boss: null,
   // 처음 구역: 하버 → 청룡파, 해변 → 파도파, 산업단지 → 아이언, 미드타운 동쪽 → 코브라
   initTurf() {
     this.turf = {};
@@ -8470,11 +8480,11 @@ const Gangs = {
   },
   load(sv) {
     this.war = null; this.callCD = 0; this.incomeT = 0; this.boss = null;
-    if (sv) { this.turf = sv.turf || {}; this.mine = sv.mine || null; this.rep = sv.rep || 0; this.rank = sv.rank || 0; this.day = sv.day || 0; this.nextWar = sv.nextWar || this.day + 5; if (!Object.keys(this.turf).length) this.initTurf(); }
-    else { this.initTurf(); this.mine = null; this.rep = 0; this.rank = 0; this.day = 0; this.nextWar = 5; }
+    if (sv) { this.turf = sv.turf || {}; this.mine = sv.mine || null; this.rep = sv.rep || 0; this.rank = sv.rank || 0; this.day = sv.day || 0; this.nextWar = sv.nextWar || this.day + 5; this.fallen = sv.fallen || {}; if (!Object.keys(this.turf).length) this.initTurf(); }
+    else { this.initTurf(); this.fallen = {}; this.mine = null; this.rep = 0; this.rank = 0; this.day = 0; this.nextWar = 5; }
     this.lastClock = Game.clock;
   },
-  save() { return { turf: this.turf, mine: this.mine, rep: this.rep, rank: this.rank, day: this.day, nextWar: this.nextWar }; },
+  save() { return { turf: this.turf, mine: this.mine, rep: this.rep, rank: this.rank, day: this.day, nextWar: this.nextWar, fallen: this.fallen }; },
   count(g) { let n = 0; for (const k in this.turf) if (this.turf[k] === g) n++; return n; },
   ownerAt(x, y) { const b = blockAt(x, y); return b ? this.turf[b.id] || null : null; },
   friendly(p) { return p && p.kind === 'gang' && this.mine && p.gang === this.mine && !p.mission; },
@@ -8500,7 +8510,7 @@ const Gangs = {
   update(dt) {
     const P = Game.player;
     // 날짜: 시계가 자정을 넘으면 하루
-    if (Game.clock < this.lastClock - 600) { this.day++; if (this.day >= this.nextWar && !this.war) this.startWar(); }
+    if (Game.clock < this.lastClock - 600) { this.day++; this.revive(); if (this.day >= this.nextWar && !this.war) this.startWar(); }
     this.lastClock = Game.clock;
     this.callCD -= dt;
     // 파트너·보스 구역 수입 (1분마다)
@@ -8525,26 +8535,45 @@ const Gangs = {
     }
     return out;
   },
-  startWar(att, blockDef) {
-    let A, D, blk;
-    if (att && blockDef) { A = att; blk = blockDef; D = this.turf[blk.id]; }
-    else {
-      let pairs = this.borderPairs(); if (!pairs.length) { this.nextWar = this.day + 5; return; }
+  // ---------- 전면전: 조직 전체 대 전체 ----------
+  // 두 조직이 맞닿은 블록 한 쌍이 '전선'. 전선마다 전투가 벌어지고 이긴 쪽이 상대 블록을 가져간다.
+  // 병력(전쟁 시작 때 조직원 수)은 쓰러진 조직원만큼, 전투에서 질 때마다 처음 병력의 25%씩 준다.
+  // 병력이 바닥나거나 구역을 모두 잃은 조직은 궤멸 → 남은 구역이 전부 승자에게 넘어간다 (7일 뒤 본거지에서 재건).
+  pairsBetween(A, D) {
+    return this.borderPairs().filter(([a, b]) => (this.turf[a.id] === A && this.turf[b.id] === D) || (this.turf[a.id] === D && this.turf[b.id] === A))
+      .map(([a, b]) => this.turf[a.id] === A ? [a, b] : [b, a]);
+  },
+  ours(w = this.war) { return !!(w && this.mine && (w.A === this.mine || w.D === this.mine)); },
+  startWar(A, D) {
+    if (this.war) return false;
+    if (!A || !D) { // 날짜가 되면 저절로: 맞닿은 두 조직 (우리 조직이 걸릴 확률이 높다)
+      let pairs = this.borderPairs(); if (!pairs.length) { this.nextWar = this.day + 5; return false; }
       if (this.mine && chance(0.6)) { const mp = pairs.filter(([a, b]) => this.turf[a.id] === this.mine || this.turf[b.id] === this.mine); if (mp.length) pairs = mp; }
-      const [a, b] = pick(pairs); const flip = chance(0.5);
-      blk = flip ? b : a; D = this.turf[blk.id]; A = this.turf[(flip ? a : b).id];
+      const [a, b] = pick(pairs); [A, D] = chance(0.5) ? [this.turf[a.id], this.turf[b.id]] : [this.turf[b.id], this.turf[a.id]];
     }
+    if (!this.pairsBetween(A, D).length) { UI.toast(`${GANGS[D].name}와(과) 맞닿은 구역이 없다 — 먼저 구역을 넓혀 붙어라`); return false; }
     this.nextWar = this.day + 5;
-    const cx = (blk.x0 + blk.x1 + 1) / 2 * T, cy = (blk.y0 + blk.y1 + 1) / 2 * T;
-    const w = this.war = { A, D, blk, x: cx, y: cy, t: 0, wave: 0, kills: { [A]: 0, [D]: 0 }, sim: dist(cx, cy, Game.player.px, Game.player.py) < 320 };
-    UI.big('대규모 갱 전쟁!', `${GANGS[A].name} → ${GANGS[D].name} 구역 습격`, 3.2, '#ff4d4d');
-    UI.toast(this.mine === A || this.mine === D ? `우리 조직의 전쟁이다! 지도 표시 지점으로 가서 싸워라 (${this.mine === A ? '공격' : '방어'})` : '두 조직이 전쟁을 시작했다 — 휘말리지 않게 조심');
-    if (w.sim) this.spawnWave();
+    const pow = g => Math.max(30, Empire.members(g));
+    const w = this.war = { A, D, pow: { [A]: pow(A), [D]: pow(D) }, fronts: 0, won: { [A]: 0, [D]: 0 }, t: 0 };
+    w.pow0 = { ...w.pow };
+    UI.big('전면전!', `${GANGS[A].name} 전체 vs ${GANGS[D].name} 전체 — 한쪽이 궤멸할 때까지`, 3.5, '#ff4d4d');
+    UI.toast(this.ours(w) ? `우리 조직의 전면전이다! 전선(빨간 화살표)으로 가서 싸워라 — 병력 ${w.pow[this.mine]} vs ${w.pow[this.mine === A ? D : A]}` : `${GANGS[A].name}와(과) ${GANGS[D].name}의 전면전 — 휘말리지 않게 조심`);
+    this.nextFront();
+    return true;
+  },
+  nextFront() {
+    const w = this.war, pr = this.pairsBetween(w.A, w.D), P = Game.player;
+    if (!pr.length) { this.stopWar('더 이상 맞닿은 구역이 없어 전쟁이 멈췄다'); return; }
+    const cen = b => [(b.x0 + b.x1 + 1) / 2 * T, (b.y0 + b.y1 + 1) / 2 * T];
+    const f = this.ours(w) ? pr.sort((p, q) => dist(...cen(p[1]), P.px, P.py) - dist(...cen(q[1]), P.px, P.py))[0] : pick(pr);
+    w.fa = f[0]; w.blk = f[1]; [w.x, w.y] = cen(w.blk);
+    w.bt = 0; w.wave = 0; w.sim = false; w.auto = false; w.fronts++;
+    if (this.ours(w) && w.fronts > 1) UI.toast(`다음 전선 ${w.fronts}: 지도·화살표의 빨간 표시로 가라`);
   },
   spawnWave() {
     const w = this.war; w.wave++;
     const L = w.blk.loop;
-    const size = g => g === this.mine ? Math.min(12, 6 + Math.floor(Empire.members(g) / 25)) : 6; // 내 조직은 조직원 수만큼 병력이 는다
+    const size = g => Math.min(w.pow[g], g === this.mine ? Math.min(12, 6 + Math.floor(Empire.members(g) / 25)) : 7); // 내 조직은 조직원 수만큼 병력이 는다
     for (const [g, side] of [[w.A, 0], [w.D, 1]]) for (let i = 0; i < size(g); i++) {
       const [x, y] = loopPoint(L, rand(0, L.P) * 0.5 + side * L.P * 0.5);
       const p = spawnPed('gang', x, y); setGang(p, g);
@@ -8553,12 +8582,13 @@ const Gangs = {
     }
   },
   updateWar(dt) {
-    const w = this.war, P = Game.player;
-    w.t += dt;
-    if (!w.sim && dist(w.x, w.y, P.px, P.py) < 250) { w.sim = true; this.spawnWave(); }
-    const ours = this.mine && (w.A === this.mine || w.D === this.mine);
-    // 멀리 있으면 싸움은 보이지 않고, 시간이 지나면 두 조직의 구역 크기로 승패가 난다 (우리 전쟁은 달려갈 시간을 더 준다)
-    if (!w.sim) { if (w.t > (ours ? 240 : 90)) { w.auto = true; this.endWar(chance(this.count(w.A) / (this.count(w.A) + this.count(w.D) + 0.01)) ? w.A : w.D); } return; }
+    const w = this.war, P = Game.player, ours = this.ours(w);
+    w.t += dt; w.bt += dt;
+    // 쓰러진 전투원만큼 그 조직의 병력이 준다
+    for (const p of Game.peds) if (p.war === w && p.dead && !p.warDead) { p.warDead = true; w.pow[p.gang] = Math.max(0, w.pow[p.gang] - 1); }
+    if (!w.sim && dist(w.x, w.y, P.px, P.py) < 250) { w.sim = true; w.bt = 0; this.spawnWave(); }
+    // 현장에 없으면 병력 비율로 판정 (우리 전쟁은 달려갈 시간을 준다)
+    if (!w.sim) { if (w.bt > (ours ? 150 : 40)) { w.auto = true; const a = w.pow[w.A], d = w.pow[w.D]; this.endBattle(chance(a / (a + d + 0.01)) ? w.A : w.D); } return; }
     const alive = g => Game.peds.filter(p => p.war === w && p.gang === g && !p.dead).length;
     const a = alive(w.A), d = alive(w.D);
     // 전투원을 서로에게 붙인다
@@ -8567,32 +8597,71 @@ const Gangs = {
       for (const q of Game.peds) if (q.war === w && !q.dead && q.gang !== p.gang) { const d2 = dist2(p.x, p.y, q.x, q.y); if (d2 < bd) { bd = d2; best = q; } }
       if (best) { p.foe = best; p.state = 'feud'; }
     }
-    if ((a === 0 || d === 0) && w.wave < 3 && w.t < 150) { this.spawnWave(); return; }
-    if (a === 0 || d === 0 || w.t > 180) this.endWar(a > d ? w.A : w.D);
+    if ((a === 0 || d === 0) && w.wave < 3 && w.bt < 150 && w.pow[w.A] > 0 && w.pow[w.D] > 0) { this.spawnWave(); return; }
+    if (a === 0 || d === 0 || w.bt > 180 || !w.pow[w.A] || !w.pow[w.D]) this.endBattle(a > d ? w.A : a < d ? w.D : w.pow[w.A] >= w.pow[w.D] ? w.A : w.D);
   },
-  // HUD에 띄울 전쟁 상황 한 줄 (우리 전쟁이거나 가까운 전쟁만)
-  warStatus() {
-    const w = this.war; if (!w) return null;
-    const P = Game.player, d = Math.round(dist(w.x, w.y, P.px, P.py)), ours = this.mine && (w.A === this.mine || w.D === this.mine);
-    if (!ours && d > 300) return null;
-    const side = !ours ? '' : w.A === this.mine ? ' — 우리가 공격' : ' — 우리가 방어';
-    if (!w.sim) return `갱 전쟁: ${GANGS[w.A].name} → ${GANGS[w.D].name}${side} · 전쟁터까지 ${d}m (250m 안에 들어가면 싸움 시작 · ${Math.max(0, Math.ceil((ours ? 240 : 90) - w.t))}초 뒤 자동 판정)`;
-    const alive = g => Game.peds.filter(p => p.war === w && p.gang === g && !p.dead).length;
-    return `갱 전쟁 ${w.wave}/3차${side} · ${GANGS[w.A].name} ${alive(w.A)}명 vs ${GANGS[w.D].name} ${alive(w.D)}명 · 남은 ${Math.max(0, Math.ceil(180 - w.t))}초 (한쪽이 3차까지 다 쓰러지면 끝)`;
+  releaseFighters(w) { for (const p of Game.peds) if (p.war === w) { p.persistent = false; p.war = null; if (!p.dead) { p.state = 'idle'; p.foe = null; } } },
+  endBattle(win) {
+    const w = this.war, lose = win === w.A ? w.D : w.A;
+    const taken = win === w.A ? w.blk : w.fa; this.turf[taken.id] = win; // 이긴 쪽이 전선의 상대 블록을 가져간다
+    w.pow[lose] = Math.max(0, w.pow[lose] - Math.ceil(w.pow0[lose] * 0.25)); w.won[win]++;
+    this.releaseFighters(w);
+    const ours = this.ours(w);
+    if (ours || dist(w.x, w.y, Game.player.px, Game.player.py) < 300)
+      UI.toast(`전선 ${w.fronts}: ${GANGS[win].name} 승리 — ${GANGS[lose].name} 블록 1개 차지${w.auto ? ' (현장에 없어 병력 비율로 판정)' : ''} · 병력 ${GANGS[w.A].name} ${w.pow[w.A]} / ${GANGS[w.D].name} ${w.pow[w.D]}`);
+    if (this.mine === win) { this.addRep(100, '전선 승리'); Game.player.money += 3000; }
+    else if (this.mine === lose) this.addRep(-20, '전선 패배');
+    if (w.pow[lose] <= 0 || this.count(lose) === 0) { this.endWar(win); return; }
+    Save.write();
+    this.nextFront();
   },
   endWar(win) {
     const w = this.war; if (!w) return;
-    this.war = null;
+    this.war = null; this.releaseFighters(w);
     const lose = win === w.A ? w.D : w.A;
-    if (win === w.A) this.turf[w.blk.id] = w.A;
-    for (const p of Game.peds) if (p.war === w) { p.persistent = false; p.war = null; if (!p.dead) { p.state = 'idle'; p.foe = null; } }
-    UI.big(`${GANGS[win].name} 승리`, win === w.A ? '구역을 빼앗았다' : '구역을 지켜냈다', 3, GANGS[win].color);
-    if (this.mine === win) { this.addRep(200, '전쟁 승리'); Game.player.money += 5000; UI.toast('전쟁 승리 보너스 +$5,000'); }
-    else if (this.mine === lose) this.addRep(-50, '전쟁 패배');
-    // 무슨 일이 있었는지 한 줄로 알려 준다
-    const what = win === w.A ? `${GANGS[w.A].name}가 ${GANGS[w.D].name}의 블록 1개를 빼앗았다` : `${GANGS[w.D].name}가 블록을 지켜냈다 (구역 변화 없음)`;
-    UI.toast(`갱 전쟁 결과: ${what}${w.auto ? ' — 현장에 없어서 두 조직의 구역 크기로 승패가 났다' : ''} · 지도(M → G)에서 구역 확인`);
+    let n = 0; for (const k in this.turf) if (this.turf[k] === lose) { this.turf[k] = win; n++; } // 궤멸: 남은 구역 전부
+    this.fallen[lose] = this.day;
+    UI.big(`${GANGS[win].name} 전면전 승리`, `${GANGS[lose].name} 궤멸 — 남은 구역 ${n}블록을 모두 차지`, 4, GANGS[win].color);
+    if (this.mine === win) { this.addRep(500, '전면전 승리'); Game.player.money += 50000; UI.toast('전면전 승리 보너스 +$50,000'); }
+    else if (this.mine === lose) { this.addRep(-200, '전면전 패배'); UI.toast('우리 조직이 궤멸했다 — 7일 뒤 본거지에서 재건한다'); }
+    else UI.toast(`갱 전쟁 결과: ${GANGS[lose].name}가 궤멸해 ${GANGS[win].name}가 ${n}블록을 가져갔다 · 지도(M → G)에서 확인`);
     Save.write();
+  },
+  stopWar(msg) {
+    const w = this.war; if (!w) return;
+    this.war = null; this.releaseFighters(w);
+    UI.big('전쟁 종료', msg, 3, '#cccccc'); Save.write();
+  },
+  // 휴전 (보스): 돈을 내고 전면전을 멈춘다. 그때까지 뺏고 뺏긴 블록은 그대로
+  truce() {
+    const P = Game.player, cost = 20000;
+    if (!this.war || !this.ours()) return;
+    if (P.money < cost) { UI.toast(`휴전 협상금 $${cost.toLocaleString()}이 필요하다`); return; }
+    P.money -= cost; this.addRep(-50, '휴전'); this.stopWar('휴전 협정 — 지금까지의 구역은 그대로');
+  },
+  // 궤멸한 조직은 7일 뒤 본거지 블록과 이웃 중립 블록 2개로 재건한다
+  revive() {
+    for (const g of GANG_IDS) {
+      if (this.fallen[g] === undefined || this.count(g) > 0 || this.day - this.fallen[g] < 7) continue;
+      const H = World.places[GANGS[g].hq]; if (!H) continue;
+      const home = blockAt(H.x, H.y) || (H.lot && H.lot.block); if (!home) continue;
+      if (this.turf[home.id] && this.turf[home.id] === this.mine && g !== this.mine) continue; // 플레이어 구역은 빼앗지 않는다
+      this.turf[home.id] = g; delete this.fallen[g];
+      const cx = (home.x0 + home.x1) / 2, cy = (home.y0 + home.y1) / 2;
+      blocksNear(cx * T, cy * T, 90).filter(b => b !== home && !this.turf[b.id]).slice(0, 2).forEach(b => { this.turf[b.id] = g; });
+      UI.toast(`${GANGS[g].name}가 본거지에서 재건했다`);
+    }
+  },
+  // HUD에 띄울 전쟁 상황 (우리 전쟁이거나 가까운 전쟁만)
+  warStatus() {
+    const w = this.war; if (!w) return null;
+    const P = Game.player, d = Math.round(dist(w.x, w.y, P.px, P.py)), ours = this.ours(w);
+    if (!ours && d > 300) return null;
+    const side = !ours ? '' : w.A === this.mine ? ' (우리가 선공)' : ' (우리가 방어)';
+    const head = `전면전${side} · 병력 ${GANGS[w.A].name} ${w.pow[w.A]} vs ${GANGS[w.D].name} ${w.pow[w.D]} · 전선 ${w.fronts}`;
+    if (!w.sim) return `${head} · 전선까지 ${d}m — 250m 안에 들어가면 싸움 시작 (${Math.max(0, Math.ceil((ours ? 150 : 40) - w.bt))}초 뒤 병력 비율로 자동 판정)`;
+    const alive = g => Game.peds.filter(p => p.war === w && p.gang === g && !p.dead).length;
+    return `${head} · ${w.wave}/3차 ${alive(w.A)}명 vs ${alive(w.D)}명 · 남은 ${Math.max(0, Math.ceil(180 - w.bt))}초`;
   },
   onKill(p, by) {
     if (by !== Game.player || p.kind !== 'gang' || !this.mine || p.mission) return;
@@ -8627,10 +8696,17 @@ const Gangs = {
     }
     return best;
   },
-  declareWar(g) {
-    const pr = this.borderPairs().filter(([a, b]) => this.turf[a.id] === g || this.turf[b.id] === g);
-    if (!pr.length) { UI.toast('이웃한 라이벌 구역이 없다'); return; }
-    const [a, b] = pick(pr); this.startWar(g, this.turf[a.id] === g ? b : a);
+  // 전면전 선포 (보스): 상대 조직을 골라 전체 대 전체로 붙는다
+  declareWar(g, target) {
+    if (this.war) { UI.toast('이미 전쟁 중이다'); return; }
+    if (!target) { const pr = this.borderPairs().filter(([a, b]) => this.turf[a.id] === g || this.turf[b.id] === g); if (!pr.length) { UI.toast('맞닿은 라이벌 구역이 없다 — 먼저 구역을 넓혀라'); return; } const [a, b] = pick(pr); target = this.turf[a.id] === g ? this.turf[b.id] : this.turf[a.id]; }
+    this.startWar(g, target);
+  },
+  // 우리 구역에 맞닿은 블록인가 (구역 넓히기 대상). 구역이 하나도 없으면 아무 블록이나
+  raidable(b) {
+    const g = this.mine; if (!g || !b || !b.loop || b.airport || b.district === DIST.AIRPORT || b.district === DIST.PARK || this.turf[b.id] === g) return false;
+    const own = World.blocks.filter(a => this.turf[a.id] === g);
+    return !own.length || own.some(a => a.x0 <= b.x1 + 3 && b.x0 <= a.x1 + 3 && a.y0 <= b.y1 + 3 && b.y0 <= a.y1 + 3);
   },
   // 후계 계약: 평판 1000 파트너가 보스에게 은퇴 자금을 주고 자리를 물려받는다 (보스는 공격할 수 없다)
   succeed() {
@@ -8696,10 +8772,11 @@ for (const g of GANG_IDS) {
         const nextNeed = Gangs.rank === 0 ? `파트너까지 평판 ${Math.max(0, 300 - Gangs.rep)}` : Gangs.rank === 1 ? (Gangs.rep >= 1000 ? '후계 계약 가능!' : `후계 계약까지 평판 ${1000 - Gangs.rep}`) : '보스';
         out.push({ id: 'grank', name: `나: ${RANKS[Gangs.rank]} · 평판 ${Gangs.rep}`, price: 0, desc: nextNeed, ok: () => false });
         out.push({ id: 'gjob1', name: '보호비 수금 — 우리 구역 가게 3곳을 돈다', price: 0, btn: '시작', desc: '평판 +40, 돈 $300씩', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('collect'); } });
-        out.push({ id: 'gjob2', name: '구역 습격 — 이웃 블록 차지', price: 0, btn: '시작', desc: '라이벌 블록: 조직원 8명 처치(평판 +150, $3,000) · 주인 없는 블록: 건달 5명(평판 +80, $1,500)', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('raid'); } });
+        out.push({ id: 'gpick', name: '구역 넓히기 — 지도에서 블록 고르기', price: 0, btn: '지도', desc: '우리 구역에 맞닿은 블록(노란 테두리)을 누른다', ok: () => !GangJob.active, fn: openTurfPicker });
+        out.push({ id: 'gjob2', name: '구역 습격 — 이웃 블록 자동 선택', price: 0, btn: '시작', desc: '라이벌 블록: 조직원 8명 처치(평판 +150, $3,000) · 주인 없는 블록: 건달 5명(평판 +80, $1,500)', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('raid'); } });
         if (Gangs.rank >= 1) out.push({ id: 'gcall', name: `부하 부르기 (${Empire.backupSize()}명)`, price: 0, btn: '호출', desc: '어디서든 PC H 길게 대신 여기서, 또는 일시정지 메뉴', ok: () => true, fn: () => { Shop.close(); Gangs.callBackup(); } });
         if (Gangs.rank === 1 && Gangs.rep >= 1000) out.push({ id: 'gboss', name: `후계 계약 — ${BOSS_INFO[g].name}의 자리를 물려받는다`, price: 50000, btn: '계약', desc: '보스가 된다: 부하 최대 10명, 구역 수입 전부, 전쟁 선포 · 대신 라이벌 암살단이 온다', ok: () => true, fn: () => { Shop.close(); Gangs.succeed(); } });
-        if (Gangs.rank === 2) out.push({ id: 'gwar', name: '전쟁 선포 — 이웃 라이벌 블록 습격', price: 0, btn: '선포', desc: '대규모 전쟁을 지금 시작한다', ok: () => !Gangs.war, fn: () => { Shop.close(); Gangs.declareWar(g); } });
+        if (Gangs.rank === 2) out.push({ id: 'gwar', name: '전면전 선포 — 상대 조직 고르기', price: 0, btn: '열기', desc: '조직 전체 대 전체 · 어디서나 O 키로도 연다', ok: () => true, fn: () => { Shop.open('gang'); } });
         out.push({ id: 'gleave', name: '조직 탈퇴', price: 0, btn: '탈퇴', desc: '계급과 평판을 잃는다', ok: () => true, fn: () => { Gangs.leave(); Shop.close(); } });
       }
       return out;
@@ -8710,7 +8787,7 @@ for (const g of GANG_IDS) {
 // ---------- 조직 일 ----------
 const GangJob = {
   active: null,
-  start(kind) {
+  start(kind, pickBlk) {
     const P = Game.player, g = Gangs.mine;
     if (kind === 'collect') {
       const own = World.blocks.filter(b => Gangs.turf[b.id] === g);
@@ -8734,7 +8811,10 @@ const GangJob = {
     } else {
       const pr = Gangs.borderPairs().filter(([a, b]) => Gangs.turf[a.id] === g || Gangs.turf[b.id] === g);
       let blk, rival, neutral = false;
-      if (pr.length) { const [a, b] = pick(pr); blk = Gangs.turf[a.id] === g ? b : a; rival = Gangs.turf[blk.id]; }
+      if (pickBlk) { // 지도에서 고른 블록
+        blk = pickBlk; rival = Gangs.turf[blk.id];
+        if (!rival) { rival = pick(GANG_IDS.filter(x => x !== g)); neutral = true; }
+      } else if (pr.length) { const [a, b] = pick(pr); blk = Gangs.turf[a.id] === g ? b : a; rival = Gangs.turf[blk.id]; }
       else { // 이웃에 라이벌이 없으면 우리 구역에 붙은 주인 없는 블록을 떠돌이 건달에게서 빼앗는다
         blk = Gangs.neutralNeighbor(g);
         if (!blk) { UI.toast('넓힐 수 있는 이웃 블록이 없다'); return; }
@@ -8779,6 +8859,40 @@ const GangJob = {
     const J = this.active; if (!J) return [];
     if (J.kind === 'collect') return J.stops.map((s, i) => ({ x: s.x, y: s.y, c: i ? '#b8a15a' : '#f2c14e', big: !i }));
     return [{ x: J.x, y: J.y, c: '#ff4d4d', big: true }];
+  },
+};
+
+// ---------- 조직 관리 (어디서나 O 키 / 일시정지 메뉴) ----------
+function openTurfPicker() {
+  Shop.close(); Game.pickTurf = true; Game.showTurf = true; Game.state = 'map';
+  if (MapView.cx === null) MapView.reset(); MapView.z = Math.max(MapView.z, 2.5); MapView.center(Game.player.px, Game.player.py);
+}
+SHOPS.gang = {
+  title: '조직 관리', get sub() { return Gangs.mine ? `${GANGS[Gangs.mine].name} · ${RANKS[Gangs.rank]} · 평판 ${Gangs.rep} — 어디서나 O 키로 연다` : '아직 조직이 없다'; },
+  items: () => {
+    const g = Gangs.mine, out = [];
+    if (!g) {
+      out.push({ id: 'gnone', name: '조직에 들어가거나 직접 세워라', price: 0, desc: '조직 본부(지도의 청·파·철·코 표시)에서 가입 · 은신처에서 $25,000으로 창설', ok: () => false });
+      return out;
+    }
+    out.push({ id: 'ginfo2', name: `${GANGS[g].name} · 구역 ${Gangs.count(g)}블록 · 조직원 ${Empire.members(g)}명`, price: 0, desc: `다음 자동 전쟁까지 ${Math.max(0, Gangs.nextWar - Gangs.day)}일`, ok: () => false });
+    const W = Gangs.war;
+    if (W && Gangs.ours()) {
+      out.push({ id: 'gwarinfo', name: `전면전 중: ${GANGS[W.A].name} ${W.pow[W.A]} vs ${GANGS[W.D].name} ${W.pow[W.D]}`, price: 0, desc: `전선 ${W.fronts} · 화살표를 따라 전선으로 가라`, ok: () => false });
+      if (Gangs.rank === 2) out.push({ id: 'gtruce', name: '휴전 협상', price: 20000, btn: '휴전', desc: '전쟁을 멈춘다 · 지금까지 뺏고 뺏긴 블록은 그대로 · 평판 -50', ok: () => true, fn: () => { Shop.close(); Gangs.truce(); } });
+    }
+    if (GangJob.active) out.push({ id: 'gstop', name: '진행 중인 조직 활동 그만두기', price: 0, btn: '그만두기', desc: GangJob.active.kind === 'collect' ? '보호비 수금' : '구역 습격', ok: () => true, fn: () => { for (const q of GangJob.active.foes || []) q.persistent = false; GangJob.active = null; UI.objective(''); Shop.close(); } });
+    out.push({ id: 'gpick', name: '구역 넓히기 — 지도에서 블록 고르기', price: 0, btn: '지도', desc: '우리 구역에 맞닿은 블록(노란 테두리)을 누르면 습격 시작 · 라이벌 8명 / 주인 없는 블록 5명', ok: () => !GangJob.active, fn: openTurfPicker });
+    out.push({ id: 'graid', name: '구역 습격 — 가까운 이웃 블록 자동 선택', price: 0, btn: '시작', desc: '라이벌 블록이 있으면 그쪽, 없으면 주인 없는 블록', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('raid'); } });
+    out.push({ id: 'gcol', name: '보호비 수금 — 우리 구역 가게 3곳', price: 0, btn: '시작', desc: '평판 +40, 가게마다 $300', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('collect'); } });
+    if (Gangs.rank >= 1) out.push({ id: 'gcall2', name: `부하 부르기 (${Empire.backupSize()}명)`, price: 0, btn: '호출', desc: 'K 키로도 부른다', ok: () => true, fn: () => { Shop.close(); Gangs.callBackup(); } });
+    if (Gangs.rank === 2) for (const r of GANG_IDS) {
+      if (r === g || !Gangs.count(r)) continue;
+      const touch = Gangs.pairsBetween(g, r).length;
+      out.push({ id: 'gwar_' + r, name: `전면전 선포 — ${GANGS[r].name} (구역 ${Gangs.count(r)} · 조직원 ${Empire.members(r)}명)`, price: 0, btn: '선포', desc: touch ? `맞닿은 전선 ${touch}곳 · 한쪽이 궤멸할 때까지 싸운다 · 이기면 상대 구역 전부 + $50,000` : '맞닿은 구역이 없다 — 먼저 구역을 넓혀 붙어라', ok: () => !Gangs.war && touch > 0, fn: () => { Shop.close(); Gangs.declareWar(g, r); } });
+    }
+    else out.push({ id: 'gwarno', name: '전면전 선포는 보스만 할 수 있다', price: 0, desc: '파트너 평판 1000 → 본부에서 후계 계약 · 또는 은신처에서 조직 창설', ok: () => false });
+    return out;
   },
 };
 
@@ -9008,9 +9122,10 @@ SHOPS.safehouse = {
     } else if (Gangs.mine === 'own') {
       out.push({ id: 'own_info', name: `${Empire.own.name} · 구역 ${Gangs.count('own')}블록 · 조직원 ${Empire.members('own')}명`, price: 0, desc: `평판 ${Gangs.rep} · 부하 호출 ${Empire.backupSize()}명 · 구역 수입 ×${Empire.incomeMul().toFixed(2)}`, ok: () => false });
       out.push({ id: 'gjob1', name: '보호비 수금', price: 0, btn: '시작', desc: '평판 +40, 돈 $300씩', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('collect'); } });
-      out.push({ id: 'gjob2', name: '구역 습격 — 이웃 블록 차지', price: 0, btn: '시작', desc: '라이벌이 없으면 주인 없는 블록의 건달을 몰아낸다 · 성공하면 우리 구역', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('raid'); } });
+      out.push({ id: 'gpick', name: '구역 넓히기 — 지도에서 블록 고르기', price: 0, btn: '지도', desc: '우리 구역에 맞닿은 블록(노란 테두리)을 누른다', ok: () => !GangJob.active, fn: openTurfPicker });
+      out.push({ id: 'gjob2', name: '구역 습격 — 이웃 블록 자동 선택', price: 0, btn: '시작', desc: '라이벌이 없으면 주인 없는 블록의 건달을 몰아낸다 · 성공하면 우리 구역', ok: () => !GangJob.active, fn: () => { Shop.close(); GangJob.start('raid'); } });
       out.push({ id: 'gcall', name: `부하 부르기 (${Empire.backupSize()}명)`, price: 0, btn: '호출', desc: 'K 키 / 일시정지 메뉴에서도 된다', ok: () => true, fn: () => { Shop.close(); Gangs.callBackup(); } });
-      out.push({ id: 'gwar', name: '전쟁 선포 — 이웃 라이벌 블록 습격', price: 0, btn: '선포', desc: '대규모 전쟁을 지금 시작한다', ok: () => !Gangs.war, fn: () => { Shop.close(); Gangs.declareWar('own'); } });
+      out.push({ id: 'gwar', name: '전면전 선포 — 상대 조직 고르기', price: 0, btn: '열기', desc: '조직 전체 대 전체 · 어디서나 O 키로도 연다', ok: () => true, fn: () => { Shop.open('gang'); } });
     }
     return out;
   },
@@ -9763,8 +9878,13 @@ const Game = {
     const bb = this.bizBtn; if (bb && sx >= bb.x && sx <= bb.x + bb.w && sy >= bb.y && sy <= bb.y + bb.h) { this.showBiz = !this.showBiz; return; }
     for (const b of this.mapZoomBtns || []) if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) { MapView.zoomAt(b.f); return; }
     if (MapView.moved) { MapView.moved = false; return; } // 드래그로 지도를 옮긴 것
-    if (sx < r.ox || sy < r.oy || sx > r.ox + r.size || sy > r.oy + r.size) { this.state = 'play'; return; }
+    if (sx < r.ox || sy < r.oy || sx > r.ox + r.size || sy > r.oy + r.size) { this.state = 'play'; this.pickTurf = false; return; }
     const x = (sx - r.mx) / r.k, y = (sy - r.my) / r.k;
+    if (this.pickTurf) { // 구역 넓히기: 고른 블록으로 습격
+      const b = blockAt(x, y);
+      if (!Gangs.raidable(b)) { UI.toast(b && Gangs.turf[b.id] === Gangs.mine ? '이미 우리 구역이다' : '우리 구역에 맞닿은 블록(노란 테두리)을 골라라'); return; }
+      this.pickTurf = false; this.state = 'play'; GangJob.start('raid', b); return;
+    }
     if (this.waypoint && dist(x, y, this.waypoint.x, this.waypoint.y) < 25) { this.waypoint = null; UI.toast('웨이포인트 해제'); }
     else { this.waypoint = { x, y }; Sfx.pickup(); }
   },
@@ -9810,7 +9930,7 @@ const Game = {
     } else if (st === 'map') {
       if (this._mapOpen !== true) { this._mapOpen = true; if (MapView.cx === null) MapView.reset(); if (MapView.z > 1) MapView.center(this.player.px, this.player.py); }
       if (keyHit('Equal', 'NumpadAdd', 'PadRB')) MapView.zoomAt(1.5); if (keyHit('Minus', 'NumpadSubtract', 'PadLB')) MapView.zoomAt(1 / 1.5);
-      if (keyHit('Escape', 'KeyM', 'Tab', 'PadBack', 'PadB', 'PadStart')) this.state = 'play';
+      if (keyHit('Escape', 'KeyM', 'Tab', 'PadBack', 'PadB', 'PadStart')) { this.state = 'play'; this.pickTurf = false; }
       if (keyHit('KeyG', 'PadY')) this.showTurf = !this.showTurf;
       if (keyHit('KeyV')) this.showBiz = !this.showBiz;
     } else if (st === 'paused') {
@@ -9885,6 +10005,7 @@ const Game = {
       for (let i = 0; i <= 9; i++) if (keyHit('Digit' + i)) { const own = WEAPON_ORDER.filter(w => P.inv[w] > 0), w = own[(i + 9) % 10]; if (w) { P.weapon = w; UI.weaponFlash = 1; } }
       if (keyHit('KeyR', 'PadDown') && P.car) { Radio.cycle(); }
       if (keyHit('KeyB')) Bag.open();
+      if (keyHit('KeyO')) Shop.open('gang');
       if (keyHit('F1')) toggleKeyHelp();
       if (keyHit('KeyK')) Gangs.callBackup();
       if (keyHit('KeyC', 'PadUp')) cycleView();

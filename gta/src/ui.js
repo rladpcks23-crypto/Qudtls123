@@ -61,7 +61,7 @@ function drawKeyHelp(c, s, top, pad) {
   } else {
     rows.push(['WASD', '이동'], ['Shift', '달리기'], ['클릭/Ctrl', '공격'], ['Q/E · 1~0', '무기 바꾸기'], ['F', '차 타기'], ['T', '소매치기']);
   }
-  rows.push(['B', '가방'], ['K', '부하 부르기'], ['C', '시점 바꾸기'], ['Z · +/−', '화면 거리']);
+  rows.push(['B', '가방'], ['O', '조직 관리'], ['K', '부하 부르기'], ['C', '시점 바꾸기'], ['Z · +/−', '화면 거리']);
   if (Jobs.active) rows.push(['X', '일 그만두기']);
   rows.push(['M', '지도 (G 구역 · V 사업체)'], ['P/Esc', '일시정지 · 저장'], ['F1', '이 안내 숨기기']);
   let y = Math.max(top + 24 * s, CH * 0.5 - rows.length * lh / 2);
@@ -476,6 +476,11 @@ function drawFullMap() {
   c.drawImage(World.mini, ox, oy, MW * T * k, MH * T * k);
   c.imageSmoothingEnabled = true;
   if (Game.showTurf) drawTurfOverlay(c, ox, oy, k, ox0, oy0);
+  if (Game.pickTurf) { // 구역 넓히기: 고를 수 있는 블록에 노란 테두리
+    const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 200);
+    c.strokeStyle = `rgba(255,230,0,${pulse})`; c.lineWidth = 3; c.fillStyle = `rgba(255,230,0,${0.18 + 0.12 * pulse})`;
+    for (const b of World.blocks) if (Gangs.raidable(b)) { const x = ox + b.x0 * T * k + 1.5, y = oy + b.y0 * T * k + 1.5, w = (b.x1 - b.x0 + 1) * T * k - 3, h = (b.y1 - b.y0 + 1) * T * k - 3; c.fillRect(x, y, w, h); c.strokeRect(x, y, w, h); }
+  }
   // 구역 이름
   const acc = {};
   for (const b of World.blocks) { const d = b.smallPark ? World.hoods[b.hood].name : b.park || (b.district === DIST.PARK ? '' : World.hoods[b.hood].name); if (!d) continue; acc[d] = acc[d] || [0, 0, 0]; acc[d][0] += (b.x0 + b.x1) / 2; acc[d][1] += (b.y0 + b.y1) / 2; acc[d][2]++; }
@@ -509,7 +514,8 @@ function drawFullMap() {
   txt(c, `갱단 구역 ${Game.showTurf ? '끄기' : '보기'}${Input.usingTouch ? '' : ' (G)'}`, tb.x + tb.w / 2, tb.y + 22, `700 13px ${FONT_KR}`, '#fff', null, 0, 'center');
   for (const b of zb) { c.fillStyle = 'rgba(20,24,34,0.9)'; roundRect(c, b.x, b.y, b.w, b.h, 8); c.fill(); c.strokeStyle = '#6fe0ff'; c.lineWidth = 1.5; c.stroke(); txt(c, b.l, b.x + b.w / 2, b.y + 25, `700 22px ${FONT_KR}`, '#fff', null, 0, 'center'); }
   if (MV.z > 1) txt(c, `×${MV.z.toFixed(1)}`, ox0 + 96, Math.max(4, oy0 - 44) + 22, `600 13px ${FONT_KR}`, '#6fe0ff', null);
-  txt(c, '네온 하버 지도', CW / 2, 44, `${28 * UI.s}px ${FONT_DISP}`, '#f2c14e', 'rgba(0,0,0,0.9)', 5, 'center');
+  if (Game.pickTurf) { const m = '넓힐 블록을 누르세요 — 노란 테두리 = 우리 구역에 맞닿은 블록 · Esc 취소'; c.font = `700 14px ${FONT_KR}`; const w = c.measureText(m).width + 24; c.fillStyle = 'rgba(120,90,0,0.92)'; roundRect(c, CW / 2 - w / 2, oy0 + size - 40, w, 30, 8); c.fill(); txt(c, m, CW / 2, oy0 + size - 20, `700 14px ${FONT_KR}`, '#fff', null, 0, 'center'); }
+  { c.font = `${28 * UI.s}px ${FONT_DISP}`; const tw = c.measureText('네온 하버 지도').width; if (CW / 2 + tw / 2 < bb.x - 8 && CW / 2 - tw / 2 > ox0 + 130) txt(c, '네온 하버 지도', CW / 2, 44, `${28 * UI.s}px ${FONT_DISP}`, '#f2c14e', 'rgba(0,0,0,0.9)', 5, 'center'); } // 버튼과 겹치면 제목은 생략
   // 범례
   let lx = ox0, ly = oy0 + size + 16 + lh * 0.5;
   c.font = lf;
@@ -584,6 +590,7 @@ const Menu = {
     fBtn.onclick = () => { Settings.fps = !Settings.fps; Settings.save(); qLabel(); };
     if (Settings.quality === 'low') Perf.apply(true);
     document.getElementById('btn-view').onclick = () => { this.hidePause(); Game.state = 'play'; cycleView(); };
+    document.getElementById('btn-gang').onclick = () => { this.hidePause(); Game.state = 'play'; Shop.open('gang'); };
     document.getElementById('btn-backup').onclick = () => { this.hidePause(); Game.state = 'play'; Gangs.callBackup(); };
     document.getElementById('btn-quitjob').onclick = () => { Jobs.stop('일을 그만뒀다'); this.hidePause(); Game.state = 'play'; };
     document.getElementById('jobs-close').onclick = () => Jobs.closeBoard();
