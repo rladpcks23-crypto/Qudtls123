@@ -77,6 +77,27 @@ function drawKeyHelp(c, s, top, pad) {
   }
 }
 
+// 가까운 사업체(상가) 위에 이름과 업그레이드 단계를 띄운다: 소유 = 초록 단계·별, 매물 = 노란 가격
+function drawBizLabels(s) {
+  const P = Game.player, pl = World.places, v3 = Game.view !== 'top' && View3D.ok;
+  for (const k in BUSINESSES) {
+    const q = pl[k]; if (!q) continue;
+    const d = dist(q.x, q.y, P.px, P.py); if (d > 55) continue;
+    const pr = v3 ? View3D.project(q.x, q.y, 4.2) : toScreen(q.x, q.y); if (!pr) continue;
+    const x = pr[0], y = pr[1] - (v3 ? 0 : 34 * s); if (x < -80 || y < -40 || x > CW + 80 || y > CH + 40) continue;
+    const B = BUSINESSES[k], L = Biz.lv(k);
+    const l1 = B.name, l2 = L ? `${L}단계 ${'★'.repeat(L)}${'☆'.repeat(5 - L)} · $${Biz.perMin(k).toLocaleString()}/분` : `매물 $${B.price.toLocaleString()} · $${B.perMin.toLocaleString()}/분`;
+    const f1 = `700 ${13 * s}px ${FONT_KR}`, f2 = `700 ${12 * s}px ${FONT_KR}`;
+    ctx.font = f1; let w = ctx.measureText(l1).width; ctx.font = f2; w = Math.max(w, ctx.measureText(l2).width) + 16 * s;
+    const h = 38 * s, col = L ? (L >= 5 ? '#ffd166' : '#7ae68f') : '#ffd166';
+    ctx.globalAlpha = clamp((55 - d) / 15, 0, 1);
+    ctx.fillStyle = 'rgba(8,12,20,0.8)'; roundRect(ctx, x - w / 2, y - h, w, h, 6 * s); ctx.fill(); ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
+    txt(ctx, l1, x, y - h + 15 * s, f1, '#fff', null, 0, 'center');
+    txt(ctx, l2, x, y - 7 * s, f2, col, null, 0, 'center');
+    ctx.globalAlpha = 1;
+  }
+}
+
 function drawHUD(dt) {
   const c = ctx, P = Game.player;
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -186,6 +207,7 @@ function drawHUD(dt) {
     txt(c, '▸ ' + m.objective, pad + 10 * s, hy + 18 * s, `600 ${13 * s}px ${FONT_KR}`, '#f5d77a', null);
   }
 
+  drawBizLabels(s);
   // ---- 우측: 키 안내 (F1로 숨기기/보이기) ----
   if (!Input.usingTouch) drawKeyHelp(c, s, ty, pad);
 
@@ -317,7 +339,7 @@ function placeIcons() {
   if (pl.spray) out.push({ x: pl.spray.x, y: pl.spray.y, ch: 'S', c: '#6fe0ff', label: '페인트샵' });
   if (pl.spray2) out.push({ x: pl.spray2.x, y: pl.spray2.y, ch: 'S', c: '#6fe0ff', label: '페인트샵' });
   if (pl.garage) out.push({ x: pl.garage.x, y: pl.garage.y, ch: 'G', c: '#f2c14e', label: '차고' });
-  for (const k of Object.keys(BUSINESSES)) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: k === 'biz_casino' ? '♦' : '₩', c: k === 'biz_casino' ? '#ff5d8f' : Biz.has(k) ? '#7ae68f' : '#ffd166', label: BUSINESSES[k].name });
+  for (const k of Object.keys(BUSINESSES)) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: k === 'biz_casino' ? '♦' : '₩', c: k === 'biz_casino' ? '#ff5d8f' : Biz.has(k) ? '#7ae68f' : '#ffd166', label: BUSINESSES[k].name, lv: Biz.lv(k) });
   for (const m of World.marinas || []) out.push({ x: m.x, y: m.y, ch: '배', c: '#4fc3f7', label: '마리나(보트)' });
   if (pl.mygarage) out.push({ x: pl.mygarage.x, y: pl.mygarage.y, ch: '차', c: '#9be15d', label: '내 차고' });
   if (pl.dealer) out.push({ x: pl.dealer.x, y: pl.dealer.y, ch: 'D', c: '#c77dff', label: '네온 모터스(차량 매매)' });
@@ -493,6 +515,7 @@ function drawFullMap() {
     c.fillStyle = 'rgba(0,0,0,0.8)'; c.beginPath(); c.arc(x, y, 9, 0, TAU); c.fill();
     c.fillStyle = ic.c; c.font = `bold 11px ${FONT_KR}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(ic.ch, x, y + 0.5);
     if (ic.crown) drawCrownMark(c, x, y - 12, 7);
+    if (ic.lv) { const t = `${ic.lv}단계`; c.font = `700 10px ${FONT_KR}`; const w = c.measureText(t).width + 8; c.fillStyle = ic.lv >= 5 ? '#ffd166' : '#7ae68f'; roundRect(c, x + 7, y - 16, w, 13, 4); c.fill(); txt(c, t, x + 7 + w / 2, y - 6, `700 10px ${FONT_KR}`, '#10141c', null, 0, 'center'); }
   }
   if (Game.showBiz) drawBizPrices(c, ox, oy, k, ox0, oy0, size);
   for (const t of allTargets()) { const x = ox + t.x * k, y = oy + t.y * k; c.fillStyle = '#000'; c.beginPath(); c.arc(x, y, 8, 0, TAU); c.fill(); c.fillStyle = t.c; c.beginPath(); c.arc(x, y, 6, 0, TAU); c.fill(); }
