@@ -33,6 +33,7 @@ const Game = {
   },
   bindMouse() {
     canvas.addEventListener('mousemove', e => { Input.mouse.x = e.clientX; Input.mouse.y = e.clientY; Input.mouse.moved = true; this.lastMouseMove = this.time; if (document.pointerLockElement === canvas) { Input.mouse.dx += e.movementX || 0; Input.mouse.dy += e.movementY || 0; } });
+    addEventListener('keydown', () => { if (Sfx.ctx && Sfx.ctx.state !== 'running') Sfx.ctx.resume(); }); // 키보드로만 해도 소리가 깨어나게
     canvas.addEventListener('mousedown', e => { if (e.button === 0) { Input.mouse.down = true; Input.mouse.clicked = true; } Sfx.init(); });
     addEventListener('mouseup', e => { if (e.button === 0) Input.mouse.down = false; });
     canvas.addEventListener('wheel', e => { if (this.state === 'map') MapView.zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.clientX, e.clientY); else Input.wheel += sign(e.deltaY); e.preventDefault(); }, { passive: false });

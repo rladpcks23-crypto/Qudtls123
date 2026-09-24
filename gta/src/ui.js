@@ -643,6 +643,9 @@ const Menu = {
     setLabels();
     sensBtn.onclick = () => { const i = SENS.findIndex(s => s[0] === Settings.sens); Settings.sens = SENS[(i + 1) % SENS.length][0]; Settings.save(); setLabels(); };
     wheelBtn.onclick = () => { const i = WHEEL.findIndex(w => w[0] === Settings.wheel); Settings.wheel = WHEEL[(i + 1) % WHEEL.length][0]; Settings.save(); setLabels(); };
+    const rvBtn = document.getElementById('btn-radiovol'), RV = [[0.5, '작게'], [1, '보통'], [1.6, '크게'], [2.3, '아주 크게']];
+    const rvLabel = () => { rvBtn.textContent = `라디오 볼륨: ${(RV.find(r => r[0] === Settings.radioVol) || RV[1])[1]} (운전 중 R: 방송국)`; };
+    rvLabel(); rvBtn.onclick = () => { const i = RV.findIndex(r => r[0] === Settings.radioVol); Settings.radioVol = RV[(i + 1) % RV.length][0]; Settings.save(); rvLabel(); };
     const qBtn = document.getElementById('btn-quality'), fBtn = document.getElementById('btn-fps');
     const QN = { auto: '자동 (느리면 낮춤)', high: '높음', low: '낮음 (성능 절약)' };
     let qLabel = () => { qBtn.textContent = `그래픽: ${QN[Settings.quality]}${Settings.quality === 'auto' && Perf.low ? ' — 지금 절약 중' : ''}`; fBtn.textContent = `FPS 표시: ${Settings.fps ? '켬' : '끔'}`; };

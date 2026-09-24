@@ -316,6 +316,7 @@ window.addEventListener('error', function (e) { var b = document.getElementById(
     <button class="btn" id="btn-map">지도 보기</button>
     <button class="btn" id="btn-sound">소리 끄기</button>
     <button class="btn" id="btn-view">시점 바꾸기 (탑뷰 · 3인칭 후면/전면 · 1인칭)</button>
+    <button class="btn" id="btn-radiovol">라디오 볼륨: 보통</button>
     <button class="btn" id="btn-sens">조향 감도: 보통</button>
     <button class="btn only-mobile" id="btn-wheel">핸들 크기: 크게</button>
     <button class="btn" id="btn-camrot">운전 시점: 차 방향으로 회전</button>
@@ -503,9 +504,10 @@ const Settings = {
   wheel: 'lg',  // 모바일 핸들 크기 md · lg · xl
   quality: 'auto', // 그래픽: auto(느리면 자동으로 낮춤) · high · low
   fps: false,      // FPS 표시
+  radioVol: 1,     // 라디오 볼륨 배율 (0.5 · 1 · 1.6)
   zoom: 0.75,      // 화면 거리 배율 (작을수록 가깝게) — 휠·두 손가락으로 조절
-  load() { try { const q = localStorage.getItem('nh.quality'); if (q) this.quality = q; this.fps = localStorage.getItem('nh.fps') === '1'; const z = parseFloat(localStorage.getItem('nh.zoom')); if (z) this.zoom = z; const v = localStorage.getItem('nh.camrot'); if (v !== null) this.camRot = v === '1'; const s = parseFloat(localStorage.getItem('nh.sens')); if (s) this.sens = s; const w = localStorage.getItem('nh.wheel'); if (w) this.wheel = w; } catch (e) { } },
-  save() { try { localStorage.setItem('nh.quality', this.quality); localStorage.setItem('nh.fps', this.fps ? '1' : '0'); localStorage.setItem('nh.zoom', String(this.zoom)); localStorage.setItem('nh.camrot', this.camRot ? '1' : '0'); localStorage.setItem('nh.sens', String(this.sens)); localStorage.setItem('nh.wheel', this.wheel); } catch (e) { } },
+  load() { try { const q = localStorage.getItem('nh.quality'); if (q) this.quality = q; this.fps = localStorage.getItem('nh.fps') === '1'; const z = parseFloat(localStorage.getItem('nh.zoom')); if (z) this.zoom = z; const v = localStorage.getItem('nh.camrot'); if (v !== null) this.camRot = v === '1'; const s = parseFloat(localStorage.getItem('nh.sens')); if (s) this.sens = s; const rv = parseFloat(localStorage.getItem('nh.radiovol')); if (rv) this.radioVol = rv; const w = localStorage.getItem('nh.wheel'); if (w) this.wheel = w; } catch (e) { } },
+  save() { try { localStorage.setItem('nh.quality', this.quality); localStorage.setItem('nh.fps', this.fps ? '1' : '0'); localStorage.setItem('nh.zoom', String(this.zoom)); localStorage.setItem('nh.camrot', this.camRot ? '1' : '0'); localStorage.setItem('nh.sens', String(this.sens)); localStorage.setItem('nh.wheel', this.wheel); localStorage.setItem('nh.radiovol', String(this.radioVol)); } catch (e) { } },
 };
 Settings.load();
 function buzz(ms) { if (IS_MOBILE && navigator.vibrate) { try { navigator.vibrate(ms); } catch (e) { } } }
@@ -571,7 +573,7 @@ const Sfx = {
     this.master = c.createGain(); this.master.gain.value = 0.8; this.master.connect(c.destination);
     const comp = c.createDynamicsCompressor(); comp.connect(this.master);
     this.sfxBus = c.createGain(); this.sfxBus.gain.value = 0.9; this.sfxBus.connect(comp);
-    this.musicBus = c.createGain(); this.musicBus.gain.value = 0.32; this.musicBus.connect(comp);
+    this.musicBus = c.createGain(); this.musicBus.gain.value = 0; this.musicBus.connect(comp);
     const len = c.sampleRate;
     const buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
     for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
@@ -693,7 +695,7 @@ const Sfx = {
       const f = 38 + rpm * 70 + gear * 6;
       e.o1.frequency.setTargetAtTime(f, t, 0.05); e.o2.frequency.setTargetAtTime(f / 2, t, 0.05);
       e.filt.frequency.setTargetAtTime(500 + Math.abs(car.in.thr) * 900 + sp * 10, t, 0.08);
-      e.gain.gain.setTargetAtTime(0.07 + Math.abs(car.in.thr) * 0.09, t, 0.08);
+      e.gain.gain.setTargetAtTime((0.07 + Math.abs(car.in.thr) * 0.09) * (Radio.station > 0 ? 0.55 : 1), t, 0.08); // 라디오가 켜지면 엔진음을 줄인다
     } else e.gain.gain.setTargetAtTime(0, t, 0.1);
     // 로터음: 가장 가까운 헬기(내 헬기, 군 헬기, 경찰 헬기)
     let hd = 1e9, mine = false;
@@ -754,6 +756,7 @@ const Radio = {
       const o = c.createOscillator(); o.frequency.setValueAtTime(140, time); o.frequency.exponentialRampToValueAtTime(40, time + 0.15);
       const g = c.createGain(); g.gain.setValueAtTime(0.9 * vol, time); g.gain.exponentialRampToValueAtTime(0.001, time + 0.3);
       o.connect(g); g.connect(Sfx.musicBus); o.start(time); o.stop(time + 0.32);
+      const n = c.createBufferSource(); n.buffer = Sfx.noise; const nf = c.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 3000; const ng = c.createGain(); ng.gain.setValueAtTime(0.35 * vol, time); ng.gain.exponentialRampToValueAtTime(0.001, time + 0.02); n.connect(nf); nf.connect(ng); ng.connect(Sfx.musicBus); n.start(time, Math.random() * 0.5); n.stop(time + 0.03); // 작은 스피커에서도 들리는 '틱'
     } else {
       const src = c.createBufferSource(); src.buffer = Sfx.noise;
       const f = c.createBiquadFilter(); f.type = kind === 'h' ? 'highpass' : 'bandpass'; f.frequency.value = kind === 'h' ? 7000 : 1800;
@@ -762,38 +765,54 @@ const Radio = {
       src.connect(f); f.connect(g); g.connect(Sfx.musicBus); src.start(time, Math.random() * 0.5); src.stop(time + d + 0.02);
     }
   },
+  // 멜로디: 마디마다 코드 구성음에서 고른 16분음표 패턴 (방송국·마디별로 고정 → 반복되는 '곡'처럼 들린다)
+  mel(st, bar) {
+    const key = `${st.name}|${bar}`; this._mel = this._mel || {};
+    if (this._mel[key]) return this._mel[key];
+    let seed = 0; for (const ch of key) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
+    const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+    const ch = st.prog[bar], pat = [];
+    for (let b = 0; b < 16; b++) pat.push(rnd() < (st.kind === 'lofi' ? 0.28 : 0.45) ? ch[Math.floor(rnd() * ch.length)] + 12 * (rnd() < 0.3 ? 2 : 1) : null);
+    pat[0] = ch[0] + 12;
+    return (this._mel[key] = pat);
+  },
+  // 작은 노트북 스피커에서도 들리게: 베이스는 한 옥타브 올리고 배음(톱니)을 살리며, 멜로디·코드를 중음역에 둔다
   update() {
     const c = Sfx.ctx; if (!c) return;
     const car = Game.player && Game.player.car;
-    const on = car && this.station > 0 && !Sfx.muted && Game.state === 'play';
+    const on = car && this.station > 0 && !Sfx.muted && Game.state === 'play' && !car.dead;
     if (car !== this.lastCar) { this.lastCar = car; if (car && this.station > 0) UI.showStation(this.stations[this.station]); }
+    Sfx.musicBus.gain.setTargetAtTime(on ? 0.9 * (Settings.radioVol ?? 1) : 0, c.currentTime, 0.08);
     if (!on) { this.nextTime = c.currentTime + 0.05; return; }
+    if (this.nextTime < c.currentTime) this.nextTime = c.currentTime + 0.02; // 멈췄다 켜면 밀린 음을 한꺼번에 내지 않는다
     const st = this.stations[this.station];
     const spb = 60 / st.bpm / 4; // 16분음표
     while (this.nextTime < c.currentTime + 0.15) {
       const t = this.nextTime, s = this.step % 64, bar = Math.floor(s / 16) % 4, b = s % 16;
-      const ch = st.prog[bar];
+      const ch = st.prog[bar], m = this.mel(st, bar)[b];
       if (st.kind === 'synth') {
         if (b % 4 === 0) this.drum(t, 'k');
-        if (b === 4 || b === 12) this.drum(t, 's', 0.8);
-        if (b % 2 === 0) this.drum(t, 'h', 0.6);
-        if (b % 2 === 0) this.play(t, this.note(ch[0] - 12), spb * 1.8, 'sawtooth', 0.12, 900);
-        this.play(t, this.note(ch[b % 3] + 12 + (b >= 8 ? 12 : 0)), spb * 0.9, 'square', 0.035, 2600);
-        if (b === 0) ch.forEach(n => this.play(t, this.note(n), spb * 15, 'sawtooth', 0.025, 1400));
+        if (b === 4 || b === 12) this.drum(t, 's', 1);
+        if (b % 2 === 0) this.drum(t, 'h', 0.8);
+        if (b % 2 === 0) this.play(t, this.note(ch[0]), spb * 1.8, 'sawtooth', 0.16, 1400);          // 베이스 (한 옥타브 위)
+        this.play(t, this.note(ch[b % 3] + 12 + (b >= 8 ? 12 : 0)), spb * 0.9, 'square', 0.05, 3200); // 아르페지오
+        if (m) this.play(t, this.note(m + 12), spb * 1.9, 'sawtooth', 0.09, 4200);                     // 멜로디
+        if (b === 0 || b === 8) ch.forEach(n => this.play(t, this.note(n + 12), spb * 7, 'sawtooth', 0.045, 2200)); // 패드
       } else if (st.kind === 'hiphop') {
         const sw = (b % 2 === 1) ? spb * 0.25 : 0;
         if (b === 0 || b === 7 || b === 10) this.drum(t + sw, 'k');
-        if (b === 4 || b === 12) this.drum(t + sw, 's');
-        if (b % 2 === 0) this.drum(t + sw, 'h', 0.5);
-        if (b === 0 || b === 10) this.play(t, this.note(ch[0] - 12), spb * 5, 'sine', 0.3, 400);
-        if (b === 2 || b === 6 || b === 14) ch.forEach(n => this.play(t + sw, this.note(n + 12), spb * 1.2, 'triangle', 0.05, 2000));
+        if (b === 4 || b === 12) this.drum(t + sw, 's', 1.1);
+        if (b % 2 === 0) this.drum(t + sw, 'h', 0.7);
+        if (b === 0 || b === 10) this.play(t, this.note(ch[0]), spb * 4, 'sawtooth', 0.2, 900);
+        if (b === 2 || b === 6 || b === 14) ch.forEach(n => this.play(t + sw, this.note(n + 12), spb * 1.4, 'square', 0.05, 2600)); // 피아노 스탭
+        if (m && b % 2 === 0) this.play(t + sw, this.note(m + 12), spb * 1.6, 'triangle', 0.14, 3800);
       } else {
-        if (b === 0 || b === 9) this.drum(t, 'k', 0.6);
-        if (b === 4 || b === 12) this.drum(t, 's', 0.35);
-        if (b % 3 === 0) this.drum(t, 'h', 0.3);
-        if (b === 0 || b === 6) ch.forEach((n, i) => this.play(t + i * 0.02, this.note(n), spb * 6, 'triangle', 0.05, 1500));
-        if (b % 4 === 2 && Math.random() < 0.6) this.play(t, this.note(ch[(Math.random() * ch.length) | 0] + 24), spb * 2, 'sine', 0.05, 3000);
-        if (b === 0) this.play(t, this.note(ch[0] - 12), spb * 8, 'sine', 0.25, 300);
+        if (b === 0 || b === 9) this.drum(t, 'k', 0.7);
+        if (b === 4 || b === 12) this.drum(t, 's', 0.6);
+        if (b % 3 === 0) this.drum(t, 'h', 0.5);
+        if (b === 0 || b === 6) ch.forEach((n, i) => this.play(t + i * 0.025, this.note(n + 12), spb * 6, 'triangle', 0.1, 2400)); // 일렉 피아노
+        if (m) this.play(t, this.note(m + 12), spb * 2.5, 'sine', 0.13, 4000);
+        if (b === 0 || b === 8) this.play(t, this.note(ch[0]), spb * 7, 'triangle', 0.25, 800);
       }
       this.nextTime += spb; this.step++;
     }
@@ -7874,6 +7893,9 @@ const Menu = {
     setLabels();
     sensBtn.onclick = () => { const i = SENS.findIndex(s => s[0] === Settings.sens); Settings.sens = SENS[(i + 1) % SENS.length][0]; Settings.save(); setLabels(); };
     wheelBtn.onclick = () => { const i = WHEEL.findIndex(w => w[0] === Settings.wheel); Settings.wheel = WHEEL[(i + 1) % WHEEL.length][0]; Settings.save(); setLabels(); };
+    const rvBtn = document.getElementById('btn-radiovol'), RV = [[0.5, '작게'], [1, '보통'], [1.6, '크게'], [2.3, '아주 크게']];
+    const rvLabel = () => { rvBtn.textContent = `라디오 볼륨: ${(RV.find(r => r[0] === Settings.radioVol) || RV[1])[1]} (운전 중 R: 방송국)`; };
+    rvLabel(); rvBtn.onclick = () => { const i = RV.findIndex(r => r[0] === Settings.radioVol); Settings.radioVol = RV[(i + 1) % RV.length][0]; Settings.save(); rvLabel(); };
     const qBtn = document.getElementById('btn-quality'), fBtn = document.getElementById('btn-fps');
     const QN = { auto: '자동 (느리면 낮춤)', high: '높음', low: '낮음 (성능 절약)' };
     let qLabel = () => { qBtn.textContent = `그래픽: ${QN[Settings.quality]}${Settings.quality === 'auto' && Perf.low ? ' — 지금 절약 중' : ''}`; fBtn.textContent = `FPS 표시: ${Settings.fps ? '켬' : '끔'}`; };
@@ -9936,6 +9958,7 @@ const Game = {
   },
   bindMouse() {
     canvas.addEventListener('mousemove', e => { Input.mouse.x = e.clientX; Input.mouse.y = e.clientY; Input.mouse.moved = true; this.lastMouseMove = this.time; if (document.pointerLockElement === canvas) { Input.mouse.dx += e.movementX || 0; Input.mouse.dy += e.movementY || 0; } });
+    addEventListener('keydown', () => { if (Sfx.ctx && Sfx.ctx.state !== 'running') Sfx.ctx.resume(); }); // 키보드로만 해도 소리가 깨어나게
     canvas.addEventListener('mousedown', e => { if (e.button === 0) { Input.mouse.down = true; Input.mouse.clicked = true; } Sfx.init(); });
     addEventListener('mouseup', e => { if (e.button === 0) Input.mouse.down = false; });
     canvas.addEventListener('wheel', e => { if (this.state === 'map') MapView.zoomAt(e.deltaY < 0 ? 1.25 : 0.8, e.clientX, e.clientY); else Input.wheel += sign(e.deltaY); e.preventDefault(); }, { passive: false });
