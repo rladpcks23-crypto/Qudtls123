@@ -122,7 +122,7 @@ const Missions = {
   },
 };
 
-const allTargets = () => [...GangJob.targets(), ...(Jobs.active ? Jobs.targets() : []), ...Missions.targets(), ...Empire.targets(), ...Finance.targets(), ...(typeof Events !== 'undefined' ? Events.targets() : []), ...(Gangs.war && (!Gangs.mine || Gangs.war.A === Gangs.mine || Gangs.war.D === Gangs.mine) ? [{ x: Gangs.war.x, y: Gangs.war.y, c: '#ff3b3b', big: true }] : [])];
+const allTargets = () => [...(typeof Races !== 'undefined' ? Races.targets() : []), ...GangJob.targets(), ...(Jobs.active ? Jobs.targets() : []), ...Missions.targets(), ...Empire.targets(), ...Finance.targets(), ...(typeof Events !== 'undefined' ? Events.targets() : []), ...(Gangs.war && (!Gangs.mine || Gangs.war.A === Gangs.mine || Gangs.war.D === Gangs.mine) ? [{ x: Gangs.war.x, y: Gangs.war.y, c: '#ff3b3b', big: true }] : [])];
 
 // ---------- 미션 도우미 ----------
 function missionCar(m, type, x, y, a, opt = {}) {

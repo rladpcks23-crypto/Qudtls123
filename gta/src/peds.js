@@ -216,6 +216,7 @@ function fireWeapon(shooter, wname, ang, accuracy = 1) {
       if (hit.kind === 'car') {
         hit.damage(W.dmg * 0.35, isPlayer ? shooter : null);
         Particles.spark(hx, hy); Sfx.hit(hx, hy);
+        CarDamage.bullet(hit, hx, hy);
         if (hit.driver === 'player' && !isPlayer) P.damage(W.dmg * 0.25 * (hit.V.armor || 1), shooter, 0, 0, 'car'); // 장갑차량은 탑승자도 보호
         if (hit.driver === 'ai' && hit.ai && hit.driverKind === 'civ') { hit.ai.panic = true; if (chance(0.15)) bailOut(hit, true); }
         if (isPlayer && hit.type === 'police') crime('hitCop', hx, hy);

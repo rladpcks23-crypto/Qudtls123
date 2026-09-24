@@ -234,7 +234,7 @@ function drawHUD(dt) {
     txt(c, line, pad + 12 * s, hy + 18 * s, `700 ${13 * s}px ${FONT_KR}`, J.def.legal ? '#bcdcff' : '#ffc2d6', null);
     hy += 32 * s;
   }
-  const ws = [Gangs.warStatus(), Gangs.expStatus()].filter(Boolean).join('\n');
+  const ws = [Races.hud(), Gangs.warStatus(), Gangs.expStatus()].filter(Boolean).join('\n');
   if (ws) {
     c.font = `700 ${13 * s}px ${FONT_KR}`;
     const lines = ws.split('\n').flatMap(l => wrapLines(c, l, 420 * s)), w = Math.max(...lines.map(l => c.measureText(l).width)) + 24 * s, h = lines.length * 18 * s + 10 * s;

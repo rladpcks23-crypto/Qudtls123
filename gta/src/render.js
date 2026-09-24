@@ -315,6 +315,7 @@ function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w
 function drawCar(c, shadow) {
   const L = c.L, W = c.W, st = c.V.style;
   ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a);
+  if (c.jz > 0) { const k = 1 + c.jz * 0.05; if (shadow) { ctx.fillStyle = 'rgba(0,0,0,0.25)'; rr(ctx, -L / 2 + c.jz * 0.6, -W / 2 + c.jz * 0.6, L, W, 0.5); ctx.fill(); shadow = null; } ctx.scale(k, k); }
   if (shadow) { ctx.fillStyle = 'rgba(0,0,0,0.32)'; rr(ctx, -L / 2 + shadow[0] * 1.2, -W / 2 + shadow[1] * 1.2, L, W, st === 'bike' ? 0.35 : 0.5); ctx.fill(); }
   if (st === 'bike') { drawBike(c); ctx.restore(); return; }
   if (st === 'airliner') { // 여객기: 동체 + 후퇴익 + 꼬리 날개 + 엔진
@@ -394,9 +395,10 @@ function drawCar(c, shadow) {
       ctx.fillStyle = c.siren ? (f ? '#0f2a6a' : '#2d6bff') : '#20306a'; ctx.fillRect(-0.3, 0.05, 0.45, 0.7);
     }
   }
+  CarDamage.draw(c, L, W);
   // 전조등/후미등
   if (!c.dead) {
-    ctx.fillStyle = '#fff7d6'; ctx.fillRect(L / 2 - 0.18, -W / 2 + 0.18, 0.16, 0.38); ctx.fillRect(L / 2 - 0.18, W / 2 - 0.56, 0.16, 0.38);
+    ctx.fillStyle = CarDamage.headlightsOK(c) ? '#fff7d6' : '#3a3a36'; ctx.fillRect(L / 2 - 0.18, -W / 2 + 0.18, 0.16, 0.38); ctx.fillRect(L / 2 - 0.18, W / 2 - 0.56, 0.16, 0.38);
     ctx.fillStyle = c.brakeLight ? '#ff2a2a' : '#8a1a1a'; ctx.fillRect(-L / 2 + 0.02, -W / 2 + 0.16, 0.14, 0.4); ctx.fillRect(-L / 2 + 0.02, W / 2 - 0.56, 0.14, 0.4);
   }
   if (c.alarmT > 0 && !c.dead && Math.floor(Game.time * 5) % 2) { ctx.fillStyle = '#ffb020'; for (const [x, y] of [[L / 2 - 0.2, -W / 2 + 0.15], [L / 2 - 0.2, W / 2 - 0.15], [-L / 2 + 0.2, -W / 2 + 0.15], [-L / 2 + 0.2, W / 2 - 0.15]]) { ctx.beginPath(); ctx.arc(x, y, 0.22, 0, TAU); ctx.fill(); } }
@@ -595,7 +597,7 @@ function lightPass(amb) {
     const f = c.fwd(), rgt = [-f[1], f[0]];
     const hx = c.x + f[0] * c.L / 2, hy = c.y + f[1] * c.L / 2;
     // 전조등 원뿔
-    if (!c.V.special || c.type === 'tank') {
+    if ((!c.V.special || c.type === 'tank') && CarDamage.headlightsOK(c)) {
       lc.save(); lc.translate(hx, hy); lc.rotate(c.a); lc.globalAlpha = 0.7 * k; lc.drawImage(cone, 0, -6, 20, 12); lc.restore();
     }
     glow(c.x - f[0] * c.L / 2, c.y - f[1] * c.L / 2, c.brakeLight ? 3.5 : 2, '255,40,30', (c.brakeLight ? 0.7 : 0.4) * k);

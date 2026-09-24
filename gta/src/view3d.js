@@ -434,7 +434,7 @@ const View3D = {
       for (const [x, z] of [[L * 0.32, W / 2 - 0.1], [L * 0.32, -W / 2 + 0.1], [-L * 0.32, W / 2 - 0.1], [-L * 0.32, -W / 2 + 0.1]]) { const w = new THREE.Mesh(this.geo.wheel, this.mat('#111')); w.rotation.x = Math.PI / 2; w.position.set(x, 0.34, z); g.add(w); }
       const hl = new THREE.MeshBasicMaterial({ color: 0xfff7d6 }), tlm = new THREE.MeshBasicMaterial({ color: 0x8a1a1a });
       for (const z of [-W / 2 + 0.3, W / 2 - 0.3]) { add(hl, 0.06, 0.16, 0.36, L / 2 + 0.01, 0.75, z); add(tlm, 0.06, 0.16, 0.36, -L / 2 - 0.01, 0.8, z); }
-      g.userData.tail = tlm;
+      g.userData.tail = tlm; g.userData.hl = hl;
       if (st === 'police' || st === 'ambulance' || st === 'swat' || st === 'fire') {
         const r = new THREE.MeshBasicMaterial({ color: 0xff2d2d }), b = new THREE.MeshBasicMaterial({ color: 0x2d6bff });
         add(r, 0.35, 0.15, W * 0.4, -0.2, tall + 0.08, -W * 0.22); add(st === 'ambulance' || st === 'fire' ? r : b, 0.35, 0.15, W * 0.4, -0.2, tall + 0.08, W * 0.22);
@@ -603,7 +603,9 @@ const View3D = {
       seen.add(c.id);
       let g = this.cars.get(c.id);
       if (!g) { g = this.makeCar(c); this.cars.set(c.id, g); }
-      g.position.set(c.x, c.alt || 0, c.y); g.rotation.order = 'YXZ'; g.rotation.set(0, -c.a, 0);
+      g.position.set(c.x, (c.alt || 0) + (c.jz || 0), c.y); g.rotation.order = 'YXZ'; g.rotation.set(0, -c.a, c.jpitch || 0);
+      if (g.userData.hl) { const ok = CarDamage.headlightsOK(c); if (g.userData.hlOK !== ok) { g.userData.hl.color.set(ok ? '#fff7d6' : '#2a2a28'); g.userData.hlOK = ok; } }
+      if (c.dmgParts) { const d = c.dmgParts, sx = 1 - (d.f + d.r) * 0.05; if (g.userData.sx !== sx) { g.scale.set(sx, 1 - (d.f + d.r + d.ls + d.rs) * 0.015, 1 - (d.ls + d.rs) * 0.04); g.userData.sx = sx; } } else if (g.userData.sx) { g.scale.set(1, 1, 1); g.userData.sx = 0; }
       if (c.V.special) {
         const U = g.userData;
         if (U.turret) U.turret.rotation.y = -angNorm((c.turret ?? c.a) - c.a);
@@ -695,7 +697,7 @@ const View3D = {
     for (; pi < this.pickups.length; pi++) this.pickups[pi].visible = false;
     // 공용 소품 (스파이크·체크포인트·점프대 …)
     const PR = Props.collect(P, 140); let ri = 0;
-    for (const o of PR) { if (ri >= this.props.length || o.no3d) continue; const m = this.props[ri++]; m.visible = true; m.position.set(o.x, (o.z || 0) + (o.h || 0.2) / 2, o.y); m.scale.set(o.w, o.h || 0.2, o.d); m.rotation.set(0, -(o.a || 0), 0); m.material.color.set(o.c); m.material.emissive && m.material.emissive.set(o.glow ? o.c : '#000'); }
+    for (const o of PR) { if (ri >= this.props.length || o.no3d) continue; const m = this.props[ri++]; m.visible = true; m.position.set(o.x, (o.z || 0) + (o.h || 0.2) / 2, o.y); m.scale.set(o.w, o.h || 0.2, o.d); m.rotation.set(0, -(o.a || 0), o.pitch || 0); m.material.color.set(o.c); m.material.emissive && m.material.emissive.set(o.glow ? o.c : '#000'); }
     for (; ri < this.props.length; ri++) this.props[ri].visible = false;
     // 헬기 서치라이트 (밤)
     const sp = Pursuit.spot, HH = Police.heli, showSpot = !!(sp && HH && !HH.dead && night > 0.3);

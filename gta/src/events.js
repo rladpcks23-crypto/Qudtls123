@@ -23,6 +23,7 @@ const Props = {
   draw2D() { // render.js의 월드 좌표 변환 안에서 호출
     const P = Game.player; if (!P) return;
     for (const o of this.collect(P, Math.max(Cam.vw, Cam.vh) / 2 + 20)) {
+      if (o.no2d) continue;
       ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(o.a || 0);
       if (o.draw) o.draw(ctx);
       else {

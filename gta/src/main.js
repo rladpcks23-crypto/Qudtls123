@@ -127,7 +127,7 @@ const Game = {
   loop(now) {
     const raw = (now - (this.last || now)) / 1000, dt = Math.min(0.05, raw); this.last = now;
     Perf.tick(raw);
-    try { this.frame(dt); } catch (e) { console.error(e); }
+    try { this.frame(dt * (this.slowmo ? 0.4 : 1)); } catch (e) { console.error(e); }
     endFrameInput();
     requestAnimationFrame(t => this.loop(t));
   },
@@ -258,7 +258,7 @@ const Game = {
     Pick.scan();
     if (Pick.target !== this._lastPick) { this._lastPick = Pick.target; document.body.classList.toggle('cansteal', !!Pick.target); }
     updatePickups(dt);
-    Events.update(dt);
+    Events.update(dt); Stunts.update(dt); Races.update(dt);
     this.places(dt);
     // 사망
     if (P.hp <= 0 && this.state === 'play') this.wasted();
