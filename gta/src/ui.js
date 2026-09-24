@@ -525,6 +525,7 @@ function drawFullMap() {
   c.setTransform(DPR, 0, 0, DPR, 0, 0);
   c.fillStyle = 'rgba(6,10,18,0.92)'; c.fillRect(0, 0, CW, CH);
   const legend = [['#f2c14e', 'M  미션 / 목표'], ['#e0443e', 'H  병원'], ['#4b8fe8', 'P  경찰서'], ['#ff6b5a', '총  총포상'], ['#ffb347', '버  버거 샷'], ['#7ae68f', '편  편의점'], ['#6fe0ff', 'S  페인트샵'], ['#f2c14e', 'G  차고'], ['#6fb6ff', 'J  고용센터 (합법 직업)'], ['#ff5d8f', '$  브로커 (불법 직업)'], ['#9be15d', '집  은신처 (저장·수면)'], ['#c77dff', '▼  웨이포인트'], ['#8f9b6a', '★4  포트 네온 기지 — 남쪽 바다의 군사 섬 (전차·헬기·전투기)'], ['#c77dff', 'D  네온 모터스 (차량 매매)'], ['#9be15d', '차  내 차고 (산 차량 보관·저장)'], ['#4fc3f7', '배  마리나 (제트스키·보트)'], ['#ffd166', '₩  사업체 (사면 1분마다 수입, 초록 = 소유)'], ['#ff5d8f', '♦  다이아몬드 카지노'], ['#e07aff', '옷  옷가게 (변장)'], ['#ff9f43', '체  체육관'], ['#3ee07a', '약  약국'], ['#ffd700', '은  은행 (털 수 있다)'], ['#ff4d4d', '♛  조직 보스 (계약·가입)'], ['#e8e2d0', '시  시청 · 병원 · 경찰서 · 소방서(소) = 후원'], ['#e0a060', '학  학교 (경영 강의)']];
+  for (const e of EXTRA_ICONS) { if (!World.places[e.key] || legend.some(([, l]) => l.startsWith(e.ch + ' ') || l.includes(e.label))) continue; legend.push([typeof e.c === "function" ? e.c() : e.c, `${e.ch}  ${e.ch === "창" ? "창고 (무역·밀수)" : e.label}`]); } // 다른 파일이 더한 장소(작전실·증권거래소 등)도 범례에
   // 범례 줄 수를 먼저 재서 지도 크기를 정한다 (글자가 지도·도움말과 겹치지 않게)
   const lf = `500 ${12 * UI.s}px ${FONT_KR}`, lh = 18 * Math.max(1, UI.s);
   c.font = lf;
