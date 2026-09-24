@@ -151,6 +151,7 @@ function drawHUD(dt) {
   let x = CW - pad, y = pad + topInset;
   const hh = Math.floor(Game.clock / 60), mm = Math.floor(Game.clock % 60);
   txt(c, `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`, x, y + 22 * s, `${24 * s}px ${FONT_NUM}`, '#e9eef5', 'rgba(0,0,0,0.8)', 4, 'right');
+  if (Weather.type !== 'clear') txt(c, WEATHER_NAMES[Weather.type], x - 74 * s, y + 20 * s, `600 ${12 * s}px ${FONT_KR}`, Weather.type === 'storm' ? '#ffd166' : '#cfe3f5', 'rgba(0,0,0,0.85)', 3, 'right');
   // 무기 박스
   const bw = 62 * s, bx = x - bw, by = y + 30 * s;
   c.fillStyle = 'rgba(12,14,20,0.55)'; roundRect(c, bx, by, bw, bw, 10 * s); c.fill();

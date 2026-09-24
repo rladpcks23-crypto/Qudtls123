@@ -74,7 +74,7 @@ const Game = {
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
     this.fleet = sv ? sv.fleet || [] : [];
     this.props = sv ? sv.props || {} : {};
-    Empire.load(sv && sv.empire); Finance.load(sv && sv.finance); Gangs.load(sv && sv.gangs); GangJob.active = null;
+    Empire.load(sv && sv.empire); Finance.load(sv && sv.finance); Gangs.load(sv && sv.gangs); GangJob.active = null; SaveExt.load(sv && sv.ext);
     if (!sv) this.introT = 7;
     if (sv && sv.body) { Object.assign(P, sv.body); P.hp = P.maxHp; }
     // v2.13 보상: 업데이트 중 사라진 돈 $600,000 (이 저장소에서 한 번만)
@@ -189,6 +189,7 @@ const Game = {
       drawWorldTexts3D();
       Rain.draw(this.weather.intensity);
     } else renderScene();
+    Weather.drawOverlay();
     if (st === 'play' || st === 'wasted' || st === 'busted' || st === 'shop' || st === 'paused' || st === 'bag' || st === 'ward' || st === 'fin') { drawHUD(dt); if (st === 'play') drawLockHUD(); }
     if (st === 'wasted' || st === 'busted') drawDeathScreen(st, this.deathT);
     if (st === 'map') drawFullMap();
@@ -257,6 +258,7 @@ const Game = {
     Pick.scan();
     if (Pick.target !== this._lastPick) { this._lastPick = Pick.target; document.body.classList.toggle('cansteal', !!Pick.target); }
     updatePickups(dt);
+    Events.update(dt);
     this.places(dt);
     // 사망
     if (P.hp <= 0 && this.state === 'play') this.wasted();
@@ -270,12 +272,7 @@ const Game = {
 
   simulate(dt, menu) {
     // 날씨
-    const W = this.weather;
-    W.nextT -= dt;
-    if (W.nextT <= 0) { W.rain = !W.rain; W.nextT = W.rain ? rand(60, 130) : rand(150, 320); }
-    W.intensity = smooth(W.intensity, W.rain ? 1 : 0, 0.3, dt);
-    W.wet = 1 - 0.12 * W.intensity;
-    this.wind = Math.sin(this.time * 0.05) * 0.8;
+    Weather.update(dt); // events.js: 맑음·비·폭풍·안개
     // 차량
     for (const c of this.cars) c.update(dt);
     const cs = this.cars;
@@ -424,7 +421,7 @@ const Game = {
         const sprayCost = Biz.has('biz_auto') ? 0 : 100;
         if (P.money < sprayCost) { UI.toast('페인트샵: $100이 필요하다'); continue; }
         if (Wanted.stars > 0 && Wanted.seen) { UI.toast('경찰이 보고 있다! 따돌린 뒤 다시 오자'); this.sprayCool = 3; continue; }
-        P.money -= sprayCost; P.car.hp = P.car.maxHp; P.car.burnT = 0;
+        P.money -= sprayCost; P.car.hp = P.car.maxHp; P.car.burnT = 0; P.car.flat = false; P.car.dmgParts = null;
         P.car.color = pick(['#e0262b', '#3c6fb0', '#f2c200', '#1d1d1f', '#e8e8ea', '#4e7a52', '#7a3b8f', '#f07c1b']);
         const had = Wanted.stars > 0;
         Wanted.clear(); Sfx.cash();

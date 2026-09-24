@@ -2286,7 +2286,8 @@ class Car {
     this.steer = smooth(this.steer, clamp(inp.st, -1, 1) * maxSt, inp.st === 0 ? 16 : 11, dt);
     const d = this.steer, a = this.L * 0.3, b = this.L * 0.3, wb = a + b;
     const load = this.m * 9.81 * 0.5;
-    const wet = Game.weather.wet;
+    const wet = Game.weather.wet * (this.flat ? 0.55 : 1); // 펑크 나면 미끄럽고 느리다
+    if (this.flat && speed > 4) inp.st += Math.sin(Game.time * 9 + this.x) * 0.12;
     const gripF = V.grip * wet, gripR = V.grip * wet * (inp.hb ? 0.42 : 1.3);
     let FyF = 0, FyR = 0;
     const avf = Math.abs(vf);
@@ -2300,7 +2301,7 @@ class Car {
     const Fb = this.m * 8.5;
     let Fx = 0;
     if (this.dead || this.burnT > 0 && !this.driver) { /* 엔진 없음 */ }
-    else if (inp.thr > 0) Fx += inp.thr * V.Fe * (vf < -0.5 ? 1.6 : 1);
+    else if (inp.thr > 0) Fx += inp.thr * V.Fe * (vf < -0.5 ? 1.6 : 1) * (this.flat ? 0.45 : 1);
     else if (inp.thr < 0) Fx += inp.thr * V.Fe * 0.5 * (vf > 0.5 ? 1.6 : 1);
     if (inp.brk > 0) Fx -= sign(vf) * inp.brk * Fb * wet;
     if (inp.hb) Fx -= sign(vf) * Fb * 0.35 * wet;
@@ -3625,7 +3626,7 @@ function crime(type, x, y) {
 
 const Police = {
   heli: null, dispatchT: 0, roadblockT: 12,
-  reset() { this.heli = null; this.dispatchT = 0; this.roadblockT = 12; },
+  reset() { this.heli = null; this.dispatchT = 0; this.roadblockT = 12; if (typeof Pursuit !== 'undefined') Pursuit.reset(); },
   update(dt) {
     const P = Game.player;
     // 목격자 신고 처리
@@ -3720,7 +3721,9 @@ const Police = {
       car.driver = 'ai'; car.driverKind = 'cop'; car.siren = true; car.ai = { mode: 'block' }; car.crew = 0; Game.cars.push(car);
       const cop = spawnPed('cop', bx + rx * side * 2.2 + dx * 3, by + ry * side * 2.2 + dy * 3); cop.state = 'chase';
     }
-    UI.toast('전방에 경찰 검문소!');
+    // 검문소 앞 스파이크 스트립 (플레이어 쪽으로 12m)
+    Pursuit.addSpike(bx + dx * 12, by + dy * 12, Math.atan2(ry, rx), 2 * T + 2);
+    UI.toast('전방에 경찰 검문소! 스파이크 조심');
   },
   spawnHeli() {
     const P = Game.player, a = rand(0, TAU);
@@ -3907,6 +3910,12 @@ const Jay = {
  * 아래 여섯 개의 미션은 이 동사들을 하나씩 소개하고 마지막에 섞는다.
  * ===================================================================== */
 
+// 새 기능 모듈의 저장: SaveExt.mods.이름 = { save(), load(데이터 또는 undefined) }
+const SaveExt = {
+  mods: {},
+  save() { const o = {}; for (const k in this.mods) { try { o[k] = this.mods[k].save(); } catch (e) { } } return o; },
+  load(o) { for (const k in this.mods) { try { this.mods[k].load(o ? o[k] : undefined); } catch (e) { console.error('SaveExt', k, e); } } },
+};
 const Save = {
   key: 'neonharbor.save.v1',
   read() { try { const s = localStorage.getItem(this.key); return s ? JSON.parse(s) : null; } catch (e) { return null; } },
@@ -3914,7 +3923,7 @@ const Save = {
     try {
       const P = Game.player;
       const inv = {}; for (const k in P.inv) if (k !== 'fist') inv[k] = P.inv[k] === Infinity ? -1 : P.inv[k];
-      localStorage.setItem(this.key, JSON.stringify({ savedAt: Date.now(), idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {}, gangs: Gangs.save(), empire: Empire.save(), finance: Finance.save(), body: { maxHp: P.maxHp, endurance: P.endurance || 1, aimSkill: P.aimSkill || 1, shirt: P.shirt, pants: P.pants, hatType: P.hatType || 'none', hatCol: P.hatCol || '', logo: P.logo || '', eduLv: P.eduLv || 0 } }));
+      localStorage.setItem(this.key, JSON.stringify({ savedAt: Date.now(), idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {}, ext: SaveExt.save(), gangs: Gangs.save(), empire: Empire.save(), finance: Finance.save(), body: { maxHp: P.maxHp, endurance: P.endurance || 1, aimSkill: P.aimSkill || 1, shirt: P.shirt, pants: P.pants, hatType: P.hatType || 'none', hatCol: P.hatCol || '', logo: P.logo || '', eduLv: P.eduLv || 0 } }));
     } catch (e) { /* 저장 불가 환경 */ }
   },
   // 지우지 않고 백업으로 옮긴다 (새 게임을 눌러도 '지난 저장 되살리기'로 되돌릴 수 있게)
@@ -4015,7 +4024,7 @@ const Missions = {
   },
 };
 
-const allTargets = () => [...GangJob.targets(), ...(Jobs.active ? Jobs.targets() : []), ...Missions.targets(), ...Empire.targets(), ...Finance.targets(), ...(Gangs.war && (!Gangs.mine || Gangs.war.A === Gangs.mine || Gangs.war.D === Gangs.mine) ? [{ x: Gangs.war.x, y: Gangs.war.y, c: '#ff3b3b', big: true }] : [])];
+const allTargets = () => [...GangJob.targets(), ...(Jobs.active ? Jobs.targets() : []), ...Missions.targets(), ...Empire.targets(), ...Finance.targets(), ...(typeof Events !== 'undefined' ? Events.targets() : []), ...(Gangs.war && (!Gangs.mine || Gangs.war.A === Gangs.mine || Gangs.war.D === Gangs.mine) ? [{ x: Gangs.war.x, y: Gangs.war.y, c: '#ff3b3b', big: true }] : [])];
 
 // ---------- 미션 도우미 ----------
 function missionCar(m, type, x, y, a, opt = {}) {
@@ -5248,7 +5257,7 @@ function cheatSpawn(type, depth = 0) {
 const Cheats = {
   buf: '',
   list: {
-    HESOYAM: ['체력·방탄 가득, 차 수리, +$250,000', () => { const P = Game.player; P.hp = P.maxHp; P.armor = 100; P.money += 250000; if (P.car) { P.car.hp = P.car.maxHp; P.car.burnT = 0; } }],
+    HESOYAM: ['체력·방탄 가득, 차 수리, +$250,000', () => { const P = Game.player; P.hp = P.maxHp; P.armor = 100; P.money += 250000; if (P.car) { P.car.hp = P.car.maxHp; P.car.burnT = 0; P.car.flat = false; P.car.dmgParts = null; } }],
     AEZAKMI: ['수배 받지 않기 (켜기/끄기)', () => { Game.noWanted = !Game.noWanted; if (Game.noWanted) Wanted.clear(); UI.toast(Game.noWanted ? '이제 경찰이 신경 쓰지 않는다' : '수배 면제 해제'); }],
     TURNUPTHEHEAT: ['수배 +2', () => { Game.noWanted = false; Wanted.set(Math.min(5, Wanted.stars + 2)); }],
     LXGIWYL: ['무기 세트', () => { const P = Game.player; for (const w of ['bat', 'pistol', 'smg', 'shotgun', 'grenade']) giveWeapon(P, w, WEAPONS[w].pack || 1); }],
@@ -6097,7 +6106,13 @@ function drawCar(c, shadow) {
   }
   const body = c.dead ? '#26272a' : c.color;
   const dark = c.dead ? '#1a1a1c' : shade(c.color, -0.35), light = c.dead ? '#303134' : shade(c.color, 0.25);
-  if (st === 'truck' || st === 'armored') {
+  if (st === 'fire') { // 소방차: 빨간 차체 + 흰 사다리 + 경광등
+    ctx.fillStyle = body; rr(ctx, -L / 2, -W / 2, L, W, 0.25); ctx.fill();
+    ctx.fillStyle = c.dead ? '#333' : '#e8e8e8'; ctx.fillRect(-L / 2 + 0.4, -0.35, L * 0.68, 0.12); ctx.fillRect(-L / 2 + 0.4, 0.23, L * 0.68, 0.12); for (let s = -L / 2 + 0.5; s < -L / 2 + 0.4 + L * 0.68; s += 0.55) ctx.fillRect(s, -0.35, 0.08, 0.7);
+    ctx.fillStyle = '#16222e'; ctx.fillRect(L * 0.3, -W / 2 + 0.2, 0.5, W - 0.4);
+    if (!c.dead) { const f = Math.floor(Game.time * 7) % 2; ctx.fillStyle = c.siren ? (f ? '#ff2d2d' : '#ffe0e0') : '#8a2020'; ctx.fillRect(L * 0.2, -0.9, 0.35, 1.8); }
+    ctx.fillStyle = '#f2d24a'; ctx.fillRect(-L / 2 + 0.1, W / 2 - 0.16, L - 0.2, 0.1); ctx.fillRect(-L / 2 + 0.1, -W / 2 + 0.06, L - 0.2, 0.1);
+  } else if (st === 'truck' || st === 'armored') {
     // 화물칸 + 운전실
     ctx.fillStyle = st === 'armored' ? (c.dead ? '#222' : '#39463a') : (c.dead ? '#2a2a2a' : '#e6e6e6');
     rr(ctx, -L / 2, -W / 2, L * 0.7, W, 0.2); ctx.fill();
@@ -6557,6 +6572,7 @@ function drawParticles(low) {
     else if (p.t === 'shell') { ctx.fillStyle = '#d4a93a'; ctx.fillRect(p.x, p.y, 0.1, 0.05); }
     else if (p.t === 'debris') { ctx.fillStyle = '#2a2a2a'; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); }
     else if (p.t === 'fire') { ctx.fillStyle = `rgba(255,${(90 + a * 150) | 0},${(20 + a * 40) | 0},${a * 0.9})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (0.5 + a * 0.5), 0, TAU); ctx.fill(); }
+    else if (p.t === 'water') { ctx.fillStyle = `rgba(190,225,255,${a * 0.8})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1.4 - a * 0.6), 0, TAU); ctx.fill(); }
     else if (p.t === 'smoke') { ctx.fillStyle = p.col; ctx.globalAlpha = a * 0.45; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
   }
 }
@@ -6621,6 +6637,7 @@ function renderScene() {
   // 미션 마커 / 상점 / 페인트샵 표시
   for (const m of allTargets()) drawMarker(m.x, m.y, m.c, m.big || m.giver);
   for (const [k, pl] of Object.entries(World.places)) { const col = PLACE_MARK[k]; if (col && pl) drawMarker(pl.x, pl.y, col, false); }
+  Props.draw2D();
   drawParticles(true);
   for (const v of Vendors.list) if (Math.abs(v.x - Cam.x) < Cam.vw / 2 + 4 && Math.abs(v.y - Cam.y) < Cam.vh / 2 + 4) drawVendorCart(v);
   // 보행자(시체 먼저)
@@ -6981,6 +6998,9 @@ const View3D = {
     this.booms = []; for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffa640, transparent: true, opacity: 0.8 })); m.visible = false; this.scene.add(m); this.booms.push(m); }
     this.markers = []; for (let i = 0; i < 12; i++) { const m = new THREE.Mesh(this.geo.cyl, new THREE.MeshBasicMaterial({ color: 0xf2c14e, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false })); m.visible = false; this.scene.add(m); this.markers.push(m); }
     this.pickups = []; for (let i = 0; i < 60; i++) { const m = new THREE.Mesh(this.geo.box, new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x222222 })); m.visible = false; m.scale.set(0.5, 0.5, 0.5); this.scene.add(m); this.pickups.push(m); }
+    this.props = []; for (let i = 0; i < 80; i++) { const m = new THREE.Mesh(this.geo.box, new THREE.MeshLambertMaterial({ color: 0xffffff })); m.visible = false; this.scene.add(m); this.props.push(m); }
+    this.spot = new THREE.Mesh(new THREE.CircleGeometry(1, 32), new THREE.MeshBasicMaterial({ color: 0xfff6d0, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending })); this.spot.rotation.x = -Math.PI / 2; this.spot.visible = false; this.scene.add(this.spot);
+    this.beam = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 6, 1, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff6d0, transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })); this.beam.visible = false; this.scene.add(this.beam);
     const heli = this.heli = new THREE.Group();
     const hb = new THREE.Mesh(this.geo.box, this.mat('#e8e8e8')); hb.scale.set(4.2, 1.6, 2); heli.add(hb);
     const tail = new THREE.Mesh(this.geo.box, this.mat('#1c2a4a')); tail.scale.set(3.4, 0.4, 0.4); tail.position.set(-3.6, 0.3, 0); heli.add(tail);
@@ -7054,9 +7074,15 @@ const View3D = {
       const h = new THREE.Mesh(this.geo.head, this.mat('#111')); h.scale.setScalar(1.3); h.position.set(-0.05, 1.82, 0); rider.add(h);
       g.add(rider); g.userData.rider = rider; g.userData.riderMat = t.material;
     } else {
-      const tall = st === 'truck' || st === 'armored' ? 2.5 : st === 'van' || st === 'swat' || st === 'ambulance' ? 1.9 : st === 'sports' ? 0.95 : 1.25;
+      const tall = st === 'fire' ? 2.4 : st === 'truck' || st === 'armored' ? 2.5 : st === 'van' || st === 'swat' || st === 'ambulance' ? 1.9 : st === 'sports' ? 0.95 : 1.25;
       const bodyH = st === 'sports' ? 0.55 : 0.7;
-      if (st === 'truck' || st === 'armored') {
+      if (st === 'fire') { // 소방차: 빨간 차체 + 흰 사다리
+        add(bodyMat, L, tall - 0.4, W, 0, 0.35 + (tall - 0.4) / 2, 0);
+        add(glass, 0.08, 0.6, W * 0.84, L / 2 + 0.01, tall - 0.6, 0);
+        const wm = this.mat('#e8e8e8'); add(wm, L * 0.7, 0.12, 0.12, -L * 0.1, tall + 0.1, -0.35); add(wm, L * 0.7, 0.12, 0.12, -L * 0.1, tall + 0.1, 0.35);
+        for (let s = -L * 0.43; s < L * 0.25; s += 0.6) add(wm, 0.08, 0.08, 0.7, s, tall + 0.1, 0);
+        add(this.mat('#f2d24a'), L * 1.01, 0.12, W * 1.01, 0, 0.9, 0);
+      } else if (st === 'truck' || st === 'armored') {
         add(st === 'armored' ? bodyMat : this.mat('#e6e6e6'), L * 0.68, tall - 0.4, W, -L * 0.15, 0.35 + (tall - 0.4) / 2, 0);
         add(bodyMat, L * 0.28, tall - 0.6, W * 0.96, L * 0.35, 0.35 + (tall - 0.6) / 2, 0);
         add(glass, 0.08, 0.6, W * 0.8, L * 0.49, tall - 0.55, 0);
@@ -7076,9 +7102,9 @@ const View3D = {
       const hl = new THREE.MeshBasicMaterial({ color: 0xfff7d6 }), tlm = new THREE.MeshBasicMaterial({ color: 0x8a1a1a });
       for (const z of [-W / 2 + 0.3, W / 2 - 0.3]) { add(hl, 0.06, 0.16, 0.36, L / 2 + 0.01, 0.75, z); add(tlm, 0.06, 0.16, 0.36, -L / 2 - 0.01, 0.8, z); }
       g.userData.tail = tlm;
-      if (st === 'police' || st === 'ambulance' || st === 'swat') {
+      if (st === 'police' || st === 'ambulance' || st === 'swat' || st === 'fire') {
         const r = new THREE.MeshBasicMaterial({ color: 0xff2d2d }), b = new THREE.MeshBasicMaterial({ color: 0x2d6bff });
-        add(r, 0.35, 0.15, W * 0.4, -0.2, tall + 0.08, -W * 0.22); add(st === 'ambulance' ? r : b, 0.35, 0.15, W * 0.4, -0.2, tall + 0.08, W * 0.22);
+        add(r, 0.35, 0.15, W * 0.4, -0.2, tall + 0.08, -W * 0.22); add(st === 'ambulance' || st === 'fire' ? r : b, 0.35, 0.15, W * 0.4, -0.2, tall + 0.08, W * 0.22);
         g.userData.siren = [r, b];
       }
       if (st === 'taxi') add(this.mat('#ffe680'), 0.4, 0.2, 0.8, -0.3, tall + 0.1, 0);
@@ -7217,7 +7243,8 @@ const View3D = {
     this.renderer.setClearColor(sky); S.fog.color.copy(sky);
     const fc = P.car, fAlt = fc ? fc.alt || 0 : P.alt || 0;
     this.stream(P.px, P.py, fc ? Math.abs(fc.speed || fc.spd || 0) : 0, fAlt);
-    S.fog.far = this.drawR * (1 - wet * 0.3); S.fog.near = Math.min(90, S.fog.far * 0.4);
+    S.fog.far = this.drawR * (1 - Math.min(1, wet) * 0.3) * (1 - 0.7 * Weather.fog); S.fog.near = Math.min(90, S.fog.far * (0.4 - 0.3 * Weather.fog));
+    if (Weather.fog > 0.05) S.fog.color.lerp(new THREE.Color(0.75, 0.78, 0.82), Weather.fog * (1 - night * 0.7));
     if (Math.abs(this.camera.far - (this.drawR + 60)) > 20) { this.camera.far = this.drawR + 60; this.camera.updateProjectionMatrix(); }
     this.hemi.intensity = 0.25 + (1 - night) * 0.75; this.sun.intensity = 0.1 + (1 - night) * 0.8;
     this.hemi.color.setRGB(amb[0], amb[1], amb[2]);
@@ -7303,6 +7330,7 @@ const View3D = {
       if (q.t === 'fire') { r = 1; gg = 0.4 + a * 0.5; b = 0.1; h = 0.6 + (1 - a) * 2.5; }
       else if (q.t === 'smoke') { const c = parseInt(q.col.slice(1), 16); r = ((c >> 16) & 255) / 255; gg = ((c >> 8) & 255) / 255; b = (c & 255) / 255; h = 1 + (1 - a) * 5; }
       else if (q.t === 'spark') { r = 1; gg = 0.85; b = 0.4; h = 0.9; }
+      else if (q.t === 'water') { r = 0.75; gg = 0.88; b = 1; h = 1.2 + (1 - a) * 0.8; }
       else if (q.t === 'blood') { r = 0.55; gg = 0.03; b = 0.05; h = 0.8 * a; }
       else { r = 0.2; gg = 0.2; b = 0.2; h = 0.5; }
       pp[n * 3] = q.x; pp[n * 3 + 1] = h; pp[n * 3 + 2] = q.y; pc[n * 3] = r; pc[n * 3 + 1] = gg; pc[n * 3 + 2] = b; n++;
@@ -7332,6 +7360,14 @@ const View3D = {
       const m = this.pickups[pi++]; m.visible = true; m.position.set(k.x, 0.7 + Math.sin(k.bob) * 0.15, k.y); m.rotation.y = k.bob; m.material.color.set(PK[k.type] || '#fff');
     }
     for (; pi < this.pickups.length; pi++) this.pickups[pi].visible = false;
+    // 공용 소품 (스파이크·체크포인트·점프대 …)
+    const PR = Props.collect(P, 140); let ri = 0;
+    for (const o of PR) { if (ri >= this.props.length || o.no3d) continue; const m = this.props[ri++]; m.visible = true; m.position.set(o.x, (o.z || 0) + (o.h || 0.2) / 2, o.y); m.scale.set(o.w, o.h || 0.2, o.d); m.rotation.set(0, -(o.a || 0), 0); m.material.color.set(o.c); m.material.emissive && m.material.emissive.set(o.glow ? o.c : '#000'); }
+    for (; ri < this.props.length; ri++) this.props[ri].visible = false;
+    // 헬기 서치라이트 (밤)
+    const sp = Pursuit.spot, HH = Police.heli, showSpot = !!(sp && HH && !HH.dead && night > 0.3);
+    this.spot.visible = this.beam.visible = showSpot;
+    if (showSpot) { this.spot.position.set(sp.x, 0.15, sp.y); this.spot.scale.setScalar(7); const hgt = HH.alt; this.beam.position.set((sp.x + HH.x) / 2, hgt / 2, (sp.y + HH.y) / 2); this.beam.scale.set(1, hgt, 1); this.beam.lookAt(sp.x, 0, sp.y); this.beam.rotateX(Math.PI / 2); }
     // 헬기
     const H = Police.heli;
     this.heli.visible = !!H;
@@ -7511,6 +7547,7 @@ function drawHUD(dt) {
   let x = CW - pad, y = pad + topInset;
   const hh = Math.floor(Game.clock / 60), mm = Math.floor(Game.clock % 60);
   txt(c, `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`, x, y + 22 * s, `${24 * s}px ${FONT_NUM}`, '#e9eef5', 'rgba(0,0,0,0.8)', 4, 'right');
+  if (Weather.type !== 'clear') txt(c, WEATHER_NAMES[Weather.type], x - 74 * s, y + 20 * s, `600 ${12 * s}px ${FONT_KR}`, Weather.type === 'storm' ? '#ffd166' : '#cfe3f5', 'rgba(0,0,0,0.85)', 3, 'right');
   // 무기 박스
   const bw = 62 * s, bx = x - bw, by = y + 30 * s;
   c.fillStyle = 'rgba(12,14,20,0.55)'; roundRect(c, bx, by, bw, bw, 10 * s); c.fill();
@@ -10035,6 +10072,430 @@ const Casino = {
 
 'use strict';
 /* =====================================================================
+ * events.js — 살아 있는 도시
+ *
+ *  · 날씨: 맑음 · 비 · 폭풍(번개·천둥, 바람) · 안개 — 화면 오른쪽 위 시계 옆에 표시
+ *  · 경찰 추격 강화: 검문소 앞 스파이크 스트립(밟으면 타이어 펑크), 밤에는 헬기 서치라이트(3D에도),
+ *    ★5가 오래가면 현상금 사냥꾼, ★2부터 경찰 무전
+ *  · 랜덤 이벤트(1~2분마다, 화면 밖 가까운 곳): 날치기 · 현금수송차 사고 · 조직 거래 현장 · 교통사고 부상자 ·
+ *    강도 도주 차량 · 건물 화재. 파란 '!' 표시로 알려 주고, 도와주거나(보상·시민 지지) 털 수 있다(돈·수배)
+ *  · 화재: 불길(파티클)이 번지고, 소방차가 출동한다. 고용센터의 [소방관] 일로 직접 끌 수 있다(소방차 물대포)
+ *  · Props: 다른 모듈도 쓰는 공용 소품 목록(2D·3D 모두 그린다) — 스파이크·경주 체크포인트·점프대 등
+ * ===================================================================== */
+
+// ---------- 공용 소품 (2D·3D) ----------
+// 모듈이 Props.providers에 함수를 넣으면, 그 함수가 돌려준 { x, y, a, w, d, h, z, c, glow } 상자들을 그린다.
+const Props = {
+  providers: [],
+  collect(P, R) {
+    const out = [];
+    for (const f of this.providers) { try { for (const o of f() || []) if (Math.abs(o.x - P.px) < R && Math.abs(o.y - P.py) < R) out.push(o); } catch (e) { } }
+    return out;
+  },
+  draw2D() { // render.js의 월드 좌표 변환 안에서 호출
+    const P = Game.player; if (!P) return;
+    for (const o of this.collect(P, Math.max(Cam.vw, Cam.vh) / 2 + 20)) {
+      ctx.save(); ctx.translate(o.x, o.y); ctx.rotate(o.a || 0);
+      if (o.draw) o.draw(ctx);
+      else {
+        ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(-o.w / 2 + 0.25, -o.d / 2 + 0.25, o.w, o.d);
+        ctx.fillStyle = o.c; ctx.fillRect(-o.w / 2, -o.d / 2, o.w, o.d);
+        if (o.stripe) { ctx.fillStyle = o.stripe; for (let s = -o.w / 2; s < o.w / 2; s += 0.9) ctx.fillRect(s, -o.d / 2, 0.45, o.d); }
+      }
+      ctx.restore();
+    }
+  },
+};
+
+// ---------- 날씨 ----------
+const WEATHER_NAMES = { clear: '맑음', rain: '비', storm: '폭풍', fog: '안개' };
+const Weather = {
+  type: 'clear', fog: 0, flash: 0, thunderT: 0, boltT: 8,
+  pick() { const r = Math.random(); return r < 0.45 ? 'clear' : r < 0.7 ? 'rain' : r < 0.82 ? 'storm' : 'fog'; },
+  set(type) { this.type = type; const W = Game.weather; W.rain = type === 'rain' || type === 'storm'; W.nextT = rand(110, 260); if (type !== 'clear') UI.toast(`날씨: ${WEATHER_NAMES[type]}${type === 'storm' ? ' — 길이 미끄럽다, 조심해서 운전하자' : type === 'fog' ? ' — 앞이 잘 안 보인다' : ''}`); },
+  update(dt) {
+    const W = Game.weather;
+    W.nextT -= dt;
+    if (W.nextT <= 0) { let t = this.pick(); if (t === this.type) t = this.pick(); this.set(t); }
+    const target = this.type === 'storm' ? 1.6 : this.type === 'rain' ? 1 : 0;
+    W.intensity = smooth(W.intensity, target, 0.3, dt);
+    W.wet = 1 - 0.12 * Math.min(1, W.intensity) - (this.type === 'storm' ? 0.06 : 0);
+    this.fog = smooth(this.fog, this.type === 'fog' ? 1 : this.type === 'storm' ? 0.3 : 0, 0.25, dt);
+    Game.wind = Math.sin(Game.time * 0.05) * (this.type === 'storm' ? 2.2 : 0.8);
+    // 번개·천둥
+    this.flash = Math.max(0, this.flash - dt * 2.8);
+    if (this.type === 'storm' && W.intensity > 1) {
+      this.boltT -= dt;
+      if (this.boltT <= 0) { this.boltT = rand(5, 14); this.flash = 1; this.thunderT = rand(0.4, 2.2); }
+    }
+    if (this.thunderT > 0) { this.thunderT -= dt; if (this.thunderT <= 0 && Sfx.ok && !Sfx.muted) { Sfx.noiseBurst({ dur: 2.6, freq: 180, type: 'lowpass', vol: 1.1, sweep: 0.5 }); Sfx.tone({ f0: 60, f1: 28, dur: 1.8, vol: 0.6 }); } }
+  },
+  // 화면 전체 덮개: 안개 + 번개 번쩍임 (2D·3D 공통, 화면 좌표)
+  drawOverlay() {
+    const c = ctx; c.setTransform(1, 0, 0, 1, 0, 0);
+    const w = canvas.width, h = canvas.height;
+    if (this.fog > 0.02) {
+      const g = c.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.12, w / 2, h / 2, Math.max(w, h) * 0.62);
+      g.addColorStop(0, `rgba(196,204,214,${0.12 * this.fog})`); g.addColorStop(1, `rgba(196,204,214,${0.72 * this.fog})`);
+      c.fillStyle = g; c.fillRect(0, 0, w, h);
+    }
+    if (this.flash > 0.02) { c.fillStyle = `rgba(235,240,255,${0.55 * this.flash})`; c.fillRect(0, 0, w, h); }
+  },
+  save() { return { type: this.type }; },
+  load(o) { this.type = (o && o.type) || 'clear'; this.fog = this.type === 'fog' ? 1 : 0; const W = Game.weather; W.rain = this.type === 'rain' || this.type === 'storm'; W.intensity = W.rain ? 1 : 0; },
+};
+SaveExt.mods.weather = Weather;
+
+// ---------- 경찰 추격 강화 ----------
+const Pursuit = {
+  spikes: [], hunters: [], hunterT: 0, radioT: 8, spot: null,
+  reset() { this.spikes = []; this.hunters = []; this.hunterT = 0; this.radioT = 8; },
+  addSpike(x, y, a, len) { this.spikes.push({ x, y, a, len, t: 100 }); },
+  update(dt) {
+    const P = Game.player;
+    // 스파이크: 차가 밟으면 타이어 펑크
+    for (let i = this.spikes.length - 1; i >= 0; i--) {
+      const s = this.spikes[i]; s.t -= dt;
+      if (s.t <= 0 || dist(s.x, s.y, P.px, P.py) > 320) { this.spikes.splice(i, 1); continue; }
+      const ca = Math.cos(s.a), sa = Math.sin(s.a);
+      for (const c of Game.cars) {
+        if (c.dead || c.flat || c.V.special || (c.driverKind === 'cop' && c.driver === 'ai')) continue;
+        const dx = c.x - s.x, dy = c.y - s.y, u = dx * ca + dy * sa, v = -dx * sa + dy * ca;
+        if (Math.abs(u) < s.len / 2 + 0.5 && Math.abs(v) < 1.1 + c.L / 3) {
+          c.flat = true; Sfx.noiseBurst({ x: c.x, y: c.y, dur: 0.5, freq: 3200, vol: 0.7, sweep: 0.3 });
+          for (let k = 0; k < 6; k++) Particles.spark(c.x, c.y);
+          if (c === P.car) UI.big('타이어 펑크!', '스파이크를 밟았다 — 페인트샵이나 정비소에서 고쳐라', 2.4, '#ff8a3d');
+        }
+      }
+    }
+    // 펑크 난 차: 불꽃 (속도 제한은 vehicles.js)
+    for (const c of Game.cars) if (c.flat && !c.dead && c.speed > 6 && Math.random() < dt * 8) Particles.spark(c.x - Math.cos(c.a) * c.L * 0.3, c.y - Math.sin(c.a) * c.L * 0.3);
+    // 헬기 서치라이트 목표 (3D용)
+    const H = Police.heli;
+    if (H && !H.dead && !H.leave) { const tx = Wanted.seen ? P.px : Wanted.searchX, ty = Wanted.seen ? P.py : Wanted.searchY; this.spot = this.spot || { x: tx, y: ty }; this.spot.x = smooth(this.spot.x, lerp(H.x, tx, 0.85), 3, dt); this.spot.y = smooth(this.spot.y, lerp(H.y, ty, 0.85), 3, dt); }
+    else this.spot = null;
+    // 밤에 서치라이트가 비추면 들킨다
+    if (this.spot && Wanted.stars > 0 && nightFactor() > 0.4 && dist(this.spot.x, this.spot.y, P.px, P.py) < 8) { Wanted.seen = true; Wanted.lkpX = P.px; Wanted.lkpY = P.py; Wanted.evadeT = 0; }
+    // 현상금 사냥꾼: ★5가 25초 넘게 이어지면
+    this.hunters = this.hunters.filter(h => Game.peds.includes(h) && !h.dead);
+    if (Wanted.stars >= 5) this.hunterT += dt; else this.hunterT = Math.max(0, this.hunterT - dt * 2);
+    if (this.hunterT > 25 && !this.hunters.length && !P.dead) { this.hunterT = 0; this.spawnHunters(); }
+    if (Wanted.stars === 0 && this.hunters.length) { for (const h of this.hunters) { h.persistent = false; h.state = 'flee'; h.fleeT = 8; h.fearX = P.px; h.fearY = P.py; } this.hunters = []; }
+    // 경찰 무전
+    if (Wanted.stars >= 2 && !Missions.active) {
+      this.radioT -= dt;
+      if (this.radioT <= 0) {
+        this.radioT = rand(14, 24);
+        const dir = ['북', '남', '동', '서'][Math.floor(((Math.atan2(P.vy || 0, P.vx || 1) + Math.PI * 2.25) % TAU) / (Math.PI / 2)) % 4];
+        const hood = World.hoods[(blockAt(P.px, P.py) || { hood: 0 }).hood];
+        const car = P.car ? `${P.car.V.name}` : '도보';
+        const lines = Wanted.seen
+          ? [`용의자 ${hood ? hood.name : ''} 부근, ${car}로 ${dir}쪽 이동 중. 전 차량 추격 바람.`, `용의자 확인. ★${Wanted.stars} 등급, 무장 가능성 높음.`, `${hood ? hood.name : '시내'}에 추가 병력 요청한다.`]
+          : [`용의자를 놓쳤다. 마지막 목격 지점 중심으로 수색하라.`, `헬기, 서치라이트로 ${hood ? hood.name : '구역'} 수색 바람.`, `검문소 설치 완료, 주요 도로 차단 중.`];
+        UI.dialog([['경찰 무전', pick(lines)]]);
+      }
+    }
+  },
+  spawnHunters() {
+    const P = Game.player;
+    const sp = P.car ? offscreenLaneSpot(90, 150) : null;
+    if (sp) {
+      const c = new Car('muscle', sp.x, sp.y, sp.a, { persistent: true, color: '#111317' });
+      c.driver = 'ai'; c.driverKind = 'gang'; c.ai = { mode: 'hunt', repath: 0 }; Game.cars.push(c);
+      c.hunterCar = true;
+    }
+    for (let i = 0; i < 3; i++) {
+      const w = eventWalkSpot(40, 75); if (!w) continue;
+      const h = spawnPed('civ', w.x, w.y);
+      Object.assign(h, { persistent: true, state: 'chase', hunter: true, hp: 150, maxHp: 150, weapon: pick(['rifle', 'shotgun', 'smg']), shirt: '#16181c', pants: '#0d0e10', hat: '#2b2b2b', nameTag: '현상금 사냥꾼' });
+      this.hunters.push(h);
+    }
+    UI.big('현상금 사냥꾼!', '네 목에 걸린 현상금을 노리고 사냥꾼들이 왔다', 3, '#ff4d4d');
+  },
+  props() { return this.spikes.map(s => ({ x: s.x, y: s.y, a: s.a, w: s.len, d: 0.7, h: 0.12, c: '#24262a', stripe: '#c9ccd2' })); },
+};
+Props.providers.push(() => Pursuit.props());
+
+// 밤 정도 (0 낮 ~ 1 한밤)
+function nightFactor() { const a = ambientAt(Game.clock / 60); return clamp(1 - (a[0] + a[1] + a[2]) / 3 * 1.1, 0, 1); }
+
+// ---------- 화재 ----------
+VTYPES.firetruck = { name: '소방차', L: 7.6, W: 2.5, mass: 6500, Fe: 18500, vmax: 36, grip: 1.0, cs: 4.4, steer: 0.46, hp: 420, colors: ['#c8201e'], style: 'fire' };
+const Blazes = {
+  list: [], trucks: [], t: 90,
+  reset() { this.list = []; this.trucks = []; this.t = 90; },
+  start(x, y, big = 1) {
+    const f = { x, y, hp: 100 * big, maxHp: 100 * big, r: 2.2 + big, t: 0, big, spread: 18 };
+    this.list.push(f); return f;
+  },
+  near(x, y, r) { return this.list.filter(f => dist(f.x, f.y, x, y) < r + f.r); },
+  douse(x, y, r, amt) { for (const f of this.list) if (dist(f.x, f.y, x, y) < r + f.r) f.hp -= amt; },
+  update(dt) {
+    const P = Game.player;
+    for (let i = this.list.length - 1; i >= 0; i--) {
+      const f = this.list[i]; f.t += dt;
+      if (f.hp <= 0) { this.list.splice(i, 1); for (let k = 0; k < 8; k++) Particles.smoke(f.x + rand(-2, 2), f.y + rand(-2, 2), 1.4, '#b8bcc2'); if (f.onOut) f.onOut(f); continue; }
+      if (dist(f.x, f.y, P.px, P.py) < 160) {
+        const n = Math.min(4, 1 + f.big * 1.5) * (TUNE.particles > 300 ? 1 : 0.5);
+        for (let k = 0; k < n; k++) Particles.fire(f.x + rand(-f.r, f.r) * 0.7, f.y + rand(-f.r, f.r) * 0.7, 1 + f.big * 0.3);
+        if (Math.random() < dt * 6) Particles.smoke(f.x + rand(-f.r, f.r), f.y + rand(-f.r, f.r), 1.3 + f.big * 0.4, '#3a3a3a');
+      }
+      // 불 위의 사람·차는 탄다
+      if (!P.dead && !P.car && dist(f.x, f.y, P.x, P.y) < f.r) P.damage(14 * dt, null, 0, 0, 'fire');
+      for (const c of Game.cars) if (!c.dead && dist(f.x, f.y, c.x, c.y) < f.r + 1 && c.speed < 2) c.damage && c.damage(6 * dt, null);
+      // 오래 두면 번진다 (최대 6곳)
+      f.spread -= dt;
+      if (f.spread <= 0 && this.list.length < 6 && f.hp > f.maxHp * 0.5) { f.spread = rand(18, 30); const a = rand(0, TAU); const nx = f.x + Math.cos(a) * rand(4, 7), ny = f.y + Math.sin(a) * rand(4, 7); if (tileAt(nx, ny) !== TL.WATER && tileAt(nx, ny) !== TL.ROAD) this.start(nx, ny, 0.8); }
+    }
+    this.updateTrucks(dt);
+  },
+  // 소방차 자동 출동 (플레이어가 소방관 일을 하고 있지 않을 때)
+  updateTrucks(dt) {
+    this.trucks = this.trucks.filter(o => Game.cars.includes(o.car) && !o.car.dead);
+    for (const o of this.trucks) {
+      const c = o.car, f = o.fire;
+      if (!this.list.includes(f)) { if (o.stage !== 'leave') { o.stage = 'leave'; c.siren = false; c.persistent = false; if (c.driver === 'ai') { c.ai = { mode: 'traffic', route: [] }; trafficFromHere(c, 'traffic'); } } continue; }
+      if (c.driver !== 'ai') continue;
+      const d = dist(c.x, c.y, f.x, f.y);
+      if (o.stage === 'drive' && d < 22) { o.stage = 'spray'; c.ai = { mode: 'parked' }; }
+      if (o.stage === 'spray') { this.douse(f.x, f.y, 3, 9 * dt); if (Math.random() < 0.6) waterSpray(c.x, c.y, f.x, f.y); }
+    }
+    if (Jobs.active && Jobs.active.id === 'firefighter') return;
+    for (const f of this.list) {
+      if (f.truck || f.t < 6 || this.trucks.length >= 2 || dist(f.x, f.y, Game.player.px, Game.player.py) > 200) continue;
+      const sp = offscreenLaneSpot(60, 140); if (!sp) continue;
+      const c = new Car('firetruck', sp.x, sp.y, sp.a, { persistent: true });
+      c.driver = 'ai'; c.driverKind = 'medic'; c.siren = true;
+      trafficFromHere(c, 'ems'); c.ai.goalD = bfsDist(nearestNode(f.x, f.y).id); c.ai.cruiseFlee = 16;
+      Game.cars.push(c); f.truck = c; this.trucks.push({ car: c, fire: f, stage: 'drive' });
+    }
+  },
+  props() { return []; },
+};
+function waterSpray(x0, y0, x1, y1) {
+  const a = Math.atan2(y1 - y0, x1 - x0) + rand(-0.15, 0.15), d = dist(x0, y0, x1, y1);
+  Particles.add({ t: 'water', x: x0 + Math.cos(a) * 2, y: y0 + Math.sin(a) * 2, vx: Math.cos(a) * d * 1.6, vy: Math.sin(a) * d * 1.6, life: 0.55, max: 0.55, size: rand(0.25, 0.45) });
+}
+
+// 소방관 일 (고용센터): 소방차로 불을 끈다 — 소방차에 탄 채 공격 키(클릭/Ctrl)로 물대포
+JOBS.firefighter = { legal: true, name: '소방관', desc: '소방차를 몰고 도시 곳곳의 불을 끈다. 불 가까이 가서 클릭(또는 Ctrl)을 누르면 물대포. 빨리 끌수록 보너스.', vehicle: 'firetruck', label: '소방차' };
+Jobs.u_firefighter = function (j, dt, P) {
+  if (!j.fire || !Blazes.list.includes(j.fire)) {
+    if (j.fire) { // 방금 껐다
+      const bonus = Math.max(0, Math.round((90 - j.fireT) * 12));
+      this.pay(j, 900 + j.streak * 150 + bonus, `불을 껐다${bonus ? ` (빠른 진화 +$${bonus})` : ''}`); j.streak++; Empire.support.civ = Math.round((Empire.support.civ + 0.6) * 10) / 10;
+      j.fire = null; j.waitT = 3;
+    }
+    j.waitT = (j.waitT || 0) - dt; if (j.waitT > 0) { this.obj(j, '다음 신고를 기다리는 중…'); return; }
+    const s = this.farSpot(P.px, P.py, 180, 420);
+    j.fire = Blazes.start(s.x + rand(-2, 2), s.y + rand(-2, 2), 1.3); j.fire.truck = j.car; j.fireT = 0;
+    UI.toast('화재 신고! 지도에 표시된 곳으로 출동하라');
+  }
+  j.fireT += dt;
+  const f = j.fire, d = Math.round(dist(P.px, P.py, f.x, f.y));
+  j.blips = [{ x: f.x, y: f.y, c: '#ff6b3d', big: true }];
+  const fires = Blazes.near(f.x, f.y, 14).length;
+  this.obj(j, d > 26 ? `화재 현장까지 ${d}m` : `클릭/Ctrl을 누른 채 불 쪽을 겨눠 물대포 — 불길 ${fires}곳 · ${Math.round(Math.max(0, f.hp))}%`);
+  if (j.fireT > 150) { UI.toast('불이 너무 커져 다른 대원이 맡았다'); Blazes.list = Blazes.list.filter(q => dist(q.x, q.y, f.x, f.y) > 16); j.fire = null; j.streak = 0; j.waitT = 3; }
+};
+// 물대포 (소방차 운전 중 공격 키)
+const WaterCannon = {
+  update(dt) {
+    const P = Game.player, c = P.car;
+    if (!c || c.type !== 'firetruck' || c.dead) return;
+    const firing = Input.mouse.down || keyDown('ControlLeft', 'KeyJ') || (Pad.active && Pad.rt > 0.4) || Input.touch.fire;
+    if (!firing) return;
+    // 겨누는 방향: 3D는 카메라 방향, 2D는 마우스 방향
+    let a;
+    if (Game.view !== 'top' && View3D.ok) a = View3D.yaw;
+    else { const [wx, wy] = screenToWorld(Input.mouse.x, Input.mouse.y); a = Math.atan2(wy - c.y, wx - c.x); }
+    // 조준 보조: 겨눈 방향 쪽 불을 먼저, 없으면 20m 안의 가장 가까운 불
+    let best = null, bs = 1e9;
+    for (const f of [...Blazes.list, ...Fires.list]) { const d = dist(c.x, c.y, f.x, f.y); if (d > 20) continue; const da = Math.abs(angNorm(Math.atan2(f.y - c.y, f.x - c.x) - a)); const sc = d + (da < 0.9 ? 0 : 30); if (sc < bs) { bs = sc; best = f; } }
+    if (best) a = Math.atan2(best.y - c.y, best.x - c.x);
+    const tx = c.x + Math.cos(a) * 16, ty = c.y + Math.sin(a) * 16;
+    for (let k = 0; k < 3; k++) waterSpray(c.x, c.y, tx, ty);
+    for (let s = 4; s <= 18; s += 3) Blazes.douse(c.x + Math.cos(a) * s, c.y + Math.sin(a) * s, 2.5, 22 * dt);
+    for (const f of Fires.list) for (let s = 4; s <= 18; s += 3) if (dist(f.x, f.y, c.x + Math.cos(a) * s, c.y + Math.sin(a) * s) < f.r + 2.5) f.t -= 3 * dt; // 화염병·화염방사기 불도 끈다
+    // 사람은 밀려 넘어진다
+    for (const p of Game.peds) if (!p.dead && !p.car && dist(p.x, p.y, tx, ty) < 5 && chance(dt * 3)) { p.vx += Math.cos(a) * 8; p.vy += Math.sin(a) * 8; p.downT = Math.max(p.downT, 1.2); }
+  },
+};
+
+// 인도 위 지점: 화면 밖을 먼저 찾고, 없으면 거리만 맞춘 인도
+function eventWalkSpot(minD, maxD) {
+  const s = offscreenWalkSpot(minD, maxD) || offscreenWalkSpot(minD * 1.4, maxD * 1.6); if (s) return s;
+  const P = Game.player;
+  for (let k = 0; k < 12; k++) { const a = rand(0, TAU), r = rand(minD, maxD), q = sidewalkNear(P.px + Math.cos(a) * r, P.py + Math.sin(a) * r, 6); if (q && dist(q.x, q.y, P.px, P.py) > minD * 0.7) return q; }
+  return null;
+}
+
+// ---------- 랜덤 이벤트 ----------
+const RE_TYPES = ['snatch', 'armored', 'deal', 'accident', 'getaway', 'fire'];
+const Events = {
+  cur: null, t: 45, done: {},
+  reset() { if (this.cur) this.end(''); this.cur = null; this.t = 45; },
+  save() { return { done: this.done }; },
+  load(o) { this.done = (o && o.done) || {}; this.reset(); Pursuit.reset(); Blazes.reset(); },
+  targets() {
+    const e = this.cur; if (!e) return [];
+    const P = Game.player, pts = e.marks ? e.marks() : [];
+    return pts.filter(q => dist(q.x, q.y, P.px, P.py) < 260).map(q => ({ x: q.x, y: q.y, c: q.c || '#4fc3ff', big: q.big }));
+  },
+  busy() { return Missions.active || (Jobs.active && Jobs.active.id !== 'taxi') || GangJob.active || Gangs.war || BankRob.on || Wanted.stars >= 3 || Game.state !== 'play'; },
+  update(dt) {
+    Pursuit.update(dt); Blazes.update(dt); WaterCannon.update(dt); // 날씨는 main.simulate에서 (메뉴 화면에서도 돈다)
+    const P = Game.player; if (!P || P.dead) return;
+    if (this.cur) {
+      const e = this.cur; e.t += dt;
+      const far = e.x !== undefined && dist(e.x, e.y, P.px, P.py) > 330;
+      if (e.t > (e.limit || 150) || far) { this.end(far ? '' : e.timeoutMsg || ''); return; }
+      try { e.update(dt, P); } catch (err) { console.error(err); this.end(''); }
+      return;
+    }
+    this.t -= dt;
+    if (this.t > 0 || this.busy()) return;
+    this.t = rand(70, 130);
+    const type = pick(RE_TYPES);
+    try { const e = this['make_' + type](P); if (e) { e.type = type; e.t = 0; this.cur = e; } } catch (err) { console.error(err); this.cur = null; }
+  },
+  end(msg) {
+    const e = this.cur; if (!e) return;
+    for (const q of e.ents || []) if (q) { q.persistent = false; q.evMark = false; }
+    this.cur = null;
+    if (msg) UI.toast(msg);
+  },
+  win(type, msg) { this.done[type] = (this.done[type] || 0) + 1; Sfx.passed(); UI.big('도시 이벤트', msg, 2.6, '#4fc3ff'); this.end(''); Save.write(); },
+  // 공통: 이벤트 시작 알림
+  announce(title, sub) { UI.toast(`${title} — ${sub} (파란 표시)`); Sfx.tone({ f0: 880, f1: 1320, dur: 0.18, type: 'triangle', vol: 0.25 }); },
+
+  // 1) 날치기: 도둑을 잡아 가방을 되찾는다 → 주인에게 돌려주면 사례금 + 시민 지지, 가지면 돈
+  make_snatch(P) {
+    const w = eventWalkSpot(50, 90); if (!w) return null;
+    const victim = spawnPed('civ', w.x, w.y), thief = spawnPed('civ', w.x + 1.5, w.y);
+    Object.assign(victim, { persistent: true, state: 'idle', nameTag: '피해자' });
+    Object.assign(thief, { persistent: true, state: 'flee', fleeT: 999, fearX: w.x, fearY: w.y, hp: 45, maxHp: 45, shirt: '#3b3b3b', hat: '#1a1a1a', nameTag: '날치기', walkSpeed: 1.8 });
+    Talk.say(victim, '도둑이야! 내 가방!', 3, true);
+    this.announce('날치기 발생', '도둑을 쫓아 쓰러뜨려라');
+    return {
+      x: w.x, y: w.y, ents: [victim, thief], stage: 'chase', limit: 120, timeoutMsg: '날치기가 도망쳤다',
+      marks() { return this.stage === 'chase' ? [{ x: thief.x, y: thief.y, big: true, c: '#4fc3ff' }] : this.stage === 'return' ? [{ x: victim.x, y: victim.y, big: true, c: '#8df28d' }] : []; },
+      update(dt, P) {
+        this.x = P.px; this.y = P.py;
+        if (this.stage === 'chase') {
+          if (!thief.dead && thief.downT <= 0) { thief.state = 'flee'; thief.fleeT = 99; thief.fearX = P.px; thief.fearY = P.py; }
+          if ((thief.dead || thief.downT > 0) && dist(P.px, P.py, thief.x, thief.y) < 3) {
+            this.stage = 'return'; this.rt = 0;
+            UI.big('가방 회수!', '주인(초록 표시)에게 돌려주면 사례금 $800 + 시민 지지 · 45초 안에 안 가면 가방은 네 것 ($1,500)', 3.4, '#4fc3ff');
+          }
+          if (victim.dead) { Events.end('피해자가 쓰러졌다'); }
+        } else if (this.stage === 'return') {
+          this.rt += dt;
+          if (!victim.dead && dist(P.px, P.py, victim.x, victim.y) < 3.5) { P.money += 800; Empire.support.civ += 1.5; Talk.say(victim, '정말 고마워요!', 2.5, true); Events.win('snatch', '가방을 돌려줬다 +$800 · 시민 지지 +1.5'); }
+          else if (this.rt > 45 || victim.dead) { P.money += 1500; Sfx.cash(); Events.end('가방 속 현금을 챙겼다 +$1,500'); }
+        }
+      },
+    };
+  },
+  // 2) 현금수송차 사고: 부서진 트럭 옆에 돈가방, 경비원 둘 — 털면 ★2
+  make_armored(P) {
+    const sp = offscreenLaneSpot(70, 140); if (!sp) return null;
+    const c = new Car('armored', sp.x, sp.y, sp.a + rand(-0.6, 0.6), { persistent: true }); c.hp = c.maxHp * 0.25; c.ai = { mode: 'parked' }; c.driver = null; Game.cars.push(c);
+    const bags = [];
+    for (let k = 0; k < 3; k++) bags.push(addPickup('cash', sp.x + rand(-4, 4), sp.y + rand(-4, 4), { amount: randi(2000, 4500), temp: 150 }));
+    const guards = [];
+    for (let k = 0; k < 2; k++) { const g = spawnPed('cop', sp.x + rand(-3, 3), sp.y + rand(-3, 3)); Object.assign(g, { persistent: true, state: 'idle', shirt: '#4a4f3a', nameTag: '경비원', guard: true }); guards.push(g); }
+    this.announce('현금수송차 사고', '돈가방이 흩어졌다 — 가져가면 수배');
+    return {
+      x: sp.x, y: sp.y, ents: [c, ...guards], limit: 150, timeoutMsg: '견인차가 사고 현장을 정리했다',
+      marks() { return bags.filter(b => Game.pickups.includes(b)).map(b => ({ x: b.x, y: b.y, c: '#3fbf5f' })).concat([{ x: sp.x, y: sp.y, big: true }]); },
+      update(dt, P) {
+        if (Math.random() < dt * 2) Particles.smoke(c.x, c.y, 1.2, '#555');
+        const left = bags.filter(b => Game.pickups.includes(b)).length;
+        if (left < bags.length && !this.robbed) { this.robbed = true; Wanted.set(Math.max(2, Wanted.stars)); for (const g of guards) if (!g.dead) g.state = 'chase'; UI.toast('경비원: 멈춰! 그 돈 내려놔!'); }
+        if (!left) Events.win('armored', '현금수송차의 돈가방을 모두 챙겼다');
+      },
+    };
+  },
+  // 3) 조직 거래 현장: 가방을 두고 거래 중 — 덮치면 큰돈 (같은 조직이면 생기지 않는다)
+  make_deal(P) {
+    const g = pick(GANG_IDS.filter(x => x !== Gangs.mine && GANGS[x])); if (!g) return null;
+    const w = eventWalkSpot(60, 110); if (!w) return null;
+    const men = [];
+    for (let k = 0; k < 4; k++) { const p = spawnPed('gang', w.x + rand(-3, 3), w.y + rand(-3, 3)); setGang(p, g); Object.assign(p, { persistent: true, state: 'idle', homeX: w.x, homeY: w.y, weapon: pick(['smg', 'pistol', 'shotgun']) }); men.push(p); }
+    const case_ = addPickup('cash', w.x, w.y, { amount: randi(8000, 15000), temp: 170 });
+    this.announce('조직 거래 현장', `${GANGS[g].name}가 거래 중 — 가방을 빼앗아라`);
+    return {
+      x: w.x, y: w.y, ents: men, limit: 170, timeoutMsg: '거래가 끝나 조직원들이 흩어졌다',
+      marks() { return Game.pickups.includes(case_) ? [{ x: case_.x, y: case_.y, big: true }] : []; },
+      update(dt, P) {
+        if (!this.hot && dist(P.px, P.py, w.x, w.y) < 14) { this.hot = true; for (const m of men) if (!m.dead) { m.state = 'chase'; Talk.say(m, '누구야!', 1.8, true); } }
+        if (!Game.pickups.includes(case_)) { if (Gangs.mine) Gangs.addRep(40, '라이벌 거래 습격'); Events.win('deal', `${GANGS[g].name}의 거래 가방을 빼앗았다`); }
+      },
+    };
+  },
+  // 4) 교통사고 부상자: 차에 태워 병원으로 (75초)
+  make_accident(P) {
+    const sp = offscreenLaneSpot(70, 140); if (!sp) return null;
+    const c = new Car(pick(['sedan', 'compact', 'van']), sp.x, sp.y, sp.a + rand(-1, 1), { persistent: true }); c.hp = c.maxHp * 0.2; c.ai = { mode: 'parked' }; c.driver = null; Game.cars.push(c);
+    const s = sidewalkNear(sp.x, sp.y, 4); const inj = spawnPed('civ', s.x, s.y); Object.assign(inj, { persistent: true, state: 'idle', downT: 9999, nameTag: '부상자' });
+    this.announce('교통사고', '부상자를 차에 태워 병원으로 옮기면 보상');
+    const hosp = () => { let best = null, bd = 1e9; for (const k of ['hospital', 'hospital2', 'hospital3', 'clinic']) { const h = World.places[k]; if (h) { const d = dist(h.x, h.y, Game.player.px, Game.player.py); if (d < bd) { bd = d; best = h; } } } return best; };
+    return {
+      x: sp.x, y: sp.y, ents: [c, inj], stage: 'pick', limit: 200, timeoutMsg: '구급차가 먼저 왔다',
+      marks() { if (this.stage === 'pick') return [{ x: inj.x, y: inj.y, big: true }]; const h = hosp(); return h ? [{ x: h.x, y: h.y, big: true, c: '#e0443e' }] : []; },
+      update(dt, P) {
+        if (Math.random() < dt * 2) Particles.smoke(c.x, c.y, 1, '#666');
+        if (inj.dead && this.stage === 'pick') { Events.end('부상자가 숨졌다'); return; }
+        if (this.stage === 'pick') {
+          if (P.car && !P.car.V.special && P.car.speed < 2 && dist(P.car.x, P.car.y, inj.x, inj.y) < 6) { this.stage = 'drive'; this.dt = 0; inj.remove = true; UI.big('부상자 탑승', '75초 안에 병원(빨간 표시)으로!', 2.4, '#4fc3ff'); }
+          else if (!P.car && dist(P.px, P.py, inj.x, inj.y) < 4 && !this.hint) { this.hint = true; UI.toast('차를 가져와 부상자 옆에 세우면 태운다'); }
+        } else {
+          this.dt += dt; const h = hosp(); this.x = P.px; this.y = P.py;
+          UI.objective(`부상자를 병원으로: ${Math.max(0, Math.ceil(75 - this.dt))}초 · ${h ? Math.round(dist(P.px, P.py, h.x, h.y)) : '?'}m`);
+          if (this.dt > 75 || !P.car) { UI.objective(''); Events.end(!P.car ? '차에서 내려 부상자를 놓쳤다' : '시간 안에 병원에 가지 못했다'); return; }
+          if (h && dist(P.px, P.py, h.x, h.y) < 12) { UI.objective(''); P.money += 1000; Empire.support.civ += 2; Events.win('accident', '부상자를 살렸다 +$1,000 · 시민 지지 +2'); }
+        }
+      },
+    };
+  },
+  // 5) 강도 도주 차량: 경찰을 따돌리는 차를 부수면 현상금
+  make_getaway(P) {
+    const sp = offscreenLaneSpot(60, 120); if (!sp) return null;
+    const c = new Car('sports', sp.x, sp.y, sp.a, { persistent: true, color: '#2b2f36' });
+    c.driver = 'ai'; c.driverKind = 'target'; trafficFromHere(c, 'flee'); c.ai.cruiseFlee = 30; Game.cars.push(c);
+    this.announce('강도 도주 차량', '은행 강도가 달아난다 — 차를 부수면 현상금 $2,500');
+    return {
+      x: sp.x, y: sp.y, ents: [c], limit: 140, timeoutMsg: '강도들이 도시를 빠져나갔다',
+      marks() { return [{ x: c.x, y: c.y, big: true }]; },
+      update(dt, P) {
+        this.x = c.x; this.y = c.y;
+        if (!Game.cars.includes(c)) { Events.end(''); return; }
+        if (c.dead || c.hp < c.maxHp * 0.15 || c.driver !== 'ai') {
+          const pos = { x: c.x, y: c.y }; addPickup('cash', pos.x + 2, pos.y, { amount: 2500, temp: 90 });
+          Empire.support.off += 1; Events.win('getaway', '강도 차량을 멈췄다 — 현상금 $2,500을 챙겨라 · 공무원 지지 +1');
+        }
+      },
+    };
+  },
+  // 6) 건물 화재: 소방차가 오지만 먼저 끄면(소방차) 보상
+  make_fire(P) {
+    const s = eventWalkSpot(80, 150); if (!s) return null;
+    const f = Blazes.start(s.x, s.y, 1.2);
+    this.announce('화재 발생', '불이 났다 — 소방차가 출동한다');
+    return {
+      x: s.x, y: s.y, ents: [], limit: 180, timeoutMsg: '',
+      marks() { return Blazes.list.includes(f) ? [{ x: f.x, y: f.y, big: true, c: '#ff6b3d' }] : []; },
+      update(dt, P) {
+        if (!Blazes.near(f.x, f.y, 14).length) { const mine = P.car && P.car.type === 'firetruck' && dist(P.px, P.py, f.x, f.y) < 40; if (mine) { P.money += 1200; Events.win('fire', '불을 껐다 +$1,200'); } else Events.end('소방대가 불을 껐다'); }
+      },
+    };
+  },
+};
+SaveExt.mods.events = Events;
+
+'use strict';
+/* =====================================================================
  * main.js — 게임 루프, 인구 관리, 플레이어 조작, 카메라, 사망/체포
  *
  * 인구 관리(Population management): GTA 시리즈처럼 도시 전체를 시뮬레이션하지 않고
@@ -10109,7 +10570,7 @@ const Game = {
     else { P.inv.pistol = 24; P.weapon = 'fist'; }
     this.fleet = sv ? sv.fleet || [] : [];
     this.props = sv ? sv.props || {} : {};
-    Empire.load(sv && sv.empire); Finance.load(sv && sv.finance); Gangs.load(sv && sv.gangs); GangJob.active = null;
+    Empire.load(sv && sv.empire); Finance.load(sv && sv.finance); Gangs.load(sv && sv.gangs); GangJob.active = null; SaveExt.load(sv && sv.ext);
     if (!sv) this.introT = 7;
     if (sv && sv.body) { Object.assign(P, sv.body); P.hp = P.maxHp; }
     // v2.13 보상: 업데이트 중 사라진 돈 $600,000 (이 저장소에서 한 번만)
@@ -10224,6 +10685,7 @@ const Game = {
       drawWorldTexts3D();
       Rain.draw(this.weather.intensity);
     } else renderScene();
+    Weather.drawOverlay();
     if (st === 'play' || st === 'wasted' || st === 'busted' || st === 'shop' || st === 'paused' || st === 'bag' || st === 'ward' || st === 'fin') { drawHUD(dt); if (st === 'play') drawLockHUD(); }
     if (st === 'wasted' || st === 'busted') drawDeathScreen(st, this.deathT);
     if (st === 'map') drawFullMap();
@@ -10292,6 +10754,7 @@ const Game = {
     Pick.scan();
     if (Pick.target !== this._lastPick) { this._lastPick = Pick.target; document.body.classList.toggle('cansteal', !!Pick.target); }
     updatePickups(dt);
+    Events.update(dt);
     this.places(dt);
     // 사망
     if (P.hp <= 0 && this.state === 'play') this.wasted();
@@ -10305,12 +10768,7 @@ const Game = {
 
   simulate(dt, menu) {
     // 날씨
-    const W = this.weather;
-    W.nextT -= dt;
-    if (W.nextT <= 0) { W.rain = !W.rain; W.nextT = W.rain ? rand(60, 130) : rand(150, 320); }
-    W.intensity = smooth(W.intensity, W.rain ? 1 : 0, 0.3, dt);
-    W.wet = 1 - 0.12 * W.intensity;
-    this.wind = Math.sin(this.time * 0.05) * 0.8;
+    Weather.update(dt); // events.js: 맑음·비·폭풍·안개
     // 차량
     for (const c of this.cars) c.update(dt);
     const cs = this.cars;
@@ -10459,7 +10917,7 @@ const Game = {
         const sprayCost = Biz.has('biz_auto') ? 0 : 100;
         if (P.money < sprayCost) { UI.toast('페인트샵: $100이 필요하다'); continue; }
         if (Wanted.stars > 0 && Wanted.seen) { UI.toast('경찰이 보고 있다! 따돌린 뒤 다시 오자'); this.sprayCool = 3; continue; }
-        P.money -= sprayCost; P.car.hp = P.car.maxHp; P.car.burnT = 0;
+        P.money -= sprayCost; P.car.hp = P.car.maxHp; P.car.burnT = 0; P.car.flat = false; P.car.dmgParts = null;
         P.car.color = pick(['#e0262b', '#3c6fb0', '#f2c200', '#1d1d1f', '#e8e8ea', '#4e7a52', '#7a3b8f', '#f07c1b']);
         const had = Wanted.stars > 0;
         Wanted.clear(); Sfx.cash();

@@ -331,6 +331,9 @@ const View3D = {
     this.booms = []; for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffa640, transparent: true, opacity: 0.8 })); m.visible = false; this.scene.add(m); this.booms.push(m); }
     this.markers = []; for (let i = 0; i < 12; i++) { const m = new THREE.Mesh(this.geo.cyl, new THREE.MeshBasicMaterial({ color: 0xf2c14e, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false })); m.visible = false; this.scene.add(m); this.markers.push(m); }
     this.pickups = []; for (let i = 0; i < 60; i++) { const m = new THREE.Mesh(this.geo.box, new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x222222 })); m.visible = false; m.scale.set(0.5, 0.5, 0.5); this.scene.add(m); this.pickups.push(m); }
+    this.props = []; for (let i = 0; i < 80; i++) { const m = new THREE.Mesh(this.geo.box, new THREE.MeshLambertMaterial({ color: 0xffffff })); m.visible = false; this.scene.add(m); this.props.push(m); }
+    this.spot = new THREE.Mesh(new THREE.CircleGeometry(1, 32), new THREE.MeshBasicMaterial({ color: 0xfff6d0, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending })); this.spot.rotation.x = -Math.PI / 2; this.spot.visible = false; this.scene.add(this.spot);
+    this.beam = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 6, 1, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff6d0, transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending })); this.beam.visible = false; this.scene.add(this.beam);
     const heli = this.heli = new THREE.Group();
     const hb = new THREE.Mesh(this.geo.box, this.mat('#e8e8e8')); hb.scale.set(4.2, 1.6, 2); heli.add(hb);
     const tail = new THREE.Mesh(this.geo.box, this.mat('#1c2a4a')); tail.scale.set(3.4, 0.4, 0.4); tail.position.set(-3.6, 0.3, 0); heli.add(tail);
@@ -404,9 +407,15 @@ const View3D = {
       const h = new THREE.Mesh(this.geo.head, this.mat('#111')); h.scale.setScalar(1.3); h.position.set(-0.05, 1.82, 0); rider.add(h);
       g.add(rider); g.userData.rider = rider; g.userData.riderMat = t.material;
     } else {
-      const tall = st === 'truck' || st === 'armored' ? 2.5 : st === 'van' || st === 'swat' || st === 'ambulance' ? 1.9 : st === 'sports' ? 0.95 : 1.25;
+      const tall = st === 'fire' ? 2.4 : st === 'truck' || st === 'armored' ? 2.5 : st === 'van' || st === 'swat' || st === 'ambulance' ? 1.9 : st === 'sports' ? 0.95 : 1.25;
       const bodyH = st === 'sports' ? 0.55 : 0.7;
-      if (st === 'truck' || st === 'armored') {
+      if (st === 'fire') { // 소방차: 빨간 차체 + 흰 사다리
+        add(bodyMat, L, tall - 0.4, W, 0, 0.35 + (tall - 0.4) / 2, 0);
+        add(glass, 0.08, 0.6, W * 0.84, L / 2 + 0.01, tall - 0.6, 0);
+        const wm = this.mat('#e8e8e8'); add(wm, L * 0.7, 0.12, 0.12, -L * 0.1, tall + 0.1, -0.35); add(wm, L * 0.7, 0.12, 0.12, -L * 0.1, tall + 0.1, 0.35);
+        for (let s = -L * 0.43; s < L * 0.25; s += 0.6) add(wm, 0.08, 0.08, 0.7, s, tall + 0.1, 0);
+        add(this.mat('#f2d24a'), L * 1.01, 0.12, W * 1.01, 0, 0.9, 0);
+      } else if (st === 'truck' || st === 'armored') {
         add(st === 'armored' ? bodyMat : this.mat('#e6e6e6'), L * 0.68, tall - 0.4, W, -L * 0.15, 0.35 + (tall - 0.4) / 2, 0);
         add(bodyMat, L * 0.28, tall - 0.6, W * 0.96, L * 0.35, 0.35 + (tall - 0.6) / 2, 0);
         add(glass, 0.08, 0.6, W * 0.8, L * 0.49, tall - 0.55, 0);
@@ -426,9 +435,9 @@ const View3D = {
       const hl = new THREE.MeshBasicMaterial({ color: 0xfff7d6 }), tlm = new THREE.MeshBasicMaterial({ color: 0x8a1a1a });
       for (const z of [-W / 2 + 0.3, W / 2 - 0.3]) { add(hl, 0.06, 0.16, 0.36, L / 2 + 0.01, 0.75, z); add(tlm, 0.06, 0.16, 0.36, -L / 2 - 0.01, 0.8, z); }
       g.userData.tail = tlm;
-      if (st === 'police' || st === 'ambulance' || st === 'swat') {
+      if (st === 'police' || st === 'ambulance' || st === 'swat' || st === 'fire') {
         const r = new THREE.MeshBasicMaterial({ color: 0xff2d2d }), b = new THREE.MeshBasicMaterial({ color: 0x2d6bff });
-        add(r, 0.35, 0.15, W * 0.4, -0.2, tall + 0.08, -W * 0.22); add(st === 'ambulance' ? r : b, 0.35, 0.15, W * 0.4, -0.2, tall + 0.08, W * 0.22);
+        add(r, 0.35, 0.15, W * 0.4, -0.2, tall + 0.08, -W * 0.22); add(st === 'ambulance' || st === 'fire' ? r : b, 0.35, 0.15, W * 0.4, -0.2, tall + 0.08, W * 0.22);
         g.userData.siren = [r, b];
       }
       if (st === 'taxi') add(this.mat('#ffe680'), 0.4, 0.2, 0.8, -0.3, tall + 0.1, 0);
@@ -567,7 +576,8 @@ const View3D = {
     this.renderer.setClearColor(sky); S.fog.color.copy(sky);
     const fc = P.car, fAlt = fc ? fc.alt || 0 : P.alt || 0;
     this.stream(P.px, P.py, fc ? Math.abs(fc.speed || fc.spd || 0) : 0, fAlt);
-    S.fog.far = this.drawR * (1 - wet * 0.3); S.fog.near = Math.min(90, S.fog.far * 0.4);
+    S.fog.far = this.drawR * (1 - Math.min(1, wet) * 0.3) * (1 - 0.7 * Weather.fog); S.fog.near = Math.min(90, S.fog.far * (0.4 - 0.3 * Weather.fog));
+    if (Weather.fog > 0.05) S.fog.color.lerp(new THREE.Color(0.75, 0.78, 0.82), Weather.fog * (1 - night * 0.7));
     if (Math.abs(this.camera.far - (this.drawR + 60)) > 20) { this.camera.far = this.drawR + 60; this.camera.updateProjectionMatrix(); }
     this.hemi.intensity = 0.25 + (1 - night) * 0.75; this.sun.intensity = 0.1 + (1 - night) * 0.8;
     this.hemi.color.setRGB(amb[0], amb[1], amb[2]);
@@ -653,6 +663,7 @@ const View3D = {
       if (q.t === 'fire') { r = 1; gg = 0.4 + a * 0.5; b = 0.1; h = 0.6 + (1 - a) * 2.5; }
       else if (q.t === 'smoke') { const c = parseInt(q.col.slice(1), 16); r = ((c >> 16) & 255) / 255; gg = ((c >> 8) & 255) / 255; b = (c & 255) / 255; h = 1 + (1 - a) * 5; }
       else if (q.t === 'spark') { r = 1; gg = 0.85; b = 0.4; h = 0.9; }
+      else if (q.t === 'water') { r = 0.75; gg = 0.88; b = 1; h = 1.2 + (1 - a) * 0.8; }
       else if (q.t === 'blood') { r = 0.55; gg = 0.03; b = 0.05; h = 0.8 * a; }
       else { r = 0.2; gg = 0.2; b = 0.2; h = 0.5; }
       pp[n * 3] = q.x; pp[n * 3 + 1] = h; pp[n * 3 + 2] = q.y; pc[n * 3] = r; pc[n * 3 + 1] = gg; pc[n * 3 + 2] = b; n++;
@@ -682,6 +693,14 @@ const View3D = {
       const m = this.pickups[pi++]; m.visible = true; m.position.set(k.x, 0.7 + Math.sin(k.bob) * 0.15, k.y); m.rotation.y = k.bob; m.material.color.set(PK[k.type] || '#fff');
     }
     for (; pi < this.pickups.length; pi++) this.pickups[pi].visible = false;
+    // 공용 소품 (스파이크·체크포인트·점프대 …)
+    const PR = Props.collect(P, 140); let ri = 0;
+    for (const o of PR) { if (ri >= this.props.length || o.no3d) continue; const m = this.props[ri++]; m.visible = true; m.position.set(o.x, (o.z || 0) + (o.h || 0.2) / 2, o.y); m.scale.set(o.w, o.h || 0.2, o.d); m.rotation.set(0, -(o.a || 0), 0); m.material.color.set(o.c); m.material.emissive && m.material.emissive.set(o.glow ? o.c : '#000'); }
+    for (; ri < this.props.length; ri++) this.props[ri].visible = false;
+    // 헬기 서치라이트 (밤)
+    const sp = Pursuit.spot, HH = Police.heli, showSpot = !!(sp && HH && !HH.dead && night > 0.3);
+    this.spot.visible = this.beam.visible = showSpot;
+    if (showSpot) { this.spot.position.set(sp.x, 0.15, sp.y); this.spot.scale.setScalar(7); const hgt = HH.alt; this.beam.position.set((sp.x + HH.x) / 2, hgt / 2, (sp.y + HH.y) / 2); this.beam.scale.set(1, hgt, 1); this.beam.lookAt(sp.x, 0, sp.y); this.beam.rotateX(Math.PI / 2); }
     // 헬기
     const H = Police.heli;
     this.heli.visible = !!H;

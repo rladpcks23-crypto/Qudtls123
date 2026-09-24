@@ -441,7 +441,7 @@ function cheatSpawn(type, depth = 0) {
 const Cheats = {
   buf: '',
   list: {
-    HESOYAM: ['체력·방탄 가득, 차 수리, +$250,000', () => { const P = Game.player; P.hp = P.maxHp; P.armor = 100; P.money += 250000; if (P.car) { P.car.hp = P.car.maxHp; P.car.burnT = 0; } }],
+    HESOYAM: ['체력·방탄 가득, 차 수리, +$250,000', () => { const P = Game.player; P.hp = P.maxHp; P.armor = 100; P.money += 250000; if (P.car) { P.car.hp = P.car.maxHp; P.car.burnT = 0; P.car.flat = false; P.car.dmgParts = null; } }],
     AEZAKMI: ['수배 받지 않기 (켜기/끄기)', () => { Game.noWanted = !Game.noWanted; if (Game.noWanted) Wanted.clear(); UI.toast(Game.noWanted ? '이제 경찰이 신경 쓰지 않는다' : '수배 면제 해제'); }],
     TURNUPTHEHEAT: ['수배 +2', () => { Game.noWanted = false; Wanted.set(Math.min(5, Wanted.stars + 2)); }],
     LXGIWYL: ['무기 세트', () => { const P = Game.player; for (const w of ['bat', 'pistol', 'smg', 'shotgun', 'grenade']) giveWeapon(P, w, WEAPONS[w].pack || 1); }],

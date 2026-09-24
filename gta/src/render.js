@@ -337,7 +337,13 @@ function drawCar(c, shadow) {
   }
   const body = c.dead ? '#26272a' : c.color;
   const dark = c.dead ? '#1a1a1c' : shade(c.color, -0.35), light = c.dead ? '#303134' : shade(c.color, 0.25);
-  if (st === 'truck' || st === 'armored') {
+  if (st === 'fire') { // 소방차: 빨간 차체 + 흰 사다리 + 경광등
+    ctx.fillStyle = body; rr(ctx, -L / 2, -W / 2, L, W, 0.25); ctx.fill();
+    ctx.fillStyle = c.dead ? '#333' : '#e8e8e8'; ctx.fillRect(-L / 2 + 0.4, -0.35, L * 0.68, 0.12); ctx.fillRect(-L / 2 + 0.4, 0.23, L * 0.68, 0.12); for (let s = -L / 2 + 0.5; s < -L / 2 + 0.4 + L * 0.68; s += 0.55) ctx.fillRect(s, -0.35, 0.08, 0.7);
+    ctx.fillStyle = '#16222e'; ctx.fillRect(L * 0.3, -W / 2 + 0.2, 0.5, W - 0.4);
+    if (!c.dead) { const f = Math.floor(Game.time * 7) % 2; ctx.fillStyle = c.siren ? (f ? '#ff2d2d' : '#ffe0e0') : '#8a2020'; ctx.fillRect(L * 0.2, -0.9, 0.35, 1.8); }
+    ctx.fillStyle = '#f2d24a'; ctx.fillRect(-L / 2 + 0.1, W / 2 - 0.16, L - 0.2, 0.1); ctx.fillRect(-L / 2 + 0.1, -W / 2 + 0.06, L - 0.2, 0.1);
+  } else if (st === 'truck' || st === 'armored') {
     // 화물칸 + 운전실
     ctx.fillStyle = st === 'armored' ? (c.dead ? '#222' : '#39463a') : (c.dead ? '#2a2a2a' : '#e6e6e6');
     rr(ctx, -L / 2, -W / 2, L * 0.7, W, 0.2); ctx.fill();
@@ -797,6 +803,7 @@ function drawParticles(low) {
     else if (p.t === 'shell') { ctx.fillStyle = '#d4a93a'; ctx.fillRect(p.x, p.y, 0.1, 0.05); }
     else if (p.t === 'debris') { ctx.fillStyle = '#2a2a2a'; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); }
     else if (p.t === 'fire') { ctx.fillStyle = `rgba(255,${(90 + a * 150) | 0},${(20 + a * 40) | 0},${a * 0.9})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (0.5 + a * 0.5), 0, TAU); ctx.fill(); }
+    else if (p.t === 'water') { ctx.fillStyle = `rgba(190,225,255,${a * 0.8})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (1.4 - a * 0.6), 0, TAU); ctx.fill(); }
     else if (p.t === 'smoke') { ctx.fillStyle = p.col; ctx.globalAlpha = a * 0.45; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, TAU); ctx.fill(); ctx.globalAlpha = 1; }
   }
 }
@@ -861,6 +868,7 @@ function renderScene() {
   // 미션 마커 / 상점 / 페인트샵 표시
   for (const m of allTargets()) drawMarker(m.x, m.y, m.c, m.big || m.giver);
   for (const [k, pl] of Object.entries(World.places)) { const col = PLACE_MARK[k]; if (col && pl) drawMarker(pl.x, pl.y, col, false); }
+  Props.draw2D();
   drawParticles(true);
   for (const v of Vendors.list) if (Math.abs(v.x - Cam.x) < Cam.vw / 2 + 4 && Math.abs(v.y - Cam.y) < Cam.vh / 2 + 4) drawVendorCart(v);
   // 보행자(시체 먼저)

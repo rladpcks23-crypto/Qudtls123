@@ -78,7 +78,8 @@ class Car {
     this.steer = smooth(this.steer, clamp(inp.st, -1, 1) * maxSt, inp.st === 0 ? 16 : 11, dt);
     const d = this.steer, a = this.L * 0.3, b = this.L * 0.3, wb = a + b;
     const load = this.m * 9.81 * 0.5;
-    const wet = Game.weather.wet;
+    const wet = Game.weather.wet * (this.flat ? 0.55 : 1); // 펑크 나면 미끄럽고 느리다
+    if (this.flat && speed > 4) inp.st += Math.sin(Game.time * 9 + this.x) * 0.12;
     const gripF = V.grip * wet, gripR = V.grip * wet * (inp.hb ? 0.42 : 1.3);
     let FyF = 0, FyR = 0;
     const avf = Math.abs(vf);
@@ -92,7 +93,7 @@ class Car {
     const Fb = this.m * 8.5;
     let Fx = 0;
     if (this.dead || this.burnT > 0 && !this.driver) { /* 엔진 없음 */ }
-    else if (inp.thr > 0) Fx += inp.thr * V.Fe * (vf < -0.5 ? 1.6 : 1);
+    else if (inp.thr > 0) Fx += inp.thr * V.Fe * (vf < -0.5 ? 1.6 : 1) * (this.flat ? 0.45 : 1);
     else if (inp.thr < 0) Fx += inp.thr * V.Fe * 0.5 * (vf > 0.5 ? 1.6 : 1);
     if (inp.brk > 0) Fx -= sign(vf) * inp.brk * Fb * wet;
     if (inp.hb) Fx -= sign(vf) * Fb * 0.35 * wet;

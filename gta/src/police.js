@@ -98,7 +98,7 @@ function crime(type, x, y) {
 
 const Police = {
   heli: null, dispatchT: 0, roadblockT: 12,
-  reset() { this.heli = null; this.dispatchT = 0; this.roadblockT = 12; },
+  reset() { this.heli = null; this.dispatchT = 0; this.roadblockT = 12; if (typeof Pursuit !== 'undefined') Pursuit.reset(); },
   update(dt) {
     const P = Game.player;
     // 목격자 신고 처리
@@ -193,7 +193,9 @@ const Police = {
       car.driver = 'ai'; car.driverKind = 'cop'; car.siren = true; car.ai = { mode: 'block' }; car.crew = 0; Game.cars.push(car);
       const cop = spawnPed('cop', bx + rx * side * 2.2 + dx * 3, by + ry * side * 2.2 + dy * 3); cop.state = 'chase';
     }
-    UI.toast('전방에 경찰 검문소!');
+    // 검문소 앞 스파이크 스트립 (플레이어 쪽으로 12m)
+    Pursuit.addSpike(bx + dx * 12, by + dy * 12, Math.atan2(ry, rx), 2 * T + 2);
+    UI.toast('전방에 경찰 검문소! 스파이크 조심');
   },
   spawnHeli() {
     const P = Game.player, a = rand(0, TAU);
