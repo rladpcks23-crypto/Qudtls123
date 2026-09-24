@@ -490,6 +490,7 @@ function drawPed(p, shadow) {
     ctx.beginPath(); ctx.arc(-sw * 0.8, -0.34, 0.09, 0, TAU); ctx.arc(sw * 0.8, 0.34, 0.09, 0, TAU); ctx.fill();
     if (p.weapon === 'bat') { ctx.fillStyle = '#9b6b3c'; ctx.fillRect(sw * 0.8, 0.3, 0.8, 0.09); }
   }
+  if (p.female && p.dress) { ctx.fillStyle = p.hitFlash > 0 ? '#ffffff' : p.shirt; ctx.beginPath(); ctx.ellipse(-0.04, 0, 0.28, 0.4, 0, 0, TAU); ctx.fill(); } // 원피스 치마
   // 몸통
   ctx.fillStyle = p.hitFlash > 0 ? '#ffffff' : p.shirt;
   ctx.beginPath(); ctx.ellipse(0, 0, 0.2, 0.36, 0, 0, TAU); ctx.fill();
@@ -499,6 +500,7 @@ function drawPed(p, shadow) {
   // 머리
   ctx.fillStyle = p.skin; ctx.beginPath(); ctx.arc(0.04, 0, 0.16, 0, TAU); ctx.fill();
   ctx.fillStyle = p.hair; ctx.beginPath(); ctx.arc(-0.01, 0, 0.155, Math.PI * 0.5, Math.PI * 1.5); ctx.fill();
+  if (p.female && p.kind !== 'cop' && p.kind !== 'swat') { ctx.fillStyle = p.hair; ctx.beginPath(); ctx.ellipse(-0.13, 0, 0.16, 0.19, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.arc(0.08, 0, 0.12, Math.PI * 0.62, Math.PI * 1.38); ctx.fill(); } // 긴 머리 + 앞머리
   if (p.kind === 'cop' || p.kind === 'swat') { ctx.fillStyle = p.kind === 'cop' ? '#15213f' : '#1b1f24'; ctx.beginPath(); ctx.arc(0.02, 0, 0.17, 0, TAU); ctx.fill(); ctx.fillRect(0.1, -0.12, 0.12, 0.24); }
   drawArchHead(p);
   if (p.kind === 'player') drawPlayerStyle(p);

@@ -524,7 +524,7 @@ function genWorld(seed) {
         for (let y = Math.min(iy1 - 1, iy0 + 7); y < iy1; y++) for (let x = ix0 + 1; x < half - 1; x++) set(x, y, TL.SAND); // 운동장
         return m;
       });
-      if (r) { r.b.district = DIST.PARK; r.b.park = `${h.name} 공원`; r.b.smallPark = true; W.places['school' + i] = { ...r.door, label: `${h.name} 학교`, lot: { x0: r.b.x0 + 1, y0: r.b.y0 + 1, x1: r.b.x1 - 1, y1: r.b.y1 - 1, block: r.b, b: r.main } }; W.schools.push('school' + i); }
+      if (r) { r.b.district = DIST.PARK; r.b.park = `${h.name} 공원`; r.b.smallPark = true; W.places['school' + i] = { ...r.door, label: `${h.name} 학교`, lot: { x0: r.b.x0 + 1, y0: r.b.y0 + 1, x1: r.b.x1 - 1, y1: r.b.y1 - 1, block: r.b, b: r.main } }; W.schools.push('school' + i); if (typeof PLACE_MARK !== 'undefined') PLACE_MARK['school' + i] = '#e0a060'; }
     });
   }
   function buildLandmarks() {
@@ -689,6 +689,7 @@ function genWorld(seed) {
   };
 
   for (const b of W.blocks) {
+    W.curBlock = b; // 이 블록의 칸만 칠한다 (앞 블록이 남아 있으면 인도 테두리가 통째로 막히던 버그)
     for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) {
       if (W.region[tIdx(x, y)] !== b.id) continue; // 해안 쪽 불규칙한 블록: 경계 상자 안의 이웃 블록 칸은 건드리지 않는다
       W.dist[tIdx(x, y)] = b.district; W.hoodT[tIdx(x, y)] = b.hood;

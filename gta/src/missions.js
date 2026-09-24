@@ -21,7 +21,7 @@ const Save = {
     try {
       const P = Game.player;
       const inv = {}; for (const k in P.inv) if (k !== 'fist') inv[k] = P.inv[k] === Infinity ? -1 : P.inv[k];
-      localStorage.setItem(this.key, JSON.stringify({ savedAt: Date.now(), idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {}, ext: SaveExt.save(), gangs: Gangs.save(), empire: Empire.save(), finance: Finance.save(), body: { maxHp: P.maxHp, endurance: P.endurance || 1, aimSkill: P.aimSkill || 1, shirt: P.shirt, pants: P.pants, hatType: P.hatType || 'none', hatCol: P.hatCol || '', logo: P.logo || '', eduLv: P.eduLv || 0 } }));
+      localStorage.setItem(this.key, JSON.stringify({ savedAt: Date.now(), idx: Missions.idx, money: P.money, packages: [...Game.packages], inv, time: Game.clock, jobs: Jobs.stats, armor: Math.round(P.armor || 0), weapon: P.weapon, bag: P.bag || {}, fleet: Game.fleet || [], props: Game.props || {}, ext: SaveExt.save(), gangs: Gangs.save(), empire: Empire.save(), finance: Finance.save(), body: { maxHp: P.maxHp, endurance: P.endurance || 1, aimSkill: P.aimSkill || 1, shirt: P.shirt, pants: P.pants, hatType: P.hatType || 'none', hatCol: P.hatCol || '', logo: P.logo || '', eduLv: P.eduLv || 0, infAmmo: !!P.infAmmo } }));
     } catch (e) { /* 저장 불가 환경 */ }
   },
   // 지우지 않고 백업으로 옮긴다 (새 게임을 눌러도 '지난 저장 되살리기'로 되돌릴 수 있게)
@@ -122,7 +122,7 @@ const Missions = {
   },
 };
 
-const allTargets = () => [...(typeof Races !== 'undefined' ? Races.targets() : []), ...GangJob.targets(), ...(Jobs.active ? Jobs.targets() : []), ...Missions.targets(), ...Empire.targets(), ...Finance.targets(), ...(typeof Events !== 'undefined' ? Events.targets() : []), ...(Gangs.war && (!Gangs.mine || Gangs.war.A === Gangs.mine || Gangs.war.D === Gangs.mine) ? [{ x: Gangs.war.x, y: Gangs.war.y, c: '#ff3b3b', big: true }] : [])];
+const allTargets = () => [...(typeof Races !== 'undefined' ? Races.targets() : []), ...(typeof GF !== 'undefined' ? GF.targets() : []), ...(typeof Tycoon !== 'undefined' ? Tycoon.raidTargets() : []), ...GangJob.targets(), ...(Jobs.active ? Jobs.targets() : []), ...Missions.targets(), ...Empire.targets(), ...Finance.targets(), ...(typeof Events !== 'undefined' ? Events.targets() : []), ...(Gangs.war && (!Gangs.mine || Gangs.war.A === Gangs.mine || Gangs.war.D === Gangs.mine) ? [{ x: Gangs.war.x, y: Gangs.war.y, c: '#ff3b3b', big: true }] : [])];
 
 // ---------- 미션 도우미 ----------
 function missionCar(m, type, x, y, a, opt = {}) {

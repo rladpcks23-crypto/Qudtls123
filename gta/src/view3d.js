@@ -147,7 +147,33 @@ const View3D = {
             quad([X0, H, Z1], [X1, H, Z1], [xm, rH, Z1], [xm, rH, Z1], [0, 0, 1], SOLID, side(0.8));
             quad([X1, H, Z0], [X0, H, Z0], [xm, rH, Z0], [xm, rH, Z0], [0, 0, -1], SOLID, side(0.9));
           }
-        } else quad([X0, H, Z1], [X1, H, Z1], [X1, H, Z0], [X0, H, Z0], [0, 1, 0], SOLID, roofC);
+        } else {
+          quad([X0, H, Z1], [X1, H, Z1], [X1, H, Z0], [X0, H, Z0], [0, 1, 0], SOLID, roofC);
+          if (H > 6 && !['container', 'fence', 'arch', 'church', 'arena', 'hangar', 'tankcyl'].includes(b.kind)) {
+            // 옥상 난간 (가장자리 0.9m)
+            const pH = H + 0.9, i = 0.35, rim = roofC.clone().multiplyScalar(0.8);
+            quad([X0, H, Z1], [X1, H, Z1], [X1, pH, Z1], [X0, pH, Z1], [0, 0, 1], SOLID, side(0.78)); quad([X1, H, Z0], [X0, H, Z0], [X0, pH, Z0], [X1, pH, Z0], [0, 0, -1], SOLID, side(0.9));
+            quad([X1, H, Z1], [X1, H, Z0], [X1, pH, Z0], [X1, pH, Z1], [1, 0, 0], SOLID, side(0.68)); quad([X0, H, Z0], [X0, H, Z1], [X0, pH, Z1], [X0, pH, Z0], [-1, 0, 0], SOLID, side(0.86));
+            quad([X0, pH, Z1], [X1, pH, Z1], [X1, pH, Z1 - i], [X0, pH, Z1 - i], [0, 1, 0], SOLID, rim); quad([X0, pH, Z0 + i], [X1, pH, Z0 + i], [X1, pH, Z0], [X0, pH, Z0], [0, 1, 0], SOLID, rim);
+            quad([X1 - i, pH, Z1], [X1, pH, Z1], [X1, pH, Z0], [X1 - i, pH, Z0], [0, 1, 0], SOLID, rim); quad([X0, pH, Z1], [X0 + i, pH, Z1], [X0 + i, pH, Z0], [X0, pH, Z0], [0, 1, 0], SOLID, rim);
+            // 옥상 설비: 실외기 · 물탱크 · 안테나 (건물마다 다르게)
+            const bx = (x0, z0, x1, z1, y1, rgb) => { quad([x0, H, z1], [x1, H, z1], [x1, y1, z1], [x0, y1, z1], [0, 0, 1], SOLID, rgb.clone().multiplyScalar(0.8)); quad([x1, H, z0], [x0, H, z0], [x0, y1, z0], [x1, y1, z0], [0, 0, -1], SOLID, rgb.clone().multiplyScalar(0.9)); quad([x1, H, z1], [x1, H, z0], [x1, y1, z0], [x1, y1, z1], [1, 0, 0], SOLID, rgb.clone().multiplyScalar(0.7)); quad([x0, H, z0], [x0, H, z1], [x0, y1, z1], [x0, y1, z0], [-1, 0, 0], SOLID, rgb.clone().multiplyScalar(0.85)); quad([x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0], [0, 1, 0], SOLID, rgb); };
+            const sd = b.seed || 0.5, gray = new THREE.Color('#9aa0a8'), tank = new THREE.Color('#7a6a58');
+            const w_ = X1 - X0, d_ = Z1 - Z0;
+            if (w_ > 5 && d_ > 5) {
+              for (let k = 0; k < 1 + Math.floor(sd * 3); k++) { const ax = X0 + 1.2 + ((sd * 7.3 + k * 0.37) % 1) * (w_ - 3.4), az = Z0 + 1.2 + ((sd * 3.1 + k * 0.61) % 1) * (d_ - 3.4); bx(ax, az, ax + 1.6, az + 1.2, H + 1.1, gray); }
+              if (H > 14 && sd > 0.35) { const tx = X0 + w_ * 0.7, tz = Z0 + d_ * 0.3; bx(tx - 1, tz - 1, tx + 1, tz + 1, H + 3.2, tank); }
+              if (H > 30 && sd < 0.5) { const tx = X0 + w_ * 0.5, tz = Z0 + d_ * 0.5; bx(tx - 0.15, tz - 0.15, tx + 0.15, tz + 0.15, H + 9, new THREE.Color('#d0d4da')); }
+            }
+          }
+        }
+        // 1층 가게 앞: 짙은 유리 띠 + 차양 (상가·중층 건물)
+        if ((b.kind === 'mid' || b.kind === 'shop' || b.kind === 'biz' || b.kind === 'tower') && H > 7) {
+          const aw = new THREE.Color(['#b23a2e', '#2e6f9e', '#2f7d4a', '#c8871f', '#6b3b8f'][Math.floor((b.seed || 0) * 5) % 5]), dark = new THREE.Color('#1e2632'), o = 0.04;
+          quad([X0, 0.2, Z1 + o], [X1, 0.2, Z1 + o], [X1, 3.2, Z1 + o], [X0, 3.2, Z1 + o], [0, 0, 1], SOLID, dark); quad([X1, 0.2, Z0 - o], [X0, 0.2, Z0 - o], [X0, 3.2, Z0 - o], [X1, 3.2, Z0 - o], [0, 0, -1], SOLID, dark);
+          quad([X1 + o, 0.2, Z1], [X1 + o, 0.2, Z0], [X1 + o, 3.2, Z0], [X1 + o, 3.2, Z1], [1, 0, 0], SOLID, dark); quad([X0 - o, 0.2, Z0], [X0 - o, 0.2, Z1], [X0 - o, 3.2, Z1], [X0 - o, 3.2, Z0], [-1, 0, 0], SOLID, dark);
+          quad([X0, 3.2, Z1 + 1.1], [X1, 3.2, Z1 + 1.1], [X1, 3.6, Z1], [X0, 3.6, Z1], [0, 0.94, 0.34], SOLID, aw); quad([X1, 3.2, Z0 - 1.1], [X0, 3.2, Z0 - 1.1], [X0, 3.6, Z0], [X1, 3.6, Z0], [0, 0.94, -0.34], SOLID, aw);
+        }
       }
       const geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -309,9 +335,17 @@ const View3D = {
   buildDynamicShared() {
     this.geo = {
       box: new THREE.BoxGeometry(1, 1, 1),
-      wheel: new THREE.CylinderGeometry(0.34, 0.34, 0.26, 10),
-      head: new THREE.SphereGeometry(0.14, 10, 8),
+      wheel: new THREE.CylinderGeometry(0.34, 0.34, 0.26, 16),
+      rim: new THREE.CylinderGeometry(0.2, 0.2, 0.08, 12),
+      head: new THREE.SphereGeometry(0.14, 16, 12),
       cyl: new THREE.CylinderGeometry(1, 1, 1, 16, 1, true),
+      skirt: new THREE.CylinderGeometry(0.17, 0.34, 1, 16),
+      limb: new THREE.CapsuleGeometry(0.075, 0.72, 4, 8),
+      arm: new THREE.CapsuleGeometry(0.055, 0.44, 4, 8),
+      hand: new THREE.SphereGeometry(0.055, 8, 6),
+      torso: new THREE.CapsuleGeometry(0.16, 0.26, 4, 10),
+      eye: new THREE.SphereGeometry(0.018, 6, 4),
+      cap: new THREE.SphereGeometry(0.152, 16, 10, 0, Math.PI * 2, 0, Math.PI * 0.56),
     };
     // 파티클 (불·연기·불꽃·피)
     const N = 1000;
@@ -342,6 +376,25 @@ const View3D = {
   },
 
   // ---------- 차량 메시 ----------
+  // 차 옆모습 → ExtrudeGeometry (앞 = +x, 위 = +y, 폭 = z) · 같은 치수는 재사용
+  carProfile(st, L, W, tall, bodyH) {
+    const key = `${st}|${L}|${W}`; this.profCache = this.profCache || {};
+    if (this.profCache[key]) return this.profCache[key];
+    const y0 = 0.3, yb = y0 + bodyH, h = L / 2;
+    const R = st === 'sports' || st === 'super' || st === 'hyper' ? { cab: [-0.24, 0.12], roof: [-0.13, 0.02], nose: 0.45, tail: 0.75 }
+      : st === 'compact' ? { cab: [-0.42, 0.2], roof: [-0.38, 0.02], nose: 0.7, tail: 0.95 }
+      : st === 'muscle' ? { cab: [-0.26, 0.1], roof: [-0.18, 0.0], nose: 0.75, tail: 0.85 }
+      : { cab: [-0.3, 0.22], roof: [-0.2, 0.06], nose: 0.65, tail: 0.85 };
+    const shape = pts => { const s = new THREE.Shape(); pts.forEach(([x, y], i) => i ? s.lineTo(x, y) : s.moveTo(x, y)); s.closePath(); return s; };
+    const ext = (s, depth, bevel) => { const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: bevel > 0, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 2, curveSegments: 4 }); g.translate(0, 0, -depth / 2); g.computeVertexNormals(); return g; };
+    // 아래 차체: 뒤범퍼 → 트렁크 → (캐빈 밑) → 보닛 → 앞코
+    const body = shape([[-h, y0 + 0.05], [-h, y0 + bodyH * R.tail], [-h + 0.25, yb], [h - 0.35, yb - bodyH * 0.08], [h, y0 + bodyH * R.nose], [h, y0 + 0.08], [h - 0.2, y0], [-h + 0.2, y0]]);
+    const cx0 = L * R.cab[0], cx1 = L * R.cab[1], rx0 = L * R.roof[0], rx1 = L * R.roof[1];
+    const cab = shape([[cx0, yb - 0.02], [rx0, tall - 0.02], [rx1, tall - 0.02], [cx1, yb - 0.02]]);
+    const roof = shape([[rx0 - 0.04, tall - 0.06], [rx0 + 0.02, tall + 0.02], [rx1 - 0.02, tall + 0.02], [rx1 + 0.04, tall - 0.06]]);
+    const out = { body: ext(body, W - 0.16, 0.08), cab: ext(cab, W * 0.84, 0.03), roof: ext(roof, W * 0.86, 0.03) };
+    this.profCache[key] = out; return out;
+  },
   makeCar(c) {
     const g = new THREE.Group(), L = c.L, W = c.W, st = c.V.style, box = this.geo.box;
     const add = (mat, sx, sy, sz, x, y, z) => { const m = new THREE.Mesh(box, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); g.add(m); return m; };
@@ -425,13 +478,15 @@ const View3D = {
         add(glass, L * 0.55, 0.4, W * 1.01, L * 0.1, tall - 0.6, 0);
         if (st === 'ambulance') add(this.mat('#d7262e'), L * 1.01, 0.18, W * 1.01, 0, 1.0, 0);
       } else {
-        add(bodyMat, L, bodyH, W, 0, 0.3 + bodyH / 2, 0);
-        const cabL = st === 'sports' ? L * 0.38 : L * 0.5, cabX = st === 'sports' ? -L * 0.05 : -L * 0.06;
-        const cab = add(glass, cabL, tall - bodyH - 0.3, W * 0.86, cabX, 0.3 + bodyH + (tall - bodyH - 0.3) / 2, 0);
-        const roof = add(bodyMat, cabL * 0.8, 0.06, W * 0.84, cabX - cabL * 0.05, 0.3 + tall - 0.3 + 0.03, 0);
+        // 옆모습 윤곽을 밀어 만든 둥근 차체 + 좁은 유리 캐빈 + 지붕 (스타일마다 비율이 다르다)
+        const P_ = this.carProfile(st, L, W, tall, bodyH);
+        const bm = new THREE.Mesh(P_.body, bodyMat); g.add(bm);
+        const cab = new THREE.Mesh(P_.cab, glass); g.add(cab);
+        const roof = new THREE.Mesh(P_.roof, bodyMat); g.add(roof);
+        add(this.mat('#16181c'), L * 1.005, 0.12, W * 1.01, 0, 0.33, 0); // 아래 몰딩
         g.userData.cab = [cab, roof];
       }
-      for (const [x, z] of [[L * 0.32, W / 2 - 0.1], [L * 0.32, -W / 2 + 0.1], [-L * 0.32, W / 2 - 0.1], [-L * 0.32, -W / 2 + 0.1]]) { const w = new THREE.Mesh(this.geo.wheel, this.mat('#111')); w.rotation.x = Math.PI / 2; w.position.set(x, 0.34, z); g.add(w); }
+      for (const [x, z] of [[L * 0.32, W / 2 - 0.1], [L * 0.32, -W / 2 + 0.1], [-L * 0.32, W / 2 - 0.1], [-L * 0.32, -W / 2 + 0.1]]) { const rim = new THREE.Mesh(this.geo.rim, this.mat(st === 'sports' || st === 'super' || st === 'hyper' ? '#2b2b2e' : '#b8bec6')); rim.rotation.x = Math.PI / 2; rim.position.set(x, 0.34, z + Math.sign(z) * 0.1); g.add(rim); const w = new THREE.Mesh(this.geo.wheel, this.mat('#111')); w.rotation.x = Math.PI / 2; w.position.set(x, 0.34, z); g.add(w); }
       const hl = new THREE.MeshBasicMaterial({ color: 0xfff7d6 }), tlm = new THREE.MeshBasicMaterial({ color: 0x8a1a1a });
       for (const z of [-W / 2 + 0.3, W / 2 - 0.3]) { add(hl, 0.06, 0.16, 0.36, L / 2 + 0.01, 0.75, z); add(tlm, 0.06, 0.16, 0.36, -L / 2 - 0.01, 0.8, z); }
       g.userData.tail = tlm; g.userData.hl = hl;
@@ -456,15 +511,52 @@ const View3D = {
       for (const [x, z] of [[0.25, 0.1], [0.25, -0.1], [-0.25, 0.1], [-0.25, -0.1]]) { const l = new THREE.Mesh(box, m); l.scale.set(0.08, 0.28, 0.08); l.position.set(x, 0.14, z); g.add(l); }
       this.scene.add(g); return g;
     }
+    // (피부는 약간 자체 발광 → 그늘에서도 칙칙하지 않게)
+    // 사람: 둥근 몸통·팔다리(캡슐) + 얼굴(눈·눈썹·입) + 머리 모양(짧은/긴/포니테일/단발) — 여성은 가는 허리·치마·맨다리
+    const G = this.geo, F = !!p.female, dressed = F && p.dress;
     const shirt = new THREE.MeshLambertMaterial({ color: p.shirt }), pants = new THREE.MeshLambertMaterial({ color: p.pants });
+    const skinM = new THREE.MeshLambertMaterial({ color: p.skin, emissive: shade(p.skin, -0.55) }), hairC = p.kind === 'cop' ? '#15213f' : p.kind === 'gang' ? (GANGS[p.gang] || GANGS.dragon).band : p.hat || p.hair;
+    const hairM = new THREE.MeshLambertMaterial({ color: hairC }), shoeM = this.mat(F ? (p.shoe || '#2b1d1d') : '#1c1c1e');
+    const mesh = (geo, mat, sx, sy, sz, x, y, z, par = g) => { const m = new THREE.Mesh(geo, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); par.add(m); return m; };
     const legs = [];
-    for (const z of [-0.11, 0.11]) { const piv = new THREE.Group(); piv.position.set(0, 0.88, z); const l = new THREE.Mesh(box, pants); l.scale.set(0.18, 0.86, 0.18); l.position.y = -0.43; piv.add(l); g.add(piv); legs.push(piv); }
-    const t = new THREE.Mesh(box, shirt); t.scale.set(0.3, 0.62, 0.5); t.position.y = 1.2; g.add(t);
+    for (const z of [-0.1, 0.1]) {
+      const piv = new THREE.Group(); piv.position.set(0, 0.9, z * (F ? 0.85 : 1));
+      mesh(G.limb, dressed ? skinM : pants, F ? 0.82 : 1, 1, F ? 0.82 : 1, 0, -0.44, 0, piv);
+      mesh(G.box, shoeM, F ? 0.24 : 0.28, 0.08, F ? 0.1 : 0.13, 0.05, -0.87, 0, piv);
+      g.add(piv); legs.push(piv);
+    }
+    // 몸통: 가슴 + 허리(여성은 가늘게) + 골반
+    mesh(G.torso, shirt, F ? 0.66 : 0.8, 1, F ? 0.92 : 1.15, 0, 1.3, 0);
+    mesh(G.torso, dressed ? shirt : pants, F ? 0.62 : 0.76, 0.55, F ? 0.86 : 1.0, 0, 1.0, 0);
+    if (dressed) mesh(G.skirt, shirt, 0.95, 0.5, 0.95, 0, 0.72, 0);
     const arms = [];
-    for (const z of [-0.31, 0.31]) { const piv = new THREE.Group(); piv.position.set(0, 1.46, z); const a = new THREE.Mesh(box, shirt); a.scale.set(0.13, 0.6, 0.13); a.position.y = -0.3; piv.add(a); g.add(piv); arms.push(piv); }
-    const head = new THREE.Mesh(this.geo.head, new THREE.MeshLambertMaterial({ color: p.skin })); head.position.y = 1.65; head.scale.setScalar(1.05); g.add(head);
-    const hairC = p.kind === 'cop' ? '#15213f' : p.kind === 'gang' ? (GANGS[p.gang] || GANGS.dragon).band : p.hat || p.hair;
-    const hair = new THREE.Mesh(this.geo.head, new THREE.MeshLambertMaterial({ color: hairC })); hair.position.set(-0.03, 1.7, 0); hair.scale.set(1.05, 0.75, 1.1); g.add(hair);
+    for (const z of [-1, 1]) {
+      const piv = new THREE.Group(); piv.position.set(0, 1.5, z * (F ? 0.24 : 0.28));
+      mesh(G.arm, F && dressed ? skinM : shirt, 1, 1, 1, 0, -0.26, 0, piv);
+      mesh(G.hand, skinM, 1, 1, 1, 0, -0.55, 0, piv);
+      g.add(piv); arms.push(piv);
+    }
+    // 목·머리·얼굴 (앞 = +x)
+    mesh(G.limb, skinM, 0.7, 0.18, 0.7, 0, 1.6, 0);
+    const head = mesh(G.head, skinM, 1.0, F ? 1.12 : 1.08, 0.94, 0.01, 1.74, 0);
+    const eyeM = this.mat('#1b1b22'), browM = this.mat(shade(hairC, -0.2));
+    const whiteM = this.mat('#f4f1ec'), irisM = this.mat(p.eyeC || '#3a2418');
+    for (const z of [-0.047, 0.047]) {
+      mesh(G.eye, whiteM, 0.9, F ? 1.35 : 1.1, 1.4, 0.117, 1.757, z); // 흰자
+      mesh(G.eye, irisM, 0.8, F ? 1.1 : 0.9, 0.8, 0.13, 1.755, z);    // 눈동자
+      mesh(G.box, browM, 0.02, 0.012, 0.05, 0.12, 1.8, z);             // 눈썹
+      if (F) mesh(G.box, eyeM, 0.02, 0.01, 0.052, 0.125, 1.781, z);  // 속눈썹
+    }
+    if (F) { mesh(G.eye, this.mat(p.lip || '#c9385a'), 0.7, 0.45, 1.5, 0.128, 1.685, 0); for (const z of [-0.078, 0.078]) mesh(G.eye, this.mat('#f4a3a3'), 0.6, 0.5, 1.1, 0.112, 1.715, z); }
+    else mesh(G.box, this.mat('#8a5a4a'), 0.02, 0.01, 0.05, 0.122, 1.69, 0);
+    // 머리카락
+    const st = p.hairStyle || (F ? (p.id % 3 === 0 ? 'ponytail' : p.id % 3 === 1 ? 'long' : 'bob') : 'short');
+    const hair = mesh(G.cap, hairM, 1.02, 1.12, 0.98, -0.012, 1.745, 0); hair.material.side = THREE.DoubleSide;
+    if (st === 'long') { mesh(G.box, hairM, 0.09, 0.42, 0.28, -0.1, 1.56, 0); for (const z of [-0.12, 0.12]) mesh(G.box, hairM, 0.12, 0.3, 0.05, 0.0, 1.62, z); mesh(G.box, hairM, 0.035, 0.05, 0.22, 0.12, 1.83, 0); }
+    else if (st === 'ponytail') { mesh(G.hand, hairM, 1.2, 1.2, 1.2, -0.15, 1.78, 0); mesh(G.limb, hairM, 0.5, 0.3, 0.5, -0.19, 1.62, 0); mesh(G.box, hairM, 0.035, 0.05, 0.22, 0.12, 1.83, 0); }
+    else if (st === 'bob') { mesh(G.head, hairM, 1.08, 0.8, 1.1, -0.02, 1.72, 0); mesh(G.box, hairM, 0.035, 0.06, 0.24, 0.12, 1.82, 0); head.renderOrder = 1; }
+    if (p.earring) for (const z of [-0.13, 0.13]) mesh(G.eye, this.mat(p.earring), 0.8, 0.8, 0.8, 0.0, 1.67, z);
+    if (p.necklace) mesh(G.box, this.mat(p.necklace), 0.02, 0.02, 0.2, 0.1, 1.55, 0);
     const gun = new THREE.Mesh(box, this.mat('#1a1a1a')); gun.scale.set(0.5, 0.1, 0.08); gun.position.set(0.45, 1.2, 0.31); gun.visible = false; g.add(gun);
     if (p.kind === 'player') this.addStyle(g, p);
     g.userData = { legs, arms, gun, shirt, pants, sc: p.shirt, style: p.kind === 'player' ? styleKey(p) : '' };
@@ -479,7 +571,8 @@ const View3D = {
   },
   addStyle(g, p) {
     const box = this.geo.box, h = p.hatType, col = p.hatCol || '#1d1d1f', m = this.mat(col);
-    const add = (mat, sx, sy, sz, x, y, z) => { const o = new THREE.Mesh(box, mat); o.scale.set(sx, sy, sz); o.position.set(x, y, z); g.add(o); return o; };
+    const hg = new THREE.Group(); hg.position.y = 0.09; g.add(hg); // 새 머리 높이에 맞춰 모자를 올린다
+    const add = (mat, sx, sy, sz, x, y, z) => { const o = new THREE.Mesh(box, mat); o.scale.set(sx, sy, sz); o.position.set(x, y, z); hg.add(o); return o; };
     if (h === 'cap') { add(m, 0.32, 0.12, 0.32, -0.02, 1.8, 0); add(m, 0.16, 0.03, 0.26, 0.2, 1.75, 0); }
     else if (h === 'beanie') { add(m, 0.33, 0.18, 0.33, -0.02, 1.82, 0); }
     else if (h === 'fedora') { add(m, 0.55, 0.03, 0.55, -0.02, 1.77, 0); add(m, 0.3, 0.16, 0.3, -0.02, 1.86, 0); }

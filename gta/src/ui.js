@@ -61,7 +61,7 @@ function drawKeyHelp(c, s, top, pad) {
   } else {
     rows.push(['WASD', '이동'], ['Shift', '달리기'], ['클릭/Ctrl', '공격'], ['Q/E · 1~0', '무기 바꾸기'], ['F', '차 타기'], ['T', '소매치기']);
   }
-  rows.push(['B', '가방'], ['O', '조직 관리'], ['K', '부하 부르기'], ['C', '시점 바꾸기'], ['Z · +/−', '화면 거리']);
+  rows.push(['B', '가방'], ['I', '휴대폰'], ['O', '조직 관리'], ['K', '부하 부르기'], ['C', '시점 바꾸기'], ['Z · +/−', '화면 거리']);
   if (Jobs.active) rows.push(['X', '일 그만두기']);
   rows.push(['M', '지도 (G 구역 · V 사업체)'], ['P/Esc', '일시정지 · 저장'], ['F1', '이 안내 숨기기']);
   let y = Math.max(top + 24 * s, CH * 0.5 - rows.length * lh / 2);
@@ -384,6 +384,7 @@ function placeIcons() {
   if (pl.garage) out.push({ x: pl.garage.x, y: pl.garage.y, ch: 'G', c: '#f2c14e', label: '차고' });
   for (const k of Object.keys(BUSINESSES)) if (pl[k]) out.push({ x: pl[k].x, y: pl[k].y, ch: k === 'biz_casino' ? '♦' : '₩', c: k === 'biz_casino' ? '#ff5d8f' : Biz.has(k) ? '#7ae68f' : '#ffd166', label: BUSINESSES[k].name, lv: Biz.lv(k) });
   for (const m of World.marinas || []) out.push({ x: m.x, y: m.y, ch: '배', c: '#4fc3f7', label: '마리나(보트)' });
+  if (typeof GF_DEFS !== 'undefined') for (const d of GF_DEFS) { const q = World.places[d.spot]; if (q) out.push({ x: q.x + 6, y: q.y - 6, ch: '♥', c: '#ff7fb0', label: '여자친구 (만나서 연락처 받기)' }); }
   if (pl.mygarage) out.push({ x: pl.mygarage.x, y: pl.mygarage.y, ch: '차', c: '#9be15d', label: '내 차고' });
   if (pl.dealer) out.push({ x: pl.dealer.x, y: pl.dealer.y, ch: 'D', c: '#c77dff', label: '네온 모터스(차량 매매)' });
   for (const g of GANG_IDS) if (pl['hq_' + g]) out.push({ x: pl['hq_' + g].x, y: pl['hq_' + g].y, ch: GANGS[g].short, c: GANGS[g].color, label: GANGS[g].name + ' 보스', crown: !(Gangs.mine === g && Gangs.rank === 2) });
@@ -661,6 +662,7 @@ const Menu = {
     fBtn.onclick = () => { Settings.fps = !Settings.fps; Settings.save(); qLabel(); };
     if (Settings.quality === 'low') Perf.apply(true);
     document.getElementById('btn-view').onclick = () => { this.hidePause(); Game.state = 'play'; cycleView(); };
+    document.getElementById('btn-phone').onclick = () => { this.hidePause(); Game.state = 'play'; Phone.open(); };
     document.getElementById('btn-gang').onclick = () => { this.hidePause(); Game.state = 'play'; Shop.open('gang'); };
     document.getElementById('btn-backup').onclick = () => { this.hidePause(); Game.state = 'play'; Gangs.callBackup(); };
     document.getElementById('btn-quitjob').onclick = () => { Jobs.stop('일을 그만뒀다'); this.hidePause(); Game.state = 'play'; };

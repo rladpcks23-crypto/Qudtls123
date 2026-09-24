@@ -21,14 +21,27 @@ const NEWS = [
   ['CEO 횡령 의혹', -0.16], ['공장 화재', -0.12], ['실적 부진', -0.1], ['규제 당국 조사 착수', -0.14],
 ];
 const ESTATES = [
-  { id: 'e_hills', name: '웨스트 힐즈 단독주택', price: 60000, rent: 300 },
-  { id: 'e_studio', name: '노스 게이트 원룸 건물', price: 120000, rent: 650 },
-  { id: 'e_shops', name: '하버 포인트 상가', price: 150000, rent: 800 },
-  { id: 'e_apt', name: '미드타운 아파트 10세대', price: 220000, rent: 1200 },
-  { id: 'e_condo', name: '코랄 베이 해변 콘도', price: 350000, rent: 2000 },
-  { id: 'e_office', name: '다운타운 오피스 한 층', price: 600000, rent: 3500 },
-  { id: 'e_villa', name: '레이크뷰 빌라 단지', price: 900000, rent: 5500 },
-  { id: 'e_pent', name: '스카이라인 펜트하우스', price: 2500000, rent: 16000 },
+  { id: 'e_hills', name: '웨스트 힐즈 단독주택', price: 60000, rent: 390 },
+  { id: 'e_studio', name: '노스 게이트 원룸 건물', price: 120000, rent: 840 },
+  { id: 'e_shops', name: '하버 포인트 상가', price: 150000, rent: 1040 },
+  { id: 'e_apt', name: '미드타운 아파트 10세대', price: 220000, rent: 1600 },
+  { id: 'e_condo', name: '코랄 베이 해변 콘도', price: 350000, rent: 2600 },
+  { id: 'e_office', name: '다운타운 오피스 한 층', price: 600000, rent: 4600 },
+  { id: 'e_villa', name: '레이크뷰 빌라 단지', price: 900000, rent: 7200 },
+  { id: 'e_pent', name: '스카이라인 펜트하우스', price: 2500000, rent: 20800 },
+  { id: 'e_motel', name: '선셋 비치 모텔', price: 180000, rent: 1300 },
+  { id: 'e_row', name: '올드 타운 연립주택 8채', price: 420000, rent: 3100 },
+  { id: 'e_mall', name: '리버사이드 쇼핑몰 상가동', price: 1200000, rent: 9600 },
+  { id: 'e_hotel', name: '유니언 스퀘어 부티크 호텔', price: 1800000, rent: 14300 },
+  { id: 'e_tower', name: '미드타운 주상복합 타워', price: 4000000, rent: 32500 },
+  { id: 'e_resort', name: '코랄 베이 리조트', price: 6500000, rent: 53300 },
+  { id: 'e_logi', name: '아이언 밸리 물류센터', price: 9000000, rent: 74100 },
+  { id: 'e_hq', name: '다운타운 본사 빌딩 통째로', price: 15000000, rent: 124800 },
+  { id: 'e_marina', name: '하버 포인트 요트 마리나', price: 25000000, rent: 208000 },
+  { id: 'e_casino', name: '네온 스트립 카지노 호텔', price: 40000000, rent: 338000 },
+  { id: 'e_stadium', name: '네온 하버 돔 경기장', price: 70000000, rent: 598000 },
+  { id: 'e_island', name: '터미널 아일랜드 전체', price: 120000000, rent: 1040000 },
+  { id: 'e_sky', name: '네온 스카이 타워 (도시 최고층)', price: 250000000, rent: 2210000 },
 ];
 const WAREHOUSES = { wh_harbor: { name: '하버 창고', price: 120000 }, wh_iron: { name: '밸리 창고', price: 90000 }, wh_north: { name: '노스 창고', price: 150000 } };
 const WH_CAP = 60;
@@ -99,13 +112,13 @@ const Finance = {
         P.money += amt; Sfx.cash(); UI.toast(`임대 수입 +$${amt.toLocaleString()}`);
       }
     }
-    // 중앙은행 이자 (1분마다: 예금 0.2%, 대출 0.6%)
+    // 중앙은행 이자 (1분마다: 예금 3%, 대출 4% — 대출이 예금보다 높아야 빌려서 맡기는 무한 돈복사가 안 된다)
     this.intT += dt;
     if (this.intT >= 60) {
       this.intT -= 60;
-      if (this.bank.dep > 0) this.bank.dep *= 1.002;
+      if (this.bank.dep > 0) this.bank.dep *= 1.03;
       if (this.bank.debt > 0) {
-        this.bank.debt *= 1.006;
+        this.bank.debt *= 1.04;
         if (this.bank.debt > this.loanLimit() * 1.2) { const take = Math.min(this.bank.dep, this.bank.debt); this.bank.dep -= take; this.bank.debt -= take; if (take > 0) UI.toast(`연체 — 예금에서 $${Math.round(take).toLocaleString()} 자동 상환`); }
       }
     }
@@ -356,7 +369,7 @@ const FinUI = {
       row('화물 판매 운송', '트럭으로 먼 곳의 구매자에게 — 밀수품이 있으면 경찰이 붙을 수 있다', [['출발', () => { this.close(); F.startRun(k, 'sell'); }, n > 0 && !F.job && !Heist.active]]);
     } else if (k === 'cbank') {
       const B = F.bank;
-      set('네온 중앙은행', '예금은 1분마다 0.2% 이자 · 대출은 1분마다 0.6% · 연체가 심하면 예금에서 자동 상환');
+      set('네온 중앙은행', '예금은 1분마다 3% 이자 · 대출은 1분마다 4% · 연체가 심하면 예금에서 자동 상환');
       row(`예금 ${$(B.dep)}`, '예금한 돈은 죽거나 잡혀도 잃지 않는다', [['전부 입금', () => { B.dep += P.money; P.money = 0; Sfx.cash(); Save.write(); }, P.money > 0], ['$10,000 입금', () => { B.dep += 10000; P.money -= 10000; Sfx.cash(); Save.write(); }, P.money >= 10000], ['$10,000 출금', () => { B.dep -= 10000; P.money += 10000; Sfx.cash(); Save.write(); }, B.dep >= 10000], ['전부 출금', () => { P.money += Math.floor(B.dep); B.dep = 0; Sfx.cash(); Save.write(); }, B.dep >= 1, 'ghost']]);
       row(`대출 ${$(B.debt)} / 한도 ${$(F.loanLimit())}`, '한도 = 순자산의 절반 (최소 $50,000)', [['$50,000 대출', () => { B.debt += 50000; P.money += 50000; Sfx.cash(); Save.write(); }, B.debt + 50000 <= F.loanLimit()], ['상환', () => { const r = Math.min(P.money, B.debt); P.money -= r; B.debt -= r; if (B.debt < 1) B.debt = 0; Sfx.cash(); Save.write(); }, B.debt > 0 && P.money > 0, 'ghost']]);
       row('금고', '중앙은행 금고를 털고 싶다면 작전실에서 준비하라', []);

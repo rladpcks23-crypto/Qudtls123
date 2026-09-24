@@ -161,6 +161,8 @@ const Game = {
       if (keyHit('Escape', 'KeyM', 'Tab', 'PadBack', 'PadB', 'PadStart')) { this.state = 'play'; this.pickTurf = false; }
       if (keyHit('KeyG', 'PadY')) this.showTurf = !this.showTurf;
       if (keyHit('KeyV')) this.showBiz = !this.showBiz;
+    } else if (st === 'cutscene') {
+      Cutscene.update(dt);
     } else if (st === 'paused') {
       if (keyHit('Escape', 'KeyP', 'PadStart', 'PadB')) this.resume();
     } else if (st === 'menu') {
@@ -177,7 +179,8 @@ const Game = {
     } else if (st === 'bag') {
       if (keyHit('Escape', 'KeyB', 'PadB')) Bag.close();
     } else if (st === 'shop') {
-      if (keyHit('Escape', 'PadB')) { if (!document.getElementById('jobs').hidden) Jobs.closeBoard(); else if (!document.getElementById('casino').hidden) { if (!Casino.busy) Casino.close(); } else Shop.close(); }
+      if (keyHit('Escape', 'PadB', 'KeyI') && Phone.close()) { /* 휴대폰 닫기 */ }
+      else if (keyHit('Escape', 'PadB')) { if (!document.getElementById('jobs').hidden) Jobs.closeBoard(); else if (!document.getElementById('casino').hidden) { if (!Casino.busy) Casino.close(); } else Shop.close(); }
     }
     try { Sfx.update(dt); } catch (e) { /* 오디오 오류는 게임을 멈추지 않게 */ }
     UI.update(st === 'play' || st === 'wasted' || st === 'busted' ? dt : 0);
@@ -193,6 +196,7 @@ const Game = {
     if (st === 'play' || st === 'wasted' || st === 'busted' || st === 'shop' || st === 'paused' || st === 'bag' || st === 'ward' || st === 'fin') { drawHUD(dt); if (st === 'play') drawLockHUD(); }
     if (st === 'wasted' || st === 'busted') drawDeathScreen(st, this.deathT);
     if (st === 'map') drawFullMap();
+    if (st === 'cutscene') Cutscene.draw();
   },
 
   // 메뉴 배경: 교통 차량 하나를 따라가는 카메라
@@ -235,6 +239,7 @@ const Game = {
       if (keyHit('KeyR', 'PadDown') && P.car) { Radio.cycle(); }
       if (keyHit('KeyB')) Bag.open();
       if (keyHit('KeyO')) Shop.open('gang');
+      if (keyHit('KeyI')) Phone.open();
       if (keyHit('F1')) toggleKeyHelp();
       if (keyHit('KeyK')) Gangs.callBackup();
       if (keyHit('KeyC', 'PadUp')) cycleView();
@@ -258,7 +263,7 @@ const Game = {
     Pick.scan();
     if (Pick.target !== this._lastPick) { this._lastPick = Pick.target; document.body.classList.toggle('cansteal', !!Pick.target); }
     updatePickups(dt);
-    Events.update(dt); Stunts.update(dt); Races.update(dt);
+    Events.update(dt); Stunts.update(dt); Races.update(dt); GF.update(dt); Achieve.update(dt); LifeMsgs.update(dt); Tycoon.update(dt);
     this.places(dt);
     // 사망
     if (P.hp <= 0 && this.state === 'play') this.wasted();
@@ -570,7 +575,7 @@ function updatePlayerFoot(P, dt) {
     if (!W.melee && !(P.inv[P.weapon] > 0)) { cycleWeapon(P, 1); }
     else {
       P.cd = W.rate;
-      if (!W.melee) { P.inv[P.weapon]--; if (P.inv[P.weapon] <= 0) { delete P.inv[P.weapon]; setTimeout(() => { if (!(P.inv[P.weapon] > 0)) P.weapon = 'fist'; }, 200); } }
+      if (!W.melee && !P.infAmmo) { P.inv[P.weapon]--; if (P.inv[P.weapon] <= 0) { delete P.inv[P.weapon]; setTimeout(() => { if (!(P.inv[P.weapon] > 0)) P.weapon = 'fist'; }, 200); } }
       fireWeapon(P, P.weapon, P.aim);
       if (!W.melee) { P.vx -= Math.cos(P.aim) * 0.4; P.vy -= Math.sin(P.aim) * 0.4; }
     }
@@ -596,7 +601,7 @@ function updatePlayerInCar(P, dt) {
     else if (Pad.active) { ang = (Pad.rx || Pad.ry) ? Math.atan2(Pad.ry, Pad.rx) : (() => { const t = nearestThreat({ px: c.x, py: c.y, a: c.a }, 25, 1.4); return t ? Math.atan2(t.y - c.y, t.x - c.x) : c.a; })(); }
     else if (!Input.usingTouch) { const [wx, wy] = screenToWorld(Input.mouse.x, Input.mouse.y); ang = Math.atan2(wy - c.y, wx - c.x); }
     else { const t = nearestThreat({ px: c.x, py: c.y, a: c.a }, 25, 1.4); ang = t ? Math.atan2(t.y - c.y, t.x - c.x) : c.a; }
-    P.cd = W.rate * 1.2; P.inv[P.weapon]--;
+    P.cd = W.rate * 1.2; if (!P.infAmmo) P.inv[P.weapon]--;
     fireWeapon(P, P.weapon, ang, 0.8);
   }
 }

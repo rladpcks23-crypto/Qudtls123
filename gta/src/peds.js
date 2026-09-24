@@ -66,6 +66,7 @@ class Ped {
     if (kind === 'swat') { this.hp = 160; this.shirt = '#20252b'; this.pants = '#15181c'; this.hair = '#20252b'; this.weapon = 'rifle'; }
     if (kind === 'gang') { this.gang = 'dragon'; this.hp = 80; this.shirt = '#1f8a4c'; this.pants = '#1a1a1a'; this.weapon = chance(0.35) ? 'smg' : chance(0.5) ? 'pistol' : 'bat'; this.state = 'idle'; }
     if (kind === 'target') { this.hp = 120; this.shirt = '#f2f2f2'; this.pants = '#111'; this.weapon = 'pistol'; this.state = 'idle'; }
+    if (kind === 'civ' && chance(0.45)) { this.female = true; this.dress = chance(0.45); this.hair = pick(['#2a1a14', '#111', '#6b3b1f', '#b5763c', '#d9b27c', '#3b2a1e', '#8a3b2a']); if (this.dress) this.shirt = pick(['#e85d8a', '#7b5cff', '#2ec4b6', '#f4a261', '#e63946', '#f1faee', '#ffb4a2', '#264653']); }
     this.maxHp = this.hp;
   }
   get px() { return this.car ? this.car.x : this.x; }
