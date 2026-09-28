@@ -119,7 +119,8 @@ const Fwy = {
     while (ai.route.length < 14 && guard++ < 40) {
       const seg = F.segs[w.seg], n = seg.pts.length;
       w.i += w.dir * 2;
-      if (w.i >= 0 && w.i < n) { ai.route.push(this.lanePt(seg, w.i, w.dir, w.lane)); continue; }
+      if (w.i >= 0 && w.i < n) { const q = this.lanePt(seg, w.i, w.dir, w.lane); if (w.vmul) q.v *= w.vmul; ai.route.push(q); continue; }
+      if (w.path) { w.pi = (w.pi + 1) % w.path.length; const [sid, d] = w.path[w.pi]; w.seg = sid; w.dir = d; w.i = d > 0 ? 0 : F.segs[sid].pts.length - 1; continue; } // 정해진 길 (레이스)
       const { N, out } = this.nextOf(seg, w.dir);
       if (!out.length || N.end) { ai.fwEnd = true; return; }
       // 분기: 오른쪽 차선이면 바깥쪽 길을 조금 더 자주 (단순히 무작위)

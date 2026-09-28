@@ -2,7 +2,7 @@
 
 > 이 문서만 읽어도 게임이 무엇이고, 무엇이 이미 있고, 앞으로 무엇을 하려는지 알 수 있게 쓴 요약이다.
 > 코드를 직접 고칠 AI는 저장소 최상위의 `knowledge.md`(파일 구조·수정 요령)도 함께 읽는다.
-> 버전: **v2.21** (2026-09) · 저장소 `gta/` 폴더 · 브랜치 `claude/gta-style-game-dev-j6qp50`
+> 버전: **v2.22** (2026-09) · 저장소 `gta/` 폴더 · 브랜치 `claude/gta-style-game-dev-j6qp50`
 
 ---
 
@@ -164,7 +164,8 @@ GTA 1·2처럼 위에서 내려다보는 **오픈월드 범죄 액션 게임**�
 | v2.18 | 카운티의 삶: 연료·정비, 일과 NPC, 보안관, 카운티 FM, 야생동물, 이벤트 20종, 카운티 의뢰 3개, 픽업·ATV·트랙터 |
 | v2.19 | 튜닝(네온 커스텀), 카운티 가게 인수·지역 일거리, 초대형 프로젝트 4종(지도가 바뀐다) |
 | v2.20 | 스토리 3부(27~32), 실버 피크 나선 산길(3D 높이·오르막 물리), 개발 부지 지도, 2D 공간 인덱스 |
-| **v2.21** | 억만장자 콘텐츠(휴대폰 앱): 동네 27곳 매입·칭호·동상, 우주 계획 4단계(로켓 발사), 320m 스카이 타워 II, 초호화 요트, 사설 군대(경호팀·전차·헬기·전투기), 레드 카운티 해안선(만·곶), 공항·군 기지 섬을 본섬과 연결 |
+| v2.21 | 억만장자 콘텐츠(휴대폰 앱): 동네 27곳 매입·칭호·동상, 우주 계획 4단계(로켓 발사), 320m 스카이 타워 II, 초호화 요트, 사설 군대(경호팀·전차·헬기·전투기), 레드 카운티 해안선(만·곶), 공항·군 기지 섬을 본섬과 연결 |
+| **v2.22** | 레드 카운티 굽은 고속도로망(분기점·교통), 휴게소·과속 카메라·순환로 레이스·금괴·폐광·사냥 대회·UFO, 공항·기지 연결 확대, 모래사장 폭 변화 |
 
 ## 6. 앞으로 하려는 업데이트 (후보 — 의견을 듣고 싶은 부분)
 
@@ -180,10 +181,10 @@ v2.18~2.20에서 카운티 생활·튜닝·지역 경제·초대형 프로젝트
 ## 7. 기술 구조 (코드를 볼 AI용)
 
 - `gta/src/*.js`를 `build.py`의 `ORDER` 순서대로 이어 붙인다. **전역 스코프를 공유한다** (import 없음)
-  - `core` → `world` → `county` → `vehicles` → `peds` → `police` → `missions` → `jobs` → `npc`
+  - `core` → `world` → `county` → `freeway`(굽은 고속도로 `Fwy`) → `vehicles` → `peds` → `police` → `missions` → `jobs` → `npc`
   - → `military` → `render` → `view3d` → `ui` → `economy` → `gangs` → `empire` → `finance`
   - → `wardrobe` → `casino` → `events` → `stunts` → `life` → `story` → `tycoon` → `garage`(연료·정비) → `tuning`(튜닝)
-  - → `rural`(일과 NPC·보안관·카운티 차량·산길 물리) → `events2`(이벤트 14종·동물) → `sidequest`(카운티 의뢰) → `chapter3`(3부) → `region`(지역 경제) → `mega`(초대형 프로젝트·개발 부지 지도) → `billionaire`(억만장자 콘텐츠 `Bill`) → `main`
+  - → `rural`(일과 NPC·보안관·카운티 차량·산길 물리) → `events2`(이벤트 14종·동물) → `sidequest`(카운티 의뢰) → `chapter3`(3부) → `region`(지역 경제) → `mega`(초대형 프로젝트·개발 부지 지도) → `billionaire`(억만장자 콘텐츠 `Bill`) → `countyfun`(카운티 즐길 거리 `CountyFun`) → `main`
 - 맵 생성
   - `genWorld(seed)`는 `genCity`(도시 640×640, 예전과 동일) → `widenWorld(1400,640)` → `genCounty` 순서로 돈다
   - 그 뒤 `joinIslets()`(county.js)가 공항 섬·군 기지 섬과 본섬 사이 바다를 메운다 (`World.joined`)
@@ -193,6 +194,7 @@ v2.18~2.20에서 카운티 생활·튜닝·지역 경제·초대형 프로젝트
   - 산 높이는 `World.rockH`, 3D 지형은 `mountainH(tx,ty)`, 산길 높이는 `groundZ(x,y)` (`World.mtMask`, `World.mtPath`)
 - 실행 중 지도 고치기: `WorldEdit` (mega.js) — 타일·건물·나무 추가 후 미니맵·3D 청크·공간 인덱스 갱신
 - 도로
+  - 굽은 고속도로(v2.22)는 노드 그래프와 따로: `World.fwy {nodes, segs[pts]}`, 칸은 ROAD+`roadK` 8 (가장자리는 `World.fwyG`의 원래 땅 색), 띠는 `Fwy.draw()`가 drawGround 끝에서 그린다. 교통은 `car.ai.fw`로 `Fwy.plan`
   - 노드·간선 그래프는 `World.nodes`/`edgesList`, 축 방향 직선만 쓴다
   - `roadK`: 1 세로, 2 가로, 3 교차로, 4 대로, 5 골목, 6/7 고속도로 바깥 차선
   - 카운티 4차선은 `World.hwEdges`

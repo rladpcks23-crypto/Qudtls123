@@ -62,6 +62,8 @@ bash packaging/desktop/build.sh  # release/NeonHarbor-PC.exe (electron-builder)
 | `region.js` | 카운티 가게 인수 `COUNTY_BIZ`/`Region`, 지역 일거리 `WORK_DEFS`(새 단계 `STEP.plow`·`STEP.buoys`) |
 | `mega.js` | 초대형 프로젝트 `MEGA_DEFS`/`Mega`, 실행 중 지도 고치기 `WorldEdit`, 개발 부지 지도 `drawDevSites` |
 | `billionaire.js` | 억만장자 콘텐츠 `Bill`: 동네 매입 `HOOD_PRICE`, 우주 계획 `SPACE`(로켓 발사), 스카이 타워 II, 요트, 사설 군대 `PMC_VEH`·경호원 `pmcAI`, 휴대폰 [억만장자] 앱 |
+| `freeway.js` | 굽은 고속도로망 `fwyGen`(카운티 생성 중)·`Fwy`(차선 점·분기·교통 채우기·2D/3D 띠 그리기) |
+| `countyfun.js` | 카운티 즐길 거리 `CountyFun`: 휴게소·과속 카메라·순환로 레이스·금괴·폐광·사냥 대회·UFO |
 | `main.js` | `Game` 루프, 인구 관리 `populate`, 플레이어 조작, 카메라, 사망·체포·리스폰, 장소 진입 `places()` |
 | `shell.html` | 메뉴·상점·카지노 마크업과 **모든 CSS**(모바일 버튼 배치 포함) |
 
