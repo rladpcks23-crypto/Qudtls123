@@ -79,9 +79,9 @@ function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 1.5);
   W = Math.floor(innerWidth * DPR); H = Math.floor(innerHeight * DPR);
   cv.width = W; cv.height = H;
-  const eh = Math.min(H * 0.33, (W * 0.55) / 1.75);
+  const eh = Math.min(H * 0.26, (W * 0.5) / 1.75);
   eye.setSize(eh * 1.75, eh);
-  eyeCss = { x: innerWidth / 2, y: innerHeight * 0.47 };
+  eyeCss = { x: innerWidth / 2, y: innerHeight * 0.44 };
   const n = Math.round((W * H) / (11000 * DPR * DPR));
   stars = Array.from({ length: n }, () => ({
     x: Math.random() * W, y: Math.random() * H, r: rand(0.4, 1.3) * DPR, p: rand(0, 7), s: rand(0.4, 1.3),

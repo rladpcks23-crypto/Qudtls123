@@ -1,6 +1,8 @@
-// The giant eye: a round, watching eye with a red-black iris and a slowly
-// turning halo. It follows the cursor, blinks rarely, and narrows into a
-// glare (slit pupil, flaring glow) when something gets force-closed. Shared by wallpaper.html and toast.html.
+// The giant eye: an Eye of Horus with a red-black iris, gold-rimmed lapis
+// liner, brow, teardrop and spiral, inside a slowly turning sun halo. It
+// follows the cursor, blinks rarely, and narrows into a glare (slit pupil,
+// flaring red glow) when something gets force-closed. Shared by
+// wallpaper.html and toast.html.
 //
 // All sizes are in canvas pixels; callers scale by devicePixelRatio.
 (function () {
@@ -169,6 +171,7 @@
       const { w, h, R } = this;
       if (!w) return;
       const s = this.squint, bl = this.blink;
+      cx -= w * 0.18; // balance the emblem's long tail on the right
       const L = cx - w / 2, Rt = cx + w / 2;
       // Round, lens-shaped opening: wide control points, nearly symmetric lids.
       const up = h * 0.66 * (1 - 0.66 * s);
@@ -244,18 +247,108 @@
       ctx.fillRect(L, botY - h * 0.2, w, h * 0.3);
       ctx.restore();
 
-      // Thin luminous rim instead of lids and lashes.
+      this.drawHorus(ctx, cx, cy, s, { L, Rt, upY, lo, ux, lx });
+    }
+
+    // Eye-of-Horus ornament: liner with a long tail, brow band, teardrop
+    // and spiral. Each band is stroked twice (wide gold, then narrower
+    // lapis) so the pieces merge with one continuous gold outline.
+    drawHorus(ctx, cx, cy, s, g) {
+      const { w, h } = this;
+      const { L, Rt, upY, lo, ux, lx } = g;
+      const gold = `rgb(${Math.round(232 + 23 * s)},${Math.round(186 - 110 * s)},${Math.round(92 - 40 * s)})`;
+      const lapis = ctx.createLinearGradient(0, cy - h, 0, cy + h);
+      lapis.addColorStop(0, "#27509f");
+      lapis.addColorStop(0.5, "#15306b");
+      lapis.addColorStop(1, "#0b1a40");
+
+      const drop = s * h * 0.22; // the brow comes down into a frown
+      const tailY = cy - h * 0.04;
+      const bands = [
+        // upper liner, following the (moving) upper lid, into the tail
+        { width: 0.11, cap: "butt", path: () => {
+          ctx.moveTo(L - w * 0.03, cy + h * 0.01);
+          ctx.bezierCurveTo(cx - ux, cy + upY - h * 0.05, cx + ux, cy + upY - h * 0.05, Rt, tailY);
+          ctx.lineTo(Rt + w * 0.46, tailY - h * 0.03);
+        } },
+        // lower liner
+        { width: 0.06, cap: "round", path: () => {
+          ctx.moveTo(L - w * 0.03, cy + h * 0.01);
+          ctx.bezierCurveTo(cx - lx, cy + lo + h * 0.03, cx + lx, cy + lo + h * 0.03, Rt, tailY);
+        } },
+        // brow
+        { width: 0.12, cap: "round", path: () => {
+          ctx.moveTo(L - w * 0.04, cy - h * 0.55 + drop * 1.3);
+          ctx.quadraticCurveTo(cx - w * 0.05, cy - h * 1.0 + drop, Rt + w * 0.08, cy - h * 0.74 + drop * 0.6);
+          ctx.lineTo(Rt + w * 0.46, cy - h * 0.68 + drop * 0.3);
+        } },
+        // spiral: sweeps down and right from under the eye, then curls
+        { width: 0.06, cap: "round", path: () => {
+          const x0 = cx + w * 0.02, y0 = cy + lo * 0.78 + h * 0.03;
+          const ex = Rt + w * 0.3, ey = cy + h * 0.68;
+          ctx.moveTo(x0, y0);
+          ctx.bezierCurveTo(cx + w * 0.2, cy + h * 1.0, Rt + w * 0.12, cy + h * 1.02, ex, ey);
+          const ccx = Rt + w * 0.2, ccy = cy + h * 0.6;
+          const a0 = Math.atan2(ey - ccy, ex - ccx), r0 = Math.hypot(ex - ccx, ey - ccy);
+          for (let i = 1; i <= 40; i++) {
+            const t = i / 40;
+            const a = a0 - t * TAU * 1.3, r = r0 * (1 - 0.8 * t);
+            ctx.lineTo(ccx + Math.cos(a) * r, ccy + Math.sin(a) * r);
+          }
+        } },
+      ];
+      const tear = () => {
+        const tx = cx - w * 0.14, ty = cy + lo * 0.72;
+        ctx.moveTo(tx - w * 0.035, ty);
+        ctx.lineTo(tx + w * 0.035, ty);
+        ctx.lineTo(tx + w * 0.02, cy + h * 1.02);
+        ctx.lineTo(tx - w * 0.1, cy + h * 1.02);
+        ctx.closePath();
+      };
+
       ctx.save();
-      ctx.shadowColor = `rgba(255,60,60,${0.6 + 0.4 * s})`;
-      ctx.shadowBlur = h * (0.08 + 0.1 * s);
-      ctx.strokeStyle = `rgba(255,${Math.round(190 - 150 * s)},${Math.round(180 - 140 * s)},${0.55 + 0.35 * s})`;
+      ctx.lineJoin = "round";
+      // Gold pass (with a glow that turns red when angry).
+      ctx.shadowColor = `rgba(255,${Math.round(170 - 130 * s)},60,${0.35 + 0.5 * s})`;
+      ctx.shadowBlur = h * (0.06 + 0.12 * s);
+      ctx.fillStyle = gold;
+      ctx.strokeStyle = gold;
+      ctx.lineWidth = h * 0.05;
+      ctx.beginPath(); tear(); ctx.fill(); ctx.stroke();
+      for (const b of bands) {
+        ctx.lineCap = b.cap;
+        ctx.lineWidth = h * (b.width + 0.05);
+        ctx.beginPath(); b.path(); ctx.stroke();
+      }
+      // Lapis pass.
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = lapis;
+      ctx.strokeStyle = lapis;
+      ctx.beginPath(); tear(); ctx.fill();
+      for (const b of bands) {
+        ctx.lineCap = b.cap;
+        ctx.lineWidth = h * b.width;
+        ctx.beginPath(); b.path(); ctx.stroke();
+      }
+      // Gold hieroglyph-ish marks along the brow band.
+      ctx.strokeStyle = gold;
       ctx.lineWidth = h * 0.012;
-      ctx.beginPath();
-      ctx.moveTo(L, cy);
-      upper();
-      lower();
-      ctx.closePath();
-      ctx.stroke();
+      ctx.lineCap = "round";
+      const bx0 = L - w * 0.04, by0 = cy - h * 0.55 + drop * 1.3;
+      const bx1 = cx - w * 0.05, by1 = cy - h * 1.0 + drop;
+      const bx2 = Rt + w * 0.08, by2 = cy - h * 0.74 + drop * 0.6;
+      for (let i = 1; i < 14; i++) {
+        const t = i / 14, u = 1 - t;
+        const x = u * u * bx0 + 2 * u * t * bx1 + t * t * bx2;
+        const y = u * u * by0 + 2 * u * t * by1 + t * t * by2;
+        const dx = 2 * u * (bx1 - bx0) + 2 * t * (bx2 - bx1), dy = 2 * u * (by1 - by0) + 2 * t * (by2 - by1);
+        const m = Math.hypot(dx, dy) || 1;
+        const nx = -dy / m, ny = dx / m, len = h * (i % 3 === 0 ? 0.04 : 0.022);
+        ctx.beginPath();
+        ctx.moveTo(x - nx * len, y - ny * len);
+        ctx.lineTo(x + nx * len, y + ny * len);
+        ctx.stroke();
+      }
       ctx.restore();
     }
 
@@ -263,7 +356,7 @@
     drawHalo(ctx, cx, cy, now, s) {
       const { w } = this;
       const spin = now / 60000;
-      const col = (a) => `rgba(255,${Math.round(200 - 160 * s)},${Math.round(200 - 160 * s)},${a})`;
+      const col = (a) => `rgba(255,${Math.round(196 - 156 * s)},${Math.round(110 - 70 * s)},${a})`;
       ctx.save();
       ctx.lineCap = "round";
 
@@ -272,7 +365,7 @@
       for (let i = 0; i < rays; i++) {
         const a = (i / rays) * TAU + spin * 0.5;
         const flick = 0.5 + 0.5 * Math.sin(now / 2200 + i * 1.7);
-        const r1 = w * 0.6, r2 = w * (0.72 + 0.1 * flick + 0.08 * s);
+        const r1 = w * 0.78, r2 = w * (0.92 + 0.12 * flick + 0.1 * s);
         const g = ctx.createLinearGradient(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1, cx + Math.cos(a) * r2, cy + Math.sin(a) * r2);
         g.addColorStop(0, col(0.05 + 0.05 * flick + 0.12 * s));
         g.addColorStop(1, col(0));
@@ -287,20 +380,20 @@
       // Rings: one solid, one dashed turning the other way, one with ticks.
       ctx.strokeStyle = col(0.14 + 0.25 * s);
       ctx.lineWidth = w * 0.002;
-      ctx.beginPath(); ctx.arc(cx, cy, w * 0.56, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(cx, cy, w * 0.72, 0, TAU); ctx.stroke();
 
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(-spin * (1 + 4 * s) * TAU);
       ctx.setLineDash([w * 0.03, w * 0.02]);
       ctx.strokeStyle = col(0.1 + 0.2 * s);
-      ctx.beginPath(); ctx.arc(0, 0, w * 0.6, 0, TAU); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, w * 0.76, 0, TAU); ctx.stroke();
       ctx.setLineDash([]);
       ctx.rotate(spin * (2 + 6 * s) * TAU);
       ctx.strokeStyle = col(0.18 + 0.3 * s);
       for (let i = 0; i < 12; i++) {
         const a = (i / 12) * TAU;
-        const r1 = w * 0.64, r2 = w * (i % 3 === 0 ? 0.68 : 0.66);
+        const r1 = w * 0.8, r2 = w * (i % 3 === 0 ? 0.85 : 0.83);
         ctx.beginPath();
         ctx.moveTo(Math.cos(a) * r1, Math.sin(a) * r1);
         ctx.lineTo(Math.cos(a) * r2, Math.sin(a) * r2);

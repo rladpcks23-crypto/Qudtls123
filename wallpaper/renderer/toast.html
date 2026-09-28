@@ -35,7 +35,7 @@ function resize() {
   DPR = window.devicePixelRatio || 1;
   cv.width = Math.floor(innerWidth * DPR);
   cv.height = Math.floor(innerHeight * DPR);
-  eye.setSize(245 * DPR, 140 * DPR);
+  eye.setSize(175 * DPR, 100 * DPR);
   eye.auraR = 118 * DPR; // fade out before the window edge
   eye.halo = false; // no room for it in the small overlay
 }
@@ -48,12 +48,12 @@ function frame(t) {
   const dt = Math.min(t - last, 100); last = t;
   eye.update(dt, t);
   ctx.clearRect(0, 0, cv.width, cv.height);
-  eye.draw(ctx, cv.width / 2, 125 * DPR, t);
+  eye.draw(ctx, cv.width / 2, 112 * DPR, t);
 }
 requestAnimationFrame(frame);
 
 window.studylock.onCursor((p) => {
-  eye.lookAt(Math.tanh((p.x - innerWidth / 2) / 500), Math.tanh((p.y - 125) / 400));
+  eye.lookAt(Math.tanh((p.x - innerWidth / 2) / 500), Math.tanh((p.y - 112) / 400));
 });
 
 let hideTimer = null;
