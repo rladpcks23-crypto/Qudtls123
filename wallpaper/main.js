@@ -165,6 +165,11 @@ function createWallpapers() {
   const minX = Math.min(...phys.map((r) => r.x));
   const minY = Math.min(...phys.map((r) => r.y));
 
+  // Two or more monitors: the outermost ones get the left/right eye of a pair.
+  const byX = [...displays].sort((a, b) => a.bounds.x - b.bounds.x);
+  const sideOf = (d) =>
+    displays.length < 2 ? "single" : d === byX[0] ? "left" : d === byX[byX.length - 1] ? "right" : "single";
+
   let pending = displays.length;
   const specs = [];
   displays.forEach((d, i) => {
@@ -184,7 +189,7 @@ function createWallpapers() {
       },
     });
     win.__bounds = d.bounds; // getBounds() is meaningless once reparented
-    win.loadFile(path.join(__dirname, "renderer", "wallpaper.html"));
+    win.loadFile(path.join(__dirname, "renderer", "wallpaper.html"), { query: { side: sideOf(d) } });
     win.once("ready-to-show", () => {
       const r = phys[i];
       specs[i] = [hwndOf(win), r.x - minX, r.y - minY, r.width, r.height].join(",");
