@@ -473,6 +473,7 @@ function drawRadar(s) {
     if (isAir(P.car)) txt(c, `고도 ${Math.round(P.car.alt || 0)}m`, sx, sy - (Radio.station > 0 ? 52 : 34) * s, `${16 * s}px ${FONT_NUM}`, '#9fd8ff', 'rgba(0,0,0,0.9)', 3, 'left');
     const hw = 70 * s; c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(sx, sy + 6 * s, hw, 5 * s);
     const hpk = P.car.hp / P.car.maxHp; c.fillStyle = hpk > 0.5 ? '#7ad67a' : hpk > 0.25 ? '#f2c14e' : '#e0443e'; c.fillRect(sx, sy + 6 * s, hw * hpk, 5 * s);
+    if (typeof Fuel !== 'undefined') Fuel.drawHUD(c, sx, sy, hw, s);
     if (Radio.station > 0) txt(c, Radio.stations[Radio.station].name, sx, sy - 34 * s, `600 ${11 * s}px ${FONT_KR}`, '#ffcf5a', 'rgba(0,0,0,0.9)', 3, 'left');
   } else if (P.alt > 0) {
     const sx = cx + R + 14 * s, sy = Input.usingTouch ? cy - 8 * s : cy + R - 10 * s;
@@ -563,6 +564,7 @@ function drawFullMap() {
     if (ic.lv) { const t = `${ic.lv}단계`; c.font = `700 10px ${FONT_KR}`; const w = c.measureText(t).width + 8; c.fillStyle = ic.lv >= 5 ? '#ffd166' : '#7ae68f'; roundRect(c, x + 7, y - 16, w, 13, 4); c.fill(); txt(c, t, x + 7 + w / 2, y - 6, `700 10px ${FONT_KR}`, '#10141c', null, 0, 'center'); }
   }
   if (Game.showBiz) drawBizPrices(c, ox, oy, k, ox0, oy0, mw, mh);
+  if (Game.showDev && typeof drawDevSites === 'function') drawDevSites(c, ox, oy, k, ox0, oy0, mw, mh);
   for (const t of allTargets()) { const x = ox + t.x * k, y = oy + t.y * k; c.fillStyle = '#000'; c.beginPath(); c.arc(x, y, 8, 0, TAU); c.fill(); c.fillStyle = t.c; c.beginPath(); c.arc(x, y, 6, 0, TAU); c.fill(); }
   if (Wanted.stars > 0) { c.strokeStyle = 'rgba(255,90,80,0.9)'; c.beginPath(); c.arc(ox + Wanted.lkpX * k, oy + Wanted.lkpY * k, Wanted.radius * k, 0, TAU); c.stroke(); }
   c.save(); c.translate(ox, oy); GPS.draw(c, k, 0, 0, 3); c.restore();
@@ -577,6 +579,9 @@ function drawFullMap() {
   const bb = Game.bizBtn = { x: tb.x - 142, y: tb.y, w: 134, h: 34 };
   c.fillStyle = Game.showBiz ? '#ffd166' : 'rgba(20,24,34,0.9)'; roundRect(c, bb.x, bb.y, bb.w, bb.h, 8); c.fill(); c.strokeStyle = '#ffd166'; c.lineWidth = 1.5; c.stroke();
   txt(c, `사업체 가격 ${Game.showBiz ? '끄기' : '보기'}${Input.usingTouch ? '' : ' (V)'}`, bb.x + bb.w / 2, bb.y + 22, `700 13px ${FONT_KR}`, Game.showBiz ? '#1a1a1a' : '#fff', null, 0, 'center');
+  const db = Game.devBtn = { x: bb.x - 142, y: bb.y, w: 134, h: 34 };
+  c.fillStyle = Game.showDev ? '#6fe0ff' : 'rgba(20,24,34,0.9)'; roundRect(c, db.x, db.y, db.w, db.h, 8); c.fill(); c.strokeStyle = '#6fe0ff'; c.lineWidth = 1.5; c.stroke();
+  txt(c, `개발 부지 ${Game.showDev ? '끄기' : '보기'}${Input.usingTouch ? '' : ' (N)'}`, db.x + db.w / 2, db.y + 22, `700 13px ${FONT_KR}`, Game.showDev ? '#1a1a1a' : '#fff', null, 0, 'center');
   const zb = Game.mapZoomBtns = [{ x: ox0, y: Math.max(4, oy0 - 44), w: 40, h: 34, f: 1.5, l: '+' }, { x: ox0 + 46, y: Math.max(4, oy0 - 44), w: 40, h: 34, f: 1 / 1.5, l: '−' }];
   c.fillStyle = Game.showTurf ? '#ff4d4d' : 'rgba(20,24,34,0.9)'; roundRect(c, tb.x, tb.y, tb.w, tb.h, 8); c.fill(); c.strokeStyle = '#ff4d4d'; c.lineWidth = 1.5; c.stroke();
   txt(c, `갱단 구역 ${Game.showTurf ? '끄기' : '보기'}${Input.usingTouch ? '' : ' (G)'}`, tb.x + tb.w / 2, tb.y + 22, `700 13px ${FONT_KR}`, '#fff', null, 0, 'center');

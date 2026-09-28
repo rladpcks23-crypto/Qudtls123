@@ -39,6 +39,13 @@ function mountainH(tx, ty) {
   return h;
 }
 
+// 산길 위의 높이(m): 실버 피크 산길·정상 광장 칸이면 산 표면 높이, 아니면 0 (3D 위치·카메라·오르막 물리)
+function groundZ(x, y) {
+  const M = World.mtMask; if (!M) return 0;
+  const tx = Math.floor(x / T), ty = Math.floor(y / T); if (tx < 0 || ty < 0 || tx >= MW || ty >= MH || !M[tx + ty * MW]) return 0;
+  return mountainH(x / T, y / T);
+}
+
 const COUNTY_ZONES = [ // 동네 이름 (카운티 칸의 위치 이름) · w가 작을수록 좁다
   { name: '샌디 밸리', x: 900, y: 438, w: 0.55 },
   { name: '파인 베이', x: 1300, y: 58, w: 0.55 },
@@ -62,7 +69,7 @@ function genCounty(seed) {
   W.rockH = new Uint8Array(MW * MH);
   W.hwEdges = new Set();
   W.mapLabels = [];
-  W.county = { x0: CITY_W };
+  W.county = { x0: CITY_W, farms: [], fish: [], towns: [] };
 
   // ---------- 1) 땅: 도시 땅에서 34칸 넘게 떨어진 해안선 ----------
   const cityMaxX = new Int16Array(MH).fill(-1);
@@ -206,6 +213,18 @@ function genCounty(seed) {
   const roadAt = (x, y) => get(x, y) === TL.ROAD;
   const nearRoad = (x0, y0, x1, y1, m) => { for (let y = y0 - m; y <= y1 + m; y++) for (let x = x0 - m; x <= x1 + m; x++) if (roadAt(x, y)) return true; return false; };
 
+  // ---------- 4-5) 실버 피크 산길 (v2.20): 숲길에서 정상까지 1.6바퀴 나선 도로 + 정상 광장 ----------
+  {
+    const m = W.mountains[0]; W.mtMask = new Uint8Array(MW * MH); W.mtPath = [];
+    const mark = (px, py, rad, tile) => { for (let y = Math.floor(py - rad); y <= Math.ceil(py + rad); y++) for (let x = Math.floor(px - rad); x <= Math.ceil(px + rad); x++) { if (!inMap(x, y) || Math.hypot(x + 0.5 - px, y + 0.5 - py) > rad) continue; const i = x + y * MW, t = W.tiles[i]; if (t === TL.WATER || t === TL.BUILD || (t === TL.ROAD && W.roadK[i] !== 5)) continue; W.tiles[i] = tile; if (tile === TL.ROAD) W.roadK[i] = 5; W.mtMask[i] = 1; } };
+    const r0 = m.rMax + 2, turns = 1.6, N = 900;
+    for (let k = 0; k <= N; k++) { const f = k / N, a = -f * turns * TAU, r = r0 - (r0 - 7) * f, x = m.x + Math.cos(a) * r, y = m.y + Math.sin(a) * r; mark(x, y, 1.6, TL.ROAD); if (k % 6 === 0) W.mtPath.push({ x: x * T, y: y * T }); }
+    mark(m.x, m.y, 6.5, TL.PLAZA); // 정상 광장
+    for (let x = Math.floor(m.x + r0); x < 1060; x++) mark(x + 0.5, m.y + 0.5, 1.2, TL.ROAD); // 숲길까지 잇는 길
+    W.mtPath.unshift({ x: 1059 * T, y: (m.y + 0.5) * T });
+    W.mapLabels.push({ name: '산길', x: (m.x + r0 + 6) * T, y: (m.y - 4) * T, small: true });
+  }
+
   // ---------- 5) 마을 블록 ----------
   const PALH = ['#c65d4a', '#9c5a3c', '#5e6f86', '#7b8c5a', '#a8744f', '#6b5b7b', '#b8864e', '#d9c7a0', '#8aa0a8'];
   const addBuilding = (x0, y0, x1, y1, h, kind, color) => {
@@ -298,6 +317,7 @@ function genCounty(seed) {
     const s = spotNear(x, y, 12, 10, side); if (!s) return;
     for (let yy = s.y0; yy <= s.y1; yy++) for (let xx = s.x0; xx <= s.x1; xx++) W.tiles[xx + yy * MW] = TL.SAND;
     addBuilding(s.x0 + 1, s.y0 + 1, s.x0 + 3, s.y0 + 3, rr(4, 5), 'house', rpick(['#e8e2d0', '#c65d4a', '#d9c7a0']));
+    W.county.farms.push({ x: (s.x0 + 4.5) * T, y: (s.y0 + 7.5) * T, fx: (s.x0 + (side[0][0] > 0 ? 16 : -4)) * T, fy: (s.y0 + 5) * T });
     addBuilding(s.x0 + 6, s.y0 + 1, s.x0 + 10, s.y0 + 5, 7, 'warehouse', '#9c3b2e');
     addBuilding(s.x0 + 7, s.y0 + 7, s.x0 + 8, s.y0 + 8, 9, 'tank', '#b8bcb4');
     W.decos.push({ t: 'tankcyl', x: (s.x0 + 8) * T, y: (s.y0 + 8) * T, r: 4, z: 9, c: '#c9ccc4' });
@@ -328,6 +348,20 @@ function genCounty(seed) {
     W.runways.push({ x0: rx0 * T, y0: ry0 * T, x1: (rx1 + 1) * T, y1: (ry0 + 4) * T, county: true });
     W.places.c_airfield = { x: 1020 * T, y: (ry0 + 8) * T, label: '샌디 밸리 비행장' };
     W.mapLabels.push({ name: '비행장', x: 1025 * T, y: (ry0 - 4) * T, small: true });
+  }
+
+  // ---------- 7-2) 파인 베이 부두 (어선·보트) · 호숫가 낚시터 ----------
+  {
+    const py = YN + 20, px0 = XB + 3;
+    let px1 = px0; while (px1 < MW - 2 && get(px1, py) !== TL.WATER) px1++;
+    px1 += 12;
+    for (let x = px0; x <= px1; x++) for (let y = py - 1; y <= py + 1; y++) if (get(x, y) !== TL.ROAD && get(x, y) !== TL.BUILD) set(x, y, TL.DOCK);
+    W.county.fish.push({ x: (px1 - 1) * T, y: (py + 0.5) * T, kind: 'pier' }, { x: (px1 - 6) * T, y: (py + 0.5) * T, kind: 'pier' });
+    W.marinas.push({ x: (px1 + 4) * T, y: (py - 3) * T, a: 0, car: null, cd: 0, county: true }, { x: (px1 + 4) * T, y: (py + 4) * T, a: 0, car: null, cd: 0, county: true });
+    W.mapLabels.push({ name: '부두', x: (px1 - 4) * T, y: (py - 4) * T, small: true });
+    for (const a of [0.4, 1.9, 3.3, 4.6]) { const x = lake.x + Math.cos(a) * lake.rx * 1.1, y = lake.y + Math.sin(a) * lake.ry * 1.12; W.county.fish.push({ x: x * T, y: y * T, kind: 'lake' }); }
+    W.marinas.push({ x: (lake.x + lake.rx * 0.9) * T, y: lake.y * T, a: Math.PI, car: null, cd: 0, county: true });
+    for (const tw of towns) W.county.towns.push({ name: tw.name, x: (tw.box.x0 + tw.box.x1) / 2 * T, y: (tw.box.y0 + tw.box.y1) / 2 * T });
   }
 
   // ---------- 8) 장소 등록 ----------

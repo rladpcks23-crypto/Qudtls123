@@ -207,6 +207,7 @@ function raiseBuilding(p) {
   if (W.mini) { const g = W.mini.getContext('2d'), s = W.mini.width / MW; g.fillStyle = MINI_COL[TL.BUILD]; g.fillRect(p.x0 * s, p.y0 * s, (p.x1 - p.x0 + 1) * s, (p.y1 - p.y0 + 1) * s); }
   if (View3D.bucket) { const CS = View3D.CS, cx = clamp(Math.floor((p.x0 + p.x1 + 1) / 2 * T / CS), 0, View3D.NCX - 1), cy = clamp(Math.floor((p.y0 + p.y1 + 1) / 2 * T / CS), 0, View3D.NCY - 1), k = cx + cy * View3D.NCX; View3D.bucket[k].b.push(b); const ch = View3D.chunks.get(k); if (ch) { View3D.disposeChunk(ch); View3D.chunks.delete(k); } }
   if (Dev.cand) Dev.cand = Dev.cand.filter(L => !(L.x0 === p.x0 && L.y0 === p.y0));
+  if (typeof spatialViews === 'function' && W.bldGrid) spatialViews();
 }
 
 // ---------- 장소 · 메뉴 ----------
@@ -254,7 +255,7 @@ SHOPS.devco = {
     for (const L of lots) for (const kind of ['apt', 'office', 'sky']) {
       const K = DEV_KINDS[kind], cost = Math.round(K.cost * Dev.price(L));
       if (K.big && (L.x1 - L.x0 < 3 || L.y1 - L.y0 < 3)) continue;
-      out.push({ id: `nl_${L.x0}_${L.y0}_${kind}`, name: `${K.name} — ${Math.round(dist(L.cx, L.cy, P.px, P.py))}m 떨어진 필지 (${L.x1 - L.x0 + 1}×${L.y1 - L.y0 + 1})`, price: cost, btn: '착공', desc: `${Math.round(K.sec / 60)}분 공사 · 1분 임대 $${K.rent.toLocaleString()} · 본전까지 약 ${Math.round(cost / K.rent)}분`, ok: () => true, fn: () => { Dev.start(L, kind); Shop.close(); } });
+      out.push({ id: `nl_${L.x0}_${L.y0}_${kind}`, name: `${K.name} — ${hoodAt(L.cx, L.cy)} · ${Math.round(dist(L.cx, L.cy, P.px, P.py))}m 떨어진 필지 (${L.x1 - L.x0 + 1}×${L.y1 - L.y0 + 1})`, price: cost, btn: '착공', desc: `${Math.round(K.sec / 60)}분 공사 · 1분 임대 $${K.rent.toLocaleString()} · 본전까지 약 ${Math.round(cost / K.rent)}분`, ok: () => true, fn: () => { Dev.start(L, kind); Shop.close(); } });
     }
     if (!lots.length) out.push({ id: 'nolot', name: '가까운 빈 필지가 없다', price: 0, desc: '다른 동네에서 다시 와 보자', ok: () => false });
     return out;

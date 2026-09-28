@@ -399,7 +399,7 @@ const Para = {
       const hard = P.vz > 12;
       P.alt = 0; P.chute = false; P.vz = 0; P.vx *= 0.3; P.vy *= 0.3;
       if (hard) P.damage(999, null, 0, 0, 'fall');
-      else { P.downT = 0.6; UI.toast(roof > 0 ? '옥상에 착지 — 비상계단으로 내려왔다' : '착지!'); }
+      else { P.downT = 0.6; const rock = World.rockH && World.rockH[tIdx(clamp(Math.floor(P.x / T), 0, MW - 1), clamp(Math.floor(P.y / T), 0, MH - 1))] > 0; UI.toast(rock ? '산비탈에 착지 — 기슭까지 걸어 내려왔다' : roof > 0 ? '옥상에 착지 — 비상계단으로 내려왔다' : '착지!'); }
       if (roof > 0) [P.x, P.y] = openSpotNear(P.x, P.y);
       pedStatic(P);
     }

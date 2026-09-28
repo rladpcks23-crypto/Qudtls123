@@ -104,6 +104,7 @@ const Game = {
     const r = this.mapRect; if (!r) return;
     const tb = this.turfBtn; if (tb && sx >= tb.x && sx <= tb.x + tb.w && sy >= tb.y && sy <= tb.y + tb.h) { this.showTurf = !this.showTurf; return; }
     const bb = this.bizBtn; if (bb && sx >= bb.x && sx <= bb.x + bb.w && sy >= bb.y && sy <= bb.y + bb.h) { this.showBiz = !this.showBiz; return; }
+    const db = this.devBtn; if (db && sx >= db.x && sx <= db.x + db.w && sy >= db.y && sy <= db.y + db.h) { this.showDev = !this.showDev; return; }
     for (const b of this.mapZoomBtns || []) if (sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h) { MapView.zoomAt(b.f); return; }
     if (MapView.moved) { MapView.moved = false; return; } // 드래그로 지도를 옮긴 것
     if (sx < r.ox || sy < r.oy || sx > r.ox + (r.w || r.size) || sy > r.oy + (r.h || r.size)) { this.state = 'play'; this.pickTurf = false; return; }
@@ -161,6 +162,7 @@ const Game = {
       if (keyHit('Escape', 'KeyM', 'Tab', 'PadBack', 'PadB', 'PadStart')) { this.state = 'play'; this.pickTurf = false; }
       if (keyHit('KeyG', 'PadY')) this.showTurf = !this.showTurf;
       if (keyHit('KeyV')) this.showBiz = !this.showBiz;
+      if (keyHit('KeyN')) this.showDev = !this.showDev;
     } else if (st === 'cutscene') {
       Cutscene.update(dt);
     } else if (st === 'paused') {
@@ -263,7 +265,7 @@ const Game = {
     Pick.scan();
     if (Pick.target !== this._lastPick) { this._lastPick = Pick.target; document.body.classList.toggle('cansteal', !!Pick.target); }
     updatePickups(dt);
-    Events.update(dt); Stunts.update(dt); Races.update(dt); GF.update(dt); Achieve.update(dt); LifeMsgs.update(dt); Tycoon.update(dt);
+    Events.update(dt); Fuel.update(dt); Tuning.update(dt); Rural.update(dt); Region.update(dt); Mega.update(dt); Stunts.update(dt); Races.update(dt); GF.update(dt); Achieve.update(dt); LifeMsgs.update(dt); Tycoon.update(dt);
     this.places(dt);
     // 사망
     if (P.hp <= 0 && this.state === 'play') this.wasted();
@@ -325,7 +327,7 @@ const Game = {
     // 주차된 차량 상태 갱신
     for (const sp of World.parking) { sp.cd -= 0.4; if (sp.car && (dist(sp.car.x, sp.car.y, sp.x, sp.y) > 3 || !this.cars.includes(sp.car))) { sp.car = null; sp.cd = 30; } }
     // 교통 생성
-    const wantCars = night ? TUNE.cars[1] : TUNE.cars[0];
+    const wantCars = Math.round((night ? TUNE.cars[1] : TUNE.cars[0]) * Rural.carMul(f)); // 카운티는 한산하다
     let traffic = 0;
     for (const c of this.cars) if (c.driver === 'ai' && dist(c.x, c.y, f.x, f.y) < kill) traffic++;
     let tries = initial ? 60 : 3;
@@ -333,7 +335,7 @@ const Game = {
       const spot = spawnLaneSpot(f, inner, outer, initial);
       if (!spot) continue;
       const cop = chance(0.07);
-      const type = cop ? 'police' : pick(TRAFFIC_MIX);
+      const type = cop ? 'police' : (Rural.trafficType(f) || pick(TRAFFIC_MIX));
       const c = new Car(type, spot.x, spot.y, spot.a);
       c.driver = 'ai'; c.driverKind = cop ? 'cop' : 'civ'; if (cop) c.crew = 2;
       c.ai = { mode: 'traffic', route: [], from: spot.A.id, to: spot.B.id, dir: spot.d, cruise: rand(10.5, 14.5), stuckT: 0, waitT: 0, revT: 0, ignoreT: 0, honkT: 0 };
@@ -350,7 +352,7 @@ const Game = {
       if (d < inner || d > outer || (!initial && onScreen(sp.x, sp.y, 4))) continue;
       sp.cd = 60;
       if (!chance(0.55)) continue;
-      const c = new Car(pick(['sedan', 'compact', 'sports', 'muscle', 'van', 'sedan', 'compact', 'bike', 'bike']), sp.x, sp.y, sp.a + (chance(0.5) ? Math.PI : 0));
+      const c = new Car(Rural.parkedType(sp) || pick(['sedan', 'compact', 'sports', 'muscle', 'van', 'sedan', 'compact', 'bike', 'bike']), sp.x, sp.y, sp.a + (chance(0.5) ? Math.PI : 0));
       this.cars.push(c); sp.car = c; idle++;
     }
     // 마리나 보트
@@ -364,7 +366,7 @@ const Game = {
       const c = new Car(chance(0.55) ? 'jetski' : 'speedboat', sp.x, sp.y, sp.a); this.cars.push(c); sp.car = c;
     }
     // 보행자
-    const wantPeds = night ? TUNE.peds[1] : TUNE.peds[0];
+    const wantPeds = Math.round((night ? TUNE.peds[1] : TUNE.peds[0]) * Rural.pedMul(f));
     let peds = 0;
     for (const p of this.peds) if (!p.dead && dist(p.x, p.y, f.x, f.y) < kill) peds++;
     tries = initial ? 120 : 6;
@@ -420,17 +422,17 @@ const Game = {
     this.sprayCool -= dt; this.shopCool -= dt;
     // 페인트샵
     for (const key of ['spray', 'spray2']) {
-      const S = World.places[key]; if (!S || !P.car || P.car.alt > 1.2 || this.sprayCool > 0) continue;
+      const S = World.places[key]; if (!S || !P.car || P.car.alt > 1.2 || this.sprayCool > 0 || Wanted.stars === 0) continue; // 수배 중이 아니면 네온 커스텀 창(tuning.js)
       if (dist(P.car.x, P.car.y, S.x, S.y) < 5 && P.car.speed < 5) {
         this.sprayCool = 12;
-        const sprayCost = Biz.has('biz_auto') ? 0 : 100;
-        if (P.money < sprayCost) { UI.toast('페인트샵: $100이 필요하다'); continue; }
+        const sprayCost = Biz.has('biz_auto') ? 0 : 100 + Fuel.repairCost(P.car);
+        if (P.money < sprayCost) { UI.toast(`페인트샵: $${sprayCost.toLocaleString()}이 필요하다 (도색 $100 + 수리비)`); continue; }
         if (Wanted.stars > 0 && Wanted.seen) { UI.toast('경찰이 보고 있다! 따돌린 뒤 다시 오자'); this.sprayCool = 3; continue; }
         P.money -= sprayCost; P.car.hp = P.car.maxHp; P.car.burnT = 0; P.car.flat = false; P.car.dmgParts = null;
         P.car.color = pick(['#e0262b', '#3c6fb0', '#f2c200', '#1d1d1f', '#e8e8ea', '#4e7a52', '#7a3b8f', '#f07c1b']);
         const had = Wanted.stars > 0;
         Wanted.clear(); Sfx.cash();
-        UI.toast((had ? '새 도색 완료! 수배가 해제됐다' : '수리 및 도색 완료') + (sprayCost ? ' (-$100)' : ' (정비소 소유주 무료)'));
+        UI.toast((had ? '새 도색 완료! 수배가 해제됐다' : '수리 및 도색 완료') + (sprayCost ? ` (-$${sprayCost.toLocaleString()})` : ' (정비소 소유주 무료)'));
       }
     }
     // 네온 모터스 · 내 차고: 차를 몰고 마당에 세우거나 걸어서 들어가면 화면이 열린다
@@ -444,7 +446,7 @@ const Game = {
     // 상점 · 직업 게시판 (걸어서 문 앞 마커에 들어가면 열림)
     if (!P.car && !(P.alt > 0) && this.shopCool <= 0 && !(Missions.active && Missions.active.def.noShop)) {
       for (const [k, kind] of [...GANG_IDS.map(g => ['hq_' + g, 'hq_' + g]), ...Object.keys(BUSINESSES).map(b => [b, b]), ['ammu3', 'ammu'], ['burger3', 'burger'], ['burger4', 'burger'], ['mart4', 'mart'], ['mart5', 'mart'], ['clothes', 'clothes'], ['clothes2', 'clothes'], ['gym', 'gym'], ['pharmacy', 'pharmacy'], ['pharmacy2', 'pharmacy'], ['bank', 'bank'], ['ammu', 'ammu'], ['ammu2', 'ammu'], ['burger', 'burger'], ['burger2', 'burger'], ['mart', 'mart'], ['mart2', 'mart'], ['mart3', 'mart'], ...EXTRA_PLACES, ...(World.branches || []).map(b => [b.key, b.kind]), ...(World.schools || []).map(k => [k, 'school'])]) {
-        const S = World.places[k]; if (S && dist(P.x, P.y, S.x, S.y) < 1.8) { Shop.open(kind); return; }
+        const S = World.places[k]; if (S && dist(P.x, P.y, S.x, S.y) < 1.8) { Shop.placeKey = k; Shop.open(kind); return; }
       }
       const SH = World.places.safehouse;
       if (SH && dist(P.x, P.y, SH.x, SH.y) < 1.8) { Shop.open('safehouse'); return; }

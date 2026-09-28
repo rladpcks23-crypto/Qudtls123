@@ -248,8 +248,14 @@ const Phone = {
       if (!Msgs.list.length) row('문자가 없다', '');
       for (const m of Msgs.list.slice().reverse().slice(0, 30)) row(m.from, m.text);
     } else if (sc === 'bank') {
-      const F = Finance.bank, inc = Biz.total() + Finance.rentPerMin();
-      row(`현금 $${Math.round(P.money).toLocaleString()}`, `사업 수입 1분 $${Biz.total().toLocaleString()} · 임대 1분 $${Finance.rentPerMin().toLocaleString()}`);
+      const F = Finance.bank, $$ = n => '$' + Math.round(n).toLocaleString();
+      // 1분 수입 내역 (v2.20): 무엇에서 얼마가 들어오는지 한눈에
+      const devN = Dev.list.filter(q => q.done).length, devB = Dev.list.length - devN;
+      const turf = Gangs.mine && Gangs.rank >= 1 ? Math.round(Gangs.count(Gangs.mine) * (Gangs.rank === 2 ? 150 : 30) * Empire.incomeMul()) : 0;
+      const parts = [['사업체', Biz.total()], ['부동산 임대', Finance.rentPerMin()], [`내가 지은 건물 ${devN}동${devB ? ` (공사 중 ${devB})` : ''}`, Dev.rent()], ['카운티 가게', typeof Region !== 'undefined' ? Region.perMin() : 0], ['초대형 프로젝트', typeof Mega !== 'undefined' ? Mega.perMin() : 0], ['인수 회사 배당', Tycoon.dividends()], ['시장 판공비', Tycoon.mayor ? 20000 : 0], ['조직 구역', turf], ['예금 이자 (3%)', F.dep * 0.03]];
+      const inc = parts.reduce((a, q) => a + q[1], 0);
+      row(`현금 ${$$(P.money)}`, `1분 수입 합계 ${$$(inc)}`);
+      row('1분 수입 내역', parts.filter(q => q[1] > 0).map(q => `${q[0]} ${$$(q[1])}`).join(' · ') || '아직 없다 — 사업체·부동산·개발로 수입을 만들자');
       row(`중앙은행 예금 $${Math.round(F.dep).toLocaleString()}`, `대출 $${Math.round(F.debt).toLocaleString()} · 예금 이자 1분 3%`, [
         ['$100,000 예금', () => { if (P.money < 1e5) return; P.money -= 1e5; F.dep += 1e5; }], ['전부 예금', () => { F.dep += P.money; P.money = 0; }],
         ['$100,000 출금', () => { const a = Math.min(1e5, F.dep); F.dep -= a; P.money += a; }], ['전부 출금', () => { P.money += F.dep; F.dep = 0; }],

@@ -90,7 +90,7 @@ class Car {
       FyR = clamp(-V.cs * slipR, -gripR, gripR) * load;
     }
     // 종방향
-    const Fb = this.m * 8.5;
+    const Fb = this.m * 8.5 * (this.brakeMul || 1); // 브레이크 튜닝
     let Fx = 0;
     if (this.dead || this.burnT > 0 && !this.driver) { /* 엔진 없음 */ }
     else if (inp.thr > 0) Fx += inp.thr * V.Fe * (vf < -0.5 ? 1.6 : 1) * (this.flat ? 0.45 : 1);

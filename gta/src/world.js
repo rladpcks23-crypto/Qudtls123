@@ -1213,12 +1213,22 @@ function gridQuery(m, x, y, r, out = []) {
 }
 function buildSpatial() {
   const W = World, N = W.nodes;
-  W.edgeGrid = gridMake(W.edgesList, e => (N[e[0]].x + N[e[1]].x) / 2, e => (N[e[0]].y + N[e[1]].y) / 2);
+  // 도로 구간: 긴 구간(카운티 국도는 2km도 된다)은 지나가는 칸마다 넣는다 — 가운데 칸 하나에만 넣으면 가까이 있어도 못 찾는다
+  W.edgeGrid = new Map();
+  for (const e of W.edgesList) {
+    const A = N[e[0]], B = N[e[1]], L = dist(A.x, A.y, B.x, B.y), seen = new Set();
+    for (let t = 0; t <= L + 1; t += 32) { const f = Math.min(1, t / Math.max(1, L)), k = Math.floor((A.x + (B.x - A.x) * f) / GRID_CS) * 4096 + Math.floor((A.y + (B.y - A.y) * f) / GRID_CS); if (seen.has(k)) continue; seen.add(k); let l = W.edgeGrid.get(k); if (!l) W.edgeGrid.set(k, l = []); l.push(e); }
+  }
   W.nodeGrid = gridMake(N.filter(n => n.deg), n => n.x, n => n.y);
   W.blockGrid = gridMake(W.blocks, b => (b.x0 + b.x1 + 1) / 2 * T, b => (b.y0 + b.y1 + 1) / 2 * T);
+  spatialViews();
 }
+// 2D 그리기용 (v2.20): 화면 근처 건물·나무만 훑는다 (전체 4천 동·1만 그루를 매 프레임 돌지 않게)
+function spatialViews() { const W = World; W.bldGrid = gridMake(W.buildings, b => (b.x0 + b.x1 + 1) / 2 * T, b => (b.y0 + b.y1 + 1) / 2 * T); W.treeView = gridMake(W.trees, t => t.x, t => t.y); }
+const bldNear = (x, y, r) => World.bldGrid ? gridQuery(World.bldGrid, x, y, r + 160) : World.buildings;
+const treesView = (x, y, r) => World.treeView ? gridQuery(World.treeView, x, y, r + 12) : World.trees;
 // 반경 r 안(대략)의 도로 구간 / 블록 — 구간 길이만큼 여유를 둔다
-const edgesNear = (x, y, r) => gridQuery(World.edgeGrid, x, y, r + 40);
+const edgesNear = (x, y, r) => { const l = gridQuery(World.edgeGrid, x, y, r + 40); return l.length > 1 ? [...new Set(l)] : l; };
 const blocksNear = (x, y, r) => gridQuery(World.blockGrid, x, y, r + 40);
 
 // 가까운 인도 (결정적 탐색, 생성 중에 쓴다)

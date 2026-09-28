@@ -297,7 +297,7 @@ function drawShadows(amb) {
   const [sx, sy] = sunVec();
   ctx.fillStyle = `rgba(10,15,30,${0.28 * day})`;
   ctx.beginPath();
-  for (const b of World.buildings) {
+  for (const b of bldNear(Cam.x, Cam.y, Math.max(Cam.vw, Cam.vh) / 2)) {
     const X0 = b.x0 * T, Y0 = b.y0 * T, X1 = (b.x1 + 1) * T, Y1 = (b.y1 + 1) * T;
     const ox = sx * b.h, oy = sy * b.h;
     if (X1 + Math.max(0, ox) < Cam.x - Cam.vw / 2 || X0 + Math.min(0, ox) > Cam.x + Cam.vw / 2 || Y1 + Math.max(0, oy) < Cam.y - Cam.vh / 2 || Y0 + Math.min(0, oy) > Cam.y + Cam.vh / 2) continue;
@@ -306,7 +306,7 @@ function drawShadows(amb) {
       : (oy >= 0 ? [[X1, Y0], [X1, Y1], [X1 + ox, Y1 + oy], [X0 + ox, Y1 + oy], [X0 + ox, Y0 + oy], [X0, Y0]] : [[X0, Y0], [X1, Y0], [X1, Y1], [X1 + ox, Y1 + oy], [X0 + ox, Y1 + oy], [X0 + ox, Y0 + oy]]);
     ctx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]); ctx.closePath();
   }
-  for (const t of World.trees) {
+  for (const t of treesView(Cam.x, Cam.y, Math.max(Cam.vw, Cam.vh) / 2)) {
     if (Math.abs(t.x - Cam.x) > Cam.vw / 2 + 8 || Math.abs(t.y - Cam.y) > Cam.vh / 2 + 8) continue;
     ctx.moveTo(t.x + sx * t.h + t.r, t.y + sy * t.h); ctx.arc(t.x + sx * t.h, t.y + sy * t.h, t.r, 0, TAU);
   }
@@ -316,6 +316,33 @@ function drawShadows(amb) {
 
 // ---------- 차량 ----------
 function rr(c, x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+// 카운티 차량 (위에서 본 모습): ATV · 트랙터 · 픽업트럭
+function drawFarmVehicle(c, st) {
+  const L = c.L, W = c.W, body = c.dead ? '#26272a' : c.color, dark = c.dead ? '#1a1a1c' : shade(c.color, -0.35);
+  ctx.fillStyle = '#111';
+  if (st === 'tractor') { // 큰 뒷바퀴 + 작은 앞바퀴
+    for (const s of [1, -1]) { ctx.fillRect(-L * 0.42, s * (W / 2) - (s > 0 ? 0.55 : 0), 1.3, 0.55); ctx.save(); ctx.translate(L * 0.32, s * (W / 2 - 0.3)); ctx.rotate(c.steer); ctx.fillRect(-0.3, -0.15, 0.6, 0.3); ctx.restore(); }
+    ctx.fillStyle = body; rr(ctx, -L * 0.1, -0.45, L * 0.58, 0.9, 0.2); ctx.fill();
+    ctx.fillStyle = dark; ctx.fillRect(L * 0.12, -0.1, 0.25, 0.2); // 배기통
+    ctx.fillStyle = c.dead ? '#222' : '#e8e2d0'; rr(ctx, -L * 0.42, -0.62, L * 0.4, 1.24, 0.12); ctx.fill(); // 운전실 지붕
+    ctx.strokeStyle = '#1b2735'; ctx.lineWidth = 0.08; ctx.strokeRect(-L * 0.42 + 0.1, -0.52, L * 0.4 - 0.2, 1.04);
+    return;
+  }
+  const wx = L * (st === 'atv' ? 0.32 : 0.3), wy = W / 2 - (st === 'atv' ? 0.18 : 0.12), ww = st === 'atv' ? 0.5 : 0.7, wh = st === 'atv' ? 0.36 : 0.32;
+  for (const [x, y, s] of [[wx, wy, 1], [wx, -wy, 1], [-wx, wy, 0], [-wx, -wy, 0]]) { ctx.save(); ctx.translate(x, y); if (s) ctx.rotate(c.steer); ctx.fillRect(-ww / 2, -wh / 2, ww, wh); ctx.restore(); }
+  if (st === 'atv') {
+    ctx.fillStyle = body; rr(ctx, -L * 0.45, -W * 0.32, L * 0.9, W * 0.64, 0.2); ctx.fill();
+    ctx.fillStyle = dark; ctx.fillRect(L * 0.18, -W * 0.36, 0.1, W * 0.72); // 핸들
+    if (c.driver) { ctx.fillStyle = '#2b2d42'; ctx.beginPath(); ctx.arc(-0.1, 0, 0.3, 0, TAU); ctx.fill(); ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(0.02, 0, 0.18, 0, TAU); ctx.fill(); }
+    return;
+  }
+  // 픽업: 앞쪽 운전실 + 뒤쪽 짐칸(열린 적재함)
+  ctx.fillStyle = body; rr(ctx, -L / 2, -W / 2, L, W, 0.35); ctx.fill();
+  ctx.fillStyle = c.dead ? '#111' : '#2a2520'; ctx.fillRect(-L / 2 + 0.2, -W / 2 + 0.2, L * 0.42, W - 0.4); // 짐칸 바닥
+  ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 0.05; for (let k = 1; k < 4; k++) { ctx.beginPath(); ctx.moveTo(-L / 2 + 0.2, -W / 2 + 0.2 + k * (W - 0.4) / 4); ctx.lineTo(-L / 2 + 0.2 + L * 0.42, -W / 2 + 0.2 + k * (W - 0.4) / 4); ctx.stroke(); }
+  ctx.fillStyle = c.dead ? '#222' : shade(c.color, 0.2); rr(ctx, -L * 0.06, -W / 2 + 0.14, L * 0.26, W - 0.28, 0.2); ctx.fill(); // 지붕
+  ctx.fillStyle = '#1b2735'; ctx.fillRect(L * 0.2, -W / 2 + 0.2, 0.35, W - 0.4); ctx.fillRect(-L * 0.08, -W / 2 + 0.25, 0.18, W - 0.5);
+}
 function drawCar(c, shadow) {
   const L = c.L, W = c.W, st = c.V.style;
   ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.a);
@@ -334,6 +361,7 @@ function drawCar(c, shadow) {
   }
   if (st === 'tank' || st === 'milheli' || st === 'jet') { drawMilVehicle(c); ctx.restore(); return; }
   if (st === 'boat' || st === 'jetski') { drawBoat(c); ctx.restore(); return; }
+  if (st === 'atv' || st === 'tractor' || st === 'pickup') { drawFarmVehicle(c, st); ctx.restore(); return; }
   // 바퀴
   ctx.fillStyle = '#111';
   const wx = L * 0.3, wy = W / 2 - 0.12;
@@ -393,7 +421,7 @@ function drawCar(c, shadow) {
     if (st === 'muscle' && !c.dead) { ctx.fillStyle = '#111'; ctx.fillRect(wsF + 0.3, -0.3, 0.9, 0.6); }
     if (st === 'taxi' && !c.dead) { ctx.fillStyle = '#222'; ctx.fillRect(-0.4, -0.45, 0.5, 0.9); ctx.fillStyle = '#ffe680'; ctx.fillRect(-0.35, -0.4, 0.4, 0.8); ctx.fillStyle = '#111'; for (let k = 0; k < 4; k++) ctx.fillRect(-L / 2 + 0.3 + k * 0.4, W / 2 - 0.2, 0.2, 0.12); }
     if (st === 'police' && !c.dead) {
-      ctx.fillStyle = '#16181c'; ctx.fillRect(wsF + 0.05, -W / 2, L / 2 - wsF - 0.05, W); ctx.fillRect(-L / 2, -W / 2, L / 2 + roofR - 0.5, W);
+      ctx.fillStyle = c.sheriff ? '#6b4e2a' : '#16181c'; ctx.fillRect(wsF + 0.05, -W / 2, L / 2 - wsF - 0.05, W); ctx.fillRect(-L / 2, -W / 2, L / 2 + roofR - 0.5, W);
       const f = Math.floor(Game.time * 8) % 2;
       ctx.fillStyle = c.siren ? (f ? '#ff2d2d' : '#5a1010') : '#7a2020'; ctx.fillRect(-0.3, -0.75, 0.45, 0.7);
       ctx.fillStyle = c.siren ? (f ? '#0f2a6a' : '#2d6bff') : '#20306a'; ctx.fillRect(-0.3, 0.05, 0.45, 0.7);
@@ -452,6 +480,7 @@ function drawBoat(c) { // drawCar 안(차 좌표계)
 }
 function drawPed(p, shadow) {
   if (p.kind === 'dog') { drawDog(p); return; }
+  if (p.kind === 'animal') { drawAnimal(p); return; }
   if (p.swim && !p.dead) { // 헤엄: 물결 고리 + 머리와 팔
     const t = Game.time * 3 + p.id;
     ctx.save(); ctx.translate(p.x, p.y);
@@ -505,7 +534,7 @@ function drawPed(p, shadow) {
   ctx.fillStyle = p.skin; ctx.beginPath(); ctx.arc(0.04, 0, 0.16, 0, TAU); ctx.fill();
   ctx.fillStyle = p.hair; ctx.beginPath(); ctx.arc(-0.01, 0, 0.155, Math.PI * 0.5, Math.PI * 1.5); ctx.fill();
   if (p.female && p.kind !== 'cop' && p.kind !== 'swat') { ctx.fillStyle = p.hair; ctx.beginPath(); ctx.ellipse(-0.13, 0, 0.16, 0.19, 0, 0, TAU); ctx.fill(); ctx.beginPath(); ctx.arc(0.08, 0, 0.12, Math.PI * 0.62, Math.PI * 1.38); ctx.fill(); } // 긴 머리 + 앞머리
-  if (p.kind === 'cop' || p.kind === 'swat') { ctx.fillStyle = p.kind === 'cop' ? '#15213f' : '#1b1f24'; ctx.beginPath(); ctx.arc(0.02, 0, 0.17, 0, TAU); ctx.fill(); ctx.fillRect(0.1, -0.12, 0.12, 0.24); }
+  if (p.kind === 'cop' || p.kind === 'swat') { ctx.fillStyle = p.kind === 'cop' ? (p.sheriff ? '#6b4e2a' : '#15213f') : '#1b1f24'; ctx.beginPath(); ctx.arc(0.02, 0, 0.17, 0, TAU); ctx.fill(); ctx.fillRect(0.1, -0.12, 0.12, 0.24); }
   drawArchHead(p);
   if (p.kind === 'player') drawPlayerStyle(p);
   ctx.restore();
@@ -624,7 +653,7 @@ function lightPass(amb) {
 
 // ---------- 건물 (의사 3D) ----------
 function drawTrees(amb) {
-  const vis = World.trees.filter(t => Math.abs(t.x - Cam.x) < Cam.vw / 2 + 10 && Math.abs(t.y - Cam.y) < Cam.vh / 2 + 10);
+  const vis = treesView(Cam.x, Cam.y, Math.max(Cam.vw, Cam.vh) / 2).filter(t => Math.abs(t.x - Cam.x) < Cam.vw / 2 + 10 && Math.abs(t.y - Cam.y) < Cam.vh / 2 + 10);
   for (const t of vis) {
     const [x, y] = proj(t.x, t.y, t.h), f = Cam.H / (Cam.H - t.h);
     if (t.kind === 'palm') {
@@ -656,7 +685,7 @@ function drawTrees(amb) {
 function drawBuildings(amb) {
   const night = 1 - (amb[0] + amb[1] + amb[2]) / 3;
   const vis = [];
-  for (const b of World.buildings) {
+  for (const b of bldNear(Cam.x, Cam.y, Math.max(Cam.vw, Cam.vh) / 2)) {
     const X0 = b.x0 * T, Y0 = b.y0 * T, X1 = (b.x1 + 1) * T, Y1 = (b.y1 + 1) * T;
     const f = Cam.H / (Cam.H - b.h), ex = (Cam.vw / 2) * (f - 1) + 2, ey = (Cam.vh / 2) * (f - 1) + 2;
     if (X1 < Cam.x - Cam.vw / 2 - ex || X0 > Cam.x + Cam.vw / 2 + ex || Y1 < Cam.y - Cam.vh / 2 - ey || Y0 > Cam.y + Cam.vh / 2 + ey) continue;

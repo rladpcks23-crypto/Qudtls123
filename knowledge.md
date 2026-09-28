@@ -53,6 +53,14 @@ bash packaging/desktop/build.sh  # release/NeonHarbor-PC.exe (electron-builder)
 | `life.js` | 여자친구 `GF`/`GF_DEFS`, 문자 `Msgs`, 업적 `ACH`/`Achieve`, 휴대폰 `Phone`(I) |
 | `story.js` | 컷신 `Cutscene`, 2장 미션 15~26(`stepsDef` 단계 엔진), 선택 분기 `Story.flags` |
 | `tycoon.js` | 인수합병 `Tycoon`, 사업 이벤트, 대저택·수집품 `LUXURY`, 시장 선거, 하버 개발 `Dev`/`DEV_KINDS` |
+| `garage.js` | 연료 `Fuel`(`FUEL_RANGE`, 주유소 `FUEL_STATIONS`), 정비 창 `SHOPS.fuelstop`, `carValue` |
+| `tuning.js` | 네온 커스텀 `SHOPS.custom`, `TUNE_PARTS`, `applyTune(c)`(차마다 V 사본), 내 차고 저장 |
+| `rural.js` | 카운티 차량(`pickup`·`atv`·`tractor`), `Rural`(일과 NPC `ROUTINES`, 보안관, 야생동물, 카운티 FM), 산길 오르막 물리 |
+| `events2.js` | 랜덤 이벤트 14종 추가(`RE_OK` 조건), 동물 `spawnAnimal`/`ANIMALS` |
+| `sidequest.js` | `Missions.startSide(def)`, `SIDE_DEFS`(카운티 의뢰·초대형 준비 의뢰), 행크 `SHOPS.hank`, `cty(x,y)` |
+| `chapter3.js` | 스토리 3부 미션 27~32 (`MISSION_DEFS`에 추가, 의뢰인은 카운티) |
+| `region.js` | 카운티 가게 인수 `COUNTY_BIZ`/`Region`, 지역 일거리 `WORK_DEFS`(새 단계 `STEP.plow`·`STEP.buoys`) |
+| `mega.js` | 초대형 프로젝트 `MEGA_DEFS`/`Mega`, 실행 중 지도 고치기 `WorldEdit`, 개발 부지 지도 `drawDevSites` |
 | `main.js` | `Game` 루프, 인구 관리 `populate`, 플레이어 조작, 카메라, 사망·체포·리스폰, 장소 진입 `places()` |
 | `shell.html` | 메뉴·상점·카지노 마크업과 **모든 CSS**(모바일 버튼 배치 포함) |
 

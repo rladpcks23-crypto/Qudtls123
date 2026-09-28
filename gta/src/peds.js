@@ -456,6 +456,7 @@ function updatePed(p, dt) {
       break;
     }
     case 'dog': updateDog(p, dt); return;
+    case 'animal': updateAnimal(p, dt); return;
     case 'handsup': Aim.updatePed(p, dt); break;
     case 'feud': feudAI(p, dt); break;
     case 'escort': escortAI(p, dt); break;

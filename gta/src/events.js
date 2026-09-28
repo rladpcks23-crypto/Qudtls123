@@ -285,7 +285,7 @@ const Events = {
     this.t -= dt;
     if (this.t > 0 || this.busy()) return;
     this.t = rand(70, 130);
-    const type = pick(RE_TYPES);
+    const type = this.pickType ? this.pickType(P) : pick(RE_TYPES);
     try { const e = this['make_' + type](P); if (e) { e.type = type; e.t = 0; this.cur = e; } } catch (err) { console.error(err); this.cur = null; }
   },
   end(msg) {

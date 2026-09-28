@@ -55,8 +55,24 @@ const View3D = {
     // 아직 안 만든 청크 자리에 바다 대신 보이는 거친 지면 (미니맵 한 장을 통째로 깐다)
     if (World.mini) {
       const mt = new THREE.CanvasTexture(World.mini); mt.colorSpace = THREE.SRGBColorSpace; mt.magFilter = THREE.LinearFilter;
-      const under = new THREE.Mesh(new THREE.PlaneGeometry(MW * T, MH * T, 56, 26), backMat({ map: mt }));
+      this.underTex = mt; const under = new THREE.Mesh(new THREE.PlaneGeometry(MW * T, MH * T, 56, 26), backMat({ map: mt }));
       under.rotation.x = -Math.PI / 2; under.position.set(MW * T / 2, -0.15, MH * T / 2); S.add(under);
+    }
+    // 실버 피크 산길: 산 표면을 따라가는 아스팔트 띠 + 노란 중앙선 + 정상 광장
+    if (World.mtPath && World.mtPath.length > 2) {
+      const pts = World.mtPath, pos = [], lpos = [], hw = 5.4;
+      const H = (x, y) => mountainH(x / T, y / T) + 0.35;
+      for (let k = 0; k + 1 < pts.length; k++) {
+        const a = pts[k], b = pts[k + 1], dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+        const q = [[a.x + nx * hw, a.y + ny * hw], [a.x - nx * hw, a.y - ny * hw], [b.x - nx * hw, b.y - ny * hw], [b.x + nx * hw, b.y + ny * hw]].map(([x, y]) => [x, H(x, y), y]);
+        pos.push(...q[0], ...q[1], ...q[2], ...q[0], ...q[2], ...q[3]);
+        if (k % 2 === 0) { const w = 0.18, l = [[a.x + nx * w, a.y + ny * w], [a.x - nx * w, a.y - ny * w], [b.x - nx * w, b.y - ny * w], [b.x + nx * w, b.y + ny * w]].map(([x, y]) => [x, H(x, y) + 0.04, y]); lpos.push(...l[0], ...l[1], ...l[2], ...l[0], ...l[2], ...l[3]); }
+      }
+      const mk = (arr, color) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3)); g.computeVertexNormals(); const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ color, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })); S.add(m); };
+      mk(pos, 0x3b3e45); mk(lpos, 0xf2c14e);
+      const mt = World.mountains[0], plaza = new THREE.CircleGeometry(6.5 * T, 24); plaza.rotateX(-Math.PI / 2);
+      const pp = plaza.attributes.position; for (let k = 0; k < pp.count; k++) { const x = pp.getX(k) + mt.x * T, z = pp.getZ(k) + mt.y * T; pp.setXYZ(k, x, mountainH(x / T, z / T) + 0.4, z); } plaza.computeVertexNormals();
+      S.add(new THREE.Mesh(plaza, new THREE.MeshLambertMaterial({ color: 0xa89f92, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })));
     }
     // 레드 카운티의 산·메사: 높이 함수(mountainH)로 만든 지형 메시 (한 번만 만들어 둔다)
     for (const m of World.mountains || []) {
@@ -497,6 +513,29 @@ const View3D = {
       add(new THREE.MeshBasicMaterial({ color: 0xff9a40 }), 0.2, 0.7, 0.7, -L * 0.5 - 0.3, 1.5, 0).name = 'flame';
       for (const [x, z] of [[L * 0.3, 0], [-1.5, 1.2], [-1.5, -1.2]]) add(this.mat('#111'), 0.5, 0.8, 0.3, x, 0.4, z);
       g.userData.flame = g.getObjectByName('flame');
+    } else if (st === 'atv' || st === 'tractor' || st === 'pickup') {
+      const wheel = (x, z, r, w) => { const m = new THREE.Mesh(this.geo.wheel, this.mat('#141414')); m.rotation.x = Math.PI / 2; m.scale.set(r / 0.36, w / 0.3, r / 0.36); m.position.set(x, r, z); g.add(m); };
+      if (st === 'atv') {
+        add(bodyMat, L * 0.85, 0.35, W * 0.6, 0, 0.62, 0); add(this.mat('#2b2d31'), 0.08, 0.08, W * 0.8, L * 0.2, 1.0, 0);
+        for (const [x, z] of [[L * 0.32, W / 2 - 0.2], [L * 0.32, -W / 2 + 0.2], [-L * 0.32, W / 2 - 0.2], [-L * 0.32, -W / 2 + 0.2]]) wheel(x, z, 0.33, 0.32);
+        const rider = new THREE.Group(); rider.name = 'rider';
+        const t = new THREE.Mesh(box, new THREE.MeshLambertMaterial({ color: '#2b2d42' })); t.scale.set(0.35, 0.65, 0.45); t.position.set(-0.15, 1.25, 0); rider.add(t);
+        const h = new THREE.Mesh(this.geo.head, this.mat('#111')); h.scale.setScalar(1.3); h.position.set(-0.05, 1.72, 0); rider.add(h);
+        g.add(rider); g.userData.rider = rider; g.userData.riderMat = t.material;
+      } else if (st === 'tractor') {
+        add(bodyMat, L * 0.55, 0.9, 0.9, L * 0.18, 1.0, 0); add(this.mat('#2b2d31'), 0.12, 1.0, 0.12, L * 0.3, 1.9, 0.2);
+        add(glass, L * 0.36, 1.1, 1.2, -L * 0.25, 1.95, 0); add(this.mat('#e8e2d0'), L * 0.4, 0.1, 1.3, -L * 0.25, 2.55, 0);
+        for (const s of [1, -1]) { wheel(-L * 0.28, s * (W / 2 - 0.25), 0.75, 0.5); wheel(L * 0.32, s * (W / 2 - 0.3), 0.42, 0.3); }
+      } else {
+        add(bodyMat, L, 0.55, W, 0, 0.62, 0);
+        add(bodyMat, L * 0.3, 0.75, W * 0.94, L * 0.06, 1.25, 0); add(glass, 0.08, 0.5, W * 0.82, L * 0.21, 1.2, 0); add(glass, 0.08, 0.45, W * 0.82, -L * 0.09, 1.25, 0);
+        const bed = this.mat('#2a2520'); add(bed, L * 0.42, 0.05, W * 0.9, -L * 0.28, 0.92, 0);
+        for (const s of [1, -1]) add(bodyMat, L * 0.44, 0.35, 0.08, -L * 0.28, 1.08, s * (W / 2 - 0.04)); add(bodyMat, 0.08, 0.35, W, -L / 2 + 0.04, 1.08, 0);
+        for (const [x, z] of [[L * 0.3, W / 2 - 0.12], [L * 0.3, -W / 2 + 0.12], [-L * 0.3, W / 2 - 0.12], [-L * 0.3, -W / 2 + 0.12]]) wheel(x, z, 0.4, 0.3);
+        const hl = new THREE.MeshBasicMaterial({ color: 0xfff7d6 }), tlm = new THREE.MeshBasicMaterial({ color: 0x8a1a1a });
+        for (const z of [-W / 2 + 0.3, W / 2 - 0.3]) { add(hl, 0.06, 0.16, 0.36, L / 2 + 0.01, 0.75, z); add(tlm, 0.06, 0.16, 0.36, -L / 2 - 0.01, 0.8, z); }
+        g.userData.tail = tlm; g.userData.hl = hl;
+      }
     } else if (st === 'bike') {
       add(this.mat('#2b2d31'), L * 0.9, 0.3, 0.22, 0, 0.55, 0);
       add(bodyMat, 0.8, 0.35, 0.4, 0.2, 0.85, 0);
@@ -542,7 +581,7 @@ const View3D = {
         g.userData.siren = [r, b];
       }
       if (st === 'taxi') add(this.mat('#ffe680'), 0.4, 0.2, 0.8, -0.3, tall + 0.1, 0);
-      if (st === 'police') { add(this.mat('#16181c'), L * 0.3, bodyH * 1.01, W * 1.01, L * 0.35, 0.3 + bodyH / 2, 0); }
+      if (st === 'police') { add(this.mat(c.sheriff ? '#6b4e2a' : '#16181c'), L * 0.3, bodyH * 1.01, W * 1.01, L * 0.35, 0.3 + bodyH / 2, 0); }
     }
     this.scene.add(g);
     return g;
@@ -550,8 +589,9 @@ const View3D = {
   // ---------- 사람 메시 ----------
   makePed(p) {
     const g = new THREE.Group(), box = this.geo.box;
-    if (p.kind === 'dog') {
+    if (p.kind === 'dog' || p.kind === 'animal') {
       const m = new THREE.MeshLambertMaterial({ color: p.coat || '#c8a26b' });
+      if (p.sc) g.scale.setScalar(p.sc);
       const b = new THREE.Mesh(box, m); b.scale.set(0.7, 0.3, 0.26); b.position.y = 0.4; g.add(b);
       const h = new THREE.Mesh(box, m); h.scale.set(0.25, 0.24, 0.22); h.position.set(0.42, 0.55, 0); g.add(h);
       for (const [x, z] of [[0.25, 0.1], [0.25, -0.1], [-0.25, 0.1], [-0.25, -0.1]]) { const l = new THREE.Mesh(box, m); l.scale.set(0.08, 0.28, 0.08); l.position.set(x, 0.14, z); g.add(l); }
@@ -561,7 +601,7 @@ const View3D = {
     // 사람: 둥근 몸통·팔다리(캡슐) + 얼굴(눈·눈썹·입) + 머리 모양(짧은/긴/포니테일/단발) — 여성은 가는 허리·치마·맨다리
     const G = this.geo, F = !!p.female, dressed = F && p.dress;
     const shirt = new THREE.MeshLambertMaterial({ color: p.shirt }), pants = new THREE.MeshLambertMaterial({ color: p.pants });
-    const skinM = new THREE.MeshLambertMaterial({ color: p.skin, emissive: shade(p.skin, -0.55) }), hairC = p.kind === 'cop' ? '#15213f' : p.kind === 'gang' ? (GANGS[p.gang] || GANGS.dragon).band : p.hat || p.hair;
+    const skinM = new THREE.MeshLambertMaterial({ color: p.skin, emissive: shade(p.skin, -0.55) }), hairC = p.kind === 'cop' ? (p.sheriff ? '#6b4e2a' : '#15213f') : p.kind === 'gang' ? (GANGS[p.gang] || GANGS.dragon).band : p.hat || p.hair;
     const hairM = new THREE.MeshLambertMaterial({ color: hairC }), shoeM = this.mat(F ? (p.shoe || '#2b1d1d') : '#1c1c1e');
     const mesh = (geo, mat, sx, sy, sz, x, y, z, par = g) => { const m = new THREE.Mesh(geo, mat); m.scale.set(sx, sy, sz); m.position.set(x, y, z); par.add(m); return m; };
     const legs = [];
@@ -657,7 +697,7 @@ const View3D = {
     const P = Game.player;
     let a = this.yaw, best = 0.22, W = WEAPONS[P.weapon];
     for (const p of Game.peds) {
-      if (p.dead || p.kind === 'dog' || p.car) continue;
+      if (p.dead || p.kind === 'dog' || p.kind === 'animal' || p.car) continue;
       const d = dist(p.x, p.y, P.x, P.y); if (d > (W.range || 3) || d < 0.3) continue;
       const da = Math.abs(angNorm(Math.atan2(p.y - P.y, p.x - P.x) - this.yaw));
       const hostile = p.state === 'chase' || p.kind === 'gang' || p.kind === 'target' || p.kind === 'guard';
@@ -675,6 +715,7 @@ const View3D = {
       else { ex += fx * 0.18; ey += fy * 0.18; }
       if (car && car.V.special) eh = (car.type === 'tank' ? 3.0 : 2.3) + (car.alt || 0);
       if (!car) eh += P.alt || 0;
+      if (!(car ? car.alt : P.alt)) eh += groundZ(tx, ty); // 산길
       cam.position.set(ex, eh, ey);
       cam.lookAt(ex + fx * 10, eh + Math.tan(this.pitch) * 10 - (car ? 0.1 : 0), ey + fy * 10);
       cam.fov = car ? 70 : 72;
@@ -682,7 +723,7 @@ const View3D = {
       const para = !car && P.alt > 1.2;
       const back = car ? (v === 'front' ? -1 : 1) * (6.5 + car.L * 0.8 + Math.min(car.speed, 30) * 0.08) : para ? (v === 'front' ? -9 : 9) : (v === 'front' ? -4.2 : 4.6);
       const alt = car ? car.alt || 0 : P.alt || 0;
-      const up = (car ? 2.6 + car.L * 0.25 : para ? 5 : 2.3) + alt;
+      const up = (car ? 2.6 + car.L * 0.25 : para ? 5 : 2.3) + alt + (alt ? 0 : groundZ(tx, ty));
       let dist_ = Math.abs(back);
       const dx = -fx * sign(back), dy = -fy * sign(back);
       // 벽에 가리면 카메라를 당긴다
@@ -693,7 +734,7 @@ const View3D = {
       const cp = cam.position;
       if (!this.camInit) { cp.set(cx, up, cy); this.camInit = true; }
       cp.set(lerp(cp.x, cx, k), lerp(cp.y, up + Math.max(0, -this.pitch) * 3, k), lerp(cp.z, cy, k));
-      const lookH = (car ? 1.2 : 1.45) + alt - (alt > 1.2 ? (para ? 1 : 5) : 0);
+      const lookH = (car ? 1.2 : 1.45) + alt - (alt > 1.2 ? (para ? 1 : 5) : 0) + (alt ? 0 : groundZ(tx, ty));
       cam.lookAt(tx + fx * (v === 'front' ? 0 : 3), lookH + this.pitch * 4, ty + fy * (v === 'front' ? 0 : 3));
       cam.fov = car ? 65 + Math.min(12, car.speed * 0.35) : 60;
     }
@@ -744,7 +785,7 @@ const View3D = {
       seen.add(c.id);
       let g = this.cars.get(c.id);
       if (!g) { g = this.makeCar(c); this.cars.set(c.id, g); }
-      g.position.set(c.x, (c.alt || 0) + (c.jz || 0), c.y); g.rotation.order = 'YXZ'; g.rotation.set(0, -c.a, c.jpitch || 0);
+      g.position.set(c.x, (c.alt || 0) + (c.jz || 0) + (c.alt ? 0 : groundZ(c.x, c.y)), c.y); g.rotation.order = 'YXZ'; g.rotation.set(0, -c.a, c.jpitch || 0);
       if (g.userData.hl) { const ok = CarDamage.headlightsOK(c); if (g.userData.hlOK !== ok) { g.userData.hl.color.set(ok ? '#fff7d6' : '#2a2a28'); g.userData.hlOK = ok; } }
       if (c.dmgParts) { const d = c.dmgParts, sx = 1 - (d.f + d.r) * 0.05; if (g.userData.sx !== sx) { g.scale.set(sx, 1 - (d.f + d.r + d.ls + d.rs) * 0.015, 1 - (d.ls + d.rs) * 0.04); g.userData.sx = sx; } } else if (g.userData.sx) { g.scale.set(1, 1, 1); g.userData.sx = 0; }
       if (c.V.special) {
@@ -774,7 +815,7 @@ const View3D = {
       if (g && p === P && g.userData.style !== styleKey(P)) { S.remove(g); g = null; } // 옷을 갈아입었다
       if (!g) { g = this.makePed(p); this.peds.set(p.id, g); }
       g.visible = !(p === P && Game.view === 'fps');
-      g.position.set(p.x, p.alt || (p.swim ? -1.2 : 0), p.y);
+      g.position.set(p.x, p.alt || (p.swim ? -1.2 : groundZ(p.x, p.y)), p.y);
       if (p === P) {
         if (P.chute && !g.userData.chute) {
           const ch = new THREE.Group();

@@ -83,7 +83,8 @@ function nextStep(m, o) {
 const spawnFoes = (m, n, x, y, o = {}) => {
   const out = [];
   for (let k = 0; k < n; k++) {
-    const w = sidewalkNear(x + rand(-12, 12), y + rand(-12, 12), 3);
+    let w = sidewalkNear(x + rand(-12, 12), y + rand(-12, 12), 3);
+    if (dist(w.x, w.y, x, y) > 30) { const [ox, oy] = openSpotNear(x + rand(-10, 10), y + rand(-10, 10)); w = { x: ox, y: oy }; } // 시골(인도 없음): 그 자리 근처 빈 땅
     const p = missionPed(m, o.kind || 'gang', w.x, w.y);
     if (!o.kind || o.kind === 'gang') setGang(p, o.gang || 'lotus');
     Object.assign(p, { state: o.idle ? 'idle' : 'chase', weapon: o.weapon ? (Array.isArray(o.weapon) ? pick(o.weapon) : o.weapon) : pick(['smg', 'pistol', 'shotgun']), hp: o.hp || 100, maxHp: o.hp || 100, homeX: x, homeY: y });
