@@ -60,7 +60,7 @@ const Bill = {
   },
 
   // ---------- 우주 계획 ----------
-  padX: 737.5 * T, padY: 522.5 * T,
+  padX: 737.5 * T, padY: 446.5 * T,
   spaceBegin() {
     const S = this.space, D = SPACE[S.stage]; if (!D || S.state !== 'none') return;
     if (!this.pay(D.cost)) return;
@@ -68,12 +68,12 @@ const Bill = {
   },
   applyBase() {
     if (this.applied.base) return; this.applied.base = true; const E = WorldEdit, W = World;
-    E.tiles(712, 502, 763, 543, (x, y) => [TL.GRASS, TL.SAND].includes(W.tiles[tIdx(x, y)]) ? TL.PLAZA : null);
-    E.building(716, 506, 725, 513, 10, 'mid', '#d0d4da', '네온 우주센터 관제동');
-    E.building(748, 528, 758, 539, 34, 'warehouse', '#e8ecef', '로켓 조립동');
-    E.place('c_space', 721 * T, 515 * T, '네온 우주센터', 'spaceport', '宇', '#6fe0ff');
-    W.mapLabels.push({ name: '우주 기지', x: 737 * T, y: 498 * T, small: true });
-    E.touch(710, 500, 765, 545);
+    E.tiles(712, 426, 763, 467, (x, y) => [TL.GRASS, TL.SAND].includes(W.tiles[tIdx(x, y)]) ? TL.PLAZA : null);
+    E.building(716, 430, 725, 437, 10, 'mid', '#d0d4da', '네온 우주센터 관제동');
+    E.building(748, 452, 758, 463, 34, 'warehouse', '#e8ecef', '로켓 조립동');
+    E.place('c_space', 721 * T, 439 * T, '네온 우주센터', 'spaceport', '宇', '#6fe0ff');
+    W.mapLabels.push({ name: '우주 기지', x: 737 * T, y: 422 * T, small: true });
+    E.touch(710, 424, 765, 469);
   },
   launchNow() {
     const S = this.space; if (S.state !== 'ready' || this.launch) return;

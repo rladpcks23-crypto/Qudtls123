@@ -924,7 +924,7 @@ function genWorld(seed) {
   MW = CITY_W; MH = CITY_H;
   genCity(seed);
   widenWorld(FULL_W, FULL_H);
-  { const _t = performance.now(); genCounty(seed); World.genT.county = Math.round(performance.now() - _t); }
+  { const _t = performance.now(); genCounty(seed); joinIslets(); World.genT.county = Math.round(performance.now() - _t); }
   const W = World;
   W.treeGrid = new Map();
   for (const t of W.trees) { const k = Math.floor(t.x / 8) + ',' + Math.floor(t.y / 8); if (!W.treeGrid.has(k)) W.treeGrid.set(k, []); W.treeGrid.get(k).push(t); }
@@ -2307,12 +2307,20 @@ function genCounty(seed) {
   const westX = new Int16Array(MH);
   for (let y = 0; y < MH; y++) {
     let m = -1; for (let d = -34; d <= 34; d++) { const yy = y + d; if (yy >= 0 && yy < MH) m = Math.max(m, cityMaxX[yy]); }
-    westX[y] = Math.max(Math.round(664 + 7 * Math.sin(y * 0.023 + ph[0]) + 4 * Math.sin(y * 0.071 + ph[1])), m + 36);
+    westX[y] = Math.max(Math.round(669 + 11 * Math.sin(y * 0.019 + ph[0]) + 5 * Math.sin(y * 0.071 + ph[1]) + 2 * Math.sin(y * 0.2)), m + 36);
   }
-  const eastX = y => Math.round(MW - 20 + 6 * Math.sin(y * 0.031 + ph[2]) + 3 * Math.sin(y * 0.09 + ph[3]));
-  const northY = x => Math.round(9 + 4 * Math.sin(x * 0.027 + ph[4]) + 2 * Math.sin(x * 0.083));
-  const southY = x => Math.round(MH - 17 + 5 * Math.sin(x * 0.029 + ph[5]) + 2 * Math.sin(x * 0.11 + ph[0]));
-  const land = (x, y) => y >= 0 && y < MH && x >= westX[y] && x <= eastX(y) && y >= northY(x) && y <= southY(x);
+  // v2.21: 진짜 섬처럼 — 굽은 해안선 + 만(물이 파고든 곳)으로 네모난 윤곽을 깬다
+  const eastX = y => Math.round(MW - 24 + 9 * Math.sin(y * 0.019 + ph[2]) + 4 * Math.sin(y * 0.07 + ph[3]) + 2 * Math.sin(y * 0.2));
+  const northY = x => Math.round(14 + 9 * Math.sin(x * 0.014 + ph[4]) + 3 * Math.sin(x * 0.061) + 1.5 * Math.sin(x * 0.19));
+  const southY = x => Math.round(MH - 24 + 8 * Math.sin(x * 0.017 + ph[5]) + 3 * Math.sin(x * 0.07 + ph[0]) + 1.5 * Math.sin(x * 0.21));
+  const BAYS = [ // [cx, cy, rx, ry] 타일 — 바깥 순환도로가 없는 귀퉁이·해안을 파고든다
+    [640, -40, 300, 205], // 북서 큰 만 (실버 피크 앞바다)
+    [650, 655, 165, 118], // 남서 만 (사막 해안)
+    [1205, -12, 95, 38], [1412, 238, 62, 70], [1410, 520, 58, 46], [1015, 662, 80, 52], // 북·동·남 작은 만
+    [1440, -30, 95, 72], [1440, 675, 110, 78], // 북동·남동 귀퉁이 둥글게
+  ];
+  const inBay = (x, y) => BAYS.some(([cx, cy, rx, ry]) => { const a = Math.atan2(y - cy, x - cx); return Math.hypot((x - cx) / rx, (y - cy) / ry) < 1 + 0.06 * Math.sin(5 * a + cx) + 0.035 * Math.sin(11 * a + cy); });
+  const land = (x, y) => y >= 0 && y < MH && x >= westX[y] && x <= eastX(y) && y >= northY(x) && y <= southY(x) && !inBay(x, y);
   const lake = { x: 1010, y: 335, rx: 100, ry: 52 };
   const lakeR = (x, y) => { const a = Math.atan2(y - lake.y, x - lake.x); return Math.hypot((x - lake.x) / lake.rx, (y - lake.y) / lake.ry) / (1 + 0.08 * Math.sin(3 * a + ph[1]) + 0.05 * Math.sin(5 * a + ph[2])); };
   const desert = (x, y) => { const n = 16 * Math.sin(x * 0.021 + ph[3]) + 12 * Math.sin(y * 0.026 + ph[4]); return (y > 382 + n && x < 1140 + n) || (x < 830 + n && y > 290 + n); };
@@ -2382,8 +2390,8 @@ function genCounty(seed) {
 
   // ---------- 4) 길: 선(가로·세로) → 교차점마다 노드 ----------
   const HL = [], VL = [];
-  VL.push({ x: XA, y0: YN, y1: YS }, { x: X2, y0: yN, y1: YS }, { x: X3, y0: YN, y1: YS }, { x: XB, y0: YN, y1: YS });
-  HL.push({ y: YN, x0: XA, x1: XB }, { y: YS, x0: XA, x1: XB });
+  VL.push({ x: XA, y0: yN, y1: yS }, { x: X2, y0: yN, y1: YS }, { x: X3, y0: YN, y1: YS }, { x: XB, y0: YN, y1: YS }); // 서쪽 끝길은 북서·남서 만 때문에 두 간선 사이만
+  HL.push({ y: YN, x0: 1060, x1: XB }, { y: YS, x0: X2, x1: XB });
   VL.push({ x: 1060, y0: YN, y1: yN }); // 블랙우드 숲길 (실버 피크 동쪽)
   HL.push({ y: 304, x0: XA + 36, x1: X2 }, { y: 380, x0: X3, x1: XB }); // 평원 가로길 · 목장길
   HL.push({ y: yN, x0: bN ? W.VX[bN.i] : XA, x1: XB, hw: true, from: bN }, { y: yS, x0: bS ? W.VX[bS.i] : XA, x1: XB, hw: true, from: bS });
@@ -2631,6 +2639,52 @@ function genCounty(seed) {
   W.lamps = W.lamps.filter(l => !onBridge(l.x, l.y));
   W.parking = W.parking.filter(p => !onBridge(p.x, p.y));
   W.countyInfo = { bridges: [bN && bN.id, bS && bS.id], yN, yS, XA, nodes: cNodes.length, blocks: W.blocks.filter(b => b.county).length };
+}
+
+// v2.21: 공항 섬·군 기지 섬을 본섬에 붙인다 — 바다를 사이에 둔 따로 떨어진 섬이 아니라 섬 안의 기반 시설처럼.
+// 섬과 본섬 사이의 좁은 바다를 '닫기'(넓혔다 좁히기)로 메워 부드러운 땅목(지협)을 만든다. 도로·건물은 그대로.
+function joinIslets() {
+  const W = World, jobs = [];
+  // 섬 둘레 타원 안에서만 메운다 (이음새가 곧은 선이 되지 않게)
+  if (W.airport) { const A = W.airport; jobs.push({ cx: A.cx, cy: A.cy, ex: A.rx + 46, ey: A.ry + 46, r: 34, dock: 5 }); }
+  if (W.base && W.base.island) { const B = W.base; jobs.push({ cx: (B.x0 + B.x1) / 2 / T, cy: (B.y0 + B.y1) / 2 / T, ex: (B.x1 - B.x0) / 2 / T + 40, ey: (B.y1 - B.y0) / 2 / T + 44, r: 48, dock: 2 }); }
+  if (!jobs.length) return;
+  const w = CITY_W, h = CITY_H, n = w * h, BIG = 1e6;
+  const dt = seed => { // 체스판 거리 변환 (seed(i)가 참인 칸까지 거리 ×3)
+    const d = new Float32Array(n); for (let i = 0; i < n; i++) d[i] = seed(i) ? 0 : BIG;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = x + y * w; let v = d[i]; if (x) v = Math.min(v, d[i - 1] + 3); if (y) { v = Math.min(v, d[i - w] + 3); if (x) v = Math.min(v, d[i - w - 1] + 4); if (x < w - 1) v = Math.min(v, d[i - w + 1] + 4); } d[i] = v; }
+    for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) { const i = x + y * w; let v = d[i]; if (x < w - 1) v = Math.min(v, d[i + 1] + 3); if (y < h - 1) { v = Math.min(v, d[i + w] + 3); if (x < w - 1) v = Math.min(v, d[i + w + 1] + 4); if (x) v = Math.min(v, d[i + w - 1] + 4); } d[i] = v; }
+    return d;
+  };
+  const tl = i => W.tiles[(i % w) + Math.floor(i / w) * MW];
+  const near = dt(i => { const t = tl(i); return t !== TL.WATER && t !== TL.ROAD && t !== TL.DOCK; }); // 다리·부두는 땅으로 치지 않는다
+  const dockNear = (x, y, m) => { for (let yy = y - m; yy <= y + m; yy++) for (let xx = x - m; xx <= x + m; xx++) if (xx >= 0 && yy >= 0 && xx < MW && yy < MH && W.tiles[xx + yy * MW] === TL.DOCK) return true; return false; };
+  const marinaNear = (x, y) => (W.marinas || []).some(m => Math.hypot(m.x / T - x, m.y / T - y) < 16);
+  const joined = W.joined = new Uint8Array(MW * MH);
+  for (const J of jobs) {
+  const r3 = J.r * 3, far = dt(i => near[i] > r3 || i < w * 2 || i >= n - w * 2 || i % w < 2); // 지도 가장자리 밖은 열린 바다
+  for (let y = Math.max(2, Math.floor(J.cy - J.ey)); y <= Math.min(h - 3, J.cy + J.ey); y++) for (let x = Math.max(2, Math.floor(J.cx - J.ex)); x <= Math.min(w - 3, J.cx + J.ex); x++) {
+    const a = Math.atan2(y - J.cy, x - J.cx), e = Math.hypot((x - J.cx) / J.ex, (y - J.cy) / J.ey) / (1 + 0.1 * Math.sin(3 * a + J.cx) + 0.06 * Math.sin(7 * a + J.cy));
+    const i = x + y * w, k = x + y * MW;
+    if (e >= 1 || W.tiles[k] !== TL.WATER || far[i] <= r3 + (hash2(x >> 3, y >> 3) - 0.5) * 24) continue;
+    if (dockNear(x, y, J.dock) || marinaNear(x, y)) continue;
+    W.tiles[k] = TL.GRASS; W.dist[k] = DIST.PARK; joined[k] = 1;
+  }
+  }
+  // 가는 모래 줄·외톨이 칸은 다시 바다로 (두 번)
+  const landN = (x, y) => { let c = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && W.tiles[(x + dx) + (y + dy) * MW] !== TL.WATER) c++; return c; };
+  for (let pass = 0; pass < 3; pass++) for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) { const k = x + y * MW; if (joined[k] && landN(x, y) < 4) { W.tiles[k] = TL.WATER; W.dist[k] = DIST.COAST; joined[k] = 0; } }
+  // 옛 섬 해안의 모래 띠: 이제 물가가 아니면 풀밭으로
+  const wetNear = (x, y) => { for (let d = 1; d <= 3; d++) for (const [dx, dy] of [[d, 0], [-d, 0], [0, d], [0, -d]]) if (W.tiles[(x + dx) + (y + dy) * MW] === TL.WATER) return true; return false; };
+  for (const J of jobs) for (let y = Math.max(3, Math.floor(J.cy - J.ey)); y <= Math.min(h - 4, J.cy + J.ey); y++) for (let x = Math.max(3, Math.floor(J.cx - J.ex)); x <= Math.min(w - 4, J.cx + J.ex); x++) {
+    const k = x + y * MW; if (W.tiles[k] === TL.SAND && !joined[k] && W.region[k] < 0 && !wetNear(x, y)) W.tiles[k] = TL.GRASS;
+  }
+  // 새 땅 가장자리는 모래, 안쪽엔 나무 조금
+  for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) {
+    const k = x + y * MW; if (!joined[k]) continue;
+    if (wetNear(x, y)) W.tiles[k] = TL.SAND;
+    else if (hash2(x >> 2, y >> 2) < 0.4 && hash2(x, y) < 0.05) W.trees.push({ x: (x + 0.5) * T, y: (y + 0.5) * T, kind: hash2(y, x) < 0.3 ? 'palm' : 'tree', r: 2.3, h: 6.5, hue: hash2(x * 3, y) });
+  }
 }
 
 'use strict';
@@ -3715,6 +3769,7 @@ function updatePed(p, dt) {
     case 'handsup': Aim.updatePed(p, dt); break;
     case 'feud': feudAI(p, dt); break;
     case 'escort': escortAI(p, dt); break;
+    case 'pmc': pmcAI(p, dt); break;
     case 'idle': {
       if (p.homeX === undefined) { p.homeX = p.x; p.homeY = p.y; }
       if (p.stay) { pedSeek(p, p.homeX, p.homeY, 1, dt); if (!P.dead && dist2(p.x, p.y, P.px, P.py) < 100) p.a = Math.atan2(P.py - p.y, P.px - p.x); break; }
@@ -6248,6 +6303,7 @@ function worldTransform(c = ctx, scale = DPR) {
   c.scale(Cam.ppm, Cam.ppm); c.translate(-Cam.x, -Cam.y);
 }
 // 높이 z의 점을 원근 투영(월드 좌표계 안에서)
+const bH2 = b => Math.min(b.h, 115); // 탑뷰 원근: 카메라 높이(150m)를 넘는 초고층(스카이 타워 II)은 115m로 그린다
 const proj = (x, y, z) => { const f = Cam.H / (Cam.H - z); return [Cam.x + (x - Cam.x) * f, Cam.y + (y - Cam.y) * f]; };
 
 // ---------- 시간/주변광 ----------
@@ -6507,7 +6563,7 @@ function drawShadows(amb) {
   ctx.beginPath();
   for (const b of bldNear(Cam.x, Cam.y, Math.max(Cam.vw, Cam.vh) / 2)) {
     const X0 = b.x0 * T, Y0 = b.y0 * T, X1 = (b.x1 + 1) * T, Y1 = (b.y1 + 1) * T;
-    const ox = sx * b.h, oy = sy * b.h;
+    const ox = sx * bH2(b), oy = sy * bH2(b);
     if (X1 + Math.max(0, ox) < Cam.x - Cam.vw / 2 || X0 + Math.min(0, ox) > Cam.x + Cam.vw / 2 || Y1 + Math.max(0, oy) < Cam.y - Cam.vh / 2 || Y0 + Math.min(0, oy) > Cam.y + Cam.vh / 2) continue;
     // 직사각형 + 이동된 직사각형의 볼록껍질
     const pts = ox >= 0 ? (oy >= 0 ? [[X0, Y0], [X1, Y0], [X1 + ox, Y0 + oy], [X1 + ox, Y1 + oy], [X0 + ox, Y1 + oy], [X0, Y1]] : [[X0, Y1], [X0, Y0], [X0 + ox, Y0 + oy], [X1 + ox, Y0 + oy], [X1 + ox, Y1 + oy], [X1, Y1]])
@@ -6895,7 +6951,7 @@ function drawBuildings(amb) {
   const vis = [];
   for (const b of bldNear(Cam.x, Cam.y, Math.max(Cam.vw, Cam.vh) / 2)) {
     const X0 = b.x0 * T, Y0 = b.y0 * T, X1 = (b.x1 + 1) * T, Y1 = (b.y1 + 1) * T;
-    const f = Cam.H / (Cam.H - b.h), ex = (Cam.vw / 2) * (f - 1) + 2, ey = (Cam.vh / 2) * (f - 1) + 2;
+    const f = Cam.H / (Cam.H - bH2(b)), ex = (Cam.vw / 2) * (f - 1) + 2, ey = (Cam.vh / 2) * (f - 1) + 2;
     if (X1 < Cam.x - Cam.vw / 2 - ex || X0 > Cam.x + Cam.vw / 2 + ex || Y1 < Cam.y - Cam.vh / 2 - ey || Y0 > Cam.y + Cam.vh / 2 + ey) continue;
     vis.push(b); b._d = dist2((X0 + X1) / 2, (Y0 + Y1) / 2, Cam.x, Cam.y);
   }
@@ -6905,7 +6961,7 @@ function drawBuildings(amb) {
 const PLACE_MARK = { safehouse: '#9be15d', ammu: '#ff6b5a', ammu2: '#ff6b5a', ammu3: '#ff6b5a', burger: '#ffb347', burger2: '#ffb347', burger3: '#ffb347', burger4: '#ffb347', mart: '#7ae68f', mart2: '#7ae68f', mart3: '#7ae68f', mart4: '#7ae68f', mart5: '#7ae68f', jobcenter: '#6fb6ff', broker: '#ff5d8f', clothes: '#e07aff', clothes2: '#e07aff', gym: '#ff9f43', pharmacy: '#3ee07a', pharmacy2: '#3ee07a', bank: '#ffd700' };
 const SHOP_ROOF = { safehouse: ['#4a7a3f', '#f2fff0'], ammu: ['#b23a2e', '#f2f2f2'], burger: ['#e0572f', '#ffe08a'], mart: ['#2e8b57', '#f2fff4'], jobcenter: ['#2d5d9f', '#ffffff'], broker: ['#3a2346', '#ff5d8f'], clothes: ['#8a3b7a', '#ffe3f6'], gym: ['#222', '#ff9f43'], pharmacy: ['#1f8a4c', '#ffffff'], bank: ['#6b5a2a', '#ffd700'], biz: ['#4a3a14', '#ffd166'], casino: ['#1d1233', '#ff5d8f'], hq: ['#161616', '#ff4d4d'] };
 function drawBuilding(b, amb, night) {
-  const X0 = b.x0 * T, Y0 = b.y0 * T, X1 = (b.x1 + 1) * T, Y1 = (b.y1 + 1) * T, h = b.h;
+  const X0 = b.x0 * T, Y0 = b.y0 * T, X1 = (b.x1 + 1) * T, Y1 = (b.y1 + 1) * T, h = bH2(b);
   const P = (x, y, z) => proj(x, y, z);
   const corners = [[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]];
   const roof = corners.map(([x, y]) => P(x, y, h));
@@ -7849,7 +7905,7 @@ const View3D = {
     const P = Game.player;
     let a = this.yaw, best = 0.22, W = WEAPONS[P.weapon];
     for (const p of Game.peds) {
-      if (p.dead || p.kind === 'dog' || p.kind === 'animal' || p.car) continue;
+      if (p.dead || p.kind === 'dog' || p.kind === 'animal' || p.car || p.pmc) continue;
       const d = dist(p.x, p.y, P.x, P.y); if (d > (W.range || 3) || d < 0.3) continue;
       const da = Math.abs(angNorm(Math.atan2(p.y - P.y, p.x - P.x) - this.yaw));
       const hostile = p.state === 'chase' || p.kind === 'gang' || p.kind === 'target' || p.kind === 'guard';
@@ -13715,6 +13771,290 @@ const openDevMap = () => { Shop.close(); Game.showDev = true; Game.state = 'map'
 
 'use strict';
 /* =====================================================================
+ * billionaire.js — 억만장자 콘텐츠 (v2.21): 수백억 달러를 쓰는 곳
+ *
+ *  · 도시 매입: 동네(도시 17 + 카운티 10)를 통째로 산다 ($6억 ~ $80억). 1분마다 땅값의 0.03% 수입,
+ *    내 동네에선 수배가 빨리 풀린다. 10곳 · 도시 전부 · 전부를 사면 칭호와 에투알 광장에 내 동상.
+ *  · 우주 계획: 사막에 우주 기지($50억) → 통신 위성($80억) → 유인 달 탐사($400억) → 화성 이주선($1,500억)
+ *    단계마다 준비 기간 뒤 발사대에서 직접 발사 버튼 — 로켓이 불꽃과 연기를 뿜으며 하늘로 올라간다.
+ *  · 네온 스카이 타워 II ($200억): 다운타운에 320m 세계 최고층 — 도시 어디서나 보인다. 전망대에서 낙하산 점프.
+ *  · 초호화 요트 '네온 레이디' ($30억): 34m 요트, 가까운 마리나로 부른다.
+ *  · 사설 군대: 경호팀 4명(고용 $5억 + 1분 $200만), 전차 $10억 · 공격 헬기 $20억 · 전투기 $30억 (사면 어디서나 호출).
+ *  휴대폰(I)의 [억만장자] 앱에서 모두 관리한다.
+ * ===================================================================== */
+
+GANGS.pmc = { name: '네온 시큐리티', shirt: '#17181c', band: '#c9d1d9', pants: '#17181c', color: '#c9d1d9', short: '경' };
+{ const _f = Gangs.friendly.bind(Gangs); Gangs.friendly = p => (p && p.pmc) || _f(p); }
+
+VTYPES.megayacht = { name: '네온 레이디 (초호화 요트)', L: 34, W: 8, mass: 400000, Fe: 1, vmax: 20, grip: 1, cs: 5, steer: 0.32, hp: 4000, colors: ['#f4f4f4'], style: 'boat', special: 'boat', accel: 2.2, armor: 0.85 };
+if (typeof VEHICLE_PRICES !== 'undefined') VEHICLE_PRICES.megayacht = 3e9;
+
+const HOOD_PRICE = { [DIST.DOWNTOWN]: 8e9, [DIST.MIDTOWN]: 3e9, [DIST.RESID]: 1.5e9, [DIST.HARBOR]: 2.5e9, [DIST.BEACH]: 2e9, [DIST.INDUSTRY]: 1.8e9 };
+const COUNTY_TOWNS = ['샌디 밸리', '파인 베이', '골든 필즈', '레드 록'];
+function hoodPrice(i) { const h = World.hoods[i]; if (h.county) return COUNTY_TOWNS.includes(h.name) ? 1e9 : 6e8; return HOOD_PRICE[h.d] || 1.5e9; }
+const SPACE = [
+  { name: '우주 기지 건설', cost: 5e9, min: 6, desc: '레드 메사 사막에 발사대·관제센터·조립동' },
+  { name: '통신 위성 발사', cost: 8e9, min: 3, desc: '위성: 어디서든 수배가 더 빨리 풀린다', cut: [['관제센터', '위성 궤도 진입 성공! 이제 도시 어디서든 경찰 무전을 먼저 듣는다.']] },
+  { name: '유인 달 탐사', cost: 4e10, min: 6, desc: '달 관광 사업: 1분 수입 $5천만', cut: [['관제센터', '…착륙했습니다. 달 표면에 네온 하버 깃발이 섰습니다!'], ['네온 뉴스', '"도시의 왕, 이제는 달의 주인" — 전 세계가 네온 하버를 본다.']] },
+  { name: '화성 이주선', cost: 1.5e11, min: 10, desc: '인류 최초의 화성 도시 — 엔딩', cut: [['관제센터', '화성 이주선 발사 성공. 도착까지 7개월.'], ['마담 윤', '거리의 꼬마가 우주까지 갔네. 이제 더 올라갈 곳도 없겠어.'], ['네온 하버', '— 우주의 왕 —']] },
+];
+const PMC_VEH = { tank: { type: 'tank', name: '라이노 전차', cost: 1e9 }, heli: { type: 'milheli', name: '헌터 공격 헬기', cost: 2e9 }, jet: { type: 'jet', name: '라저 전투기', cost: 3e9 } };
+
+const Bill = {
+  hoods: {}, space: { stage: 0, state: 'none', left: 0 }, tower: { state: 'none', left: 0, lot: null }, yacht: false, pmc: {}, guardsOn: false, titles: {},
+  t: 0, applied: {}, launch: null, guards: [], summonCD: 0,
+  save() { return { hoods: this.hoods, space: this.space, tower: this.tower, yacht: this.yacht, pmc: this.pmc, guardsOn: this.guardsOn, titles: this.titles }; },
+  load(o) { o = o || {}; this.hoods = o.hoods || {}; this.space = o.space || { stage: 0, state: 'none', left: 0 }; this.tower = o.tower || { state: 'none', left: 0, lot: null }; this.yacht = !!o.yacht; this.pmc = o.pmc || {}; this.guardsOn = !!o.guardsOn; this.titles = o.titles || {}; this.applied = {}; this.launch = null; this.guards = []; },
+  pay(cost) { const P = Game.player; if (P.money < cost) { UI.toast(`돈이 모자라다 ($${fmtB(cost)} 필요)`); return false; } P.money -= cost; Sfx.cash(); return true; },
+  hoodIncome() { return Object.keys(this.hoods).reduce((a, i) => a + hoodPrice(+i) * 0.0003, 0); },
+  perMin() { return Math.round(this.hoodIncome() + (this.tower.state === 'done' ? 3e7 : 0) + (this.space.stage >= 3 ? 5e7 : 0) - (this.guardsOn ? 2e6 : 0)); },
+  ownedCount(county) { return Object.keys(this.hoods).filter(i => !!World.hoods[i].county === county).length; },
+
+  // ---------- 도시 매입 ----------
+  buyHood(i) {
+    if (this.hoods[i] || !this.pay(hoodPrice(i))) return;
+    this.hoods[i] = 1; const h = World.hoods[i];
+    UI.big(`${h.name} 매입!`, `1분 수입 $${fmtB(hoodPrice(i) * 0.0003)} · 이 동네에선 수배가 빨리 풀린다`, 3, '#ffd700');
+    const city = World.hoods.filter(q => !q.county).length, cty = World.hoods.filter(q => q.county).length, n = Object.keys(this.hoods).length;
+    if (n >= 10 && !this.titles.ten) { this.titles.ten = 1; setTimeout(() => UI.big('칭호: 땅의 주인', '동네 10곳을 가졌다', 3.5, '#ffd700'), 3200); }
+    if (this.ownedCount(false) >= city && !this.titles.city) { this.titles.city = 1; setTimeout(() => { UI.big('칭호: 도시의 주인', '네온 하버의 모든 동네가 네 것이다 — 에투알 광장에 동상이 섰다', 4.5, '#ffd700'); this.applyStatue(); }, 3400); }
+    if (n >= city + cty && !this.titles.all) { this.titles.all = 1; setTimeout(() => UI.big('칭호: 섬과 대륙의 주인', '도시와 카운티 전부를 샀다', 4.5, '#ffd700'), 8000); }
+    Save.write();
+  },
+  inOwnedHood(x, y) { const tx = clamp(Math.floor(x / T), 0, MW - 1), ty = clamp(Math.floor(y / T), 0, MH - 1), h = World.hoodT ? World.hoodT[tx + ty * MW] : 255; return h < 255 && !!this.hoods[h]; },
+  applyStatue() {
+    if (this.applied.statue || !World.etoile) return; this.applied.statue = true;
+    const E = World.etoile; World.decos.push({ t: 'spire', x: (E.cx + 0.5) * T, y: (E.cy + 0.5) * T, z: 4, h: 10, c: '#d4af37' });
+    WorldEdit.building(E.cx - 1, E.cy - 1, E.cx + 1, E.cy + 1, 4, 'arch', '#d4af37', '내 동상 (도시의 주인)');
+    if (View3D.bucket) { const CS = View3D.CS, k = clamp(Math.floor((E.cx + 0.5) * T / CS), 0, View3D.NCX - 1) + clamp(Math.floor((E.cy + 0.5) * T / CS), 0, View3D.NCY - 1) * View3D.NCX; View3D.bucket[k].decos.push(World.decos[World.decos.length - 1]); }
+    WorldEdit.touch(E.cx - 2, E.cy - 2, E.cx + 2, E.cy + 2);
+  },
+
+  // ---------- 우주 계획 ----------
+  padX: 737.5 * T, padY: 446.5 * T,
+  spaceBegin() {
+    const S = this.space, D = SPACE[S.stage]; if (!D || S.state !== 'none') return;
+    if (!this.pay(D.cost)) return;
+    S.state = 'build'; S.left = D.min * 60; UI.big(D.name, `${D.min}분 뒤 ${S.stage === 0 ? '완공' : '발사 준비 완료'}`, 3, '#6fe0ff'); Save.write();
+  },
+  applyBase() {
+    if (this.applied.base) return; this.applied.base = true; const E = WorldEdit, W = World;
+    E.tiles(712, 426, 763, 467, (x, y) => [TL.GRASS, TL.SAND].includes(W.tiles[tIdx(x, y)]) ? TL.PLAZA : null);
+    E.building(716, 430, 725, 437, 10, 'mid', '#d0d4da', '네온 우주센터 관제동');
+    E.building(748, 452, 758, 463, 34, 'warehouse', '#e8ecef', '로켓 조립동');
+    E.place('c_space', 721 * T, 439 * T, '네온 우주센터', 'spaceport', '宇', '#6fe0ff');
+    W.mapLabels.push({ name: '우주 기지', x: 737 * T, y: 422 * T, small: true });
+    E.touch(710, 424, 765, 469);
+  },
+  launchNow() {
+    const S = this.space; if (S.state !== 'ready' || this.launch) return;
+    this.launch = { t: 0, stage: S.stage }; S.state = 'flying';
+    UI.big('발사 10초 전', `${SPACE[S.stage].name} — 발사대에서 떨어져 지켜보자`, 3, '#ff9f1c');
+  },
+  rocketAlt() { const L = this.launch; if (!L || L.t < 10) return 0; const t = L.t - 10; return 0.5 * 7 * t * t; },
+  updateLaunch(dt) {
+    const L = this.launch; if (!L) return; L.t += dt;
+    const x = this.padX, y = this.padY, alt = this.rocketAlt();
+    if (L.t > 7 && L.t < 10) { if (chance(dt * 12)) Particles.smoke(x + rand(-8, 8), y + rand(-8, 8), 2.5, '#d8d8d8'); }
+    if (L.t >= 10) {
+      for (let k = 0; k < 3; k++) Particles.smoke(x + rand(-6, 6), y + rand(-6, 6), 3, k ? '#e8e8e8' : '#ffb347');
+      if (L.t < 14) { Cam.shake = Math.max(Cam.shake, 0.5); if (!L.boom) { L.boom = true; Sfx.explode && Sfx.explode(x, y, 3); } }
+    }
+    if (L.t > 36) {
+      const S = this.space, D = SPACE[L.stage]; this.launch = null; S.stage = L.stage + 1; S.state = 'none';
+      UI.big('발사 성공!', D.desc, 4, '#6fe0ff'); Msgs.add('네온 우주센터', `${D.name} 성공.`); Save.write();
+      if (D.cut && typeof Cutscene !== 'undefined') setTimeout(() => Cutscene.play([[D.name, '— 우주 계획 —'], ...D.cut], () => { }), 2500);
+    }
+  },
+
+  // ---------- 네온 스카이 타워 II ----------
+  // 다운타운엔 빈 필지가 없어서, 에투알 광장 가까운 큰 빌딩(5×5칸 이상)을 헐고 다시 짓는다
+  towerLot() {
+    if (this.tower.lot) return this.tower.lot;
+    const E = World.etoile, ex = (E ? E.cx : CITY_W / 2) * T, ey = (E ? E.cy : CITY_H / 2) * T;
+    const busy = b => Object.values(World.places).some(q => q && q.x >= b.x0 * T - 6 && q.x <= (b.x1 + 1) * T + 6 && q.y >= b.y0 * T - 6 && q.y <= (b.y1 + 1) * T + 6);
+    const l = World.buildings.filter(b => !b.county && !b.mega && !b.dev && (b.kind === 'tower' || b.kind === 'mid') && b.x1 - b.x0 >= 4 && b.y1 - b.y0 >= 4 && b.x1 < CITY_W && b.y1 < CITY_H && !busy(b))
+      .sort((a, b) => dist((a.x0 + a.x1) / 2 * T, (a.y0 + a.y1) / 2 * T, ex, ey) - dist((b.x0 + b.x1) / 2 * T, (b.y0 + b.y1) / 2 * T, ex, ey))[0];
+    return l ? (this.tower.lot = { x0: l.x0, y0: l.y0, x1: l.x1, y1: l.y1 }) : null;
+  },
+  towerBegin() { const L = this.towerLot(); if (!L || this.tower.state !== 'none') { if (!L) UI.toast('다시 지을 빌딩을 찾지 못했다'); return; } if (!this.pay(2e10)) return; this.tower.state = 'build'; this.tower.left = 15 * 60; UI.big('네온 스카이 타워 II 착공', '에투알 광장 옆 빌딩을 헐고 15분 뒤 320m 세계 최고층', 3, '#ffd700'); Save.write(); },
+  applyTower() {
+    if (this.applied.tower) return; const L = this.tower.lot; if (!L) return; this.applied.tower = true;
+    const b = World.buildings.find(q => q.x0 === L.x0 && q.y0 === L.y0 && q.x1 === L.x1 && q.y1 === L.y1);
+    if (b) Object.assign(b, { h: 320, kind: 'tower', color: '#8fa8c0', lit: 0.9, mega: true, label: '네온 스카이 타워 II' });
+    else WorldEdit.building(L.x0, L.y0, L.x1, L.y1, 320, 'tower', '#8fa8c0', '네온 스카이 타워 II');
+    const [px, py] = openSpotNear((L.x0 + L.x1 + 1) / 2 * T, (L.y1 + 1) * T + 3);
+    WorldEdit.place('c_tower2', px, py, '네온 스카이 타워 II 전망대', 'tower2', '塔', '#ffd700');
+    World.mapLabels.push({ name: '스카이 타워 II', x: (L.x0 + L.x1 + 1) / 2 * T, y: (L.y0 - 3) * T, small: true });
+    WorldEdit.touch(L.x0 - 1, L.y0 - 1, L.x1 + 1, L.y1 + 3);
+  },
+  towerJump() {
+    const L = this.tower.lot, P = Game.player; if (!L) return;
+    P.x = (L.x1 + 1) * T + 14; P.y = (L.y0 + L.y1 + 1) / 2 * T; P.alt = 330; P.vz = 4.5; P.chute = true; P.paraT = 1.4; P.vx = 7; P.vy = 0; P.a = 0;
+    UI.big('네온 스카이 타워 II 전망대', '320m에서 낙하산으로 뛰어내렸다! (WASD로 방향)', 3, '#ffd700');
+  },
+
+  // ---------- 요트 · 사설 군대 ----------
+  nearestMarina() { const P = Game.player; let b = null, bd = 1e18; for (const m of World.marinas || []) { const d = dist2(m.x, m.y, P.px, P.py); if (d < bd) { bd = d; b = m; } } return b; },
+  callYacht() {
+    const m = this.nearestMarina(); if (!m) return;
+    for (const c of Game.cars) if (c.type === 'megayacht' && c.owned) c.remove = true;
+    const a = m.a || 0, x = m.x + Math.cos(a) * 30, y = m.y + Math.sin(a) * 30;
+    const c = new Car('megayacht', tileAt(x, y) === TL.WATER ? x : m.x, tileAt(x, y) === TL.WATER ? y : m.y, a, { persistent: true }); c.owned = true; c.label = '내 요트 네온 레이디'; Game.cars.push(c);
+    Game.waypoint = { x: c.x, y: c.y }; UI.toast('네온 레이디가 가까운 마리나에 도착했다 (지도 표시)');
+  },
+  callVehicle(k) {
+    if (this.summonCD > 0) { UI.toast(`호출 대기 ${Math.ceil(this.summonCD)}초`); return; }
+    const V = PMC_VEH[k], P = Game.player; let x, y, a = 0;
+    if (k === 'tank') { const s = roadsideSpot(P.px, P.py, 15, 60); x = s.x; y = s.y; a = s.a || 0; }
+    else { const [ox, oy] = openSpotNear(P.px + 20, P.py + 10); x = ox; y = oy; }
+    const c = new Car(V.type, x, y, a, { persistent: true }); c.alt = 0; c.label = `내 ${V.name}`; c.owned = true; Game.cars.push(c);
+    this.summonCD = 45; Game.waypoint = { x, y }; UI.toast(`${V.name} 도착 (지도 표시)`);
+  },
+  spawnGuards() {
+    const P = Game.player; this.guards = this.guards.filter(p => Game.peds.includes(p) && !p.dead);
+    for (let k = this.guards.length; k < 4; k++) {
+      const [x, y] = openSpotNear(P.px + rand(-6, 6), P.py + rand(-6, 6));
+      const p = spawnPed('gang', x, y); setGang(p, 'pmc');
+      Object.assign(p, { persistent: true, state: 'pmc', pmc: true, hp: 260, maxHp: 260, armor: 100, weapon: pick(['rifle', 'smg', 'rifle']), nameTag: '경호원', hat: '#0d0d10' });
+      this.guards.push(p);
+    }
+  },
+  update(dt) {
+    const P = Game.player; if (!P || !World.county) return;
+    this.summonCD -= dt;
+    if (this.space.stage >= 1) this.applyBase();
+    if (this.tower.state === 'done') this.applyTower();
+    if (this.titles.city) this.applyStatue();
+    this.updateLaunch(dt);
+    if (View3D.scene) this.rocket3D();
+    // 수배: 내 동네·위성
+    if (Wanted.stars > 0 && Wanted.evadeT > 0) Wanted.evadeT += dt * ((this.inOwnedHood(P.px, P.py) ? 0.5 : 0) + (this.space.stage >= 2 ? 0.3 : 0));
+    // 경호팀
+    if (this.guardsOn && !P.dead) { this.gT = (this.gT || 0) - dt; if (this.gT <= 0) { this.gT = 20; this.spawnGuards(); } }
+    this.t += dt;
+    if (this.t >= 1) {
+      const step = this.t; this.t = 0; const S = this.space;
+      if (S.state === 'build') { S.left -= step; if (S.left <= 0) { if (S.stage === 0) { S.stage = 1; S.state = 'none'; this.applyBase(); UI.big('네온 우주센터 완공', '관제센터에서 다음 단계를 진행하자', 3.5, '#6fe0ff'); } else { S.state = 'ready'; UI.big('발사 준비 완료', `${SPACE[S.stage].name} — 네온 우주센터에서 발사`, 3.5, '#6fe0ff'); } Save.write(); } }
+      const Tw = this.tower; if (Tw.state === 'build') { Tw.left -= step; if (Tw.left <= 0) { Tw.state = 'done'; this.applyTower(); UI.big('네온 스카이 타워 II 완공', '세계 최고층 320m — 도시 어디서나 보인다', 4, '#ffd700'); Save.write(); } }
+      this.incT = (this.incT || 0) + step;
+      if (this.incT >= 60) { this.incT -= 60; const n = this.perMin(); if (n) { P.money += n; UI.toast(`억만장자 수입 ${n >= 0 ? '+' : '-'}$${fmtB(Math.abs(n))}${this.guardsOn ? ' (경호팀 유지비 포함)' : ''}`); } }
+    }
+  },
+  props() {
+    const out = [];
+    const S = this.space;
+    if (S.stage >= 1 && (S.state === 'ready' || S.state === 'flying')) { const alt = this.rocketAlt(); if (alt < 80) { out.push({ x: this.padX, y: this.padY, w: 6, d: 6, h: 55, z: alt, c: '#f2f4f7', no3d: true }); if (this.launch && this.launch.t >= 10) out.push({ x: this.padX, y: this.padY, w: 5, d: 5, h: 12, z: Math.max(0, alt - 12), c: '#ff9f1c', glow: true, no3d: true }); } }
+    if (S.stage >= 1) out.push({ x: this.padX + 12, y: this.padY, w: 3, d: 3, h: 70, c: '#c8201e', no2d: true });
+    if (S.state === 'build' && S.stage === 0) out.push({ x: this.padX, y: this.padY, w: 30, d: 30, h: 8 + 20 * (1 - S.left / (SPACE[0].min * 60)), c: '#b8b0a0' });
+    const Tw = this.tower; if (Tw.state === 'build' && Tw.lot) { const L = Tw.lot, prog = 1 - Tw.left / 900; out.push({ x: (L.x0 + L.x1 + 1) / 2 * T, y: (L.y0 + L.y1 + 1) / 2 * T, w: (L.x1 - L.x0 + 1) * T - 2, d: (L.y1 - L.y0 + 1) * T - 2, h: 20 + prog * 300, c: '#8fa8c0' }, { x: (L.x1 + 1) * T - 3, y: L.y0 * T + 3, w: 1.5, d: 1.5, h: 40 + prog * 310, c: '#ffb400' }); }
+    return out;
+  },
+  // 3D: 발사대 로켓 (몸통 · 띠 · 원뿔 · 날개 · 불꽃) — 전역 메시
+  rocket3D() {
+    if (!View3D.scene) return;
+    const show = this.space.stage >= 1 && (this.space.state === 'ready' || this.space.state === 'flying');
+    if (!this.rk) {
+      const g = new THREE.Group(), m = c => new THREE.MeshLambertMaterial({ color: c });
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 48, 16), m('#f2f4f7')); body.position.y = 24; g.add(body);
+      for (const yy of [12, 30]) { const b = new THREE.Mesh(new THREE.CylinderGeometry(3.05, 3.05, 2, 16), m('#15161a')); b.position.y = yy; g.add(b); }
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(3, 9, 16), m('#c8201e')); nose.position.y = 52.5; g.add(nose);
+      for (let k = 0; k < 4; k++) { const f = new THREE.Mesh(new THREE.BoxGeometry(0.4, 8, 4), m('#15161a')); f.position.set(Math.cos(k * Math.PI / 2) * 3.4, 4, Math.sin(k * Math.PI / 2) * 3.4); f.rotation.y = -k * Math.PI / 2; g.add(f); }
+      const fl = new THREE.Mesh(new THREE.ConeGeometry(2.6, 14, 12), new THREE.MeshBasicMaterial({ color: 0xffb347 })); fl.rotation.x = Math.PI; fl.position.y = -7; g.add(fl);
+      g.position.set(this.padX, 0, this.padY); View3D.scene.add(g); this.rk = { g, fl };
+    }
+    this.rk.g.visible = show; this.rk.g.position.y = this.rocketAlt(); this.rk.fl.visible = !!(this.launch && this.launch.t >= 10); this.rk.fl.scale.y = 1 + Math.random() * 0.4;
+    // 스카이 타워 II: 멀리서도 보이는 전역 메시 (가까우면 청크 건물이 덮는다)
+    if (this.tower.state === 'done' && this.tower.lot && !this.tw3) {
+      const L = this.tower.lot, w = (L.x1 - L.x0 + 1) * T - 1, d = (L.y1 - L.y0 + 1) * T - 1;
+      const mat = new THREE.MeshLambertMaterial({ color: '#7f96ad', fog: false }), g = new THREE.Group();
+      const b = new THREE.Mesh(new THREE.BoxGeometry(w, 318, d), mat); b.position.set((L.x0 + L.x1 + 1) / 2 * T, 159, (L.y0 + L.y1 + 1) / 2 * T); g.add(b);
+      const sp = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 1.4, 60, 8), new THREE.MeshLambertMaterial({ color: '#d0d4da', fog: false })); sp.position.set(b.position.x, 350, b.position.z); g.add(sp);
+      const lt = new THREE.Mesh(new THREE.SphereGeometry(1.6, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff2d2d })); lt.position.set(b.position.x, 381, b.position.z); g.add(lt);
+      View3D.scene.add(g); this.tw3 = g;
+    }
+  },
+};
+SaveExt.mods.billion = Bill;
+Props.providers.push(() => Bill.props());
+const fmtB = n => n >= 1e8 ? `${(n / 1e8).toLocaleString(undefined, { maximumFractionDigits: 1 })}억` : Math.round(n).toLocaleString();
+
+// 경호원 AI: 플레이어를 따라다니며 적(쫓아오는 경찰·라이벌·표적)을 쏜다
+function pmcAI(p, dt) {
+  const P = Game.player;
+  if (!Bill.guardsOn || dist2(p.x, p.y, P.px, P.py) > 200 * 200) { p.remove = true; return; }
+  if (p.foe && (p.foe.dead || !Game.peds.includes(p.foe) || dist2(p.x, p.y, p.foe.x, p.foe.y) > 35 * 35)) p.foe = null;
+  if (!p.foe) { let best = null, bd = 22 * 22; for (const q of Game.peds) { if (q.dead || q === p || q.car || q.pmc || q.kind === 'animal' || q.kind === 'dog' || Gangs.friendly(q)) continue; const hostile = q.state === 'chase' || q.state === 'fight' || q.kind === 'target' || (q.kind === 'gang' && q.state === 'escort' && false); if (!hostile) continue; const d2 = dist2(q.x, q.y, P.px, P.py); if (d2 < bd) { bd = d2; best = q; } } p.foe = best; }
+  if (p.foe) { feudAI(p, dt); p.state = 'pmc'; return; }
+  const d = dist(p.x, p.y, P.px, P.py);
+  if (P.car) { if (d > 6) pedSeek(p, P.px, P.py, 7, dt, 14); else { p.vx *= 0.8; p.vy *= 0.8; } }
+  else if (d > 3) pedSeek(p, P.px - Math.cos(P.a) * 2.5, P.py - Math.sin(P.a) * 2.5, d > 10 ? 7.5 : 4.5, dt, 14);
+  else { p.vx *= 0.8; p.vy *= 0.8; }
+}
+
+// ---------- 창 ----------
+SHOPS.citybuy = {
+  title: '도시 매입', get sub() { const c = World.hoods.filter(q => !q.county).length, k = World.hoods.filter(q => q.county).length; return `도시 ${Bill.ownedCount(false)}/${c} · 카운티 ${Bill.ownedCount(true)}/${k} · 땅 수입 1분 $${fmtB(Bill.hoodIncome())} · 내 동네에선 수배가 빨리 풀린다`; },
+  items: () => World.hoods.map((h, i) => ({ h, i })).sort((a, b) => (!!Bill.hoods[a.i] - !!Bill.hoods[b.i]) || hoodPrice(b.i) - hoodPrice(a.i)).map(({ h, i }) => ({
+    id: 'hood_' + i, name: `${h.name}${h.county ? ' (카운티)' : ''}${Bill.hoods[i] ? ' — 내 땅' : ''}`, price: Bill.hoods[i] ? 0 : hoodPrice(i), btn: Bill.hoods[i] ? '소유' : '매입',
+    desc: `1분 수입 $${fmtB(hoodPrice(i) * 0.0003)}`, ok: () => !Bill.hoods[i], fn: () => { Bill.buyHood(i); Shop.open('citybuy'); },
+  })),
+};
+SHOPS.spaceport = {
+  title: '네온 우주센터', get sub() { const S = Bill.space; return `단계 ${S.stage}/${SPACE.length}${S.state === 'build' ? ` · 준비 중 ${Math.ceil(S.left / 60)}분` : S.state === 'ready' ? ' · 발사 준비 완료!' : ''}`; },
+  items: () => {
+    const S = Bill.space, out = [];
+    SPACE.forEach((D, k) => {
+      const done = S.stage > k, cur = S.stage === k;
+      if (done) out.push({ id: 'sp' + k, name: `${D.name} — 완료`, price: 0, btn: '✓', desc: D.desc, ok: () => false, fn: () => { } });
+      else if (cur && S.state === 'ready') out.push({ id: 'sp' + k, name: `${D.name} — 발사!`, price: 0, btn: '발사', desc: '카운트다운 10초 · 발사대(빨간 탑 옆)에서 떨어져서 보자', ok: () => !Bill.launch, fn: () => { Shop.close(); Bill.launchNow(); } });
+      else if (cur && S.state === 'build') out.push({ id: 'sp' + k, name: `${D.name} — 준비 중`, price: 0, btn: `${Math.ceil(S.left / 60)}분`, desc: D.desc, ok: () => false, fn: () => { } });
+      else if (cur) out.push({ id: 'sp' + k, name: D.name, price: D.cost, btn: '진행', desc: `${D.desc} · 준비 ${D.min}분`, ok: () => Game.player.money >= D.cost && !Bill.launch, fn: () => { Bill.spaceBegin(); Shop.open('spaceport'); } });
+      else out.push({ id: 'sp' + k, name: `${D.name} (잠김)`, price: D.cost, btn: '잠김', desc: D.desc, ok: () => false, fn: () => { } });
+    });
+    return out;
+  },
+};
+SHOPS.tower2 = {
+  title: '네온 스카이 타워 II', sub: '320m 세계 최고층 · 1분 임대 $3천만',
+  items: () => [{ id: 'jump', name: '전망대 낙하산 점프', price: 1000, btn: '점프', desc: '320m 전망대에서 낙하산으로 뛰어내린다', ok: () => Game.player.money >= 1000 && !Game.player.car, fn: () => { Game.player.money -= 1000; Shop.close(); Bill.towerJump(); } }],
+};
+SHOPS.billion = {
+  title: '억만장자', get sub() { return `억만장자 수입 1분 $${fmtB(Bill.perMin())}`; },
+  items: () => {
+    const P = Game.player, S = Bill.space, Tw = Bill.tower, out = [];
+    out.push({ id: 'b_city', name: `도시 매입 — ${Object.keys(Bill.hoods).length}/${World.hoods.length}곳`, price: 0, btn: '열기', desc: '동네를 통째로 산다 ($6억~$80억)', ok: () => true, fn: () => Shop.open('citybuy') });
+    const sd = SPACE[S.stage];
+    if (S.stage === 0 && S.state === 'none') out.push({ id: 'b_space', name: '우주 계획 1단계: 우주 기지 건설', price: sd.cost, btn: '착공', desc: sd.desc + ' · 이후 단계는 우주센터에서', ok: () => P.money >= sd.cost, fn: () => { Bill.spaceBegin(); Shop.open('billion'); } });
+    else out.push({ id: 'b_space', name: `우주 계획 — ${S.stage >= SPACE.length ? '화성까지 완료' : S.state === 'ready' ? `${sd.name} 발사 준비 완료` : S.state === 'build' ? `${sd.name} 준비 중 ${Math.ceil(S.left / 60)}분` : `다음: ${sd.name} ($${fmtB(sd.cost)})`}`, price: 0, btn: '위치', desc: '네온 우주센터 (레드 메사 사막)', ok: () => true, fn: () => { Game.waypoint = { x: Bill.padX, y: Bill.padY }; UI.toast('지도에 우주센터를 표시했다'); } });
+    if (Tw.state === 'none') out.push({ id: 'b_tower', name: '네온 스카이 타워 II (320m 세계 최고층)', price: 2e10, btn: '착공', desc: '다운타운 에투알 광장 옆 빌딩을 헐고 다시 짓는다 · 15분 공사 · 1분 $3천만 · 전망대 낙하산', ok: () => P.money >= 2e10, fn: () => { Bill.towerBegin(); Shop.open('billion'); } });
+    else out.push({ id: 'b_tower', name: `네온 스카이 타워 II — ${Tw.state === 'done' ? '완공' : `공사 ${Math.ceil(Tw.left / 60)}분`}`, price: 0, btn: '위치', desc: '다운타운', ok: () => !!Tw.lot, fn: () => { const L = Tw.lot; Game.waypoint = { x: (L.x0 + L.x1 + 1) / 2 * T, y: (L.y1 + 2) * T }; UI.toast('지도에 표시했다'); } });
+    out.push(Bill.yacht ? { id: 'b_yacht', name: '초호화 요트 네온 레이디 — 부르기', price: 0, btn: '호출', desc: '가장 가까운 마리나로', ok: () => true, fn: () => { Shop.close(); Bill.callYacht(); } }
+      : { id: 'b_yacht', name: '초호화 요트 네온 레이디 (34m)', price: 3e9, btn: '구입', desc: '헬리패드가 있는 떠다니는 저택 · 어느 마리나로든 부른다', ok: () => P.money >= 3e9, fn: () => { if (!Bill.pay(3e9)) return; Bill.yacht = true; Save.write(); Shop.close(); Bill.callYacht(); } });
+    out.push(Bill.pmc.guards ? { id: 'b_guard', name: `경호팀 (4명) — ${Bill.guardsOn ? '동행 중' : '대기'}`, price: 0, btn: Bill.guardsOn ? '해산' : '부르기', desc: '동행 중엔 1분 유지비 $200만', ok: () => true, fn: () => { Bill.guardsOn = !Bill.guardsOn; if (Bill.guardsOn) Bill.spawnGuards(); Save.write(); Shop.open('billion'); } }
+      : { id: 'b_guard', name: '사설 경호팀 고용 (4명, 소총·방탄)', price: 5e8, btn: '고용', desc: '어디든 따라다니며 적과 경찰을 막는다 · 동행 중 1분 유지비 $200만', ok: () => P.money >= 5e8, fn: () => { if (!Bill.pay(5e8)) return; Bill.pmc.guards = true; Bill.guardsOn = true; Bill.spawnGuards(); Save.write(); Shop.open('billion'); } });
+    for (const [k, V] of Object.entries(PMC_VEH)) out.push(Bill.pmc[k] ? { id: 'b_' + k, name: `내 ${V.name} — 호출`, price: 0, btn: '호출', desc: '근처로 보낸다 (45초마다)', ok: () => true, fn: () => { Shop.close(); Bill.callVehicle(k); } }
+      : { id: 'b_' + k, name: `사설 군대: ${V.name}`, price: V.cost, btn: '구입', desc: '사면 어디서든 부를 수 있다', ok: () => P.money >= V.cost, fn: () => { if (!Bill.pay(V.cost)) return; Bill.pmc[k] = true; Save.write(); Shop.open('billion'); } });
+    return out;
+  },
+};
+// 시청 창에 [도시 매입]
+{ const _i = SHOPS.cityhall.items; SHOPS.cityhall.items = function () { const l = _i.call(this); l.unshift({ id: 'citybuy', name: '도시 매입 — 동네를 통째로 사들인다', price: 0, btn: '열기', desc: `$6억~$80억 · 지금 ${Object.keys(Bill.hoods).length}곳`, ok: () => true, fn: () => Shop.open('citybuy') }); return l; }; }
+
+// 휴대폰: [억만장자] 앱 (홈 화면에 추가 → 누르면 억만장자 창)
+{
+  const _show = Phone.show.bind(Phone);
+  Phone.show = function (sc) {
+    if (sc === 'billion') { this.close(); Shop.open('billion'); return; }
+    _show(sc);
+    if (sc === 'home') { const G = this.el.querySelector('.ph-grid'); if (G) { const a = document.createElement('button'); a.className = 'ph-app'; a.innerHTML = `<div class="ph-ico" style="background:#d4af37">₩</div>억만장자`; a.onclick = () => this.show('billion'); G.append(a); } }
+  };
+}
+// 업적
+ACH.push(['landlord', '도시의 주인', '도시의 모든 동네를 샀다', () => !!Bill.titles.city], ['moon', '달의 주인', '유인 달 탐사 성공', () => Bill.space.stage >= 3], ['mars', '우주의 왕', '화성 이주선 발사', () => Bill.space.stage >= 4], ['sky2', '하늘을 찌르다', '네온 스카이 타워 II 완공', () => Bill.tower.state === 'done']);
+
+'use strict';
+/* =====================================================================
  * main.js — 게임 루프, 인구 관리, 플레이어 조작, 카메라, 사망/체포
  *
  * 인구 관리(Population management): GTA 시리즈처럼 도시 전체를 시뮬레이션하지 않고
@@ -13980,7 +14320,7 @@ const Game = {
     Pick.scan();
     if (Pick.target !== this._lastPick) { this._lastPick = Pick.target; document.body.classList.toggle('cansteal', !!Pick.target); }
     updatePickups(dt);
-    Events.update(dt); Fuel.update(dt); Tuning.update(dt); Rural.update(dt); Region.update(dt); Mega.update(dt); Stunts.update(dt); Races.update(dt); GF.update(dt); Achieve.update(dt); LifeMsgs.update(dt); Tycoon.update(dt);
+    Events.update(dt); Fuel.update(dt); Tuning.update(dt); Rural.update(dt); Region.update(dt); Mega.update(dt); Bill.update(dt); Stunts.update(dt); Races.update(dt); GF.update(dt); Achieve.update(dt); LifeMsgs.update(dt); Tycoon.update(dt);
     this.places(dt);
     // 사망
     if (P.hp <= 0 && this.state === 'play') this.wasted();

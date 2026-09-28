@@ -102,7 +102,7 @@ function genWorld(seed) {
   MW = CITY_W; MH = CITY_H;
   genCity(seed);
   widenWorld(FULL_W, FULL_H);
-  { const _t = performance.now(); genCounty(seed); World.genT.county = Math.round(performance.now() - _t); }
+  { const _t = performance.now(); genCounty(seed); joinIslets(); World.genT.county = Math.round(performance.now() - _t); }
   const W = World;
   W.treeGrid = new Map();
   for (const t of W.trees) { const k = Math.floor(t.x / 8) + ',' + Math.floor(t.y / 8); if (!W.treeGrid.has(k)) W.treeGrid.set(k, []); W.treeGrid.get(k).push(t); }

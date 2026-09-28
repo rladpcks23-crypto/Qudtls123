@@ -77,12 +77,20 @@ function genCounty(seed) {
   const westX = new Int16Array(MH);
   for (let y = 0; y < MH; y++) {
     let m = -1; for (let d = -34; d <= 34; d++) { const yy = y + d; if (yy >= 0 && yy < MH) m = Math.max(m, cityMaxX[yy]); }
-    westX[y] = Math.max(Math.round(664 + 7 * Math.sin(y * 0.023 + ph[0]) + 4 * Math.sin(y * 0.071 + ph[1])), m + 36);
+    westX[y] = Math.max(Math.round(669 + 11 * Math.sin(y * 0.019 + ph[0]) + 5 * Math.sin(y * 0.071 + ph[1]) + 2 * Math.sin(y * 0.2)), m + 36);
   }
-  const eastX = y => Math.round(MW - 20 + 6 * Math.sin(y * 0.031 + ph[2]) + 3 * Math.sin(y * 0.09 + ph[3]));
-  const northY = x => Math.round(9 + 4 * Math.sin(x * 0.027 + ph[4]) + 2 * Math.sin(x * 0.083));
-  const southY = x => Math.round(MH - 17 + 5 * Math.sin(x * 0.029 + ph[5]) + 2 * Math.sin(x * 0.11 + ph[0]));
-  const land = (x, y) => y >= 0 && y < MH && x >= westX[y] && x <= eastX(y) && y >= northY(x) && y <= southY(x);
+  // v2.21: 진짜 섬처럼 — 굽은 해안선 + 만(물이 파고든 곳)으로 네모난 윤곽을 깬다
+  const eastX = y => Math.round(MW - 24 + 9 * Math.sin(y * 0.019 + ph[2]) + 4 * Math.sin(y * 0.07 + ph[3]) + 2 * Math.sin(y * 0.2));
+  const northY = x => Math.round(14 + 9 * Math.sin(x * 0.014 + ph[4]) + 3 * Math.sin(x * 0.061) + 1.5 * Math.sin(x * 0.19));
+  const southY = x => Math.round(MH - 24 + 8 * Math.sin(x * 0.017 + ph[5]) + 3 * Math.sin(x * 0.07 + ph[0]) + 1.5 * Math.sin(x * 0.21));
+  const BAYS = [ // [cx, cy, rx, ry] 타일 — 바깥 순환도로가 없는 귀퉁이·해안을 파고든다
+    [640, -40, 300, 205], // 북서 큰 만 (실버 피크 앞바다)
+    [650, 655, 165, 118], // 남서 만 (사막 해안)
+    [1205, -12, 95, 38], [1412, 238, 62, 70], [1410, 520, 58, 46], [1015, 662, 80, 52], // 북·동·남 작은 만
+    [1440, -30, 95, 72], [1440, 675, 110, 78], // 북동·남동 귀퉁이 둥글게
+  ];
+  const inBay = (x, y) => BAYS.some(([cx, cy, rx, ry]) => { const a = Math.atan2(y - cy, x - cx); return Math.hypot((x - cx) / rx, (y - cy) / ry) < 1 + 0.06 * Math.sin(5 * a + cx) + 0.035 * Math.sin(11 * a + cy); });
+  const land = (x, y) => y >= 0 && y < MH && x >= westX[y] && x <= eastX(y) && y >= northY(x) && y <= southY(x) && !inBay(x, y);
   const lake = { x: 1010, y: 335, rx: 100, ry: 52 };
   const lakeR = (x, y) => { const a = Math.atan2(y - lake.y, x - lake.x); return Math.hypot((x - lake.x) / lake.rx, (y - lake.y) / lake.ry) / (1 + 0.08 * Math.sin(3 * a + ph[1]) + 0.05 * Math.sin(5 * a + ph[2])); };
   const desert = (x, y) => { const n = 16 * Math.sin(x * 0.021 + ph[3]) + 12 * Math.sin(y * 0.026 + ph[4]); return (y > 382 + n && x < 1140 + n) || (x < 830 + n && y > 290 + n); };
@@ -152,8 +160,8 @@ function genCounty(seed) {
 
   // ---------- 4) 길: 선(가로·세로) → 교차점마다 노드 ----------
   const HL = [], VL = [];
-  VL.push({ x: XA, y0: YN, y1: YS }, { x: X2, y0: yN, y1: YS }, { x: X3, y0: YN, y1: YS }, { x: XB, y0: YN, y1: YS });
-  HL.push({ y: YN, x0: XA, x1: XB }, { y: YS, x0: XA, x1: XB });
+  VL.push({ x: XA, y0: yN, y1: yS }, { x: X2, y0: yN, y1: YS }, { x: X3, y0: YN, y1: YS }, { x: XB, y0: YN, y1: YS }); // 서쪽 끝길은 북서·남서 만 때문에 두 간선 사이만
+  HL.push({ y: YN, x0: 1060, x1: XB }, { y: YS, x0: X2, x1: XB });
   VL.push({ x: 1060, y0: YN, y1: yN }); // 블랙우드 숲길 (실버 피크 동쪽)
   HL.push({ y: 304, x0: XA + 36, x1: X2 }, { y: 380, x0: X3, x1: XB }); // 평원 가로길 · 목장길
   HL.push({ y: yN, x0: bN ? W.VX[bN.i] : XA, x1: XB, hw: true, from: bN }, { y: yS, x0: bS ? W.VX[bS.i] : XA, x1: XB, hw: true, from: bS });
@@ -401,4 +409,50 @@ function genCounty(seed) {
   W.lamps = W.lamps.filter(l => !onBridge(l.x, l.y));
   W.parking = W.parking.filter(p => !onBridge(p.x, p.y));
   W.countyInfo = { bridges: [bN && bN.id, bS && bS.id], yN, yS, XA, nodes: cNodes.length, blocks: W.blocks.filter(b => b.county).length };
+}
+
+// v2.21: 공항 섬·군 기지 섬을 본섬에 붙인다 — 바다를 사이에 둔 따로 떨어진 섬이 아니라 섬 안의 기반 시설처럼.
+// 섬과 본섬 사이의 좁은 바다를 '닫기'(넓혔다 좁히기)로 메워 부드러운 땅목(지협)을 만든다. 도로·건물은 그대로.
+function joinIslets() {
+  const W = World, jobs = [];
+  // 섬 둘레 타원 안에서만 메운다 (이음새가 곧은 선이 되지 않게)
+  if (W.airport) { const A = W.airport; jobs.push({ cx: A.cx, cy: A.cy, ex: A.rx + 46, ey: A.ry + 46, r: 34, dock: 5 }); }
+  if (W.base && W.base.island) { const B = W.base; jobs.push({ cx: (B.x0 + B.x1) / 2 / T, cy: (B.y0 + B.y1) / 2 / T, ex: (B.x1 - B.x0) / 2 / T + 40, ey: (B.y1 - B.y0) / 2 / T + 44, r: 48, dock: 2 }); }
+  if (!jobs.length) return;
+  const w = CITY_W, h = CITY_H, n = w * h, BIG = 1e6;
+  const dt = seed => { // 체스판 거리 변환 (seed(i)가 참인 칸까지 거리 ×3)
+    const d = new Float32Array(n); for (let i = 0; i < n; i++) d[i] = seed(i) ? 0 : BIG;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = x + y * w; let v = d[i]; if (x) v = Math.min(v, d[i - 1] + 3); if (y) { v = Math.min(v, d[i - w] + 3); if (x) v = Math.min(v, d[i - w - 1] + 4); if (x < w - 1) v = Math.min(v, d[i - w + 1] + 4); } d[i] = v; }
+    for (let y = h - 1; y >= 0; y--) for (let x = w - 1; x >= 0; x--) { const i = x + y * w; let v = d[i]; if (x < w - 1) v = Math.min(v, d[i + 1] + 3); if (y < h - 1) { v = Math.min(v, d[i + w] + 3); if (x < w - 1) v = Math.min(v, d[i + w + 1] + 4); if (x) v = Math.min(v, d[i + w - 1] + 4); } d[i] = v; }
+    return d;
+  };
+  const tl = i => W.tiles[(i % w) + Math.floor(i / w) * MW];
+  const near = dt(i => { const t = tl(i); return t !== TL.WATER && t !== TL.ROAD && t !== TL.DOCK; }); // 다리·부두는 땅으로 치지 않는다
+  const dockNear = (x, y, m) => { for (let yy = y - m; yy <= y + m; yy++) for (let xx = x - m; xx <= x + m; xx++) if (xx >= 0 && yy >= 0 && xx < MW && yy < MH && W.tiles[xx + yy * MW] === TL.DOCK) return true; return false; };
+  const marinaNear = (x, y) => (W.marinas || []).some(m => Math.hypot(m.x / T - x, m.y / T - y) < 16);
+  const joined = W.joined = new Uint8Array(MW * MH);
+  for (const J of jobs) {
+  const r3 = J.r * 3, far = dt(i => near[i] > r3 || i < w * 2 || i >= n - w * 2 || i % w < 2); // 지도 가장자리 밖은 열린 바다
+  for (let y = Math.max(2, Math.floor(J.cy - J.ey)); y <= Math.min(h - 3, J.cy + J.ey); y++) for (let x = Math.max(2, Math.floor(J.cx - J.ex)); x <= Math.min(w - 3, J.cx + J.ex); x++) {
+    const a = Math.atan2(y - J.cy, x - J.cx), e = Math.hypot((x - J.cx) / J.ex, (y - J.cy) / J.ey) / (1 + 0.1 * Math.sin(3 * a + J.cx) + 0.06 * Math.sin(7 * a + J.cy));
+    const i = x + y * w, k = x + y * MW;
+    if (e >= 1 || W.tiles[k] !== TL.WATER || far[i] <= r3 + (hash2(x >> 3, y >> 3) - 0.5) * 24) continue;
+    if (dockNear(x, y, J.dock) || marinaNear(x, y)) continue;
+    W.tiles[k] = TL.GRASS; W.dist[k] = DIST.PARK; joined[k] = 1;
+  }
+  }
+  // 가는 모래 줄·외톨이 칸은 다시 바다로 (두 번)
+  const landN = (x, y) => { let c = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((dx || dy) && W.tiles[(x + dx) + (y + dy) * MW] !== TL.WATER) c++; return c; };
+  for (let pass = 0; pass < 3; pass++) for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) { const k = x + y * MW; if (joined[k] && landN(x, y) < 4) { W.tiles[k] = TL.WATER; W.dist[k] = DIST.COAST; joined[k] = 0; } }
+  // 옛 섬 해안의 모래 띠: 이제 물가가 아니면 풀밭으로
+  const wetNear = (x, y) => { for (let d = 1; d <= 3; d++) for (const [dx, dy] of [[d, 0], [-d, 0], [0, d], [0, -d]]) if (W.tiles[(x + dx) + (y + dy) * MW] === TL.WATER) return true; return false; };
+  for (const J of jobs) for (let y = Math.max(3, Math.floor(J.cy - J.ey)); y <= Math.min(h - 4, J.cy + J.ey); y++) for (let x = Math.max(3, Math.floor(J.cx - J.ex)); x <= Math.min(w - 4, J.cx + J.ex); x++) {
+    const k = x + y * MW; if (W.tiles[k] === TL.SAND && !joined[k] && W.region[k] < 0 && !wetNear(x, y)) W.tiles[k] = TL.GRASS;
+  }
+  // 새 땅 가장자리는 모래, 안쪽엔 나무 조금
+  for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) {
+    const k = x + y * MW; if (!joined[k]) continue;
+    if (wetNear(x, y)) W.tiles[k] = TL.SAND;
+    else if (hash2(x >> 2, y >> 2) < 0.4 && hash2(x, y) < 0.05) W.trees.push({ x: (x + 0.5) * T, y: (y + 0.5) * T, kind: hash2(y, x) < 0.3 ? 'palm' : 'tree', r: 2.3, h: 6.5, hue: hash2(x * 3, y) });
+  }
 }
