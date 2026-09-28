@@ -254,7 +254,7 @@ const Bill = {
 };
 SaveExt.mods.billion = Bill;
 Props.providers.push(() => Bill.props());
-const fmtB = n => { if (n >= 1e12) { const j = Math.floor(n / 1e12), e = Math.round((n - j * 1e12) / 1e8); return `${j.toLocaleString()}조${e ? ` ${e.toLocaleString()}억` : ''}`; } return n >= 1e8 ? `${(n / 1e8).toLocaleString(undefined, { maximumFractionDigits: 1 })}억` : Math.round(n).toLocaleString(); };
+const fmtB = n => { if (n >= 1e16) { const g = n / 1e16; return g >= 1e4 ? `${g.toExponential(2)}경` : `${Math.floor(g).toLocaleString()}경 ${Math.round((n - Math.floor(g) * 1e16) / 1e12).toLocaleString()}조`; } if (n >= 1e12) { const j = Math.floor(n / 1e12), e = Math.round((n - j * 1e12) / 1e8); return `${j.toLocaleString()}조${e ? ` ${e.toLocaleString()}억` : ''}`; } return n >= 1e8 ? `${(n / 1e8).toLocaleString(undefined, { maximumFractionDigits: 1 })}억` : Math.round(n).toLocaleString(); };
 
 // 경호원 AI: 플레이어를 따라다니며 적(쫓아오는 경찰·라이벌·표적)을 쏜다
 function pmcAI(p, dt) {

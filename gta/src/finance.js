@@ -112,6 +112,12 @@ const Finance = {
         P.money += amt; Sfx.cash(); UI.toast(`임대 수입 +$${amt.toLocaleString()}`);
       }
     }
+    // 치트 JACKPOT: 60초 동안 1초마다 예금 30%
+    if (Cheats.rainT > 0) {
+      Cheats.rainT -= dt; Cheats.rainAcc += dt;
+      while (Cheats.rainAcc >= 1) { Cheats.rainAcc -= 1; this.bank.dep = Math.min(1e300, this.bank.dep * 1.3); if (Math.round(Cheats.rainT) % 10 === 0) UI.toast(`이자 폭풍 ${Math.max(0, Math.ceil(Cheats.rainT))}초 · 예금 $${fmtB(this.bank.dep)}`); }
+      if (Cheats.rainT <= 0) { Cheats.rainT = 0; UI.big('이자 폭풍 끝', `예금 $${fmtB(this.bank.dep)} — 휴대폰 은행 앱에서 출금`, 4, '#ffd700'); Save.write(); }
+    }
     // 중앙은행 이자 (1분마다: 예금 3%, 대출 4% — 대출이 예금보다 높아야 빌려서 맡기는 무한 돈복사가 안 된다)
     this.intT += dt;
     if (this.intT >= 60) {

@@ -452,6 +452,8 @@ const Cheats = {
     OHDUDE: ['헌터 공격 헬기 소환', () => cheatSpawn('milheli')],
     AIWPRTON: ['라이노 전차 소환', () => cheatSpawn('tank')],
     JUMPJET: ['라저 전투기 소환', () => cheatSpawn('jet')],
+    // 이자 폭풍: 60초 동안 예금에 1초마다 30% 복리 (예금이 없으면 현금을 전부 맡긴다)
+    JACKPOT: ['이자 폭풍 — 60초 동안 예금 이자 1초에 30%', () => { const F = Finance, P = Game.player; if (F.bank.dep < 1 && P.money > 0) { F.bank.dep += P.money; P.money = 0; UI.toast('현금을 전부 예금했다'); } Cheats.rainT = 60; Cheats.rainAcc = 0; }],
   },
   // 반환값 true = 치트를 입력하는 중이므로 이 키의 게임 단축키(P 일시정지, M 지도 등)는 무시
   key(code) {
