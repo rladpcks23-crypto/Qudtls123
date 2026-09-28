@@ -18,6 +18,7 @@ const {
 const path = require("path");
 const fs = require("fs");
 const { spawn, execFile } = require("child_process");
+const examStatus = require("./renderer/exam.js");
 
 // Keep the wallpaper painting even though Windows reports it as covered by
 // the desktop icon layer.
@@ -49,13 +50,14 @@ const DEFAULTS = {
     "Discord",
   ],
   blockedSites: ["YouTube", "Netflix", "Instagram", "TikTok", "Twitch", "치지직", "SOOP", "웹툰"],
-  examDate: "",
+  examDate: "2026-10-02",
+  examEndDate: "2026-10-09",
   message: "지금 참으면, 시험 끝나고 맘껏 논다.",
   autostart: true,
   lockUntil: null,
 };
 
-let config = loadJson(CONFIG_PATH, DEFAULTS);
+let config = loadConfig();
 let stats = loadJson(STATS_PATH, { date: today(), blocks: 0 });
 let tray = null;
 let settingsWin = null;
@@ -74,6 +76,16 @@ function loadJson(file, fallback) {
   } catch {
     return { ...fallback };
   }
+}
+
+function loadConfig() {
+  const cfg = loadJson(CONFIG_PATH, DEFAULTS);
+  // Configs saved by 1.0.0 have an empty examDate and no examEndDate.
+  if (!cfg.examDate && !cfg.examEndDate) {
+    cfg.examDate = DEFAULTS.examDate;
+    cfg.examEndDate = DEFAULTS.examEndDate;
+  }
+  return cfg;
 }
 
 function saveJson(file, data) {
@@ -171,6 +183,7 @@ function createWallpapers() {
         backgroundThrottling: false,
       },
     });
+    win.__bounds = d.bounds; // getBounds() is meaningless once reparented
     win.loadFile(path.join(__dirname, "renderer", "wallpaper.html"));
     win.once("ready-to-show", () => {
       const r = phys[i];
@@ -258,6 +271,7 @@ function onBlocked(kind, name) {
   stats.blocks += 1;
   saveJson(STATS_PATH, stats);
   broadcast();
+  for (const w of wallpapers) if (!w.isDestroyed()) w.webContents.send("anger", 2600);
   if (kind === "site") {
     // guard.ps1 reports the lowercased keyword; show it as the user typed it.
     const site = config.blockedSites.find((s) => s.toLowerCase() === name) || name;
@@ -269,14 +283,14 @@ function onBlocked(kind, name) {
 
 function showToast(text) {
   const { workArea } = screen.getPrimaryDisplay();
-  const width = 420;
-  const height = 120;
+  const width = 560;
+  const height = 300;
   if (!toastWin || toastWin.isDestroyed()) {
     toastWin = new BrowserWindow({
       width,
       height,
       x: Math.round(workArea.x + (workArea.width - width) / 2),
-      y: workArea.y + 40,
+      y: Math.round(workArea.y + workArea.height * 0.16),
       show: false,
       frame: false,
       resizable: false,
@@ -287,16 +301,36 @@ function showToast(text) {
       webPreferences: { preload: path.join(__dirname, "preload.js") },
     });
     toastWin.setAlwaysOnTop(true, "screen-saver");
+    toastWin.setIgnoreMouseEvents(true);
     toastWin.loadFile(path.join(__dirname, "renderer", "toast.html"));
   }
   const send = () => {
     toastWin.webContents.send("toast", { text, message: config.message });
     toastWin.showInactive();
+    lastCursor = null; // push the cursor position to the fresh overlay
   };
   if (toastWin.webContents.isLoading()) toastWin.webContents.once("did-finish-load", send);
   else send();
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastWin && !toastWin.isDestroyed() && toastWin.hide(), 3500);
+  toastTimer = setTimeout(() => toastWin && !toastWin.isDestroyed() && toastWin.hide(), 3300);
+}
+
+// ---------- cursor feed ----------
+
+// The wallpaper sits behind the desktop icons and gets no mouse events, so
+// poll the cursor and push it (relative to each window) for the eye to follow.
+let lastCursor = null;
+function pushCursor() {
+  const p = screen.getCursorScreenPoint();
+  if (lastCursor && p.x === lastCursor.x && p.y === lastCursor.y) return;
+  lastCursor = p;
+  const targets = wallpapers.map((w) => [w, w.__bounds]);
+  if (toastWin && !toastWin.isDestroyed() && toastWin.isVisible()) {
+    targets.push([toastWin, toastWin.getBounds()]);
+  }
+  for (const [w, b] of targets) {
+    if (!w.isDestroyed() && b) w.webContents.send("cursor", { x: p.x - b.x, y: p.y - b.y });
+  }
 }
 
 // ---------- settings / tray ----------
@@ -322,19 +356,12 @@ function openSettings() {
   settingsWin.on("closed", () => (settingsWin = null));
 }
 
-function daysLeft() {
-  if (!config.examDate) return null;
-  const exam = new Date(config.examDate + "T00:00:00");
-  const now = new Date(today() + "T00:00:00");
-  return Math.round((exam - now) / 86400000);
-}
-
 function updateTray() {
   if (!tray) return;
   const locked = isLocked();
-  const dl = daysLeft();
+  const es = examStatus(config);
   tray.setToolTip(
-    `공부모드 배경화면${dl !== null && dl >= 0 ? ` · D-${dl}` : ""}${locked ? " · 잠금 중" : ""}`
+    `공부모드 배경화면${es ? ` · ${es.big} ${es.label}` : ""}${locked ? " · 잠금 중" : ""}`
   );
   tray.setContextMenu(
     Menu.buildFromTemplate([
@@ -342,10 +369,15 @@ function updateTray() {
       { label: "배경화면 다시 붙이기", click: () => createWallpapers() },
       { type: "separator" },
       locked
-        ? { label: `잠금 중 — ${config.examDate} 까지 종료 불가`, enabled: false }
+        ? { label: `잠금 중 — ${lockEndDate()} 까지 종료 불가`, enabled: false }
         : { label: "종료", click: () => app.quit() },
     ])
   );
+}
+
+// The lock runs to the end of the exam period.
+function lockEndDate() {
+  return config.examEndDate || config.examDate;
 }
 
 function applyAutostart() {
@@ -369,6 +401,7 @@ ipcMain.handle("save-config", (_e, incoming) => {
     blockedApps: cleanList(incoming.blockedApps),
     blockedSites: cleanList(incoming.blockedSites),
     examDate: String(incoming.examDate || ""),
+    examEndDate: String(incoming.examEndDate || ""),
     message: String(incoming.message || "").slice(0, 200),
     autostart: !!incoming.autostart,
   };
@@ -377,7 +410,8 @@ ipcMain.handle("save-config", (_e, incoming) => {
     next.blockedApps = cleanList([...config.blockedApps, ...next.blockedApps]);
     next.blockedSites = cleanList([...config.blockedSites, ...next.blockedSites]);
     next.autostart = true;
-    if (!next.examDate || next.examDate < config.examDate) next.examDate = config.examDate;
+    const end = lockEndDate();
+    if ((next.examEndDate || next.examDate || "") < end) next.examEndDate = end;
   }
   config = next;
   saveJson(CONFIG_PATH, config);
@@ -387,8 +421,9 @@ ipcMain.handle("save-config", (_e, incoming) => {
 });
 
 ipcMain.handle("lock", async () => {
-  if (!config.examDate) return { error: "시험 날짜를 먼저 저장해 주세요." };
-  const until = new Date(config.examDate + "T23:59:59");
+  const end = lockEndDate();
+  if (!end) return { error: "시험 날짜를 먼저 저장해 주세요." };
+  const until = new Date(end + "T23:59:59");
   if (until.getTime() <= Date.now()) return { error: "시험 날짜가 이미 지났어요." };
   const { response } = await dialog.showMessageBox(settingsWin, {
     type: "warning",
@@ -396,9 +431,9 @@ ipcMain.handle("lock", async () => {
     defaultId: 1,
     cancelId: 1,
     title: "정말 잠글까요?",
-    message: `${config.examDate} 23:59 까지 잠급니다.`,
+    message: `시험 끝나는 날(${end}) 23:59 까지 잠급니다.`,
     detail:
-      "잠금 중에는 종료할 수 없고, 차단 목록에서 빼거나 시험 날짜를 앞당길 수 없어요. " +
+      "잠금 중에는 종료할 수 없고, 차단 목록에서 빼거나 끝나는 날을 앞당길 수 없어요. " +
       "(추가는 가능) 윈도우를 켜면 자동으로 다시 실행됩니다.",
   });
   if (response !== 0) return state();
@@ -469,6 +504,7 @@ if (!app.requestSingleInstanceLock()) {
 
     // Refresh the tray/wallpaper at midnight-ish and when the lock expires.
     setInterval(broadcast, 60 * 1000);
+    setInterval(pushCursor, 33);
 
     if (!process.argv.includes("--startup")) openSettings();
   });

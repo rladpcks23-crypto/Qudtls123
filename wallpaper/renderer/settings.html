@@ -67,15 +67,20 @@
   <section>
     <div class="row">
       <div>
-        <label class="h" for="examDate">시험 날짜</label>
-        <p class="hint">배경화면에 D-day로 표시돼요.</p>
+        <label class="h" for="examDate">시험 시작</label>
+        <p class="hint">시작 전엔 시험까지 D-day</p>
         <input type="date" id="examDate">
       </div>
       <div>
-        <label class="h" for="message">배경화면 문구</label>
-        <p class="hint">차단될 때 팝업에도 떠요.</p>
-        <input type="text" id="message" maxlength="200">
+        <label class="h" for="examEndDate">시험 끝</label>
+        <p class="hint">시험 기간엔 끝까지 D-day</p>
+        <input type="date" id="examEndDate">
       </div>
+    </div>
+    <div style="margin-top:12px">
+      <label class="h" for="message">배경화면 문구</label>
+      <p class="hint">차단될 때 팝업에도 떠요.</p>
+      <input type="text" id="message" maxlength="200">
     </div>
   </section>
 
@@ -104,12 +109,13 @@
 
   <section>
     <label class="h">시험 끝날 때까지 잠그기</label>
-    <p class="hint">잠그면 시험 날짜 23:59까지 앱을 종료할 수 없고, 차단 목록에서 빼거나 날짜를 앞당길 수 없어요. (추가는 가능) 의지가 약해질 때를 위한 기능이에요.</p>
+    <p class="hint">잠그면 시험 끝나는 날 23:59까지 앱을 종료할 수 없고, 차단 목록에서 빼거나 날짜를 앞당길 수 없어요. (추가는 가능) 의지가 약해질 때를 위한 기능이에요.</p>
     <button class="danger" id="lock">잠그기</button>
     <span class="hint" id="lockErr" style="margin-left:8px;color:var(--danger)"></span>
   </section>
 </main>
 
+<script src="exam.js"></script>
 <script>
 const api = window.studylock;
 const $ = (id) => document.getElementById(id);
@@ -123,6 +129,7 @@ function fill(s, force) {
   const c = s.config;
   if (force || !dirty) {
     $("examDate").value = c.examDate || "";
+    $("examEndDate").value = c.examEndDate || "";
     $("message").value = c.message || "";
     $("apps").value = c.blockedApps.join("\n");
     $("sites").value = c.blockedSites.join("\n");
@@ -130,12 +137,12 @@ function fill(s, force) {
   }
   $("autostart").disabled = s.locked;
   $("blocks").textContent = s.stats.blocks;
-  const d = daysLeft(c.examDate);
-  $("dleft").innerHTML = d === null ? "" : d > 0 ? `시험까지 <b>D-${d}</b>` : d === 0 ? "<b>D-DAY</b>" : "시험 끝!";
+  const es = examStatus(c);
+  $("dleft").innerHTML = es ? `${es.label} <b>${es.big}</b>` : "";
   const lb = $("lockBanner");
   if (s.locked) {
     lb.hidden = false;
-    lb.textContent = `🔒 ${c.examDate} 23:59 까지 잠금 중 — 차단 목록 추가만 가능하고, 종료는 안 돼요.`;
+    lb.textContent = `🔒 ${c.examEndDate || c.examDate} 23:59 까지 잠금 중 — 차단 목록 추가만 가능하고, 종료는 안 돼요.`;
     $("lock").disabled = true;
     $("lock").textContent = "잠금 중";
   } else {
@@ -146,20 +153,14 @@ function fill(s, force) {
   $("attachBanner").hidden = s.attachStatus !== "failed";
 }
 
-function daysLeft(date) {
-  if (!date) return null;
-  const now = new Date();
-  const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return Math.round((new Date(date + "T00:00:00") - t0) / 86400000);
-}
-
-for (const id of ["examDate", "message", "apps", "sites", "autostart"]) {
+for (const id of ["examDate", "examEndDate", "message", "apps", "sites", "autostart"]) {
   $(id).addEventListener("input", () => (dirty = true));
 }
 
 $("save").onclick = async () => {
   const s = await api.save({
     examDate: $("examDate").value,
+    examEndDate: $("examEndDate").value,
     message: $("message").value,
     blockedApps: lines($("apps").value),
     blockedSites: lines($("sites").value),

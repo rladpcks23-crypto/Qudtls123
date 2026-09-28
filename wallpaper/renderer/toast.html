@@ -5,28 +5,67 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
 <style>
   html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; user-select: none; }
+  #wrap { position: fixed; inset: 0; opacity: 0; transform: scale(.9); transition: opacity .18s ease-out, transform .18s ease-out; }
+  #wrap.on { opacity: 1; transform: none; }
+  canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
   .card {
-    box-sizing: border-box; margin: 10px; height: calc(100% - 20px); padding: 16px 20px;
-    border-radius: 16px; background: rgba(14, 18, 34, .94); border: 1px solid rgba(255, 140, 120, .45);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, .45); color: #f3f5ff;
-    font-family: "Segoe UI", "Malgun Gothic", sans-serif; display: flex; flex-direction: column; justify-content: center; gap: 6px;
-    animation: pop .25s ease-out;
+    position: absolute; left: 50%; top: 226px; transform: translateX(-50%); max-width: calc(100% - 40px);
+    padding: 10px 20px; border-radius: 14px; text-align: center; white-space: nowrap;
+    background: rgba(12, 4, 8, .92); border: 1px solid rgba(230, 40, 50, .55);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, .5), 0 0 24px rgba(200, 0, 20, .25);
+    color: #f6eef0; font-family: "Segoe UI", "Malgun Gothic", sans-serif;
   }
   .t { font-size: 18px; font-weight: 700; }
-  .t::before { content: "⛔ "; }
-  .m { font-size: 14px; color: rgba(230, 235, 255, .7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  @keyframes pop { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+  .m { font-size: 13px; color: rgba(246, 230, 234, .65); overflow: hidden; text-overflow: ellipsis; }
 </style>
 </head>
 <body>
-<div class="card" id="card"><div class="t" id="t"></div><div class="m" id="m"></div></div>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div class="card"><div class="t" id="t"></div><div class="m" id="m"></div></div>
+</div>
+<script src="eye.js"></script>
 <script>
-  window.studylock.onToast(({ text, message }) => {
-    document.getElementById("t").textContent = text;
-    document.getElementById("m").textContent = message || "공부하러 가자.";
-    const c = document.getElementById("card");
-    c.style.animation = "none"; void c.offsetWidth; c.style.animation = "";
-  });
+const cv = document.getElementById("c");
+const ctx = cv.getContext("2d");
+const eye = new Eye();
+let DPR = 1;
+
+function resize() {
+  DPR = window.devicePixelRatio || 1;
+  cv.width = Math.floor(innerWidth * DPR);
+  cv.height = Math.floor(innerHeight * DPR);
+  eye.setSize(380 * DPR, 150 * DPR);
+  eye.auraR = 118 * DPR; // fade out before the window edge
+}
+addEventListener("resize", resize);
+resize();
+
+let last = performance.now();
+function frame(t) {
+  requestAnimationFrame(frame);
+  const dt = Math.min(t - last, 100); last = t;
+  eye.update(dt, t);
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  eye.draw(ctx, cv.width / 2, 125 * DPR, t);
+}
+requestAnimationFrame(frame);
+
+window.studylock.onCursor((p) => {
+  eye.lookAt(Math.tanh((p.x - innerWidth / 2) / 500), Math.tanh((p.y - 125) / 400));
+});
+
+let hideTimer = null;
+window.studylock.onToast(({ text, message }) => {
+  document.getElementById("t").textContent = "⛔ " + text;
+  document.getElementById("m").textContent = message || "공부하러 가자.";
+  const wrap = document.getElementById("wrap");
+  wrap.classList.add("on");
+  // Stare wide-eyed for a beat, then glare.
+  setTimeout(() => eye.anger(2000), 200);
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => wrap.classList.remove("on"), 3000);
+});
 </script>
 </body>
 </html>

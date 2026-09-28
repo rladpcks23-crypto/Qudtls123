@@ -6,156 +6,136 @@
 <title>공부모드 배경화면</title>
 <style>
   :root {
-    --ink: #eef2ff;
-    --dim: rgba(226, 232, 255, .62);
-    --faint: rgba(226, 232, 255, .34);
-    --accent: #ffb86b;
-    --accent2: #7aa2ff;
+    --ink: #f2eef0;
+    --dim: rgba(240, 226, 230, .6);
+    --faint: rgba(240, 226, 230, .32);
   }
-  html, body { margin: 0; height: 100%; overflow: hidden; background: #070b16; cursor: default; user-select: none; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #07050b; cursor: default; user-select: none; }
   canvas { position: fixed; inset: 0; width: 100%; height: 100%; }
   .hud {
-    position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: fixed; left: 0; right: 0; text-align: center; pointer-events: none; color: var(--ink);
     font-family: "Segoe UI Variable Display", "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
-    color: var(--ink); text-align: center; pointer-events: none;
   }
-  .clock { font-size: clamp(64px, 11vw, 176px); font-weight: 200; letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 4px 40px rgba(0,0,0,.35); }
-  .date { margin-top: 14px; font-size: clamp(15px, 1.35vw, 22px); color: var(--dim); letter-spacing: .08em; }
-  .dday { margin-top: clamp(28px, 4.5vh, 56px); display: flex; align-items: baseline; gap: 16px; }
-  .dday .num { font-size: clamp(40px, 5vw, 84px); font-weight: 700; letter-spacing: -.01em;
-    background: linear-gradient(90deg, var(--accent), #ff7a8a); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .dday .lbl { font-size: clamp(14px, 1.2vw, 20px); color: var(--dim); }
-  .msg { margin-top: 18px; max-width: min(80vw, 900px); font-size: clamp(16px, 1.6vw, 26px); font-weight: 400; color: var(--ink); opacity: .9; }
-  .stats { position: fixed; left: 50%; bottom: clamp(56px, 8vh, 96px); transform: translateX(-50%);
-    font-family: inherit; font-size: clamp(13px, 1vw, 16px); color: var(--faint); letter-spacing: .06em; white-space: nowrap; }
+  .top { top: 5vh; }
+  .bottom { bottom: 12vh; }
+  .clock { font-size: clamp(40px, 5.6vw, 96px); font-weight: 200; line-height: 1; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+  .date { margin-top: 8px; font-size: clamp(13px, 1.1vw, 18px); color: var(--dim); letter-spacing: .08em; }
+  .dday { display: flex; align-items: baseline; justify-content: center; gap: 14px; }
+  .dday .num { font-size: clamp(34px, 4.2vw, 72px); font-weight: 700;
+    background: linear-gradient(90deg, #ff5d5d, #b3001b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .dday .lbl { font-size: clamp(13px, 1.1vw, 19px); color: var(--dim); }
+  .msg { margin: 12px auto 0; max-width: min(80vw, 900px); font-size: clamp(15px, 1.5vw, 24px); opacity: .9; }
+  .stats { position: fixed; left: 0; right: 0; bottom: 4.5vh; text-align: center; pointer-events: none;
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif; font-size: clamp(12px, .95vw, 15px); color: var(--faint); letter-spacing: .06em; }
   .stats b { color: var(--dim); font-weight: 600; }
   .hidden { display: none !important; }
 </style>
 </head>
 <body>
 <canvas id="sky"></canvas>
-<div class="hud">
+<div class="hud top">
   <div class="clock" id="clock">--:--</div>
   <div class="date" id="date"></div>
-  <div class="dday hidden" id="dday"><span class="num" id="ddayNum"></span><span class="lbl" id="ddayLbl">시험까지</span></div>
+</div>
+<div class="hud bottom">
+  <div class="dday hidden" id="dday"><span class="num" id="ddayNum"></span><span class="lbl" id="ddayLbl"></span></div>
   <div class="msg" id="msg"></div>
 </div>
 <div class="stats" id="stats"></div>
 
+<script src="exam.js"></script>
+<script src="eye.js"></script>
 <script>
 // ---------- HUD ----------
 let st = null;
 const $ = (id) => document.getElementById(id);
 const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
-
-function pad(n) { return String(n).padStart(2, "0"); }
+const pad = (n) => String(n).padStart(2, "0");
 
 function renderHud() {
   const now = new Date();
   $("clock").textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   $("date").textContent = `${now.getFullYear()}. ${now.getMonth() + 1}. ${now.getDate()}. ${WEEK[now.getDay()]}요일`;
   if (!st) return;
-  const cfg = st.config;
-  $("msg").textContent = cfg.message || "";
-  const dd = $("dday");
-  if (cfg.examDate) {
-    const exam = new Date(cfg.examDate + "T00:00:00");
-    const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const d = Math.round((exam - t0) / 86400000);
-    dd.classList.remove("hidden");
-    if (d > 0) { $("ddayNum").textContent = `D-${d}`; $("ddayLbl").textContent = "시험까지"; }
-    else if (d === 0) { $("ddayNum").textContent = "D-DAY"; $("ddayLbl").textContent = "오늘이 시험날, 할 수 있다"; }
-    else { $("ddayNum").textContent = "끝!"; $("ddayLbl").textContent = "시험 수고했어"; }
-  } else {
-    dd.classList.add("hidden");
-  }
-  const blocks = st.stats && st.stats.date === `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}` ? st.stats.blocks : 0;
+  $("msg").textContent = st.config.message || "";
+  const es = examStatus(st.config, now);
+  $("dday").classList.toggle("hidden", !es);
+  if (es) { $("ddayNum").textContent = es.big; $("ddayLbl").textContent = es.label; }
+  const todayKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const blocks = st.stats && st.stats.date === todayKey ? st.stats.blocks : 0;
   $("stats").innerHTML = `오늘 참은 유혹 <b>${blocks}</b>번${st.locked ? " · 잠금 중" : ""}`;
 }
 
-if (window.studylock) {
-  window.studylock.onState((s) => { st = s; renderHud(); });
-  window.studylock.getState().then((s) => { st = s; renderHud(); });
-}
-renderHud();
-setInterval(renderHud, 1000);
-
-// ---------- sky ----------
-// Night gradient + slow drifting glows + twinkling stars + the odd shooting
-// star. Capped at 30fps to keep GPU/CPU use negligible.
+// ---------- scene ----------
 const cv = $("sky");
 const ctx = cv.getContext("2d");
-let W = 0, H = 0, DPR = 1;
-let stars = [], orbs = [], shoot = null;
-
-function rand(a, b) { return a + Math.random() * (b - a); }
+const eye = new Eye();
+let W = 0, H = 0, DPR = 1, stars = [];
+let eyeCss = { x: 0, y: 0 };
+let lastMove = 0, nextGlance = 0;
+const rand = (a, b) => a + Math.random() * (b - a);
 
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 1.5);
   W = Math.floor(innerWidth * DPR); H = Math.floor(innerHeight * DPR);
   cv.width = W; cv.height = H;
-  const n = Math.round((W * H) / (9000 * DPR * DPR));
+  const eh = Math.min(H * 0.34, (W * 0.7) / 2.4);
+  eye.setSize(eh * 2.4, eh);
+  eyeCss = { x: innerWidth / 2, y: innerHeight * 0.47 };
+  const n = Math.round((W * H) / (11000 * DPR * DPR));
   stars = Array.from({ length: n }, () => ({
-    x: Math.random() * W, y: Math.random() * H * 0.85,
-    r: rand(0.4, 1.4) * DPR, p: Math.random() * Math.PI * 2, s: rand(0.4, 1.3),
-  }));
-  const hues = [[122, 162, 255], [255, 184, 107], [178, 132, 255], [96, 214, 220]];
-  orbs = Array.from({ length: 5 }, (_, i) => ({
-    x: Math.random() * W, y: rand(0.2, 1) * H, r: rand(0.25, 0.45) * Math.max(W, H),
-    vx: rand(-0.06, 0.06) * DPR, vy: rand(-0.04, 0.04) * DPR, c: hues[i % hues.length], a: rand(0.07, 0.13),
+    x: Math.random() * W, y: Math.random() * H, r: rand(0.4, 1.3) * DPR, p: rand(0, 7), s: rand(0.4, 1.3),
   }));
 }
 addEventListener("resize", resize);
 resize();
 
-let last = 0;
+function follow(x, y) {
+  const dx = x - eyeCss.x, dy = y - eyeCss.y;
+  eye.lookAt(Math.tanh(dx / (innerWidth * 0.3)), Math.tanh(dy / (innerHeight * 0.3)));
+  lastMove = performance.now();
+}
+
+let last = performance.now();
 function frame(t) {
   requestAnimationFrame(frame);
   if (t - last < 33) return;
   const dt = Math.min(t - last, 100); last = t;
 
-  const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0, "#050814"); g.addColorStop(0.55, "#0b1330"); g.addColorStop(1, "#1a1633");
-  ctx.globalCompositeOperation = "source-over";
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-
-  ctx.globalCompositeOperation = "lighter";
-  for (const o of orbs) {
-    o.x += o.vx * dt; o.y += o.vy * dt;
-    if (o.x < -o.r) o.x = W + o.r; if (o.x > W + o.r) o.x = -o.r;
-    if (o.y < -o.r) o.y = H + o.r; if (o.y > H + o.r) o.y = -o.r;
-    const rg = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r);
-    rg.addColorStop(0, `rgba(${o.c[0]},${o.c[1]},${o.c[2]},${o.a})`);
-    rg.addColorStop(1, `rgba(${o.c[0]},${o.c[1]},${o.c[2]},0)`);
-    ctx.fillStyle = rg; ctx.fillRect(o.x - o.r, o.y - o.r, o.r * 2, o.r * 2);
+  // Cursor idle for a while: let the eye wander on its own.
+  if (t - lastMove > 12000 && t > nextGlance) {
+    eye.lookAt(rand(-0.8, 0.8), rand(-0.6, 0.6));
+    nextGlance = t + rand(1500, 4000);
   }
+  eye.update(dt, t);
+
+  const g = ctx.createRadialGradient(W / 2, H * 0.47, 0, W / 2, H * 0.47, Math.max(W, H) * 0.75);
+  g.addColorStop(0, "#1a0a12"); g.addColorStop(0.6, "#0b0710"); g.addColorStop(1, "#040306");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
   const sec = t / 1000;
   for (const s of stars) {
-    const a = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(sec * s.s + s.p));
-    ctx.fillStyle = `rgba(235,240,255,${a * 0.8})`;
+    const a = 0.25 + 0.5 * (0.5 + 0.5 * Math.sin(sec * s.s + s.p));
+    ctx.fillStyle = `rgba(255,225,230,${a * 0.6})`;
     ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
   }
 
-  if (!shoot && Math.random() < dt / 9000) {
-    shoot = { x: rand(0.1, 0.9) * W, y: rand(0, 0.35) * H, vx: rand(0.6, 1.0) * DPR, vy: rand(0.25, 0.4) * DPR, life: 0 };
-    if (Math.random() < 0.5) shoot.vx *= -1;
-  }
-  if (shoot) {
-    shoot.life += dt;
-    const k = shoot.life / 1100;
-    const x = shoot.x + shoot.vx * shoot.life, y = shoot.y + shoot.vy * shoot.life;
-    const len = 140 * DPR;
-    const n = Math.hypot(shoot.vx, shoot.vy);
-    const lg = ctx.createLinearGradient(x, y, x - (shoot.vx / n) * len, y - (shoot.vy / n) * len);
-    const alpha = Math.sin(Math.min(k, 1) * Math.PI) * 0.9;
-    lg.addColorStop(0, `rgba(255,255,255,${alpha})`); lg.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.strokeStyle = lg; ctx.lineWidth = 1.6 * DPR;
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - (shoot.vx / n) * len, y - (shoot.vy / n) * len); ctx.stroke();
-    if (k >= 1) shoot = null;
-  }
+  eye.draw(ctx, eyeCss.x * DPR, eyeCss.y * DPR, t);
 }
 requestAnimationFrame(frame);
+
+// ---------- wiring ----------
+if (window.studylock) {
+  window.studylock.onState((s) => { st = s; renderHud(); });
+  window.studylock.getState().then((s) => { st = s; renderHud(); });
+  // The window sits behind the desktop icons and never gets mouse events,
+  // so the main process feeds us the cursor position.
+  window.studylock.onCursor((p) => follow(p.x, p.y));
+  window.studylock.onAnger((ms) => eye.anger(ms));
+}
+addEventListener("mousemove", (e) => follow(e.clientX, e.clientY)); // dev preview
+renderHud();
+setInterval(renderHud, 1000);
 </script>
 </body>
 </html>
