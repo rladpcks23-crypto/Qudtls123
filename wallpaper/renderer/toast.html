@@ -35,8 +35,9 @@ function resize() {
   DPR = window.devicePixelRatio || 1;
   cv.width = Math.floor(innerWidth * DPR);
   cv.height = Math.floor(innerHeight * DPR);
-  eye.setSize(380 * DPR, 150 * DPR);
+  eye.setSize(245 * DPR, 140 * DPR);
   eye.auraR = 118 * DPR; // fade out before the window edge
+  eye.halo = false; // no room for it in the small overlay
 }
 addEventListener("resize", resize);
 resize();
