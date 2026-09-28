@@ -1255,6 +1255,7 @@ function buildMinimap() {
     if (World.tiles[i] === TL.ROCK) col = rockColor(World.rockH[i]);
     // 지도 색: 옛길·해안도로·방사로·골목은 일반 도로와 같은 색 계열(골목은 조금 어둡게), 고속도로만 주황
     if (bm && bm[i] === 2) col = '#aeb2b9';
+    else if (World.tiles[i] === TL.ROAD && World.roadK[i] === 8 && !World.hwLine[i]) col = MINI_COL[World.fwyG[i]] || MINI_COL[TL.GRASS]; // 고속도로 가장자리
     else if (World.tiles[i] === TL.ROAD && (World.roadK[i] >= 6 || (World.hwLine && World.hwLine[i]))) col = '#f0a04b';
     if (E && E.R && Math.hypot(i % MW + 0.5 - E.cx, Math.floor(i / MW) + 0.5 - E.cy) < E.R && World.tiles[i] === TL.PLAZA) col = '#f2e6bf';
     const n = parseInt(col.slice(1), 16);

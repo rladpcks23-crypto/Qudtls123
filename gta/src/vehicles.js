@@ -466,7 +466,12 @@ function aiDrive(car, dt) {
     const p = r[0], dx = p.x - car.x, dy = p.y - car.y, d2 = dx * dx + dy * dy;
     if (d2 < 3.5 * 3.5 || (dx * f[0] + dy * f[1] < 0 && d2 < 64)) r.shift(); else break;
   }
-  if (r.length < 8) planTurn(car);
+  if (ai.fw) { if (r.length < 8 && !ai.fwEnd) Fwy.plan(car); if (ai.fwEnd && r.length < 3) { trafficFromHere(car, ai.mode); return; } }
+  else {
+    // 다리에서 카운티로 들어오는 차는 굽은 고속도로에 올라탄다
+    if (World.fwy && ai.mode === 'traffic' && (ai.fwChk = (ai.fwChk || 0) - dt) <= 0) { ai.fwChk = 0.5; if (car.x > (CITY_W - 12) * T && edgeHighway(ai.from, ai.to)) { const at = Fwy.near(car.x, car.y, f[0], f[1], 6); if (at) { Fwy.join(car, at); return; } } }
+    if (r.length < 8) planTurn(car);
+  }
   // 후진 탈출
   if (ai.revT > 0) {
     ai.revT -= dt; car.in.thr = -0.7; car.in.brk = 0; car.in.st = -ai.revSt; car.in.hb = false; return;

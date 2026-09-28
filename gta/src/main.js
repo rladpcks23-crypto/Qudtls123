@@ -343,6 +343,7 @@ const Game = {
       c.vx = Math.cos(spot.a) * 9; c.vy = Math.sin(spot.a) * 9;
       this.cars.push(c); traffic++;
     }
+    Fwy.populate(f, inner, outer); // 굽은 고속도로 교통
     // 주차 차량 (빈 차는 최대 TUNE.cars[0]대 — 주차장이 몰린 곳에서 무한정 늘지 않게)
     let idle = 0; for (const c of this.cars) if (!c.driver && !c.persistent && !c.dead) idle++;
     for (const sp of World.parking) {

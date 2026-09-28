@@ -82,7 +82,7 @@ function drawGround(amb) {
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
     const t = tiles[tx + ty * MW];
     if (t === TL.WATER) continue;
-    const pal = GROUND[t];
+    const pal = t === TL.ROAD && rk[tx + ty * MW] === 8 ? (GROUND[World.fwyG[tx + ty * MW]] || GROUND[TL.GRASS]) : GROUND[t]; // 고속도로 가장자리 칸은 원래 땅 색 (위에 아스팔트 띠)
     ctx.fillStyle = t === TL.ROCK ? shadeHex(rockColor(World.rockH[tx + ty * MW]), (hash2(tx, ty) - 0.5) * 0.12 + rockSlope(tx, ty)) : pal[Math.floor(hash2(tx, ty) * pal.length)];
     ctx.fillRect(tx * T, ty * T, T + ov, T + ov);
   }
@@ -109,6 +109,7 @@ function drawGround(amb) {
   // 도로 표시
   for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) {
     const i = tx + ty * MW, t = tiles[i];
+    if (t === TL.ROAD && rk[i] === 8) continue;
     if (t === TL.ROAD) {
       const k = rk[i], X = tx * T, Y = ty * T;
       if (k === 1) {
@@ -223,6 +224,7 @@ function drawGround(amb) {
     ctx.font = 'bold 1.8px "Black Han Sans", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(key === 'garage' ? '차고' : key === 'mygarage' ? 'MY GARAGE' : dl ? 'NEON MOTORS' : 'PAY\'N\'SPRAY', 0, 0); ctx.restore();
   }
+  Fwy.draw(); // 굽은 고속도로 (v2.22)
 }
 
 // 신호등, 가로등 기둥
