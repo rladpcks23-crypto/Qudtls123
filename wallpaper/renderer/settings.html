@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+<title>공부모드 배경화면 설정</title>
+<style>
+  :root {
+    --bg: #0d1220; --panel: #151b2e; --line: #262e48; --ink: #eef2ff; --dim: #9aa4c4;
+    --accent: #ffb86b; --danger: #ff6b7a; --ok: #5fd7a3; --field: #0f1426;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 "Segoe UI", "Malgun Gothic", sans-serif; }
+  main { max-width: 620px; margin: 0 auto; padding: 22px 18px 40px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--dim); margin: 0 0 18px; font-size: 13px; }
+  .banner { border-radius: 12px; padding: 10px 14px; margin-bottom: 14px; font-size: 13px; }
+  .banner.lock { background: rgba(255, 184, 107, .12); border: 1px solid rgba(255, 184, 107, .4); }
+  .banner.warn { background: rgba(255, 107, 122, .12); border: 1px solid rgba(255, 107, 122, .4); }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+  label.h { display: block; font-weight: 600; margin-bottom: 4px; }
+  .hint { color: var(--dim); font-size: 12px; margin: 0 0 8px; }
+  input[type=date], input[type=text], textarea {
+    width: 100%; background: var(--field); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 10px; padding: 9px 11px; font: inherit; outline: none; color-scheme: dark;
+  }
+  input:focus, textarea:focus { border-color: #4b5a8a; }
+  textarea { min-height: 150px; resize: vertical; font-family: Consolas, "Malgun Gothic", monospace; font-size: 13px; }
+  .row { display: flex; gap: 12px; }
+  .row > div { flex: 1; min-width: 0; }
+  @media (max-width: 520px) { .row { flex-direction: column; } }
+  .check { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  button {
+    font: inherit; border-radius: 10px; border: 1px solid var(--line); background: #1e2640; color: var(--ink);
+    padding: 8px 14px; cursor: pointer;
+  }
+  button:hover { background: #26304f; }
+  button.primary { background: var(--accent); color: #1b1206; border-color: transparent; font-weight: 700; }
+  button.primary:hover { filter: brightness(1.05); }
+  button.danger { background: transparent; border-color: var(--danger); color: var(--danger); font-weight: 600; }
+  button:disabled { opacity: .45; cursor: default; }
+  .actions { display: flex; gap: 10px; align-items: center; }
+  .saved { color: var(--ok); font-size: 13px; opacity: 0; transition: opacity .2s; }
+  .saved.on { opacity: 1; }
+  .running { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip { padding: 5px 10px; border-radius: 999px; font-size: 12px; background: var(--field); border: 1px solid var(--line); }
+  .chip small { color: var(--dim); margin-left: 4px; }
+  .stat { display: flex; gap: 18px; color: var(--dim); font-size: 13px; }
+  .stat b { color: var(--ink); font-size: 16px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>공부모드 배경화면</h1>
+  <p class="sub">움직이는 배경화면 + 켜져 있는 동안 차단한 앱·사이트는 바로 강제 종료돼요. 창을 닫아도 작업표시줄 트레이에서 계속 돌아갑니다.</p>
+
+  <div class="banner lock" id="lockBanner" hidden></div>
+  <div class="banner warn" id="attachBanner" hidden>
+    배경화면을 바탕화면 뒤에 붙이지 못했어요. (차단 기능은 정상 작동 중)
+    <button id="reattach" style="margin-left:8px;padding:4px 10px">다시 시도</button>
+  </div>
+
+  <section>
+    <div class="stat"><span>오늘 참은 유혹 <b id="blocks">0</b>번</span><span id="dleft"></span></div>
+  </section>
+
+  <section>
+    <div class="row">
+      <div>
+        <label class="h" for="examDate">시험 날짜</label>
+        <p class="hint">배경화면에 D-day로 표시돼요.</p>
+        <input type="date" id="examDate">
+      </div>
+      <div>
+        <label class="h" for="message">배경화면 문구</label>
+        <p class="hint">차단될 때 팝업에도 떠요.</p>
+        <input type="text" id="message" maxlength="200">
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <label class="h" for="apps">차단할 앱 (한 줄에 하나)</label>
+    <p class="hint">프로그램 이름(.exe 이름)을 적어요. 켜지는 즉시 강제 종료됩니다. 이름을 모르면 그 앱을 켠 뒤 아래 버튼을 눌러 확인하세요.</p>
+    <textarea id="apps" spellcheck="false"></textarea>
+    <div style="margin-top:10px"><button id="scan">지금 켜져 있는 앱 이름 보기</button></div>
+    <div class="running" id="running"></div>
+  </section>
+
+  <section>
+    <label class="h" for="sites">차단할 사이트 (한 줄에 하나)</label>
+    <p class="hint">브라우저 탭 제목에 들어가는 단어를 적어요. 예: 유튜브 탭 제목은 "영상 제목 - YouTube" 라서 <b>YouTube</b>. 해당 탭을 여는 순간 브라우저가 통째로 강제 종료됩니다. (크롬·엣지·웨일·파이어폭스 등)</p>
+    <textarea id="sites" spellcheck="false"></textarea>
+  </section>
+
+  <section>
+    <label class="check"><input type="checkbox" id="autostart"> 윈도우 켤 때 자동 실행</label>
+  </section>
+
+  <div class="actions" style="margin-bottom:22px">
+    <button class="primary" id="save">저장</button>
+    <span class="saved" id="saved">저장됨 ✓</span>
+  </div>
+
+  <section>
+    <label class="h">시험 끝날 때까지 잠그기</label>
+    <p class="hint">잠그면 시험 날짜 23:59까지 앱을 종료할 수 없고, 차단 목록에서 빼거나 날짜를 앞당길 수 없어요. (추가는 가능) 의지가 약해질 때를 위한 기능이에요.</p>
+    <button class="danger" id="lock">잠그기</button>
+    <span class="hint" id="lockErr" style="margin-left:8px;color:var(--danger)"></span>
+  </section>
+</main>
+
+<script>
+const api = window.studylock;
+const $ = (id) => document.getElementById(id);
+let st = null;
+let dirty = false;
+
+const lines = (s) => s.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+
+function fill(s, force) {
+  st = s;
+  const c = s.config;
+  if (force || !dirty) {
+    $("examDate").value = c.examDate || "";
+    $("message").value = c.message || "";
+    $("apps").value = c.blockedApps.join("\n");
+    $("sites").value = c.blockedSites.join("\n");
+    $("autostart").checked = !!c.autostart;
+  }
+  $("autostart").disabled = s.locked;
+  $("blocks").textContent = s.stats.blocks;
+  const d = daysLeft(c.examDate);
+  $("dleft").innerHTML = d === null ? "" : d > 0 ? `시험까지 <b>D-${d}</b>` : d === 0 ? "<b>D-DAY</b>" : "시험 끝!";
+  const lb = $("lockBanner");
+  if (s.locked) {
+    lb.hidden = false;
+    lb.textContent = `🔒 ${c.examDate} 23:59 까지 잠금 중 — 차단 목록 추가만 가능하고, 종료는 안 돼요.`;
+    $("lock").disabled = true;
+    $("lock").textContent = "잠금 중";
+  } else {
+    lb.hidden = true;
+    $("lock").disabled = false;
+    $("lock").textContent = "잠그기";
+  }
+  $("attachBanner").hidden = s.attachStatus !== "failed";
+}
+
+function daysLeft(date) {
+  if (!date) return null;
+  const now = new Date();
+  const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((new Date(date + "T00:00:00") - t0) / 86400000);
+}
+
+for (const id of ["examDate", "message", "apps", "sites", "autostart"]) {
+  $(id).addEventListener("input", () => (dirty = true));
+}
+
+$("save").onclick = async () => {
+  const s = await api.save({
+    examDate: $("examDate").value,
+    message: $("message").value,
+    blockedApps: lines($("apps").value),
+    blockedSites: lines($("sites").value),
+    autostart: $("autostart").checked,
+  });
+  dirty = false;
+  fill(s, true);
+  const el = $("saved");
+  el.textContent = s.locked ? "저장됨 ✓ (잠금 중이라 삭제한 항목은 유지돼요)" : "저장됨 ✓";
+  el.classList.add("on");
+  setTimeout(() => el.classList.remove("on"), 2500);
+};
+
+$("lock").onclick = async () => {
+  $("lockErr").textContent = "";
+  if (dirty) await $("save").onclick();
+  const r = await api.lock();
+  if (r && r.error) $("lockErr").textContent = r.error;
+  else fill(r, true);
+};
+
+$("scan").onclick = async () => {
+  const box = $("running");
+  box.textContent = "불러오는 중…";
+  const list = await api.listRunning();
+  box.textContent = "";
+  if (!list.length) { box.textContent = "창이 떠 있는 앱이 없어요."; return; }
+  const seen = new Set();
+  for (const r of list) {
+    if (seen.has(r.name.toLowerCase())) continue;
+    seen.add(r.name.toLowerCase());
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.title = "클릭하면 차단 목록에 추가";
+    b.textContent = r.name;
+    const sm = document.createElement("small");
+    sm.textContent = r.title.length > 24 ? r.title.slice(0, 24) + "…" : r.title;
+    b.appendChild(sm);
+    b.onclick = () => {
+      const cur = lines($("apps").value);
+      if (!cur.some((x) => x.toLowerCase() === r.name.toLowerCase())) {
+        cur.push(r.name);
+        $("apps").value = cur.join("\n");
+        dirty = true;
+      }
+      b.disabled = true;
+    };
+    box.appendChild(b);
+  }
+};
+
+$("reattach").onclick = () => api.reattach();
+
+api.onState((s) => fill(s, false));
+api.getState().then((s) => fill(s, true));
+</script>
+</body>
+</html>

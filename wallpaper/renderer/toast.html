@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; user-select: none; }
+  .card {
+    box-sizing: border-box; margin: 10px; height: calc(100% - 20px); padding: 16px 20px;
+    border-radius: 16px; background: rgba(14, 18, 34, .94); border: 1px solid rgba(255, 140, 120, .45);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .45); color: #f3f5ff;
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif; display: flex; flex-direction: column; justify-content: center; gap: 6px;
+    animation: pop .25s ease-out;
+  }
+  .t { font-size: 18px; font-weight: 700; }
+  .t::before { content: "⛔ "; }
+  .m { font-size: 14px; color: rgba(230, 235, 255, .7); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @keyframes pop { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="card" id="card"><div class="t" id="t"></div><div class="m" id="m"></div></div>
+<script>
+  window.studylock.onToast(({ text, message }) => {
+    document.getElementById("t").textContent = text;
+    document.getElementById("m").textContent = message || "공부하러 가자.";
+    const c = document.getElementById("card");
+    c.style.animation = "none"; void c.offsetWidth; c.style.animation = "";
+  });
+</script>
+</body>
+</html>
