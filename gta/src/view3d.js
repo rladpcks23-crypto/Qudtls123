@@ -697,7 +697,7 @@ const View3D = {
     const P = Game.player;
     let a = this.yaw, best = 0.22, W = WEAPONS[P.weapon];
     for (const p of Game.peds) {
-      if (p.dead || p.kind === 'dog' || p.kind === 'animal' || p.car) continue;
+      if (p.dead || p.kind === 'dog' || p.kind === 'animal' || p.car || p.pmc) continue;
       const d = dist(p.x, p.y, P.x, P.y); if (d > (W.range || 3) || d < 0.3) continue;
       const da = Math.abs(angNorm(Math.atan2(p.y - P.y, p.x - P.x) - this.yaw));
       const hostile = p.state === 'chase' || p.kind === 'gang' || p.kind === 'target' || p.kind === 'guard';

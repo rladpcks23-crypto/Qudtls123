@@ -40,6 +40,7 @@ function worldTransform(c = ctx, scale = DPR) {
   c.scale(Cam.ppm, Cam.ppm); c.translate(-Cam.x, -Cam.y);
 }
 // 높이 z의 점을 원근 투영(월드 좌표계 안에서)
+const bH2 = b => Math.min(b.h, 115); // 탑뷰 원근: 카메라 높이(150m)를 넘는 초고층(스카이 타워 II)은 115m로 그린다
 const proj = (x, y, z) => { const f = Cam.H / (Cam.H - z); return [Cam.x + (x - Cam.x) * f, Cam.y + (y - Cam.y) * f]; };
 
 // ---------- 시간/주변광 ----------
@@ -299,7 +300,7 @@ function drawShadows(amb) {
   ctx.beginPath();
   for (const b of bldNear(Cam.x, Cam.y, Math.max(Cam.vw, Cam.vh) / 2)) {
     const X0 = b.x0 * T, Y0 = b.y0 * T, X1 = (b.x1 + 1) * T, Y1 = (b.y1 + 1) * T;
-    const ox = sx * b.h, oy = sy * b.h;
+    const ox = sx * bH2(b), oy = sy * bH2(b);
     if (X1 + Math.max(0, ox) < Cam.x - Cam.vw / 2 || X0 + Math.min(0, ox) > Cam.x + Cam.vw / 2 || Y1 + Math.max(0, oy) < Cam.y - Cam.vh / 2 || Y0 + Math.min(0, oy) > Cam.y + Cam.vh / 2) continue;
     // 직사각형 + 이동된 직사각형의 볼록껍질
     const pts = ox >= 0 ? (oy >= 0 ? [[X0, Y0], [X1, Y0], [X1 + ox, Y0 + oy], [X1 + ox, Y1 + oy], [X0 + ox, Y1 + oy], [X0, Y1]] : [[X0, Y1], [X0, Y0], [X0 + ox, Y0 + oy], [X1 + ox, Y0 + oy], [X1 + ox, Y1 + oy], [X1, Y1]])
@@ -687,7 +688,7 @@ function drawBuildings(amb) {
   const vis = [];
   for (const b of bldNear(Cam.x, Cam.y, Math.max(Cam.vw, Cam.vh) / 2)) {
     const X0 = b.x0 * T, Y0 = b.y0 * T, X1 = (b.x1 + 1) * T, Y1 = (b.y1 + 1) * T;
-    const f = Cam.H / (Cam.H - b.h), ex = (Cam.vw / 2) * (f - 1) + 2, ey = (Cam.vh / 2) * (f - 1) + 2;
+    const f = Cam.H / (Cam.H - bH2(b)), ex = (Cam.vw / 2) * (f - 1) + 2, ey = (Cam.vh / 2) * (f - 1) + 2;
     if (X1 < Cam.x - Cam.vw / 2 - ex || X0 > Cam.x + Cam.vw / 2 + ex || Y1 < Cam.y - Cam.vh / 2 - ey || Y0 > Cam.y + Cam.vh / 2 + ey) continue;
     vis.push(b); b._d = dist2((X0 + X1) / 2, (Y0 + Y1) / 2, Cam.x, Cam.y);
   }
@@ -697,7 +698,7 @@ function drawBuildings(amb) {
 const PLACE_MARK = { safehouse: '#9be15d', ammu: '#ff6b5a', ammu2: '#ff6b5a', ammu3: '#ff6b5a', burger: '#ffb347', burger2: '#ffb347', burger3: '#ffb347', burger4: '#ffb347', mart: '#7ae68f', mart2: '#7ae68f', mart3: '#7ae68f', mart4: '#7ae68f', mart5: '#7ae68f', jobcenter: '#6fb6ff', broker: '#ff5d8f', clothes: '#e07aff', clothes2: '#e07aff', gym: '#ff9f43', pharmacy: '#3ee07a', pharmacy2: '#3ee07a', bank: '#ffd700' };
 const SHOP_ROOF = { safehouse: ['#4a7a3f', '#f2fff0'], ammu: ['#b23a2e', '#f2f2f2'], burger: ['#e0572f', '#ffe08a'], mart: ['#2e8b57', '#f2fff4'], jobcenter: ['#2d5d9f', '#ffffff'], broker: ['#3a2346', '#ff5d8f'], clothes: ['#8a3b7a', '#ffe3f6'], gym: ['#222', '#ff9f43'], pharmacy: ['#1f8a4c', '#ffffff'], bank: ['#6b5a2a', '#ffd700'], biz: ['#4a3a14', '#ffd166'], casino: ['#1d1233', '#ff5d8f'], hq: ['#161616', '#ff4d4d'] };
 function drawBuilding(b, amb, night) {
-  const X0 = b.x0 * T, Y0 = b.y0 * T, X1 = (b.x1 + 1) * T, Y1 = (b.y1 + 1) * T, h = b.h;
+  const X0 = b.x0 * T, Y0 = b.y0 * T, X1 = (b.x1 + 1) * T, Y1 = (b.y1 + 1) * T, h = bH2(b);
   const P = (x, y, z) => proj(x, y, z);
   const corners = [[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]];
   const roof = corners.map(([x, y]) => P(x, y, h));

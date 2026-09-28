@@ -460,6 +460,7 @@ function updatePed(p, dt) {
     case 'handsup': Aim.updatePed(p, dt); break;
     case 'feud': feudAI(p, dt); break;
     case 'escort': escortAI(p, dt); break;
+    case 'pmc': pmcAI(p, dt); break;
     case 'idle': {
       if (p.homeX === undefined) { p.homeX = p.x; p.homeY = p.y; }
       if (p.stay) { pedSeek(p, p.homeX, p.homeY, 1, dt); if (!P.dead && dist2(p.x, p.y, P.px, P.py) < 100) p.a = Math.atan2(P.py - p.y, P.px - p.x); break; }

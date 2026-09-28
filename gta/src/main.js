@@ -265,7 +265,7 @@ const Game = {
     Pick.scan();
     if (Pick.target !== this._lastPick) { this._lastPick = Pick.target; document.body.classList.toggle('cansteal', !!Pick.target); }
     updatePickups(dt);
-    Events.update(dt); Fuel.update(dt); Tuning.update(dt); Rural.update(dt); Region.update(dt); Mega.update(dt); Stunts.update(dt); Races.update(dt); GF.update(dt); Achieve.update(dt); LifeMsgs.update(dt); Tycoon.update(dt);
+    Events.update(dt); Fuel.update(dt); Tuning.update(dt); Rural.update(dt); Region.update(dt); Mega.update(dt); Bill.update(dt); Stunts.update(dt); Races.update(dt); GF.update(dt); Achieve.update(dt); LifeMsgs.update(dt); Tycoon.update(dt);
     this.places(dt);
     // 사망
     if (P.hp <= 0 && this.state === 'play') this.wasted();
