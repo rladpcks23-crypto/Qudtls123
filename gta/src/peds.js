@@ -137,13 +137,16 @@ function cycleWeapon(p, dir) {
 
 // ---------- 공격 ----------
 function gauss() { return (Math.random() + Math.random() + Math.random() - 1.5) / 1.5; }
+// 플레이어 편 (내 조직 부하·호위·경호원): 플레이어·플레이어 차·서로를 다치게 하지 않는다
+function allyOfPlayer(p) { return !!p && p !== Game.player && p.kind !== 'car' && !p.dead && !!(p.pmc || p.escort || (typeof Gangs !== 'undefined' && Gangs.friendly(p))); }
 function fireWeapon(shooter, wname, ang, accuracy = 1) {
   const W = WEAPONS[wname];
-  const isPlayer = shooter === Game.player;
+  const isPlayer = shooter === Game.player, ally = allyOfPlayer(shooter);
+  const spare = t => ally && (t === Game.player || allyOfPlayer(t) || (t.kind === 'car' && (t.driver === 'player' || t === Game.player.car)));
   const ox = shooter.px + Math.cos(ang) * (shooter.car ? shooter.car.W / 2 + 0.6 : 0.6), oy = shooter.py + Math.sin(ang) * (shooter.car ? shooter.car.W / 2 + 0.6 : 0.6);
   if (W.melee) {
     Sfx.shot(ox, oy, 'punch');
-    const targets = [...Game.peds, Game.player].filter(p => p !== shooter && !p.dead && !p.car);
+    const targets = [...Game.peds, Game.player].filter(p => p !== shooter && !p.dead && !p.car && !spare(p));
     for (const p of targets) {
       const d = dist(p.x, p.y, shooter.x, shooter.y);
       if (d > W.range + p.r) continue;
@@ -153,7 +156,7 @@ function fireWeapon(shooter, wname, ang, accuracy = 1) {
       Sfx.hit(p.x, p.y);
       break;
     }
-    for (const c of Game.cars) if (dist(c.x, c.y, ox, oy) < c.L / 2) { c.damage(W.dmg * 0.1, isPlayer ? shooter : null); }
+    for (const c of Game.cars) if (!spare(c) && dist(c.x, c.y, ox, oy) < c.L / 2) { c.damage(W.dmg * 0.1, isPlayer ? shooter : null); }
     return;
   }
   if (W.flame) { // 화염방사기: 앞쪽 부채꼴을 태운다
@@ -161,8 +164,8 @@ function fireWeapon(shooter, wname, ang, accuracy = 1) {
     for (let k = 0; k < 3; k++) { const a = ang + rand(-0.18, 0.18), d = rand(1, W.range); Particles.fire(ox + Math.cos(a) * d, oy + Math.sin(a) * d, 1.3); }
     if (Math.random() < 0.3) Sfx.tone({ x: ox, y: oy, f0: 180, f1: 120, dur: 0.12, type: 'sawtooth', vol: 0.06 });
     const hitCone = (x, y) => { const d = dist(x, y, ox, oy); return d < W.range && Math.abs(angNorm(Math.atan2(y - oy, x - ox) - ang)) < 0.28 && losClear(ox, oy, x, y); };
-    for (const p of [...Game.peds, P]) if (p !== shooter && !p.dead && !p.car && hitCone(p.x, p.y)) p.damage(p === P ? 1.5 : 5, shooter, Math.cos(ang) * 0.3, Math.sin(ang) * 0.3, 'fire');
-    for (const c of Game.cars) if (c !== shooter.car && !c.dead && hitCone(c.x, c.y)) c.damage(2.5, isPlayer ? shooter : null);
+    for (const p of [...Game.peds, P]) if (p !== shooter && !p.dead && !p.car && !spare(p) && hitCone(p.x, p.y)) p.damage(p === P ? 1.5 : 5, shooter, Math.cos(ang) * 0.3, Math.sin(ang) * 0.3, 'fire');
+    for (const c of Game.cars) if (c !== shooter.car && !c.dead && !spare(c) && hitCone(c.x, c.y)) c.damage(2.5, isPlayer ? shooter : null);
     if (isPlayer && Math.random() < 0.2) crime('gunfire', ox, oy);
     if (Math.random() < 0.08) Fires.add(ox + Math.cos(ang) * W.range * 0.7, oy + Math.sin(ang) * W.range * 0.7, 1.6, 2.5, shooter);
     return;
@@ -197,14 +200,14 @@ function fireWeapon(shooter, wname, ang, accuracy = 1) {
       const t = -b - Math.sqrt(disc); return t > 0 ? t : -1;
     };
     for (const p of Game.peds) {
-      if (p.dead || p === shooter || p.car) continue;
+      if (p.dead || p === shooter || p.car || spare(p)) continue; // 아군 탄은 아군을 뚫고 지나간다
       if (Math.abs(p.x - ox) > hitD + 1 && Math.abs(p.y - oy) > hitD + 1) continue;
       const t = testCircle(p.x, p.y, p.r + 0.15); if (t > 0 && t < hitD) { hitD = t; hit = p; }
     }
     const P = Game.player;
-    if (!isPlayer && !P.dead && !P.car) { const t = testCircle(P.x, P.y, P.r + 0.1); if (t > 0 && t < hitD) { hitD = t; hit = P; } }
+    if (!isPlayer && !ally && !P.dead && !P.car) { const t = testCircle(P.x, P.y, P.r + 0.1); if (t > 0 && t < hitD) { hitD = t; hit = P; } }
     for (const c of Game.cars) {
-      if (c === shooter.car) continue;
+      if (c === shooter.car || spare(c)) continue;
       if (dist2(c.x, c.y, ox, oy) > (hitD + c.L) ** 2) continue;
       for (const [cx, cy] of c.circles()) { const t = testCircle(cx, cy, c.r); if (t > 0 && t < hitD) { hitD = t; hit = c; } }
     }
@@ -240,17 +243,17 @@ function explode(x, y, radius, dmg, by, source, alt = 0) {
   for (let i = 0; i < 40; i++) Particles.fire(x + rand(-radius, radius) * 0.35, y + rand(-radius, radius) * 0.35, 2);
   for (let i = 0; i < 18; i++) Particles.smoke(x + rand(-2, 2), y + rand(-2, 2), 2.5, '#303030');
   for (let i = 0; i < 16; i++) Particles.debris(x, y);
-  const P = Game.player;
+  const P = Game.player, allyBy = allyOfPlayer(by);
   const peds = [...Game.peds, P];
   for (const p of peds) {
-    if (p.dead) continue;
+    if (p.dead || (allyBy && (p === P || allyOfPlayer(p)))) continue; // 아군 폭발물은 플레이어 편을 다치게 하지 않는다
     if (p.car) { if (p === P && p.car === source) P.damage(999, by, 0, 0, 'explosion'); continue; }
     if (Math.abs((p.alt || 0) - alt) > radius) continue;
     const d = dist(p.x, p.y, x, y);
     if (d < radius) { const f = 1 - d / radius; const nx = (p.x - x) / (d || 1), ny = (p.y - y) / (d || 1); p.downT = 1.5; p.damage(dmg * f * (p === P ? 0.6 : 1), by, nx * 6 * f, ny * 6 * f, 'explosion'); }
   }
   for (const c of Game.cars) {
-    if (c === source || Math.abs((c.alt || 0) - alt) > radius) continue; // 높이가 다른 기체는 폭발에 휘말리지 않는다
+    if (c === source || (allyBy && (c.driver === 'player' || c === P.car)) || Math.abs((c.alt || 0) - alt) > radius) continue; // 높이가 다른 기체는 폭발에 휘말리지 않는다
     const d = dist(c.x, c.y, x, y);
     if (d < radius * 1.3) {
       const f = 1 - d / (radius * 1.3), nx = (c.x - x) / (d || 1), ny = (c.y - y) / (d || 1);

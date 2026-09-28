@@ -25,18 +25,30 @@ const SPACE = [
   { name: '우주 기지 건설', cost: 5e9, min: 6, desc: '레드 메사 사막에 발사대·관제센터·조립동' },
   { name: '통신 위성 발사', cost: 8e9, min: 3, desc: '위성: 어디서든 수배가 더 빨리 풀린다', cut: [['관제센터', '위성 궤도 진입 성공! 이제 도시 어디서든 경찰 무전을 먼저 듣는다.']] },
   { name: '유인 달 탐사', cost: 4e10, min: 6, desc: '달 관광 사업: 1분 수입 $5천만', cut: [['관제센터', '…착륙했습니다. 달 표면에 네온 하버 깃발이 섰습니다!'], ['네온 뉴스', '"도시의 왕, 이제는 달의 주인" — 전 세계가 네온 하버를 본다.']] },
-  { name: '화성 이주선', cost: 1.5e11, min: 10, desc: '인류 최초의 화성 도시 — 엔딩', cut: [['관제센터', '화성 이주선 발사 성공. 도착까지 7개월.'], ['마담 윤', '거리의 꼬마가 우주까지 갔네. 이제 더 올라갈 곳도 없겠어.'], ['네온 하버', '— 우주의 왕 —']] },
+  { name: '화성 이주선', cost: 1.5e11, min: 10, desc: '인류 최초의 화성 이주 — 우주의 왕', cut: [['관제센터', '화성 이주선 발사 성공. 도착까지 7개월.'], ['마담 윤', '거리의 꼬마가 우주까지 갔네. …그래도 넌 여기서 멈출 생각이 없지?'], ['네온 하버', '— 우주의 왕 —']] },
+  { name: '달 기지 건설', cost: 5e11, min: 8, inc: 3e8, desc: '달 기지 헬륨-3 채굴: 1분 수입 $3억', cut: [['관제센터', '달 남극에 네온 기지 1호 가동. 헬륨-3 첫 선적이 지구로 출발했습니다.']] },
+  { name: '화성 도시 건설', cost: 2e12, min: 12, inc: 1e9, desc: '화성 도시 "뉴 네온": 1분 수입 $10억', cut: [['관제센터', '화성 도시 뉴 네온 인구 1만 명 돌파.'], ['네온 뉴스', '"화성에도 네온사인이 켜졌다"']] },
+  { name: '소행성 채굴 함대', cost: 5e12, min: 12, inc: 3e9, desc: '소행성 백금 채굴: 1분 수입 $30억', cut: [['관제센터', '채굴 함대가 소행성 16 프시케에 도착. 금속 덩어리 하나가 지구 경제보다 비쌉니다.']] },
+  { name: '성간 방주', cost: 2e13, min: 20, inc: 0, desc: '다른 별로 떠나는 방주 — 진짜 엔딩', cut: [['관제센터', '성간 방주 "네온 하버호" 발사. 목적지 알파 센타우리, 도착까지 40년.'], ['마담 윤', '…정말로 별까지 가는구나.'], ['형사 한', '이 도시에서 시작한 놈이 은하를 가진다니. 세상 참.'], ['네온 하버', '— 별의 왕 · 진짜 엔딩 —']] },
 ];
+// v2.22: 조 단위 — 인공섬 신도시 · 글로벌 기업 · 항공모함 · 올림픽
+const OASIS = [null, { cost: 1e12, min: 10, inc: 2e8, R: 22, name: '1단계: 섬과 첫 빌딩숲' }, { cost: 3e12, min: 15, inc: 6e8, R: 32, name: '2단계: 섬 확장 · 마리나 · 고층 빌딩' }, { cost: 1e13, min: 20, inc: 2e9, R: 42, name: '3단계: 초고층 스카이라인' }];
+const OASIS_C = { x: 790, y: 80 };
+const CORPS = [
+  ['neonel', '네온 전자', 5e11], ['harbor', '하버 자동차', 7e11], ['whale', '블루웨일 해운', 6e11], ['sky', '스카이 항공', 8e11], ['red', '레드 제약', 9e11],
+  ['stream', '스트림 미디어', 1e12], ['omega', '오메가 석유', 1.2e12], ['quantum', '퀀텀 반도체', 1.5e12], ['core', '코어 AI', 3e12], ['bank', '글로벌 은행 연합', 5e12],
+];
+VTYPES.carrier = { name: '항공모함 네온 킹덤', L: 88, W: 20, mass: 4e6, Fe: 1, vmax: 13, grip: 1, cs: 5, steer: 0.18, hp: 30000, colors: ['#6f7780'], style: 'boat', special: 'boat', accel: 0.9, armor: 0.3 };
 const PMC_VEH = { tank: { type: 'tank', name: '라이노 전차', cost: 1e9 }, heli: { type: 'milheli', name: '헌터 공격 헬기', cost: 2e9 }, jet: { type: 'jet', name: '라저 전투기', cost: 3e9 } };
 
 const Bill = {
-  hoods: {}, space: { stage: 0, state: 'none', left: 0 }, tower: { state: 'none', left: 0, lot: null }, yacht: false, pmc: {}, guardsOn: false, titles: {},
+  hoods: {}, space: { stage: 0, state: 'none', left: 0 }, oasis: { tier: 0, state: 'none', left: 0 }, corps: {}, carrier: false, olympic: { state: 'none', left: 0 }, tower: { state: 'none', left: 0, lot: null }, yacht: false, pmc: {}, guardsOn: false, titles: {},
   t: 0, applied: {}, launch: null, guards: [], summonCD: 0,
-  save() { return { hoods: this.hoods, space: this.space, tower: this.tower, yacht: this.yacht, pmc: this.pmc, guardsOn: this.guardsOn, titles: this.titles }; },
-  load(o) { o = o || {}; this.hoods = o.hoods || {}; this.space = o.space || { stage: 0, state: 'none', left: 0 }; this.tower = o.tower || { state: 'none', left: 0, lot: null }; this.yacht = !!o.yacht; this.pmc = o.pmc || {}; this.guardsOn = !!o.guardsOn; this.titles = o.titles || {}; this.applied = {}; this.launch = null; this.guards = []; },
+  save() { return { hoods: this.hoods, space: this.space, tower: this.tower, yacht: this.yacht, pmc: this.pmc, guardsOn: this.guardsOn, titles: this.titles, oasis: this.oasis, corps: this.corps, carrier: this.carrier, olympic: this.olympic }; },
+  load(o) { o = o || {}; this.hoods = o.hoods || {}; this.space = o.space || { stage: 0, state: 'none', left: 0 }; this.tower = o.tower || { state: 'none', left: 0, lot: null }; this.yacht = !!o.yacht; this.pmc = o.pmc || {}; this.guardsOn = !!o.guardsOn; this.titles = o.titles || {}; this.oasis = o.oasis || { tier: 0, state: 'none', left: 0 }; this.corps = o.corps || {}; this.carrier = !!o.carrier; this.olympic = o.olympic || { state: 'none', left: 0 }; this.applied = {}; this.launch = null; this.guards = []; },
   pay(cost) { const P = Game.player; if (P.money < cost) { UI.toast(`돈이 모자라다 ($${fmtB(cost)} 필요)`); return false; } P.money -= cost; Sfx.cash(); return true; },
   hoodIncome() { return Object.keys(this.hoods).reduce((a, i) => a + hoodPrice(+i) * 0.0003, 0); },
-  perMin() { return Math.round(this.hoodIncome() + (this.tower.state === 'done' ? 3e7 : 0) + (this.space.stage >= 3 ? 5e7 : 0) - (this.guardsOn ? 2e6 : 0)); },
+  perMin() { return Math.round(this.hoodIncome() + (this.tower.state === 'done' ? 3e7 : 0) + (this.space.stage >= 3 ? 5e7 : 0) + SPACE.reduce((a, D, k) => a + (this.space.stage > k && D.inc ? D.inc : 0), 0) + this.bigIncome() - (this.guardsOn ? 2e6 : 0)); },
   ownedCount(county) { return Object.keys(this.hoods).filter(i => !!World.hoods[i].county === county).length; },
 
   // ---------- 도시 매입 ----------
@@ -123,6 +135,39 @@ const Bill = {
     UI.big('네온 스카이 타워 II 전망대', '320m에서 낙하산으로 뛰어내렸다! (WASD로 방향)', 3, '#ffd700');
   },
 
+  // ---------- 조 단위 (v2.22) ----------
+  bigIncome() { let n = 0; for (let k = 1; k <= this.oasis.tier; k++) n += OASIS[k].inc; for (const [id, , c] of CORPS) if (this.corps[id]) n += c * 2e-4; if (this.olympic.state === 'done') n += 5e8; return n; },
+  oasisBegin() { const O = this.oasis, D = OASIS[O.tier + 1]; if (!D || O.state !== 'none' || !this.pay(D.cost)) return; O.state = 'build'; O.left = D.min * 60; UI.big('네온 오아시스 ' + D.name, `${D.min}분 뒤 완공 · 레드 카운티 북서쪽 바다`, 3, '#6fe0ff'); Save.write(); },
+  applyOasis(k) {
+    if (this.applied['oasis' + k]) return; this.applied['oasis' + k] = true;
+    const E = WorldEdit, W = World, C = OASIS_C, R = OASIS[k].R, ok = t => t === TL.WATER || t === TL.SAND || t === TL.GRASS;
+    const rr = (x, y) => { const a = Math.atan2(y - C.y, x - C.x); return Math.hypot(x - C.x, y - C.y) / (1 + 0.07 * Math.sin(3 * a + 1.1) + 0.04 * Math.sin(7 * a + 0.3)); };
+    E.tiles(C.x - R - 3, C.y - R - 3, C.x + R + 3, C.y + R + 3, (x, y) => { const d = rr(x, y), t = W.tiles[tIdx(x, y)]; if (d >= R || !ok(t) && t !== TL.PLAZA) return null; if (t === TL.PLAZA) return null; return d < R * 0.42 ? TL.PLAZA : d < R - 3 - (k > 1 ? 1 : 0) ? TL.GRASS : TL.SAND; });
+    const tower = (cx, cy, s, h, col, label) => { const x0 = Math.round(cx - s / 2), y0 = Math.round(cy - s / 2); for (let y = y0 - 1; y <= y0 + s; y++) for (let x = x0 - 1; x <= x0 + s; x++) { const t = W.tiles[tIdx(x, y)]; if (t === TL.WATER || t === TL.BUILD || t === TL.ROAD) return; } const b = E.building(x0, y0, x0 + s - 1, y0 + s - 1, h, 'tower', col, label); if (b) b.lit = 0.95; };
+    const PAL = ['#8fa8c0', '#c9ced6', '#6f86a3', '#d4c4a8', '#9fb7c9', '#7a8ea8'];
+    if (k === 1) {
+      for (let j = 0; j < 6; j++) { const a = j / 6 * TAU + 0.3; tower(C.x + Math.cos(a) * 12, C.y + Math.sin(a) * 12, 5, 90 + (j * 37) % 70, PAL[j % 6], '네온 오아시스 타워'); }
+      // 남쪽 다리: 섬 → 카운티 국도
+      let y = C.y + R - 3; const bx = C.x - 1;
+      for (; y < 192; y++) { let stop = false; for (const x of [bx, bx + 1]) { const i = tIdx(x, y), t = W.tiles[i]; if (t === TL.ROAD && y > C.y + R) { stop = true; continue; } if (t === TL.BUILD) continue; W.tiles[i] = TL.ROAD; W.roadK[i] = 1; W.rockH[i] = 0; } if (stop) break; }
+      W.trees = W.trees.filter(t => !(t.x >= (bx - 1) * T && t.x <= (bx + 3) * T && t.y >= (C.y + R - 3) * T && t.y <= 193 * T));
+      E.place('c_oasis', (C.x + 1.5) * T, (C.y + 7.5) * T, '네온 오아시스 시청', 'oasis', '島', '#6fe0ff');
+      W.mapLabels.push({ name: '네온 오아시스', x: C.x * T, y: (C.y - R - 4) * T });
+    }
+    if (k === 2) { for (let j = 0; j < 8; j++) { const a = j / 8 * TAU; tower(C.x + Math.cos(a) * 22, C.y + Math.sin(a) * 22, 6, 120 + (j * 53) % 110, PAL[(j + 2) % 6], '네온 오아시스 타워'); } E.tiles(C.x + R - 2, C.y - 1, C.x + R + 9, C.y + 1, (x, y) => W.tiles[tIdx(x, y)] === TL.WATER ? TL.DOCK : null); W.marinas.push({ x: (C.x + R + 10) * T, y: C.y * T, a: 0, car: null, cd: 0 }); }
+    if (k === 3) { [[0, -5, 380, '#d0d8e2', '오아시스 원'], [-5, 4, 300, '#8fa8c0', '오아시스 투'], [5, 4, 250, '#c9ced6', '오아시스 쓰리']].forEach(([dx, dy, h, c, n]) => tower(C.x + dx, C.y + dy, 5, h, c, n)); for (let j = 0; j < 8; j++) { const a = j / 8 * TAU + 0.4; tower(C.x + Math.cos(a) * 32, C.y + Math.sin(a) * 32, 6, 150 + (j * 41) % 120, PAL[(j + 4) % 6], '네온 오아시스 타워'); } }
+    E.touch(C.x - R - 4, C.y - R - 4, C.x + R + 12, 195);
+  },
+  buyCorp(id) { const c = CORPS.find(q => q[0] === id); if (!c || this.corps[id] || !this.pay(c[2])) return; this.corps[id] = 1; UI.big(`${c[1]} 인수 완료`, `1분 배당 $${fmtB(c[2] * 2e-4)}`, 3, '#ffd700'); if (CORPS.every(q => this.corps[q[0]]) && !this.titles.corps) { this.titles.corps = 1; setTimeout(() => UI.big('칭호: 세계 경제의 왕', '글로벌 기업 10곳을 모두 가졌다', 4.5, '#ffd700'), 3200); } Save.write(); },
+  callCarrier() {
+    const m = this.nearestMarina(); if (!m) return;
+    for (const c of Game.cars) if (c.type === 'carrier' && c.owned) c.remove = true;
+    const a = m.a || 0; let x = m.x + Math.cos(a) * 80, y = m.y + Math.sin(a) * 80; if (tileAt(x, y) !== TL.WATER) { x = m.x; y = m.y; }
+    const c = new Car('carrier', x, y, a, { persistent: true }); c.owned = true; c.label = '내 항공모함 네온 킹덤'; Game.cars.push(c);
+    Game.waypoint = { x, y }; UI.toast('항공모함 네온 킹덤이 근처 바다에 도착했다 (지도 표시)');
+  },
+  olympicBegin() { const O = this.olympic; if (O.state !== 'none' || !this.pay(2e12)) return; O.state = 'build'; O.left = 12 * 60; UI.big('네온 하버 올림픽 유치', '12분 뒤 개막식', 3, '#ffd700'); Save.write(); },
+
   // ---------- 요트 · 사설 군대 ----------
   nearestMarina() { const P = Game.player; let b = null, bd = 1e18; for (const m of World.marinas || []) { const d = dist2(m.x, m.y, P.px, P.py); if (d < bd) { bd = d; b = m; } } return b; },
   callYacht() {
@@ -155,6 +200,7 @@ const Bill = {
     if (this.space.stage >= 1) this.applyBase();
     if (this.tower.state === 'done') this.applyTower();
     if (this.titles.city) this.applyStatue();
+    for (let k = 1; k <= this.oasis.tier; k++) this.applyOasis(k);
     this.updateLaunch(dt);
     if (View3D.scene) this.rocket3D();
     // 수배: 내 동네·위성
@@ -166,6 +212,8 @@ const Bill = {
       const step = this.t; this.t = 0; const S = this.space;
       if (S.state === 'build') { S.left -= step; if (S.left <= 0) { if (S.stage === 0) { S.stage = 1; S.state = 'none'; this.applyBase(); UI.big('네온 우주센터 완공', '관제센터에서 다음 단계를 진행하자', 3.5, '#6fe0ff'); } else { S.state = 'ready'; UI.big('발사 준비 완료', `${SPACE[S.stage].name} — 네온 우주센터에서 발사`, 3.5, '#6fe0ff'); } Save.write(); } }
       const Tw = this.tower; if (Tw.state === 'build') { Tw.left -= step; if (Tw.left <= 0) { Tw.state = 'done'; this.applyTower(); UI.big('네온 스카이 타워 II 완공', '세계 최고층 320m — 도시 어디서나 보인다', 4, '#ffd700'); Save.write(); } }
+      const Oa = this.oasis; if (Oa.state === 'build') { Oa.left -= step; if (Oa.left <= 0) { Oa.tier++; Oa.state = 'none'; this.applyOasis(Oa.tier); UI.big('네온 오아시스 ' + OASIS[Oa.tier].name + ' 완공', `1분 수입 +$${fmtB(OASIS[Oa.tier].inc)}`, 4, '#6fe0ff'); Save.write(); } }
+      const Ol = this.olympic; if (Ol.state === 'build') { Ol.left -= step; if (Ol.left <= 0) { Ol.state = 'done'; if (typeof Empire !== 'undefined' && Empire.support) Empire.support.civ = (Empire.support.civ || 0) + 30; if (typeof Cutscene !== 'undefined') Cutscene.play([['네온 하버 올림픽', '— 개막식 —'], ['아나운서', '전 세계 30억 명이 지켜보는 가운데 성화가 에투알 광장에 도착했습니다!'], ['마담 윤', '뒷골목에서 시작한 네가 올림픽을 열다니.'], ['네온 하버', '관광 수입 1분 $5억 · 시민 지지 +30']], () => { }); Save.write(); } }
       this.incT = (this.incT || 0) + step;
       if (this.incT >= 60) { this.incT -= 60; const n = this.perMin(); if (n) { P.money += n; UI.toast(`억만장자 수입 ${n >= 0 ? '+' : '-'}$${fmtB(Math.abs(n))}${this.guardsOn ? ' (경호팀 유지비 포함)' : ''}`); } }
     }
@@ -206,7 +254,7 @@ const Bill = {
 };
 SaveExt.mods.billion = Bill;
 Props.providers.push(() => Bill.props());
-const fmtB = n => n >= 1e8 ? `${(n / 1e8).toLocaleString(undefined, { maximumFractionDigits: 1 })}억` : Math.round(n).toLocaleString();
+const fmtB = n => { if (n >= 1e12) { const j = Math.floor(n / 1e12), e = Math.round((n - j * 1e12) / 1e8); return `${j.toLocaleString()}조${e ? ` ${e.toLocaleString()}억` : ''}`; } return n >= 1e8 ? `${(n / 1e8).toLocaleString(undefined, { maximumFractionDigits: 1 })}억` : Math.round(n).toLocaleString(); };
 
 // 경호원 AI: 플레이어를 따라다니며 적(쫓아오는 경찰·라이벌·표적)을 쏜다
 function pmcAI(p, dt) {
@@ -214,11 +262,8 @@ function pmcAI(p, dt) {
   if (!Bill.guardsOn || dist2(p.x, p.y, P.px, P.py) > 200 * 200) { p.remove = true; return; }
   if (p.foe && (p.foe.dead || !Game.peds.includes(p.foe) || dist2(p.x, p.y, p.foe.x, p.foe.y) > 35 * 35)) p.foe = null;
   if (!p.foe) { let best = null, bd = 22 * 22; for (const q of Game.peds) { if (q.dead || q === p || q.car || q.pmc || q.kind === 'animal' || q.kind === 'dog' || Gangs.friendly(q)) continue; const hostile = q.state === 'chase' || q.state === 'fight' || q.kind === 'target' || (q.kind === 'gang' && q.state === 'escort' && false); if (!hostile) continue; const d2 = dist2(q.x, q.y, P.px, P.py); if (d2 < bd) { bd = d2; best = q; } } p.foe = best; }
-  if (p.foe) { feudAI(p, dt); p.state = 'pmc'; return; }
-  const d = dist(p.x, p.y, P.px, P.py);
-  if (P.car) { if (d > 6) pedSeek(p, P.px, P.py, 7, dt, 14); else { p.vx *= 0.8; p.vy *= 0.8; } }
-  else if (d > 3) pedSeek(p, P.px - Math.cos(P.a) * 2.5, P.py - Math.sin(P.a) * 2.5, d > 10 ? 7.5 : 4.5, dt, 14);
-  else { p.vx *= 0.8; p.vy *= 0.8; }
+  if (p.foe) { feudAI(p, dt); p.state = 'pmc'; Formation.separate(p); return; }
+  Formation.follow(p, dt);
 }
 
 // ---------- 창 ----------
@@ -244,6 +289,14 @@ SHOPS.spaceport = {
     return out;
   },
 };
+SHOPS.corps = {
+  title: '글로벌 기업 인수', get sub() { return `${CORPS.filter(q => Bill.corps[q[0]]).length}/${CORPS.length}곳 · 배당 1분 $${fmtB(CORPS.reduce((a, q) => a + (Bill.corps[q[0]] ? q[2] * 2e-4 : 0), 0))} · 전부 사면 '세계 경제의 왕'`; },
+  items: () => CORPS.map(([id, name, cost]) => ({ id: 'corp_' + id, name: `${name}${Bill.corps[id] ? ' — 내 회사' : ''}`, price: Bill.corps[id] ? 0 : cost, btn: Bill.corps[id] ? '소유' : '인수', desc: `인수가 $${fmtB(cost)} · 1분 배당 $${fmtB(cost * 2e-4)}`, ok: () => !Bill.corps[id] && Game.player.money >= cost, fn: () => { Bill.buyCorp(id); Shop.open('corps'); } })),
+};
+SHOPS.oasis = {
+  title: '네온 오아시스 시청', get sub() { return `인공섬 신도시 · ${Bill.oasis.tier}/3단계 · 섬 수입 1분 $${fmtB(OASIS.slice(1, Bill.oasis.tier + 1).reduce((a, d) => a + d.inc, 0))}`; },
+  items: () => [{ id: 'up', name: OASIS[Bill.oasis.tier + 1] ? `다음: ${OASIS[Bill.oasis.tier + 1].name}` : '모든 단계 완공', price: OASIS[Bill.oasis.tier + 1] ? OASIS[Bill.oasis.tier + 1].cost : 0, btn: Bill.oasis.state === 'build' ? '공사 중' : '착공', desc: '휴대폰 [억만장자] 앱에서도 된다', ok: () => !!OASIS[Bill.oasis.tier + 1] && Bill.oasis.state === 'none' && Game.player.money >= OASIS[Bill.oasis.tier + 1].cost, fn: () => { Bill.oasisBegin(); Shop.open('oasis'); } }],
+};
 SHOPS.tower2 = {
   title: '네온 스카이 타워 II', sub: '320m 세계 최고층 · 1분 임대 $3천만',
   items: () => [{ id: 'jump', name: '전망대 낙하산 점프', price: 1000, btn: '점프', desc: '320m 전망대에서 낙하산으로 뛰어내린다', ok: () => Game.player.money >= 1000 && !Game.player.car, fn: () => { Game.player.money -= 1000; Shop.close(); Bill.towerJump(); } }],
@@ -255,13 +308,21 @@ SHOPS.billion = {
     out.push({ id: 'b_city', name: `도시 매입 — ${Object.keys(Bill.hoods).length}/${World.hoods.length}곳`, price: 0, btn: '열기', desc: '동네를 통째로 산다 ($6억~$80억)', ok: () => true, fn: () => Shop.open('citybuy') });
     const sd = SPACE[S.stage];
     if (S.stage === 0 && S.state === 'none') out.push({ id: 'b_space', name: '우주 계획 1단계: 우주 기지 건설', price: sd.cost, btn: '착공', desc: sd.desc + ' · 이후 단계는 우주센터에서', ok: () => P.money >= sd.cost, fn: () => { Bill.spaceBegin(); Shop.open('billion'); } });
-    else out.push({ id: 'b_space', name: `우주 계획 — ${S.stage >= SPACE.length ? '화성까지 완료' : S.state === 'ready' ? `${sd.name} 발사 준비 완료` : S.state === 'build' ? `${sd.name} 준비 중 ${Math.ceil(S.left / 60)}분` : `다음: ${sd.name} ($${fmtB(sd.cost)})`}`, price: 0, btn: '위치', desc: '네온 우주센터 (레드 메사 사막)', ok: () => true, fn: () => { Game.waypoint = { x: Bill.padX, y: Bill.padY }; UI.toast('지도에 우주센터를 표시했다'); } });
+    else out.push({ id: 'b_space', name: `우주 계획 — ${S.stage >= SPACE.length ? '성간 방주까지 완료' : S.state === 'ready' ? `${sd.name} 발사 준비 완료` : S.state === 'build' ? `${sd.name} 준비 중 ${Math.ceil(S.left / 60)}분` : `다음: ${sd.name} ($${fmtB(sd.cost)})`}`, price: 0, btn: '위치', desc: '네온 우주센터 (레드 메사 사막)', ok: () => true, fn: () => { Game.waypoint = { x: Bill.padX, y: Bill.padY }; UI.toast('지도에 우주센터를 표시했다'); } });
     if (Tw.state === 'none') out.push({ id: 'b_tower', name: '네온 스카이 타워 II (320m 세계 최고층)', price: 2e10, btn: '착공', desc: '다운타운 에투알 광장 옆 빌딩을 헐고 다시 짓는다 · 15분 공사 · 1분 $3천만 · 전망대 낙하산', ok: () => P.money >= 2e10, fn: () => { Bill.towerBegin(); Shop.open('billion'); } });
     else out.push({ id: 'b_tower', name: `네온 스카이 타워 II — ${Tw.state === 'done' ? '완공' : `공사 ${Math.ceil(Tw.left / 60)}분`}`, price: 0, btn: '위치', desc: '다운타운', ok: () => !!Tw.lot, fn: () => { const L = Tw.lot; Game.waypoint = { x: (L.x0 + L.x1 + 1) / 2 * T, y: (L.y1 + 2) * T }; UI.toast('지도에 표시했다'); } });
     out.push(Bill.yacht ? { id: 'b_yacht', name: '초호화 요트 네온 레이디 — 부르기', price: 0, btn: '호출', desc: '가장 가까운 마리나로', ok: () => true, fn: () => { Shop.close(); Bill.callYacht(); } }
       : { id: 'b_yacht', name: '초호화 요트 네온 레이디 (34m)', price: 3e9, btn: '구입', desc: '헬리패드가 있는 떠다니는 저택 · 어느 마리나로든 부른다', ok: () => P.money >= 3e9, fn: () => { if (!Bill.pay(3e9)) return; Bill.yacht = true; Save.write(); Shop.close(); Bill.callYacht(); } });
     out.push(Bill.pmc.guards ? { id: 'b_guard', name: `경호팀 (4명) — ${Bill.guardsOn ? '동행 중' : '대기'}`, price: 0, btn: Bill.guardsOn ? '해산' : '부르기', desc: '동행 중엔 1분 유지비 $200만', ok: () => true, fn: () => { Bill.guardsOn = !Bill.guardsOn; if (Bill.guardsOn) Bill.spawnGuards(); Save.write(); Shop.open('billion'); } }
       : { id: 'b_guard', name: '사설 경호팀 고용 (4명, 소총·방탄)', price: 5e8, btn: '고용', desc: '어디든 따라다니며 적과 경찰을 막는다 · 동행 중 1분 유지비 $200만', ok: () => P.money >= 5e8, fn: () => { if (!Bill.pay(5e8)) return; Bill.pmc.guards = true; Bill.guardsOn = true; Bill.spawnGuards(); Save.write(); Shop.open('billion'); } });
+    const Oa = Bill.oasis, OD = OASIS[Oa.tier + 1];
+    out.push(OD ? (Oa.state === 'build' ? { id: 'b_oasis', name: `네온 오아시스 ${OD.name} — 공사 ${Math.ceil(Oa.left / 60)}분`, price: 0, btn: '위치', desc: '레드 카운티 북서쪽 바다', ok: () => true, fn: () => { Game.waypoint = { x: OASIS_C.x * T, y: OASIS_C.y * T }; UI.toast('지도에 표시했다'); } }
+      : { id: 'b_oasis', name: `인공섬 신도시 네온 오아시스 ${OD.name}`, price: OD.cost, btn: '착공', desc: `바다를 메워 섬 도시를 짓는다 · ${OD.min}분 · 1분 수입 +$${fmtB(OD.inc)}`, ok: () => P.money >= OD.cost, fn: () => { Bill.oasisBegin(); Shop.open('billion'); } })
+      : { id: 'b_oasis', name: '네온 오아시스 — 3단계 완공', price: 0, btn: '위치', desc: '초고층 스카이라인 380m', ok: () => true, fn: () => { Game.waypoint = { x: OASIS_C.x * T, y: OASIS_C.y * T }; UI.toast('지도에 표시했다'); } });
+    out.push({ id: 'b_corps', name: `글로벌 기업 인수 — ${CORPS.filter(q => Bill.corps[q[0]]).length}/${CORPS.length}곳`, price: 0, btn: '열기', desc: '$5,000억 ~ $5조 · 1분 배당 0.02%', ok: () => true, fn: () => Shop.open('corps') });
+    out.push(Bill.carrier ? { id: 'b_carrier', name: '항공모함 네온 킹덤 — 부르기', price: 0, btn: '호출', desc: '가까운 바다로', ok: () => true, fn: () => { Shop.close(); Bill.callCarrier(); } }
+      : { id: 'b_carrier', name: '항공모함 네온 킹덤 (88m)', price: 1.5e11, btn: '구입', desc: '떠다니는 군사 기지 · 어느 바다로든 부른다', ok: () => P.money >= 1.5e11, fn: () => { if (!Bill.pay(1.5e11)) return; Bill.carrier = true; Save.write(); Shop.close(); Bill.callCarrier(); } });
+    const Ol = Bill.olympic; out.push({ id: 'b_olympic', name: Ol.state === 'done' ? '네온 하버 올림픽 — 개최 완료' : Ol.state === 'build' ? `올림픽 준비 중 ${Math.ceil(Ol.left / 60)}분` : '올림픽 유치', price: Ol.state === 'none' ? 2e12 : 0, btn: Ol.state === 'none' ? '유치' : '✓', desc: '관광 수입 1분 $5억 · 시민 지지 +30 · 개막식', ok: () => Ol.state === 'none' && P.money >= 2e12, fn: () => { Bill.olympicBegin(); Shop.open('billion'); } });
     for (const [k, V] of Object.entries(PMC_VEH)) out.push(Bill.pmc[k] ? { id: 'b_' + k, name: `내 ${V.name} — 호출`, price: 0, btn: '호출', desc: '근처로 보낸다 (45초마다)', ok: () => true, fn: () => { Shop.close(); Bill.callVehicle(k); } }
       : { id: 'b_' + k, name: `사설 군대: ${V.name}`, price: V.cost, btn: '구입', desc: '사면 어디서든 부를 수 있다', ok: () => P.money >= V.cost, fn: () => { if (!Bill.pay(V.cost)) return; Bill.pmc[k] = true; Save.write(); Shop.open('billion'); } });
     return out;
@@ -280,4 +341,5 @@ SHOPS.billion = {
   };
 }
 // 업적
-ACH.push(['landlord', '도시의 주인', '도시의 모든 동네를 샀다', () => !!Bill.titles.city], ['moon', '달의 주인', '유인 달 탐사 성공', () => Bill.space.stage >= 3], ['mars', '우주의 왕', '화성 이주선 발사', () => Bill.space.stage >= 4], ['sky2', '하늘을 찌르다', '네온 스카이 타워 II 완공', () => Bill.tower.state === 'done']);
+ACH.push(['landlord', '도시의 주인', '도시의 모든 동네를 샀다', () => !!Bill.titles.city], ['moon', '달의 주인', '유인 달 탐사 성공', () => Bill.space.stage >= 3], ['mars', '우주의 왕', '화성 이주선 발사', () => Bill.space.stage >= 4], ['sky2', '하늘을 찌르다', '네온 스카이 타워 II 완공', () => Bill.tower.state === 'done'],
+  ['ark', '별의 왕', '성간 방주 발사', () => Bill.space.stage >= SPACE.length], ['corps', '세계 경제의 왕', '글로벌 기업 10곳을 모두 인수했다', () => !!Bill.titles.corps], ['oasis', '신도시의 아버지', '네온 오아시스 3단계 완공', () => Bill.oasis.tier >= 3], ['olympic', '올림픽 개최국', '네온 하버 올림픽을 열었다', () => Bill.olympic.state === 'done']);

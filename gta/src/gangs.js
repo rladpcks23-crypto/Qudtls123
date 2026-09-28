@@ -344,6 +344,37 @@ const Gangs = {
   },
 };
 
+// 호위대 자리 나누기: 걸을 때는 플레이어 뒤쪽 부채꼴(많으면 두 줄), 차에 타면 차 둘레 원에 한 명씩 → 서로 겹쳐 한 명처럼 보이지 않는다
+const Formation = {
+  t: -1, list: [], seq: 0,
+  members() { if (this.t !== Game.time) { this.t = Game.time; this.list = Game.peds.filter(q => !q.dead && !q.car && (q.escort || q.pmc)); for (const q of this.list) q.fid = q.fid || ++this.seq; this.list.sort((a, b) => a.fid - b.fid); } return this.list; },
+  slot(p) {
+    const P = Game.player, L = this.members(), n = Math.max(1, L.length), k = Math.max(0, L.indexOf(p));
+    let x, y;
+    if (P.car) { const R = P.car.L / 2 + 4 + n * 0.35, a = k / n * TAU + 0.4; x = P.px + Math.cos(a) * R; y = P.py + Math.sin(a) * R; }
+    else {
+      const rows = n > 6 ? 2 : 1, per = Math.ceil(n / rows), row = Math.floor(k / per), j = k % per, m = Math.min(per, n - row * per);
+      const spread = Math.min(Math.PI * 1.25, (m - 1) * (0.62 - row * 0.12)), a = P.a + Math.PI + (m > 1 ? (j / (m - 1) - 0.5) * spread : 0), R = 2.6 + row * 1.9;
+      x = P.px + Math.cos(a) * R; y = P.py + Math.sin(a) * R;
+    }
+    if (solidT(Math.floor(x / T), Math.floor(y / T))) { const [ox, oy] = openSpotNear(x, y); x = ox; y = oy; }
+    return { x, y };
+  },
+  follow(p, dt) {
+    const s = this.slot(p), d = dist(p.x, p.y, s.x, s.y), P = Game.player;
+    if (d > 0.5) pedSeek(p, s.x, s.y, d > 12 ? 7.5 : d > 3 ? 4.8 : 2.4, dt, 14); else { p.vx *= 0.7; p.vy *= 0.7; p.a = P.a; }
+    this.separate(p);
+  },
+  separate(p) { // 너무 붙으면 조금씩 밀어낸다 (싸울 때도)
+    const P = Game.player;
+    for (const q of [...this.members(), P]) {
+      if (q === p || q.car || q.dead) continue; const dx = p.x - q.x, dy = p.y - q.y, d = Math.hypot(dx, dy), m = q === P ? 1.3 : 1.5;
+      if (d < m && d > 0.001) { const f = (m - d) * 0.35; const nx = p.x + dx / d * f, ny = p.y + dy / d * f; if (!solidT(Math.floor(nx / T), Math.floor(ny / T))) { p.x = nx; p.y = ny; } }
+      else if (d <= 0.001) { p.x += rand(-0.3, 0.3); p.y += rand(-0.3, 0.3); }
+    }
+  },
+};
+
 // 호위 부하: 플레이어를 따라다니며 근처 적(라이벌 조직원, 플레이어를 노리는 자)을 공격
 function escortAI(p, dt) {
   const P = Game.player;
@@ -359,11 +390,8 @@ function escortAI(p, dt) {
     }
     p.foe = best;
   }
-  if (p.foe) { feudAI(p, dt); p.state = 'escort'; return; }
-  const d = dist(p.x, p.y, P.px, P.py);
-  if (P.car) { if (d > 6) pedSeek(p, P.px, P.py, 6.5, dt, 14); else { p.vx *= 0.8; p.vy *= 0.8; } }
-  else if (d > 3) pedSeek(p, P.px - Math.cos(P.a) * 2, P.py - Math.sin(P.a) * 2, d > 10 ? 7 : 4.5, dt, 14);
-  else { p.vx *= 0.8; p.vy *= 0.8; }
+  if (p.foe) { feudAI(p, dt); p.state = 'escort'; Formation.separate(p); return; }
+  Formation.follow(p, dt);
 }
 
 // ---------- 조직 본부 (가입 · 승급 · 일) ----------
