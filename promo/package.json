@@ -1,0 +1,10 @@
+{
+  "name": "redline-intro",
+  "private": true,
+  "scripts": {
+    "build": "bash build.sh"
+  },
+  "devDependencies": {
+    "playwright": "^1.64.0"
+  }
+}
