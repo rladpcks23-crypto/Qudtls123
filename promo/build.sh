@@ -51,4 +51,8 @@ mkdir -p dist
 ffmpeg -hide_banner -loglevel error -y -framerate "$FPS" -i frames/%05d.jpg -i soundtrack.wav \
   -map 0:v -map 1:a -c:v libx264 -preset slow -crf 21 -tune film -pix_fmt yuv420p -profile:v high -level 4.2 \
   -c:a aac -b:a 192k -shortest -movflags +faststart dist/redline_intro.mp4
-echo "→ dist/redline_intro.mp4"
+# 고화질 원본 (GitHub 한도 100MB 아래)
+ffmpeg -hide_banner -loglevel error -y -framerate "$FPS" -i frames/%05d.jpg -i soundtrack.wav \
+  -map 0:v -map 1:a -c:v libx264 -preset slow -crf 15 -tune film -pix_fmt yuv420p -profile:v high -level 4.2 \
+  -c:a aac -b:a 320k -shortest -movflags +faststart dist/redline_intro_master.mp4
+echo "→ dist/redline_intro.mp4, dist/redline_intro_master.mp4"
