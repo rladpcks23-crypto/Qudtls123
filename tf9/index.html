@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TF-9 Turbofan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="TF-9: a twin-spool high-bypass turbofan taken apart and rebuilt as you scroll, in real-time 3D.">
+<meta name="theme-color" content="#07080a">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans+KR:wght@200;300;400&family=IBM+Plex+Sans:wght@200;300;400&display=swap">
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+<canvas id="gl" aria-hidden="true"></canvas>
+<div class="scan" id="scan" aria-hidden="true"></div>
+<div class="frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+<header class="hud hud-top">
+  <div class="brand"><span class="brand-mark" aria-hidden="true"></span><b>TF-9</b><span class="brand-sub">HIGH-BYPASS TURBOFAN</span></div>
+  <div class="phase" id="phase" aria-live="polite"><span class="phase-num">01</span><span class="phase-name">ASSEMBLED</span><span class="phase-ko">완성품</span></div>
+  <div class="controls">
+    <button type="button" class="toggle" id="btn-sound" aria-pressed="false" title="Machine sound / 기계음">
+      <span class="led" aria-hidden="true"></span><span class="t-en">SOUND</span><span class="t-state">OFF</span><span class="t-ko">기계음</span>
+    </button>
+    <button type="button" class="toggle" id="btn-motion" aria-pressed="false" title="Reduce motion / 움직임 줄이기">
+      <span class="led" aria-hidden="true"></span><span class="t-en">MOTION</span><span class="t-state">FULL</span><span class="t-ko">움직임</span>
+    </button>
+  </div>
+</header>
+
+<nav class="rail" aria-label="Sequence">
+  <ol>
+    <li><a href="#hero" data-for="hero"><span>01</span>ASSEMBLED</a></li>
+    <li><a href="#disassembly" data-for="disassembly"><span>02</span>DISASSEMBLY</a></li>
+    <li class="rail-group"><a href="#fan" data-for="fan compressor combustor turbine"><span>03</span>INSPECTION</a>
+      <span class="rail-sub"><a href="#fan" data-for="fan" aria-label="Fan">·</a><a href="#compressor" data-for="compressor" aria-label="Compressor">·</a><a href="#combustor" data-for="combustor" aria-label="Combustor">·</a><a href="#turbine" data-for="turbine" aria-label="Turbine">·</a></span></li>
+    <li><a href="#reassembly" data-for="reassembly"><span>04</span>REASSEMBLY</a></li>
+    <li><a href="#operation" data-for="operation outro"><span>05</span>OPERATION</a></li>
+  </ol>
+</nav>
+
+<footer class="hud hud-bottom">
+  <span class="readout" id="readout-cam">AZ 000.0° EL +00.0°</span>
+  <span class="readout" id="readout-seq">SEQ 000 %</span>
+  <span class="hint" id="hint">DRAG TO ROTATE <span class="ko">드래그하여 회전</span></span>
+</footer>
+
+<div class="gauge" id="gauge" aria-hidden="true">
+  <svg class="gauge-dial" viewBox="0 0 120 120" aria-hidden="true">
+    <g class="gauge-ticks" id="gauge-ticks"></g>
+    <path class="gauge-track" id="gauge-track"></path>
+    <path class="gauge-fill" id="gauge-fill"></path>
+    <line class="gauge-needle" id="gauge-needle" x1="60" y1="60" x2="60" y2="16"></line>
+    <circle class="gauge-hub" cx="60" cy="60" r="3"></circle>
+  </svg>
+  <div class="gauge-read">
+    <div class="gauge-label">N1 <span class="ko">저압 축</span></div>
+    <div class="gauge-n1"><span id="gauge-n1">000.0</span><small>%</small></div>
+    <div class="gauge-rpm"><span id="gauge-rpm">0</span> rpm</div>
+    <div class="gauge-state" id="gauge-state">SHUTDOWN</div>
+  </div>
+</div>
+
+<svg class="leader" id="leader" aria-hidden="true"><polyline id="leader-line" points=""></polyline><circle id="leader-dot" r="4"></circle></svg>
+<div class="label" id="label" role="status" hidden></div>
+
+<div class="boot" id="boot">
+  <div class="boot-inner">
+    <div class="boot-head"><span class="boot-title">TF-9</span><span class="boot-sub">ENGINE DIAGNOSTIC BOOT<br><span class="ko">시스템 부팅</span></span></div>
+    <ol class="boot-log" id="boot-log"></ol>
+    <div class="boot-bar"><i id="boot-bar"></i></div>
+    <div class="boot-foot"><span id="boot-pct">000 %</span><span>FADEC CH-A / CH-B</span></div>
+  </div>
+</div>
+
+<main id="story">
+  <section class="step" id="hero" data-step="hero" style="--len: 120">
+    <div class="pin">
+      <article class="panel panel-hero">
+        <p class="eyebrow"><span class="idx">01</span>ASSEMBLED<span class="ko">완성품</span></p>
+        <h1 class="title">TF-9</h1>
+        <p class="sub">Twin-spool high-bypass turbofan<span class="ko">2축 고바이패스 터보팬</span></p>
+        <p class="en">An engine drawn as a working blueprint. Scroll to take it apart, inspect each module, then rebuild it and bring it to take-off power.</p>
+        <p class="kr">설계도처럼 그린 엔진입니다. 스크롤하면 분해하고, 모듈을 하나씩 살펴본 뒤, 다시 조립해 이륙 출력까지 돌립니다.</p>
+        <dl class="stats">
+          <div><dt>FAN Ø</dt><dd>1,981<small>mm</small></dd></div>
+          <div><dt>BYPASS RATIO</dt><dd>11<small>: 1</small></dd></div>
+          <div><dt>PRESSURE RATIO</dt><dd>40<small>: 1</small></dd></div>
+        </dl>
+        <p class="cue">SCROLL TO BEGIN <span class="ko">스크롤하여 시작</span></p>
+      </article>
+    </div>
+  </section>
+
+  <section class="step" id="disassembly" data-step="disassembly" style="--len: 200">
+    <div class="pin">
+      <article class="panel">
+        <p class="eyebrow"><span class="idx">02</span>DISASSEMBLY<span class="ko">분해</span></p>
+        <h2>Twenty-one parts, one axis.<span class="ko">21개 부품, 하나의 축</span></h2>
+        <p class="en">The fan case splits along its horizontal flange. Every module then slides off the engine axis, and the two shafts come out of the middle.</p>
+        <p class="kr">팬 케이스가 수평 플랜지를 따라 위아래로 열리고, 모든 모듈이 엔진 축을 따라 빠져나온 뒤 두 개의 축이 가운데에서 나옵니다.</p>
+        <p class="cue"><span class="cue-hover">HOVER A PART FOR SPECS <span class="ko">부품에 마우스를 올리면 제원 표시</span></span><span class="cue-touch">TAP A PART FOR SPECS <span class="ko">부품을 누르면 제원 표시</span></span></p>
+      </article>
+    </div>
+  </section>
+
+  <section class="step" id="fan" data-step="fan" style="--len: 120">
+    <div class="pin">
+      <article class="panel">
+        <p class="eyebrow"><span class="idx">03.1</span>INSPECTION · FAN<span class="ko">점검 · 팬</span></p>
+        <h2>Most of the air goes around.<span class="ko">공기 대부분은 바깥으로 돌아갑니다</span></h2>
+        <p class="en">About 90% of the air the fan moves never enters the core. It flows down the bypass duct and makes most of the thrust.</p>
+        <p class="kr">팬이 보내는 공기의 약 90%는 코어로 들어가지 않습니다. 바깥 바이패스 통로로 흘러 추력의 대부분을 만듭니다.</p>
+        <dl class="stats">
+          <div><dt>BYPASS RATIO</dt><dd>≈ 11<small>: 1</small></dd></div>
+          <div><dt>BLADES</dt><dd>18<small>wide-chord</small></dd></div>
+          <div><dt>100 % N1</dt><dd>3,900<small>rpm</small></dd></div>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <section class="step" id="compressor" data-step="compressor" style="--len: 120">
+    <div class="pin">
+      <article class="panel">
+        <p class="eyebrow"><span class="idx">03.2</span>INSPECTION · COMPRESSOR<span class="ko">점검 · 압축기</span></p>
+        <h2>Squeezed about forty times.<span class="ko">약 40배로 압축</span></h2>
+        <p class="en">Three low-pressure and five high-pressure stages squeeze the core flow. Counting the fan, pressure rises about 40 times before the air reaches the combustor.</p>
+        <p class="kr">저압 3단과 고압 5단이 코어 공기를 압축합니다. 팬까지 합치면 공기가 연소기에 닿기 전까지 압력이 약 40배로 올라갑니다.</p>
+        <dl class="stats">
+          <div><dt>LP STAGES</dt><dd>3</dd></div>
+          <div><dt>HP STAGES</dt><dd>5</dd></div>
+          <div><dt>PRESSURE RATIO</dt><dd>≈ 40<small>: 1</small></dd></div>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <section class="step" id="combustor" data-step="combustor" style="--len: 120">
+    <div class="pin">
+      <article class="panel">
+        <p class="eyebrow"><span class="idx">03.3</span>INSPECTION · COMBUSTOR<span class="ko">점검 · 연소기</span></p>
+        <h2>One ring of fire.<span class="ko">하나의 불꽃 고리</span></h2>
+        <p class="en">Twenty fuel nozzles spray into a single ring-shaped chamber. Gas leaves it at around 1,500 °C, hotter than the nickel alloys around it could survive without cooling air.</p>
+        <p class="kr">20개의 노즐이 하나의 고리형 연소실에 연료를 뿌립니다. 이곳을 나가는 가스는 약 1,500 °C로, 냉각 공기가 없다면 주변의 니켈 합금이 버티지 못할 온도입니다.</p>
+        <dl class="stats">
+          <div><dt>TYPE</dt><dd>Annular</dd></div>
+          <div><dt>FUEL NOZZLES</dt><dd>20</dd></div>
+          <div><dt>EXIT GAS</dt><dd>≈ 1,500<small>°C</small></dd></div>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <section class="step" id="turbine" data-step="turbine" style="--len: 120">
+    <div class="pin">
+      <article class="panel">
+        <p class="eyebrow"><span class="idx">03.4</span>INSPECTION · TURBINE<span class="ko">점검 · 터빈</span></p>
+        <h2>One shaft inside the other.<span class="ko">축 안을 지나는 축</span></h2>
+        <p class="en">Two high-pressure stages turn the compressor through the outer, hollow shaft. Three low-pressure stages turn the fan through the inner shaft that runs inside it.</p>
+        <p class="kr">고압 터빈 2단은 바깥쪽의 속이 빈 축으로 압축기를 돌리고, 저압 터빈 3단은 그 안을 지나는 안쪽 축으로 팬을 돌립니다.</p>
+        <dl class="stats">
+          <div><dt>HP TURBINE</dt><dd>2<small>stages · N2</small></dd></div>
+          <div><dt>LP TURBINE</dt><dd>3<small>stages · N1</small></dd></div>
+          <div><dt>HP BLADES</dt><dd>Ni<small>single crystal</small></dd></div>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <section class="step" id="reassembly" data-step="reassembly" style="--len: 200">
+    <div class="pin">
+      <article class="panel">
+        <p class="eyebrow"><span class="idx">04</span>REASSEMBLY<span class="ko">재조립</span></p>
+        <h2>Seated, torqued, locked.<span class="ko">맞물리고, 조이고, 고정</span></h2>
+        <p class="en">The shafts go in first, then the core from the back forward. The fan and spinner follow, and the case closes last.</p>
+        <p class="kr">축이 먼저 들어가고, 코어가 뒤에서부터 앞으로 채워집니다. 이어서 팬과 스피너가 끼워지고 마지막으로 케이스가 닫힙니다.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="step" id="operation" data-step="operation" style="--len: 230">
+    <div class="pin">
+      <article class="panel">
+        <p class="eyebrow"><span class="idx">05</span>OPERATION<span class="ko">작동</span></p>
+        <h2>Light-off to take-off.<span class="ko">점화부터 이륙 출력까지</span></h2>
+        <p class="en">Fuel on, igniters fire, the core lights. Keep scrolling to advance the throttle to take-off power.</p>
+        <p class="kr">연료가 들어가고 점화기가 불꽃을 튀기면 코어에 불이 붙습니다. 계속 스크롤하면 스로틀이 이륙 출력까지 올라갑니다.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="step" id="outro" data-step="outro" style="--len: 130">
+    <div class="pin">
+      <article class="panel panel-outro">
+        <p class="eyebrow"><span class="idx">—</span>END OF SEQUENCE<span class="ko">시퀀스 종료</span></p>
+        <h2>Take-off power.<span class="ko">이륙 출력</span></h2>
+        <p class="en">Scroll up to run the sequence again, or drag the engine to look around it.</p>
+        <p class="kr">위로 스크롤하면 처음부터 다시 볼 수 있고, 엔진을 드래그해 둘러볼 수 있습니다.</p>
+        <p class="note">TF-9 is fictional. Its figures follow modern high-bypass turbofans of the LEAP-1A class: fan 1,981 mm, bypass ratio 11 : 1, overall pressure ratio 40 : 1, turbine entry gas around 1,500 °C. Stage counts are simplified; production engines of this class use about ten high-pressure compressor stages.<span class="ko note-ko">TF-9는 가상의 엔진이며, 수치는 LEAP-1A급 실제 고바이패스 터보팬을 기준으로 했습니다.</span></p>
+      </article>
+    </div>
+  </section>
+</main>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>
