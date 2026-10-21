@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="icon" type="image/png" href="logo-64.png"><link rel="apple-touch-icon" href="logo-512.png"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>홈라인 수정본</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1564,6 +1564,7 @@ footer p{letter-spacing:0}
       <img class="logo" src="logo-64.png" alt="">
       <span class="brandname">홈라인</span>
       <select class="who" id="who" aria-label="프로필 선택"></select>
+      <select class="who" id="grade" aria-label="학년 선택"></select>
       <span class="gv"><span class="goal-tag">꿈</span><span class="goal-val" id="goal" contenteditable="true" spellcheck="false" data-ph="꿈을 적어 보세요"></span></span>
       <span class="gv"><span class="goal-tag">목표</span><span class="goal-val" id="aim" contenteditable="true" spellcheck="false" data-ph="목표를 적어 보세요"></span></span>
     </div>
@@ -1580,7 +1581,7 @@ footer p{letter-spacing:0}
       <button class="btn" id="presentBtn" type="button">시작</button>
     </div>
     <div class="set-row">
-      <div><b>내 정보</b><span>이름 · 꿈 · 목표 · 하루 순공 목표 · 타이머 기본 시간 고치기</span></div>
+      <div><b>내 정보</b><span>이름 · 나이 · 꿈 · 목표 · 하루 순공 목표 · 타이머 기본 시간 고치기</span></div>
       <button class="btn" id="meBtn" type="button">고치기</button>
     </div>
     <div class="set-row">
@@ -1712,6 +1713,9 @@ footer p{letter-spacing:0}
     <p class="rt-p" id="suLead"></p>
     <div class="su-step" data-s="1">
       <label class="su-f"><span>이름 <em>필수</em></span><input id="suName" maxlength="12" autocomplete="nickname" placeholder="예: 홍길동"></label>
+      <div class="su-f" role="group" aria-labelledby="suAgeL"><span id="suAgeL">나이 <em>필수</em></span>
+        <div class="su-chips" id="suAge"></div>
+        <small id="suAgeNote">몇 학년도 수능까지 셀지 정해져요. 학년은 3월마다 저절로 올라가요.</small></div>
       <label class="su-f"><span>꿈 <em>필수</em></span><input id="suDream" maxlength="30" placeholder="예: 건축가, 초등교사, 간호사"></label>
       <label class="su-f"><span>목표 <small>꿈과 별개로, 지금 붙잡을 한 줄</small></span><input id="suAim" maxlength="40" placeholder="예: ○○대 기계공학부 / 6모 수학 2등급"></label>
     </div>
@@ -1813,8 +1817,8 @@ footer p{letter-spacing:0}
       <p class="app-sub">증명하려는 공부가 아니라, 사랑받는 사람의 성실</p>
       <button type="button" class="hero-intro" data-intro>『탕부 하나님』이 처음이라면 · 3분 이야기 <span aria-hidden="true">→</span></button>
       <div class="hero-label">
-        <span class="eyebrow">2028학년도 대학수학능력시험</span>
-        <span class="exam">2027년 11월 18일 (목) 오전 8시 40분</span>
+        <span class="eyebrow" id="examTitle">2028학년도 대학수학능력시험</span>
+        <span class="exam" id="examWhen">2027년 11월 18일 (목) 오전 8시 40분</span>
       </div>
       <div class="dday" id="ddayBox">
         <div class="ddaynum"><span class="dpre">D−</span><span id="ddayNum">—</span></div>
@@ -1913,7 +1917,7 @@ footer p{letter-spacing:0}
 
   <section class="tach rise d1" aria-label="수능까지의 진행 눈금" data-tabs="record">
     <div class="tach-head">
-      <span class="eyebrow">2026년 8월 29일 출발, 2027년 11월 18일 수능</span>
+      <span class="eyebrow" id="tachRange">2026년 8월 29일 출발, 2027년 11월 18일 수능</span>
       <span class="eyebrow" id="tachNote"></span>
     </div>
     <div class="scale">
@@ -2078,7 +2082,7 @@ footer p{letter-spacing:0}
 
   <section class="study" data-tabs="record">
     <div class="st-head">
-      <h2 class="sec-t">순공 기록 <small>수능까지 446일의 격자</small></h2>
+      <h2 class="sec-t">순공 기록 <small id="stGrid">수능까지 446일의 격자</small></h2>
       <div class="hm-edit">
         <input type="date" id="hmDate" aria-label="기록할 날짜">
         <input type="number" id="hmHours" min="0" max="24" step="0.5" placeholder="0" aria-label="순공 시간">
@@ -2486,15 +2490,6 @@ var PUNCH = [
 "오늘 하루, 누군가의 수고 위에 앉아 있다는 걸 기억하자."
 ];
 
-var GATES = [
- {d:"2026.11.19", t:"2027학년도 수능", note:"선배들의 시험일 · 정확히 1년 전", exact:"2026-11-19"},
- {d:"2027.03 하순", t:"고3 3월 전국연합학력평가", note:"예정 · 날짜 미발표", exact:"2027-03-23"},
- {d:"2027.06 초", t:"6월 모의평가", note:"예정 · 첫 실전 지표", exact:"2027-06-03"},
- {d:"2027.08 말", t:"8월 모의평가", note:"시기 확정(8월 4~5주), 날짜 미발표 · 하반기 모평이 9월에서 8월로 · 마지막 조정 기회", exact:"2027-08-26"},
- {d:"2027.09.20", t:"수시 원서접수", note:"확정 · 9.20~9.23 중 대학별 3일 이상", exact:"2027-09-20"},
- {d:"2027.11.18", t:"2028학년도 대학수학능력시험", note:"확정 · 08:40 시작 (세부 일정은 2027년 7월 공고)", exact:"2027-11-18", final:true}
-];
-
 /* ============ TIME (KST-fixed) ============ */
 var KST = 9*60; // minutes
 function kstParts(ms){
@@ -2503,12 +2498,7 @@ function kstParts(ms){
 }
 function kstDayNo(ms){ var p=kstParts(ms); return Math.floor(Date.UTC(p.y,p.m,p.d)/86400000); }
 function dayNoFromISO(iso){ var a=iso.split("-"); return Math.floor(Date.UTC(+a[0],+a[1]-1,+a[2])/86400000); }
-
-var EXAM_MS   = Date.parse("2027-11-18T08:40:00+09:00");
-var EXAM_DAY  = dayNoFromISO("2027-11-18");
-var START_DAY = dayNoFromISO("2026-08-29");
-var TOTAL     = EXAM_DAY - START_DAY;      // 446
-var REDZONE   = 100;
+function isoDay(dn){ var d = new Date(dn*86400000); return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate()); }
 
 var DOW = ["일","월","화","수","목","금","토"];
 
@@ -2531,7 +2521,69 @@ if(profiles().indexOf(curProfile) === -1){ curProfile = profiles()[0]; }
 /** 프로필별 저장 — 같은 브라우저 안에서 사람마다 키가 분리된다 */
 function pstore(k,v){ return store("rl.p." + curProfile + "." + k, v); }
 /** 프로필 하나가 가진 키 전부 — 지우기·이름 바꾸기에 쓴다 */
-var PROFILE_KEYS = ["tasks","check","done","goal","aim","hours","hlog","exams","subjOrder2","slot","skin","sessions","timer","lastBackup","sons","rest","readDay","setup"];
+var PROFILE_KEYS = ["tasks","check","done","goal","aim","hours","hlog","exams","subjOrder2","slot","skin","sessions","timer","lastBackup","sons","rest","readDay","setup","suneung"];
+
+/* ============ 나이(학년) → 목표 수능 ============ */
+/* 학년이 아니라 '목표 학년도'를 저장한다 — 3월에 학년이 올라가도 D-day가 어긋나지 않는다.
+   출생연도 + 19 = 학년도 (2009년생 → 2028학년도 수능, 2027년 11월). */
+var GRADES = ["중1","중2","중3","고1","고2","고3"];
+var KNOWN = {                       // 교육부·평가원 발표로 확정된 날짜만. 나머지는 관례로 어림한다
+  "2027":"2026-11-19", "2028":"2027-11-18",
+  "2027.jun":"2026-06-04", "2027.sep":"2026-09-02"
+};
+/** y년 m월 d일 이후 처음 오는 dow 요일 (0=일) */
+function weekdayFrom(y, m, d, dow){
+  var dn = Math.floor(Date.UTC(y,m-1,d)/86400000);
+  return isoDay(dn + (dow - new Date(dn*86400000).getUTCDay() + 7) % 7);
+}
+function examISO(h){ return KNOWN[h] || weekdayFrom(h-1, 11, 13, 4); }   // 수능은 매년 11월 13~19일 사이 목요일
+var SCHOOL_YEAR = (function(){ var p = kstParts(Date.now()); return p.m >= 2 ? p.y : p.y - 1; })();   // 학년은 3월에 바뀐다
+function gradeOf(h){ return 5 - (h - SCHOOL_YEAR - 1); }   // 0=중1 … 5=고3, 범위 밖이면 이미 졸업
+function suneungOfBirth(b){ return b + 19; }
+
+var SUNEUNG = parseInt(pstore("suneung"), 10);
+if(!(SUNEUNG >= 2027 && SUNEUNG <= 2040)) SUNEUNG = 2028;
+var EXAM_ISO   = examISO(SUNEUNG);
+var EXAM_FIXED = !!KNOWN[SUNEUNG];
+var EXAM_MS    = Date.parse(EXAM_ISO + "T08:40:00+09:00");
+var EXAM_DAY   = dayNoFromISO(EXAM_ISO);
+var START_DAY  = dayNoFromISO("2026-08-29");
+var TOTAL      = EXAM_DAY - START_DAY;
+var REDZONE    = 100;
+/** "2027년 11월 18일 (목)" */
+function longDate(iso){ var a = iso.split("-"); return a[0] + "년 " + (+a[1]) + "월 " + (+a[2]) + "일 (" + DOW[new Date(dayNoFromISO(iso)*86400000).getUTCDay()] + ")"; }
+
+var GATES = (function(){
+  if(SUNEUNG === 2028) return [     // 발표된 일정까지 반영한 원래 목록 — 2028학년도부터 하반기 모평이 8월로
+    {d:"2026.11.19", t:"2027학년도 수능", note:"선배들의 시험일 · 정확히 1년 전", exact:"2026-11-19", prev:true},
+    {d:"2027.03 하순", t:"고3 3월 전국연합학력평가", note:"예정 · 날짜 미발표", exact:"2027-03-23"},
+    {d:"2027.06 초", t:"6월 모의평가", note:"예정 · 첫 실전 지표", exact:"2027-06-03"},
+    {d:"2027.08 말", t:"8월 모의평가", note:"시기 확정(8월 4~5주), 날짜 미발표 · 하반기 모평이 9월에서 8월로 · 마지막 조정 기회", exact:"2027-08-26"},
+    {d:"2027.09.20", t:"수시 원서접수", note:"확정 · 9.20~9.23 중 대학별 3일 이상", exact:"2027-09-20"},
+    {d:"2027.11.18", t:"2028학년도 대학수학능력시험", note:"확정 · 08:40 시작 (세부 일정은 2027년 7월 공고)", exact:"2027-11-18", final:true}
+  ];
+  var E = SUNEUNG - 1;               // 수능을 보는 해
+  function when(iso){ var dd = +iso.slice(8); return iso.slice(0,7).replace("-", ".") + (dd <= 10 ? " 초" : dd <= 20 ? " 중순" : " 하순"); }
+  function g(t, note, iso, fixed, extra){
+    var o = {d: fixed ? iso.replace(/-/g, ".") : when(iso), t:t, note: fixed ? note : "예정" + (note ? " · " + note : ""), exact:iso};
+    for(var k in extra) o[k] = extra[k];
+    return o;
+  }
+  var jun = KNOWN[SUNEUNG + ".jun"], sep = KNOWN[SUNEUNG + ".sep"];
+  var list = [
+    g("고등학교 입학", "내신이 쌓이기 시작", (E-2) + "-03-02", false),
+    g((SUNEUNG-1) + "학년도 수능", "선배들의 시험일 · 정확히 1년 전", examISO(SUNEUNG-1), !!KNOWN[SUNEUNG-1], {prev:true}),
+    g("고3 3월 전국연합학력평가", "", weekdayFrom(E, 3, 19, 4), false),
+    g("6월 모의평가", "첫 실전 지표", jun || weekdayFrom(E, 6, 1, 4), !!jun),
+    SUNEUNG <= 2027
+      ? g("9월 모의평가", "마지막 조정 기회", sep || weekdayFrom(E, 9, 1, 4), !!sep)
+      : g("8월 모의평가", "하반기 모평은 8월 · 마지막 조정 기회", weekdayFrom(E, 8, 20, 4), false),
+    g("수시 원서접수", "", SUNEUNG <= 2027 ? weekdayFrom(E, 9, 8, 1) : weekdayFrom(E, 9, 14, 1), false),
+    g(SUNEUNG + "학년도 대학수학능력시험", EXAM_FIXED ? "확정 · 08:40 시작" : "예정 · 11월 중순 목요일 · 08:40 시작", EXAM_ISO, true, {final:true})
+  ];
+  // 기록을 시작하기 전 일은 관문이 아니다
+  return list.filter(function(x){ return dayNoFromISO(x.exact) >= START_DAY; });
+})();
 var openSetup = function(){};   // 아래 '시작 설정'에서 채운다
 var openIntro = function(){};   // 아래 '3분 이야기'에서 채운다
 
@@ -2564,6 +2616,18 @@ var openIntro = function(){};   // 아래 '3분 이야기'에서 채운다
     }
     store("rl.who.cur", v); location.reload();
   });
+})();
+
+(function initGrade(){
+  var sel = $("grade"), cur = gradeOf(SUNEUNG), h = "", i;
+  if(cur < 0 || cur > 5) h += '<option value="'+SUNEUNG+'" selected>'+SUNEUNG+'학년도</option>';
+  for(i=0;i<GRADES.length;i++){
+    var y = SCHOOL_YEAR + 1 + (5 - i);
+    h += '<option value="'+y+'"'+(i===cur?" selected":"")+'>'+GRADES[i]+'</option>';
+  }
+  sel.innerHTML = h;
+  sel.title = SUNEUNG + "학년도 수능 기준";
+  sel.addEventListener("change", function(){ pstore("suneung", sel.value); location.reload(); });
 })();
 
 /* ============ 탭 : 오늘 / 기록 / 성적 / 말씀 ============ */
@@ -2618,9 +2682,15 @@ function isSunday(dn){ return new Date(dn*86400000).getUTCDay() === 0; }   // dn
 function isRest(dn){ return restOn() && isSunday(dn); }
 
 (function renderHero(){
-  var box = $("ddayBox");
+  var box = $("ddayBox"), start = isoDay(START_DAY).split("-");
+  $("examTitle").textContent = SUNEUNG + "학년도 대학수학능력시험";
+  $("examWhen").textContent = longDate(EXAM_ISO) + " 오전 8시 40분" + (EXAM_FIXED ? "" : " · 예정");
+  $("tachRange").textContent = start[0] + "년 " + (+start[1]) + "월 " + (+start[2]) + "일 출발, " + longDate(EXAM_ISO).replace(/ \(.\)$/, "") + " 수능";
+  $("stGrid").textContent = "수능까지 " + TOTAL + "일의 격자";
+
   if(daysLeft <= REDZONE) box.classList.add("redzone");
-  $("zoneChip").textContent = daysLeft <= REDZONE ? "집이 보이는 마지막 100일"
+  $("zoneChip").textContent = dayNo > EXAM_DAY       ? "시험을 마쳤다 · 수고했다"
+                            : daysLeft <= REDZONE ? "집이 보이는 마지막 100일"
                             : daysLeft <= 300     ? "집에 가까워지는 길"
                             : "아직 먼 길, 한 걸음씩";
 
@@ -2696,19 +2766,23 @@ paintSecBtn(); tick();
 /* ============ RENDER : tachometer ============ */
 (function renderTach(){
   var pct = elapsed/TOTAL*100;
-  $("redzone").style.width = (REDZONE/TOTAL*100) + "%";
+  $("redzone").style.width = (Math.min(REDZONE, TOTAL)/TOTAL*100) + "%";   // 고3은 전체 구간이 100일보다 짧다
   var ticks = $("mticks"), html = "";
-  var y = 2026, m = 8, k = 0; // Sep 2026
-  while(y < 2027 || (y === 2027 && m <= 10)){
+  var s = isoDay(START_DAY).split("-"), z = EXAM_ISO.split("-");
+  var y = +s[0], m = +s[1], k = 0;     // 출발 다음 달 (0-based)
+  var zy = +z[0], zm = +z[1] - 1;
+  var span = (zy - y)*12 + (zm - m) + 1;
+  var step = span <= 18 ? 1 : span <= 36 ? 3 : 6;   // 중학생은 몇 년치라 매달 숫자를 달면 겹친다
+  while(y < zy || (y === zy && m <= zm)){
     var dn = Math.floor(Date.UTC(y,m,1)/86400000);
     var pos = (dn - START_DAY)/TOTAL*100;
     if(pos >= 0 && pos <= 100){
       var isYear = (m === 0);
-      var label = isYear ? "'27" : (m+1);
+      var label = isYear ? "'" + String(y).slice(2) : (m % step === 0 ? m+1 : "");
       var shift = pos < 1.5 ? "0%" : (pos > 98.5 ? "-100%" : "-50%");
-      // 폰에서는 홀수 번째 달 라벨을 숨긴다 — 15개가 다 붙으면 못 읽는다
-      html += '<div class="mtick'+(isYear?" yr":"")+(k++ % 2 ? " odd" : "")+'" style="left:'+pos.toFixed(3)+'%">'
-            + '<i></i><b style="transform:translateX('+shift+')">'+label+'</b></div>';
+      // 폰에서는 홀수 번째 달 라벨을 숨긴다 — 15개가 다 붙으면 못 읽는다 (솎아낸 긴 눈금에는 필요 없다)
+      html += '<div class="mtick'+(isYear?" yr":"")+(step === 1 && k++ % 2 ? " odd" : "")+'" style="left:'+pos.toFixed(3)+'%">'
+            + '<i></i>'+(label === "" ? "" : '<b style="transform:translateX('+shift+')">'+label+'</b>')+'</div>';
     }
     m++; if(m > 11){ m = 0; y++; }
   }
@@ -3237,15 +3311,31 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
   var KINDLABEL = {official:"공식", self:"개인", school:"내신"};
 
   /* ---- 내신 학기 : 날짜 대신 학년·학기·중간/기말로 기록한다 ---- */
-  // 2028 수능 학년은 2025년 고1 → 학년 + 2024 = 그 해. 날짜는 정렬용 대략값일 뿐 화면에 내지 않는다.
+  // 고1은 수능 3년 전 해(2028학년도 → 2025년 고1), 중1은 6년 전 해. 날짜는 정렬용 대략값일 뿐 화면에 내지 않는다.
   var TERM_MD = { "1중간":"04-28", "1기말":"07-08", "2중간":"10-05", "2기말":"12-10" };
-  function termName(t){ return t.y + "학년 " + t.s + "학기 " + t.t; }
+  function lvOf(t){ return t.lv || "고"; }   // lv가 없는 예전 기록은 고등학교
+  function termName(t){ return (lvOf(t) === "중" ? "중" : "") + t.y + "학년 " + t.s + "학기 " + t.t; }
   function termShort(t){ return t.y + "-" + t.s + " " + t.t; }
-  function termDate(t){ return (2024 + t.y) + "-" + TERM_MD[t.s + t.t]; }
+  function termDate(t){ return (SUNEUNG - (lvOf(t) === "중" ? 7 : 4) + t.y) + "-" + TERM_MD[t.s + t.t]; }
   /** 목록·툴팁에 쓰는 '언제' — 내신은 학기, 나머지는 날짜 */
-  function whenOf(rec){ return rec.term ? "고" + rec.term.y + " " + rec.term.s + "학기" : rec.date; }
+  function whenOf(rec){ return rec.term ? lvOf(rec.term) + rec.term.y + " " + rec.term.s + "학기" : rec.date; }
   function scaleOf(rec){ return rec.kind === "school" ? (rec.scale || 9) : 9; }
-  var PRESET = ["국어","수학","영어","한국사","통합사회","통합과학"];   // 2028 수능: 탐구 선택과목 없이 통합사회·통합과학
+  /* 수능 체제가 학년도마다 다르다. 2027학년도(올해 고3)가 마지막 선택형이고,
+     2028학년도부터는 선택과목 없이 통합사회·통합과학을 모두 본다. 중학생은 내신 과목 기준. */
+  var SYSTEM = SUNEUNG <= 2027 ? "select" : gradeOf(SUNEUNG) <= 2 ? "middle" : "unified";
+  var PRESET = {
+    select:  ["국어","수학","영어","한국사","탐구1","탐구2"],
+    unified: ["국어","수학","영어","한국사","통합사회","통합과학"],
+    middle:  ["국어","수학","영어","사회","과학"]
+  }[SYSTEM];
+  /** 과목 칸 자동완성에만 쓰는 후보. 색 슬롯(순서)에는 기록에 실제로 쓴 과목만 들어간다 */
+  var SUGGEST = {
+    select:  ["화법과 작문","언어와 매체","확률과 통계","미적분","기하",
+              "생활과 윤리","윤리와 사상","한국지리","세계지리","동아시아사","세계사","경제","정치와 법","사회·문화",
+              "물리학Ⅰ","화학Ⅰ","생명과학Ⅰ","지구과학Ⅰ","물리학Ⅱ","화학Ⅱ","생명과학Ⅱ","지구과학Ⅱ","제2외국어/한문"],
+    unified: ["통합사회","통합과학","제2외국어/한문"],
+    middle:  ["역사","도덕","기술·가정","정보","한문"]
+  }[SYSTEM];
   var METRIC = {
     grade:{ label:"등급",   min:1, max:9,   invert:true,  ticks:[1,3,5,7,9] },
     raw:  { label:"원점수", min:0, max:100, invert:false, ticks:[0,25,50,75,100] },
@@ -3296,7 +3386,18 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
     for(i=0;i<u.length && i<8;i++){ if(u[i].s === s && u[i].g === g) return "var(--s"+(i+1)+")"; }
     return "";
   }
-  function datalistNames(){ var o = allOrders(); return o.exam.concat(o.school); }
+  function datalistNames(){
+    var o = allOrders(), all = o.exam.concat(o.school);
+    SUGGEST.forEach(function(s){ if(all.indexOf(s) === -1) all.push(s); });
+    return all;
+  }
+  /** 같은 묶음(모의고사/내신)에서 가장 최근 기록의 과목들 — 탐구 선택과목을 매번 다시 안 쳐도 되게 */
+  function lastNames(kind){
+    var g = groupOf(kind);
+    var r = getRecs().filter(function(x){ return groupOf(x.kind) === g; })
+      .sort(function(a,b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; })[0];
+    return r ? r.rows.map(function(x){ return x.s; }) : null;
+  }
 
   /* ---- 조회 ---- */
   function filtered(){
@@ -3647,13 +3748,13 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
   /* ---- 입력 폼 ---- */
   function isSchoolForm(){ return $("fKindIn").value === "school"; }
   function formScale(){ return isSchoolForm() ? +$("fScale").value : 9; }
-  function subRow(name){
+  function subRow(name, hint){
     var d = document.createElement("div"); d.className = "subrow";
     // 내신은 백분위가 없고 성취도(A~E)와 석차등급을 함께 매긴다
     var f = isSchoolForm() ? ["s","raw","ach","grade"] : ["s","raw","grade","pct"];
     f.forEach(function(k){
       var inp = document.createElement("input");
-      if(k === "s"){ inp.type = "text"; inp.placeholder = "과목"; inp.setAttribute("list","subjectList"); inp.maxLength = 14; inp.value = name || ""; }
+      if(k === "s"){ inp.type = "text"; inp.placeholder = hint || "과목"; inp.setAttribute("list","subjectList"); inp.maxLength = 14; inp.value = name || ""; }
       else if(k === "ach"){
         inp.type = "text"; inp.placeholder = "성취도 A-E"; inp.maxLength = 1; inp.autocapitalize = "characters";
         inp.addEventListener("input", function(){ inp.value = inp.value.toUpperCase(); });
@@ -3676,9 +3777,15 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
   }
   function buildRows(){
     var box = $("subrows"); box.innerHTML = "";
-    var school = isSchoolForm();
-    var names = school ? ["국어","수학","영어",""] : ["국어","수학","영어","한국사","통합사회","통합과학"];
-    names.forEach(function(nm){ box.appendChild(subRow(nm)); });
+    var school = isSchoolForm(), last = lastNames($("fKindIn").value);
+    if(last) last.forEach(function(nm){ box.appendChild(subRow(nm)); });
+    else if(school) ["국어","수학","영어",""].forEach(function(nm){ box.appendChild(subRow(nm)); });
+    else if(SYSTEM === "select"){                // 고3은 탐구 과목명을 직접 쓰게 비워 둔다
+      ["국어","수학","영어","한국사"].forEach(function(nm){ box.appendChild(subRow(nm)); });
+      box.appendChild(subRow("", "탐구1 (예: 생활과 윤리)"));
+      box.appendChild(subRow("", "탐구2 (예: 지구과학Ⅰ)"));
+    }
+    else PRESET.forEach(function(nm){ box.appendChild(subRow(nm)); });
     // 내신은 날짜·시험명 대신 학년/학기/중간·기말로 고른다
     $("termRow").hidden = !school;
     $("fDateFld").hidden = school;
@@ -3711,6 +3818,13 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
   $("addRowBtn").addEventListener("click", function(){ $("subrows").appendChild(subRow("")); });
   $("fKindIn").addEventListener("change", buildRows);
   $("fScale").addEventListener("change", applyScale);
+  // 내신 칸 기본값 : 지금 학년, 그리고 그 학년이 쓰는 등급제 (2027학년도 고3까지 9등급, 2025년 고1부터 5등급)
+  (function(){
+    var gi = gradeOf(SUNEUNG), y = SYSTEM === "middle" ? gi + 1 : gi - 2;
+    $("fGrade").value = String(Math.max(1, Math.min(3, y)));
+    $("fScale").value = SYSTEM === "select" ? "9" : "5";
+    if(SYSTEM === "middle") [].forEach.call($("fGrade").options, function(o){ o.textContent = "중" + o.value; });
+  })();
 
   $("addForm").addEventListener("submit", function(e){
     e.preventDefault();
@@ -3719,9 +3833,10 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
     var term = null, scale = 9;
     if(kind === "school"){
       term = { y:+$("fGrade").value, s:+$("fSem").value, t:$("fTest").value };
+      if(SYSTEM === "middle") term.lv = "중";
       scale = +$("fScale").value;
       name = termName(term); date = termDate(term);
-      var dup = getRecs().some(function(r){ return r.term && r.term.y === term.y && r.term.s === term.s && r.term.t === term.t; });
+      var dup = getRecs().some(function(r){ return r.term && lvOf(r.term) === lvOf(term) && r.term.y === term.y && r.term.s === term.s && r.term.t === term.t; });
       if(dup){ warn.textContent = name + " 기록이 이미 있다. 아래 목록에서 지우고 다시 넣어라."; return; }
     } else if(!date || !name){ warn.textContent = "날짜와 시험명은 있어야 한다."; return; }
     var rows = [], bad = "";
@@ -3772,7 +3887,7 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
 /* ============ 백업 / 기기 간 옮기기 ============ */
 (function backup(){
   // 프로필 하나가 들고 있는 전부
-  var KEYS = ["tasks","check","done","goal","aim","hours","hlog","exams","subjOrder2","skin","sessions","sons","rest","readDay","setup"];
+  var KEYS = ["tasks","check","done","goal","aim","hours","hlog","exams","subjOrder2","skin","sessions","sons","rest","readDay","setup","suneung"];
   var pending = null;
 
   function say(msg, cls){ var e = $("bkMsg"); e.textContent = msg; e.className = cls || ""; }
@@ -4587,7 +4702,15 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
    new   : '+ 새 프로필'. 이미 이야기를 본 사람이라 이야기 없이 바로
    edit  : 설정의 '내 정보 고치기'. 할 일 단계는 빼고 두 단계만 */
 (function setup(){
-  var box = $("setup"), form = $("suForm"), mode = "first", step = 1, steps = 3, tm = 50, rest = "on";
+  var box = $("setup"), form = $("suForm"), mode = "first", step = 1, steps = 3, tm = 50, rest = "on", age = null;
+  // 나이 칩 : 올해 고3부터 중1까지 출생연도 + 졸업생(아직 안 지난 가장 가까운 수능)
+  (function(){
+    var top = SCHOOL_YEAR - 18, h = "", b, nsu = SCHOOL_YEAR + 1;
+    for(b = top; b <= top + 5; b++) h += '<button type="button" data-h="' + suneungOfBirth(b) + '">' + b + '년생 · ' + GRADES[5 - (b - top)] + '</button>';
+    if(kstDayNo(Date.now()) > dayNoFromISO(examISO(nsu))) nsu++;
+    h += '<button type="button" data-h="' + nsu + '">졸업생 · N수</button>';
+    $("suAge").innerHTML = h;
+  })();
   var HEAD = {
     1:["나", "나를 소개해 주세요", "꿈은 멀리 바라보는 곳, 목표는 지금 붙잡을 한 걸음이에요."],
     2:["공부 기준", "하루를 어떻게 걸을지 정해요", "지금 정해도 나중에 설정에서 언제든 바꿀 수 있어요."],
@@ -4608,6 +4731,13 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
     [].forEach.call($("suTm").querySelectorAll("button"), function(b){ b.setAttribute("aria-pressed", +b.getAttribute("data-m") === tm ? "true" : "false"); });
     if([25,50,90].indexOf(tm) === -1) $("suTmIn").value = tm; else if(document.activeElement !== $("suTmIn")) $("suTmIn").value = "";
     [].forEach.call($("suRest").querySelectorAll("button"), function(b){ b.setAttribute("aria-pressed", b.getAttribute("data-v") === rest ? "true" : "false"); });
+    var hit = false;
+    [].forEach.call($("suAge").querySelectorAll("button"), function(b){
+      var on = !hit && +b.getAttribute("data-h") === age; if(on) hit = true;   // 고3과 졸업생이 같은 수능이면 앞(고3)만 켠다
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    $("suAgeNote").textContent = age === null ? "몇 학년도 수능까지 셀지 정해져요. 학년은 3월마다 저절로 올라가요."
+      : age + "학년도 수능 (" + longDate(examISO(age)) + (KNOWN[age] ? "" : " 예정") + ")까지 D-day를 세요.";
   }
   function paint(){
     var h = HEAD[step];
@@ -4633,6 +4763,7 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
     $("suHours").value = edit ? goalHours() : 6;
     tm = parseInt(store("rl.tmTarget"), 10); if(!(tm >= 5 && tm <= 600)) tm = 50;
     rest = edit ? (restOn() ? "on" : "off") : "on";
+    age = mode !== "new" && pstore("suneung") ? SUNEUNG : null;   // 새로 시작하면 직접 고르게 비워 둔다
     var t = "", k;
     for(k = 0; k < 5; k++) t += '<label><i>' + (k + 1) + '</i><input maxlength="60" placeholder="' + PH[k] + '" aria-label="할 일 ' + (k + 1) + '"></label>';
     $("suTasks").innerHTML = t;
@@ -4652,6 +4783,7 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
       if(name.indexOf("__") === 0) return bad($("suName"), "이 이름은 쓸 수 없어요.");
       var taken = list.indexOf(name) !== -1 && !(mode !== "new" && name === curProfile);
       if(name === "예시" || taken) return bad($("suName"), "이미 있는 이름이에요. 다른 이름을 적어 주세요.");
+      if(age === null) return bad($("suAge").querySelector("button"), "나이를 골라 주세요. 몇 학년도 수능까지 셀지가 정해져요.");
       if(!clean($("suDream").value, 30)) return bad($("suDream"), "꿈을 적어 주세요. 아직 정하지 못했다면 ‘찾는 중’이라고 적어도 돼요.");
     }
     if(step === 2){
@@ -4680,6 +4812,7 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
     if(aim) put("aim", aim); else { try{ localStorage.removeItem("rl.p." + name + ".aim"); }catch(e){} }
     put("hours", String(parseFloat($("suHours").value)));
     put("rest", rest);
+    put("suneung", String(age));
     if(mode !== "edit"){
       var tasks = [].map.call($("suTasks").querySelectorAll("input"), function(x){ return x.value.trim().slice(0, 60); }).filter(Boolean);
       put("tasks", JSON.stringify(tasks));
@@ -4707,6 +4840,7 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
   $("suTm").addEventListener("click", function(e){ var m = e.target.getAttribute && e.target.getAttribute("data-m"); if(m){ tm = +m; $("suTmIn").value = ""; paintChips(); } });
   $("suTmIn").addEventListener("input", function(){ var v = parseInt(this.value, 10); tm = isNaN(v) ? 50 : v; paintChips(); });
   $("suRest").addEventListener("click", function(e){ var v = e.target.getAttribute && e.target.getAttribute("data-v"); if(v){ rest = v; paintChips(); } });
+  $("suAge").addEventListener("click", function(e){ var h = e.target.getAttribute && e.target.getAttribute("data-h"); if(h){ age = +h; $("suWarn").textContent = ""; paintChips(); } });
   box.addEventListener("keydown", function(e){
     if(e.key === "Escape" && mode !== "first"){ close(); return; }
     if(e.key !== "Tab") return;
@@ -4895,7 +5029,7 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
     /* 4) 다음 관문 */
     for(k = 0; k < GATES.length; k++){
       var gd = dayNoFromISO(GATES[k].exact) - dayNo;
-      if(gd > 0 && GATES[k].t.indexOf("2027학년도") === -1){
+      if(gd > 0 && !GATES[k].prev){
         var work = 0, dd2;
         for(dd2 = dayNo; dd2 < dayNo + gd; dd2++){ if(!isRest(dd2)) work++; }   // 주일은 쉬는 날로 빼고 센다
         out.push({ st:"다음 관문", cls:"", n:"D-" + gd, s:GATES[k].t.replace("전국연합학력평가","학평"),
