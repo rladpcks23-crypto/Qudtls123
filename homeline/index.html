@@ -124,7 +124,6 @@ body{
 .goal-val:focus{border-bottom-style:solid;background:var(--accent-wash);outline:2px solid var(--accent);outline-offset:3px}
 .strip-right{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;color:var(--muted)}
 .strip-right>*{white-space:nowrap}
-.devtag{color:var(--critical);border:1px solid var(--critical);padding:1px 7px;letter-spacing:.1em}
 .themebtn{
   font:inherit;background:none;border:1px solid var(--line);color:var(--muted);
   padding:3px 9px;cursor:pointer;letter-spacing:.1em;text-transform:uppercase;font-size:10px;
@@ -929,7 +928,7 @@ body{
 .card-b{padding:24px 26px 28px}
 .st-stats{border-radius:var(--radius) var(--radius) 0 0;overflow:hidden}
 .hm-card{border-radius:0 0 var(--radius) var(--radius)}
-.btn,.themebtn,.chip,.chips,.w-tabs,.son-o,.addrow,#sonNote,#tmSubj,#tmMin,#hoursIn,#hmDate,#hmHours,.fld input,.fld select,.subrow input,.mini-timer,.demochip,.devtag,.w-part,.zone,.secbtn{border-radius:10px}
+.btn,.themebtn,.chip,.chips,.w-tabs,.son-o,.addrow,#sonNote,#tmSubj,#tmMin,#hoursIn,#hmDate,#hmHours,.fld input,.fld select,.subrow input,.mini-timer,.demochip,.w-part,.zone,.secbtn{border-radius:10px}
 .chips,.w-tabs{overflow:hidden}
 .grid{gap:28px}.col-left{gap:28px}
 .metric .k{font-size:12.5px;letter-spacing:.02em;text-transform:none}
@@ -1208,9 +1207,7 @@ body{
 /* 윗줄 */
 .brandname{font-family:var(--serif);font-weight:700;font-size:15px;letter-spacing:0;color:var(--text);margin-right:6px}
 .goal-tag{text-transform:none;letter-spacing:0;font-size:12px}
-.devtag{color:var(--faint);border-color:var(--line);letter-spacing:0}
 #today{letter-spacing:0;font-size:12px}
-@media (max-width:560px){ .devtag{display:none} }   /* 폰 윗줄이 세 줄로 늘어나지 않게 */
 
 /* D-day : 경주용 숫자 대신 명조 — 남은 날이 경고가 아니라 이야기의 쪽수처럼 */
 .hero.dawn .ddaynum{font-family:var(--serif);font-weight:700;letter-spacing:-.045em;line-height:.92}
@@ -1485,43 +1482,6 @@ footer p{letter-spacing:0}
 .sc-res .btn{margin-top:10px;padding:7px 14px}
 .son-end-sub{margin:-4px 0 0;font-size:12.5px;color:var(--muted)}
 
-/* ---------- 발표 모드 : 강단 화면(프로젝터)에서 뒤에서도 읽히게 크게 ---------- */
-.tour{position:fixed;inset:0;z-index:130;pointer-events:none}
-.tour-spot{position:fixed;border-radius:20px;opacity:0;box-shadow:0 0 0 200vmax rgba(5,7,12,.68), 0 0 0 3px rgba(255,184,108,.85), 0 0 40px rgba(255,184,108,.35);transition:left .55s ease, top .55s ease, width .55s ease, height .55s ease, opacity .4s}
-.tour-card{
-  position:fixed;left:50%;bottom:28px;transform:translateX(-50%);width:min(780px, calc(100% - 40px));pointer-events:auto;
-  padding:18px 24px 20px;border-radius:18px;background:rgba(10,13,20,.94);border:1px solid rgba(255,184,108,.55);
-  box-shadow:0 18px 50px rgba(0,0,0,.55);color:#F4F0E8;
-}
-.tour-card.side{left:auto;right:28px;transform:none;width:min(460px, calc(100% - 40px))}
-.tour-card.top{top:24px;bottom:auto}
-.tour-card[hidden]{display:none}
-.tour-card.in{animation:fadeUp .45s ease-out both}
-.tour-card.side.in,.tour-card.bottom.in{animation-name:tourIn}
-@keyframes tourIn{from{opacity:0;translate:0 10px}to{opacity:1;translate:0 0}}
-.tour-top{display:flex;justify-content:space-between;gap:12px;font-size:13px;color:#FFB86C;font-weight:700;letter-spacing:.04em}
-.tour-keys{color:#8A857C;font-weight:500;letter-spacing:0}
-.tour-h{margin:8px 0 0;font-family:var(--serif);font-size:clamp(22px,2.3vw,32px);font-weight:700;line-height:1.35;letter-spacing:-.02em;text-wrap:balance}
-.tour-p{margin:8px 0 0;font-size:clamp(16px,1.35vw,20px);line-height:1.6;color:#D9D2C6;text-wrap:pretty}
-.tour-mini{position:fixed;left:24px;bottom:20px;padding:5px 12px;border-radius:999px;background:rgba(10,13,20,.7);border:1px solid rgba(255,255,255,.18);font-size:13px;color:#CFC8BC}
-.tour-end{
-  position:fixed;inset:0;pointer-events:auto;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:clamp(24px,5vw,80px);
-  padding:clamp(28px,6vw,96px);color:#F4F0E8;
-  background:linear-gradient(90deg, rgba(5,7,12,.94) 0%, rgba(5,7,12,.7) 55%, rgba(5,7,12,.35) 100%), #05070C url("rt-bg.jpg") 100% 50%/cover no-repeat;
-}
-.tour-end[hidden]{display:none}
-.te-logo{width:clamp(72px,7vw,110px);height:auto;border-radius:22%}
-.te-k{margin:18px 0 0;font-size:clamp(14px,1.2vw,18px);color:#FFB86C;font-weight:700;letter-spacing:.04em}
-.te-h{margin:10px 0 0;font-family:var(--serif);font-size:clamp(34px,4.6vw,72px);font-weight:700;line-height:1.25;letter-spacing:-.03em}
-.te-h em{font-style:normal;color:#FFB86C}
-.te-p{margin:18px 0 0;font-size:clamp(16px,1.5vw,22px);color:#D9D2C6}
-.te-qr{display:grid;justify-items:center;gap:12px;padding:20px;border-radius:24px;background:#F7F2E9;color:#1B1207;text-align:center}
-.te-qr #tourQr{width:clamp(180px,17vw,280px);aspect-ratio:1}
-.te-qr #tourQr img,.te-qr #tourQr canvas{width:100%!important;height:100%!important}
-.te-qr p{margin:0;font-size:clamp(14px,1.2vw,17px);font-weight:600;line-height:1.5}
-@media (max-width:760px){ .tour-end{grid-template-columns:1fr;justify-items:center;text-align:center} .tour-card.side{right:20px} }
-@media (prefers-reduced-motion:reduce){ .tour-spot{transition:none} .tour-card.in{animation:none} }
-
 /* ---------- 시작 설정 : 이름 · 꿈 · 목표 · 공부 기준 · 오늘의 할 일 ---------- */
 .su-bg{background-image:url("homeline-bg.webp");background-position:72% 46%}
 .su-step{display:flex;flex-direction:column;gap:16px;margin-top:20px}
@@ -1570,16 +1530,11 @@ footer p{letter-spacing:0}
     </div>
     <div class="strip-right">
       <span id="today"></span>
-      <span class="devtag">발표용 작업본</span>
       <button class="demochip" id="demoChip" type="button" hidden>예시 데이터 보는 중</button>
       <button class="themebtn setbtn" id="skinBtn" type="button" aria-expanded="false" aria-controls="skinPanel">설정</button>
     </div>
   </div>
   <div class="skin-panel" id="skinPanel" role="dialog" aria-label="설정" hidden>
-    <div class="set-row">
-      <div><b>발표 모드</b><span>강단에서 앱으로 설명할 때. 예시 데이터로 바꾸고 한 칸씩 넘긴다 (키보드 P)</span></div>
-      <button class="btn" id="presentBtn" type="button">시작</button>
-    </div>
     <div class="set-row">
       <div><b>내 정보</b><span>이름 · 나이 · 꿈 · 목표 · 하루 순공 목표 · 타이머 기본 시간 고치기</span></div>
       <button class="btn" id="meBtn" type="button">고치기</button>
@@ -1740,27 +1695,6 @@ footer p{letter-spacing:0}
       <button type="submit" class="rt-btn pri" id="suNext">다음</button>
     </div>
   </form>
-</div>
-
-<!-- 발표 모드 : 앱 화면 위의 밝은 창(spot)과 설명 카드. 마지막은 마무리 화면과 QR -->
-<div class="tour" id="tour" hidden>
-  <div class="tour-spot" id="tourSpot"></div>
-  <div class="tour-card bottom" id="tourCard" role="status" aria-live="polite">
-    <div class="tour-top"><span id="tourN"></span><span class="tour-keys">→ 다음 · ← 이전 · Esc 끝 · <span id="tourClock">0:00</span></span></div>
-    <h2 class="tour-h" id="tourH"></h2>
-    <p class="tour-p" id="tourP"></p>
-  </div>
-  <div class="tour-mini" id="tourMini" hidden></div>
-  <div class="tour-end" id="tourEnd" hidden>
-    <div class="te-in">
-      <img class="te-logo" src="logo-512.png" alt="">
-      <p class="te-k">홈라인 · 집으로 가는 60일</p>
-      <h2 class="te-h">증명하려는 공부가 아니라,<br><em>사랑받는 사람의 성실.</em></h2>
-      <p class="te-p">사랑을 얻으려는 공부가 아니라, 이미 받은 사랑에 응답하는 공부.</p>
-    </div>
-    <div class="te-qr"><div id="tourQr"></div><p>지금 휴대폰으로 열고<br>오늘의 나를 골라 보세요</p></div>
-    <button type="button" class="rt-skip" id="tourEndClose">닫기</button>
-  </div>
 </div>
 
 <div class="wrap">
@@ -2242,8 +2176,6 @@ footer p{letter-spacing:0}
   </footer>
 </div>
 
-<!-- 발표 모드 마무리 화면의 QR (qrcodejs 1.0.0, 같은 폴더) -->
-<script src="qrcode.min.js"></script>
 <script>
 /* ============ DATA : 60일 말씀 ============ */
 /* 『탕부 하나님』(팀 켈러)의 흐름을 따라 여섯 부분 × 10일.
@@ -4527,12 +4459,6 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
     s[today] = cur; setS(s);
   });
   $("rt1Go").addEventListener("click", walk);
-  // 발표 모드가 장면을 한 칸씩 넘길 수 있게
-  window.HLMoment = {
-    open: showMoment, walk: walk, gifts: gifts, feast: feast,
-    close: function(){ if(!mo.hidden) $("hmClose").click(); },
-    stage: function(){ return mo.hidden ? 0 : +((mo.className.match(/s(\d)/) || [0, 0])[1]); }
-  };
   $("rtSkip").addEventListener("click", function(){ feast(); });
   $("sonEnd").addEventListener("click", function(){
     var s = getS(), cur = s[today] || {};
@@ -4665,11 +4591,6 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
     store("rl.intro", "seen");
   }
   openIntro = open;
-  // 발표 모드 : 원하는 장으로 바로 가고, 닫을 때 시작 설정으로 넘어가지 않게
-  window.HLIntro = {
-    open: function(){ open(null); }, go: function(n){ i = Math.max(0, Math.min(SL.length - 1, n)); paint(); },
-    close: function(){ after = null; if(!box.hidden) close(); }, isOpen: function(){ return !box.hidden; }
-  };
   function close(){
     box.hidden = true; document.documentElement.style.overflow = "";
     if(after){ var f = after; after = null; f(); return; }
@@ -5112,127 +5033,6 @@ document.addEventListener("rl:changed", function(){ $("streakN").textContent = c
   });
   document.addEventListener("rl:changed", paint);
   paint();
-})();
-
-/* ============ 발표 모드 : 진짜 앱 화면 위에서, 설명할 곳만 밝히고 한 칸씩 넘긴다 ============ */
-/* 강단에서 PPT 대신 앱으로 설명하기 위한 길잡이. → · PageDown · 스페이스(발표 리모컨)로 다음, ← · PageUp으로 이전, Esc로 끝.
-   시작할 때 '예시' 데이터로 바꿔서, 처음 띄우는 노트북에서도 채워진 화면으로 시작한다. 전체 약 2분 40초. */
-(function tour(){
-  var APP_URL = "https://claude.ai/artifact/JfncXvtZdLJ3QkTTcD6Y29";
-  var root = $("tour"), spot = $("tourSpot"), card = $("tourCard"), idx = -1, active = false, target = null, raf = null, t0 = 0;
-  function q(s){ return document.querySelector(s); }
-  function see(sel, block){ var el = q(sel); if(el) el.scrollIntoView({ behavior:"smooth", block:block || "center" }); }
-  function clean(){
-    if(window.HLIntro) HLIntro.close();
-    if(window.HLMoment) HLMoment.close();
-    $("tourEnd").hidden = true;
-  }
-  function younger(){ var b = q('.son-o[data-k="younger"]'); if(b && b.getAttribute("aria-pressed") !== "true") b.click(); }
-  function inMoment(){ if(!HLMoment.stage()){ younger(); HLMoment.open(); } }
-
-  var S = [
-    { t:".hero.dawn", h:"첫 화면 · 수능까지 남은 날",
-      p:"D-day는 그대로 두고 말투를 바꿨어요. ‘몰아붙이는 한계선이 아니라, 집으로 돌아오는 길’.",
-      go:function(){ clean(); showTab("today"); window.scrollTo({ top:0, behavior:"smooth" }); } },
-    { pos:"side", h:"처음 온 고3에게, 먼저 『탕부 하나님』",
-      p:"탕(蕩)은 ‘아낌없이 다 써 버린다’는 뜻. 이 이야기에서 사랑을 아낌없이 쏟은 쪽은 아버지예요.",
-      go:function(){ clean(); HLIntro.open(); HLIntro.go(0); } },
-    { pos:"side", h:"두 아들 = 두 가지 공부",
-      p:"미루고 도망치는 작은아들, 증명하고 비교하는 큰아들. 수험생이라면 누구나 둘 중 하나예요.",
-      go:function(){ if(!HLIntro.isOpen()){ clean(); HLIntro.open(); } HLIntro.go(5); } },
-    { t:"#steps", h:"하루는 네 정거장",
-      p:"말씀 → 공부 → 할 일 → 아버지께 돌아가기. 끝낸 정거장마다 길에 불이 들어와요.",
-      go:function(){ clean(); showTab("today"); see("#steps"); } },
-    { t:".journey", h:"60일, 『탕부 하나님』의 흐름대로",
-      p:"여섯 부, 60일치 말씀. 등불 하나가 하루치 말씀이고, 지나온 등불은 꺼지지 않아요.",
-      go:function(){ clean(); showTab("today"); see(".journey"); } },
-    { t:"#sonCard", pos:"side", h:"하루 끝의 질문 · 오늘 나는 어떤 아들이었나",
-      p:"정답을 고르는 게 아니에요. 잘 모르겠으면 질문 세 개가 함께 찾아 줘요.",
-      go:function(){ clean(); showTab("today"); see("#sonCard"); setTimeout(younger, 1100); } },
-    { pos:"side", h:"작은아들처럼, 아버지께 드릴 말을 준비해요",
-      p:"“이제 아들이라 불릴 자격이 없어요. 품꾼의 하나로라도…”",
-      go:function(){ younger(); if(HLMoment.stage() !== 1){ HLMoment.close(); HLMoment.open(); } } },
-    { pos:"none",
-      go:function(){ younger(); if(HLMoment.stage() !== 1){ HLMoment.close(); HLMoment.open(); } HLMoment.walk(); } },
-    { pos:"side", h:"옷 · 가락지 · 신",
-      p:"아들의 자리, 가족의 표, 종이 아니라 아들. 점수와 상관없이 먼저 주어지는 선물이에요.",
-      go:function(){
-        inMoment(); HLMoment.gifts();
-        [0, 1, 2].forEach(function(k){ setTimeout(function(){ var g = document.querySelectorAll(".rt-gift")[k]; if(active && g && g.getAttribute("aria-pressed") !== "true") g.click(); }, 900 + k*1000); });
-      } },
-    { pos:"none", go:function(){ inMoment(); HLMoment.feast(); } },
-    { t:".journey", h:"하루를 마치면, 오늘의 등불이 켜져요",
-      p:"공부를 얼마나 했든, 돌아온 하루는 길 위에 남아요.",
-      go:function(){ clean(); showTab("today"); see(".journey"); } },
-    { t:".study", h:"숫자는 판결이 아니라, 오늘을 살피는 정보",
-      p:"순공 격자는 시간 대신 ‘목표 달성’만 칠해요. 주일은 예배와 쉼의 날이라 실패로 세지 않아요.",
-      go:function(){ clean(); showTab("record"); setTimeout(function(){ see(".study", "start"); }, 60); } },
-    { end:true, pos:"none",
-      go:function(){ clean(); showTab("today"); $("tourEnd").hidden = false; qr(); } }
-  ];
-
-  var made = false;
-  function qr(){
-    if(made || typeof QRCode === "undefined") return; made = true;
-    try{ new QRCode($("tourQr"), { text:APP_URL, width:320, height:320, colorDark:"#1B1207", colorLight:"#F7F2E9", correctLevel:QRCode.CorrectLevel.M }); }
-    catch(e){ $("tourQr").textContent = APP_URL; }
-  }
-  function show(n){
-    if(n < 0) return;
-    if(n >= S.length){ stop(); return; }
-    idx = n; var s = S[n];
-    s.go();
-    target = null;
-    if(s.t) setTimeout(function(){ if(idx === n) target = q(s.t); }, 30);
-    card.className = "tour-card " + (s.pos || "bottom");
-    card.hidden = !s.h;
-    $("tourN").textContent = (n + 1) + " / " + S.length;
-    $("tourH").textContent = s.h || ""; $("tourP").textContent = s.p || "";
-    $("tourMini").textContent = (n + 1) + " / " + S.length;
-    $("tourMini").hidden = !!s.h || !!s.end;
-    if(!reduce){ card.classList.remove("in"); void card.offsetWidth; card.classList.add("in"); }
-  }
-  function follow(){
-    if(!active) return;
-    if(target){
-      var r = target.getBoundingClientRect(), g = 10;
-      spot.style.cssText = "opacity:1;left:" + (r.left - g) + "px;top:" + (r.top - g) + "px;width:" + (r.width + g*2) + "px;height:" + (r.height + g*2) + "px";
-    } else spot.style.opacity = "0";
-    var sec = Math.floor((Date.now() - t0)/1000);
-    $("tourClock").textContent = Math.floor(sec/60) + ":" + pad(sec%60);
-    raf = requestAnimationFrame(follow);
-  }
-  function start(){
-    // 처음 띄우는 노트북에서도 채워진 화면으로 — '예시' 데이터로 바꾼 뒤 다시 열면서 이어서 시작한다
-    if(curProfile !== "예시"){ store("rl.present", "go"); $("demoBtn").click(); return; }
-    $("skinPanel").hidden = true;
-    active = true; root.hidden = false; t0 = Date.now();
-    show(0); follow();
-  }
-  function stop(){
-    active = false; root.hidden = true; target = null;
-    if(raf) cancelAnimationFrame(raf);
-    $("tourEnd").hidden = true;
-  }
-  window.addEventListener("keydown", function(e){
-    var k = e.key;
-    if(!active){
-      var a = document.activeElement, typing = a && (/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) || a.isContentEditable);
-      if((k === "p" || k === "P") && !typing && !e.ctrlKey && !e.metaKey && !e.altKey){ e.preventDefault(); start(); }
-      return;
-    }
-    var next = ["ArrowRight","ArrowDown","PageDown"," "].indexOf(k) !== -1, prev = ["ArrowLeft","ArrowUp","PageUp"].indexOf(k) !== -1;
-    if(!next && !prev && k !== "Escape") return;
-    e.preventDefault(); e.stopImmediatePropagation();       // 이야기·장면의 키 처리보다 먼저, 한 번만
-    if(e.repeat) return;
-    if(k === "Escape") stop(); else show(idx + (next ? 1 : -1));
-  }, true);
-  $("presentBtn").addEventListener("click", function(e){ e.stopPropagation(); start(); });
-  $("tourEndClose").addEventListener("click", stop);
-  if(store("rl.present") === "go" && curProfile === "예시"){
-    try{ localStorage.removeItem("rl.present"); }catch(e){}
-    setTimeout(start, 700);
-  }
 })();
 
 /* ============ 테마 토글 + 색 테마 ============ */
