@@ -494,6 +494,22 @@ table.tv tr:last-child td{border-bottom:0}
 .fbtns{display:flex;gap:9px;margin-top:18px;flex-wrap:wrap}
 .warn{color:var(--critical);font-size:12px;margin:10px 0 0;min-height:1em}
 
+/* ---------- 처음 설정 ---------- */
+.ob{
+  position:fixed;inset:0;z-index:50;background:rgba(10,9,8,.72);
+  display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;
+}
+.ob-card{
+  background:var(--surface);border:1px solid var(--line);border-top:2px solid var(--accent);
+  width:100%;max-width:440px;margin:auto;padding:26px 24px 24px;display:flex;flex-direction:column;gap:18px;
+}
+.ob-card h2{margin:4px 0 0;font-size:24px;line-height:1.3;letter-spacing:-.02em}
+.ob-ages{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line)}
+.ob-ages .chip{border:0;background:var(--surface);padding:10px 8px;font-size:12px}
+.ob-ages .chip:last-child{grid-column:1/3}
+.ob-note{margin:0;font-size:13px;line-height:1.65;color:var(--muted);min-height:2.6em}
+.ob-note.bad{color:var(--critical)}
+
 /* ---------- 백업 / 기기 간 옮기기 ---------- */
 .backup{margin-top:42px;border:1px solid var(--line);background:var(--surface);padding:20px 22px 22px}
 .backup>p{margin:9px 0 0;font-size:13.5px;color:var(--muted);line-height:1.7;max-width:70ch}
@@ -564,6 +580,19 @@ footer p{margin:0;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-
   .fig-name{font-size:25px}
 }
 </style>
+
+<div class="ob" id="onboard" role="dialog" aria-modal="true" aria-labelledby="obTitle" hidden>
+  <form class="ob-card" id="obForm" novalidate>
+    <div>
+      <span class="eyebrow">Start · 처음 설정</span>
+      <h2 id="obTitle">누가 달리는지 알려줘</h2>
+    </div>
+    <label class="fld"><span>이름</span><input type="text" id="obName" maxlength="12" autocomplete="off"></label>
+    <div class="fld"><span>나이</span><div class="ob-ages" id="obAges"></div></div>
+    <p class="ob-note" id="obNote">나이를 고르면 몇 학년도 수능까지 셀지 정해진다. 학년은 3월마다 저절로 올라간다.</p>
+    <button class="btn pri" type="submit">시작하기</button>
+  </form>
+</div>
 
 <header class="strip">
   <div class="strip-in">
@@ -1095,6 +1124,61 @@ var GATES = (function(){
   sel.addEventListener("change", function(){ pstore("suneung", sel.value); location.reload(); });
 })();
 
+/* ============ 처음 설정 : 이름 + 나이 ============ */
+/* 목표 수능이 아직 없는 프로필이면 뜬다 — 새로 깐 기기, '+ 새 프로필' 직후, 이 기능 전부터 쓰던 프로필 */
+(function onboard(){
+  if(pstore("suneung")) return;
+  var box = $("onboard"), ages = $("obAges"), name = $("obName"), note = $("obNote");
+  var pick = null, h = "", b;
+  var top = SCHOOL_YEAR - 18;                              // 올해 고3의 출생연도. 학년도 = 출생연도 + 19
+  for(b=top; b<=top+5; b++){
+    h += '<button class="chip" type="button" aria-pressed="false" data-h="'+(b+19)+'">'+b+'년생 · '+GRADES[5-(b-top)]+'</button>';
+  }
+  var nsu = SCHOOL_YEAR + 1;                               // 졸업생은 아직 안 지난 가장 가까운 수능
+  if(kstDayNo(Date.now()) > dayNoFromISO(examISO(nsu))) nsu++;
+  h += '<button class="chip" type="button" aria-pressed="false" data-h="'+nsu+'">'+(top-1)+'년생 이전 · 졸업생·N수</button>';
+  ages.innerHTML = h;
+
+  ages.addEventListener("click", function(e){
+    var t = e.target.closest("[data-h]");
+    if(!t) return;
+    pick = +t.getAttribute("data-h");
+    [].forEach.call(ages.children, function(c){ c.setAttribute("aria-pressed", c === t ? "true" : "false"); });
+    var iso = examISO(pick);
+    note.className = "ob-note";
+    note.textContent = pick + "학년도 수능 (" + iso.replace(/-/g, ".") + (KNOWN[pick] ? "" : " 예상") + ")까지 D-day를 센다. 나중에 위쪽 GRADE에서 바꿀 수 있다.";
+  });
+
+  /** 프로필 이름 바꾸기 — 그 이름 아래 저장된 기록을 통째로 옮긴다 */
+  function rename(from, to){
+    var pre = "rl.p." + from + ".", keys = [], i;
+    try{ for(i=0;i<localStorage.length;i++){ var k = localStorage.key(i); if(k.indexOf(pre) === 0) keys.push(k); } }catch(e){}
+    keys.forEach(function(k){
+      store("rl.p." + to + "." + k.slice(pre.length), store(k));
+      try{ localStorage.removeItem(k); }catch(e){}
+    });
+    var list = profiles(); list[list.indexOf(from)] = to; saveProfiles(list);
+    store("rl.who.cur", to);
+  }
+
+  $("obForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var v = name.value.trim().replace(/\./g, "").slice(0,12);   // '.'은 저장 키 구분자라 뺀다
+    var bad = !v ? "이름을 적어줘."
+            : (v !== curProfile && profiles().indexOf(v) !== -1) ? "'" + v + "' 프로필이 이미 있다. 다른 이름을 써줘."
+            : pick === null ? "나이를 골라줘." : "";
+    if(bad){ note.className = "ob-note bad"; note.textContent = bad; return; }
+    if(v !== curProfile) rename(curProfile, v);
+    store("rl.p." + v + ".suneung", String(pick));
+    location.reload();
+  });
+
+  name.value = curProfile;
+  box.hidden = false;
+  document.body.style.overflow = "hidden";
+  name.focus(); name.select();
+})();
+
 /* ============ RENDER : hero + metrics ============ */
 var dayNo = kstDayNo(Date.now());
 var daysLeft = Math.max(0, EXAM_DAY - dayNo);
@@ -1437,7 +1521,22 @@ renderTodo();
 /* ============ 성적 기록 ============ */
 (function scores(){
   var KINDLABEL = {official:"공식", self:"개인", school:"내신"};
-  var PRESET = ["국어","수학","영어","한국사","탐구1","탐구2"];
+  /* 수능 체제가 학년도마다 다르다. 2027학년도(올해 고3)가 마지막 선택형이고,
+     2028학년도부터는 선택과목 없이 통합사회·통합과학을 모두 본다. 중학생은 내신 과목 기준. */
+  var SYSTEM = SUNEUNG <= 2027 ? "select" : gradeOf(SUNEUNG) <= 2 ? "middle" : "unified";
+  var PRESET = {
+    select:  ["국어","수학","영어","한국사","탐구1","탐구2"],
+    unified: ["국어","수학","영어","한국사","통합사회","통합과학"],
+    middle:  ["국어","수학","영어","사회","과학"]
+  }[SYSTEM];
+  /** 과목 칸 자동완성에만 쓰는 후보. 색 슬롯(순서)에는 기록에 실제로 쓴 과목만 들어간다 */
+  var SUGGEST = {
+    select:  ["화법과 작문","언어와 매체","확률과 통계","미적분","기하",
+              "생활과 윤리","윤리와 사상","한국지리","세계지리","동아시아사","세계사","경제","정치와 법","사회·문화",
+              "물리학Ⅰ","화학Ⅰ","생명과학Ⅰ","지구과학Ⅰ","물리학Ⅱ","화학Ⅱ","생명과학Ⅱ","지구과학Ⅱ","제2외국어/한문"],
+    unified: ["통합사회","통합과학","제2외국어/한문"],
+    middle:  ["역사","도덕","기술·가정","정보","한문"]
+  }[SYSTEM];
   var METRIC = {
     grade:{ label:"등급",   min:1, max:9,   invert:true,  ticks:[1,3,5,7,9] },
     raw:  { label:"원점수", min:0, max:100, invert:false, ticks:[0,25,50,75,100] },
@@ -1482,7 +1581,18 @@ renderTodo();
     return o.exam.slice();
   }
   function colorOf(s){ var i = universe().indexOf(s); return i >= 0 && i < 8 ? "var(--s"+(i+1)+")" : ""; }
-  function datalistNames(){ var o = allOrders(); return o.exam.concat(o.school); }
+  function datalistNames(){
+    var o = allOrders(), all = o.exam.concat(o.school);
+    SUGGEST.forEach(function(s){ if(all.indexOf(s) === -1) all.push(s); });
+    return all;
+  }
+  /** 같은 묶음(모의고사/내신)에서 가장 최근 기록의 과목들 — 탐구 선택과목을 매번 다시 안 쳐도 되게 */
+  function lastNames(kind){
+    var g = groupOf(kind);
+    var r = getRecs().filter(function(x){ return groupOf(x.kind) === g; })
+      .sort(function(a,b){ return a.date < b.date ? 1 : a.date > b.date ? -1 : 0; })[0];
+    return r ? r.rows.map(function(x){ return x.s; }) : null;
+  }
 
   /* ---- 조회 ---- */
   function filtered(){
@@ -1813,15 +1923,17 @@ renderTodo();
   });
 
   /* ---- 입력 폼 ---- */
-  function subRow(name){
+  function subRow(name, hint){
     var d = document.createElement("div"); d.className = "subrow";
     var f = ["s","raw","grade","pct"];
+    // 2028학년도 세대부터 고교 내신은 5등급제다 (수능은 그대로 9등급)
+    var five = $("fKindIn").value === "school" && SYSTEM === "unified";
     f.forEach(function(k){
       var inp = document.createElement("input");
-      if(k === "s"){ inp.type = "text"; inp.placeholder = "과목"; inp.setAttribute("list","subjectList"); inp.maxLength = 14; inp.value = name || ""; }
+      if(k === "s"){ inp.type = "text"; inp.placeholder = hint || "과목"; inp.setAttribute("list","subjectList"); inp.maxLength = 14; inp.value = name || ""; }
       else {
         inp.type = "number"; inp.inputMode = "numeric";
-        inp.placeholder = k === "raw" ? "0-100" : k === "grade" ? "1-9" : "0-100";
+        inp.placeholder = k === "raw" ? "0-100" : k === "grade" ? (five ? "1-5" : "1-9") : "0-100";
         inp.min = k === "grade" ? 1 : 0; inp.max = k === "grade" ? 9 : 100;
         if(k !== "grade") inp.step = "0.01";
       }
@@ -1837,9 +1949,16 @@ renderTodo();
   }
   function buildRows(){
     var box = $("subrows"); box.innerHTML = "";
-    var kind = $("fKindIn").value;
-    var names = kind === "school" ? [""] : ["국어","수학","영어","탐구1","탐구2"];
-    names.forEach(function(nm){ box.appendChild(subRow(nm)); });
+    var kind = $("fKindIn").value, last = lastNames(kind);
+    if(last){ last.forEach(function(nm){ box.appendChild(subRow(nm)); }); return; }
+    if(kind === "school"){ box.appendChild(subRow("")); return; }
+    if(SYSTEM === "select"){                     // 고3은 탐구 과목명을 직접 쓰게 비워 둔다
+      ["국어","수학","영어"].forEach(function(nm){ box.appendChild(subRow(nm)); });
+      box.appendChild(subRow("", "탐구1 (예: 생활과 윤리)"));
+      box.appendChild(subRow("", "탐구2 (예: 지구과학Ⅰ)"));
+      return;
+    }
+    PRESET.forEach(function(nm){ if(nm !== "한국사") box.appendChild(subRow(nm)); });
   }
   function refreshDatalist(){
     var dl = $("subjectList"); dl.innerHTML = "";
