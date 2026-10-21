@@ -577,6 +577,9 @@ footer p{margin:0;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-
       <select class="who" id="who" aria-label="프로필 선택"></select>
       <input class="whonew" id="whonew" placeholder="이름 입력 후 Enter" maxlength="12" hidden>
       <span class="sep">|</span>
+      <span class="goal-tag">Grade</span>
+      <select class="who" id="grade" aria-label="학년 선택"></select>
+      <span class="sep">|</span>
       <span class="goal-tag">Target</span>
       <span class="goal-val" id="goal" contenteditable="true" spellcheck="false" data-placeholder="목표를 입력하세요"></span>
     </div>
@@ -593,8 +596,8 @@ footer p{margin:0;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-
   <section class="hero rise">
     <div>
       <div class="hero-label">
-        <span class="eyebrow">2028학년도 대학수학능력시험</span>
-        <span class="exam mono">2027.11.18 THU 08:40 KST</span>
+        <span class="eyebrow" id="examTitle">2028학년도 대학수학능력시험</span>
+        <span class="exam mono" id="examWhen">2027.11.18 THU 08:40 KST</span>
       </div>
       <div class="dday" id="ddayBox">
         <div class="ddaynum"><span class="dpre">D−</span><span id="ddayNum">—</span></div>
@@ -621,7 +624,7 @@ footer p{margin:0;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-
 
   <section class="tach rise d1" aria-label="수능까지의 진행 눈금">
     <div class="tach-head">
-      <span class="eyebrow">Start 2026.08.29 &nbsp;—&nbsp; Redline 2027.11.18</span>
+      <span class="eyebrow" id="tachRange">Start 2026.08.29 &nbsp;—&nbsp; Redline 2027.11.18</span>
       <span class="eyebrow" id="tachNote"></span>
     </div>
     <div class="scale">
@@ -668,7 +671,7 @@ footer p{margin:0;font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-
 
   <section class="study">
     <div class="st-head">
-      <span class="eyebrow">순공 기록 · 446일</span>
+      <span class="eyebrow" id="stTitle">순공 기록 · 446일</span>
       <div class="hm-edit">
         <input type="date" id="hmDate" aria-label="기록할 날짜">
         <input type="number" id="hmHours" min="0" max="24" step="0.5" placeholder="0" aria-label="순공 시간">
@@ -965,15 +968,6 @@ var PUNCH = [
 "3년 뒤 네 이름이 적힐 도면은 오늘 시작된다."
 ];
 
-var GATES = [
- {d:"2026.11.19", t:"2027학년도 수능", note:"선배들의 시험일 · 정확히 1년 전", exact:"2026-11-19"},
- {d:"2027.03", t:"고3 3월 전국연합학력평가", note:"예상", exact:"2027-03-25"},
- {d:"2027.06", t:"6월 모의평가", note:"예상 · 첫 실전 지표", exact:"2027-06-03"},
- {d:"2027.09", t:"9월 모의평가", note:"예상 · 마지막 조정 기회", exact:"2027-09-02"},
- {d:"2027.09", t:"수시 원서접수", note:"예상", exact:"2027-09-13"},
- {d:"2027.11.18", t:"2028학년도 대학수학능력시험", note:"확정 · 08:40 시작", exact:"2027-11-18", final:true}
-];
-
 /* ============ TIME (KST-fixed) ============ */
 var KST = 9*60; // minutes
 function kstParts(ms){
@@ -982,12 +976,10 @@ function kstParts(ms){
 }
 function kstDayNo(ms){ var p=kstParts(ms); return Math.floor(Date.UTC(p.y,p.m,p.d)/86400000); }
 function dayNoFromISO(iso){ var a=iso.split("-"); return Math.floor(Date.UTC(+a[0],+a[1]-1,+a[2])/86400000); }
-
-var EXAM_MS   = Date.parse("2027-11-18T08:40:00+09:00");
-var EXAM_DAY  = dayNoFromISO("2027-11-18");
-var START_DAY = dayNoFromISO("2026-08-29");
-var TOTAL     = EXAM_DAY - START_DAY;      // 446
-var REDZONE   = 100;
+function isoOfDay(dn){
+  var d = new Date(dn*86400000);
+  return d.getUTCFullYear() + "-" + pad(d.getUTCMonth()+1) + "-" + pad(d.getUTCDate());
+}
 
 var DOW = ["일","월","화","수","목","금","토"];
 
@@ -1027,7 +1019,7 @@ function pstore(k,v){ return store("rl.p." + curProfile + "." + k, v); }
       var list = profiles(), k = list.indexOf(curProfile);
       if(k !== -1 && list.length > 1){
         list.splice(k,1); saveProfiles(list);
-        ["tasks","check","done","goal","hours"].forEach(function(x){
+        ["tasks","check","done","goal","hours","suneung"].forEach(function(x){
           try{ localStorage.removeItem("rl.p."+curProfile+"."+x); }catch(e){}
         });
         store("rl.who.cur", list[0]);
@@ -1051,6 +1043,63 @@ function pstore(k,v){ return store("rl.p." + curProfile + "." + k, v); }
   inp.addEventListener("blur", commit);
 })();
 
+/* ============ 학년 → 목표 수능 ============ */
+/* 학년이 아니라 '목표 학년도'를 저장한다 — 3월에 학년이 올라가도 D-day가 어긋나지 않는다 */
+var GRADES = ["중1","중2","중3","고1","고2","고3"];
+var KNOWN = {                       // 교육부·평가원 발표로 확정된 날짜만. 나머지는 관례로 추정
+  "2027":"2026-11-19", "2028":"2027-11-18",
+  "2027.jun":"2026-06-04", "2027.sep":"2026-09-02"
+};
+/** y년 m월 d일 이후 처음 오는 dow 요일 (0=일) */
+function weekdayFrom(y, m, d, dow){
+  var dn = Math.floor(Date.UTC(y,m-1,d)/86400000);
+  return isoOfDay(dn + (dow - new Date(dn*86400000).getUTCDay() + 7) % 7);
+}
+function examISO(h){ return KNOWN[h] || weekdayFrom(h-1, 11, 13, 4); }   // 수능은 매년 11월 13~19일 사이 목요일
+var SCHOOL_YEAR = (function(){ var p = kstParts(Date.now()); return p.m >= 2 ? p.y : p.y - 1; })();   // 학년은 3월에 바뀐다
+function gradeOf(h){ return 5 - (h - SCHOOL_YEAR - 1); }   // 0=중1 … 5=고3, 범위 밖이면 이미 졸업/아직 초등
+
+var SUNEUNG = parseInt(pstore("suneung"), 10);
+if(!(SUNEUNG >= 2027 && SUNEUNG <= 2040)) SUNEUNG = 2028;
+var EXAM_ISO   = examISO(SUNEUNG);
+var EXAM_FIXED = !!KNOWN[SUNEUNG];
+var EXAM_MS    = Date.parse(EXAM_ISO + "T08:40:00+09:00");
+var EXAM_DAY   = dayNoFromISO(EXAM_ISO);
+var START_DAY  = dayNoFromISO("2026-08-29");
+var TOTAL      = EXAM_DAY - START_DAY;
+var REDZONE    = 100;
+
+var GATES = (function(){
+  var E = SUNEUNG - 1, prev = SUNEUNG - 1;   // E = 수능 보는 해
+  function dot(iso, fixed){ return iso.slice(0, fixed ? 10 : 7).replace(/-/g, "."); }
+  function g(t, note, iso, fixed, final){
+    return {d:dot(iso, fixed), t:t, note:fixed ? note : (note ? "예상 · " + note : "예상"), exact:iso, final:final};
+  }
+  var list = [
+    g("고등학교 입학", "내신이 쌓이기 시작", (E-2) + "-03-02", false),
+    g(prev + "학년도 수능", "선배들의 시험일 · 정확히 1년 전", examISO(prev), !!KNOWN[prev]),
+    g("고3 3월 전국연합학력평가", "", weekdayFrom(E, 3, 19, 4), false),
+    g("6월 모의평가", "첫 실전 지표", KNOWN[SUNEUNG + ".jun"] || weekdayFrom(E, 6, 1, 4), !!KNOWN[SUNEUNG + ".jun"]),
+    g("9월 모의평가", "마지막 조정 기회", KNOWN[SUNEUNG + ".sep"] || weekdayFrom(E, 9, 1, 4), !!KNOWN[SUNEUNG + ".sep"]),
+    g("수시 원서접수", "", weekdayFrom(E, 9, 8, 1), false),
+    g(SUNEUNG + "학년도 대학수학능력시험", EXAM_FIXED ? "확정 · 08:40 시작" : "예상 · 11월 중순 목요일 · 08:40 시작", EXAM_ISO, true, true)
+  ];
+  // 기록을 시작하기 전 일은 관문이 아니다
+  return list.filter(function(x){ return dayNoFromISO(x.exact) >= START_DAY; });
+})();
+
+(function initGrade(){
+  var sel = $("grade"), cur = gradeOf(SUNEUNG), h = "", i;
+  if(cur < 0 || cur > 5) h += '<option value="'+SUNEUNG+'" selected>'+SUNEUNG+'학년도</option>';
+  for(i=0;i<GRADES.length;i++){
+    var y = SCHOOL_YEAR + 1 + (5 - i);
+    h += '<option value="'+y+'"'+(i===cur?" selected":"")+'>'+GRADES[i]+'</option>';
+  }
+  sel.innerHTML = h;
+  sel.title = SUNEUNG + "학년도 수능 기준";
+  sel.addEventListener("change", function(){ pstore("suneung", sel.value); location.reload(); });
+})();
+
 /* ============ RENDER : hero + metrics ============ */
 var dayNo = kstDayNo(Date.now());
 var daysLeft = Math.max(0, EXAM_DAY - dayNo);
@@ -1058,9 +1107,14 @@ var elapsed = Math.min(TOTAL, Math.max(0, dayNo - START_DAY));
 var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 (function renderHero(){
-  var box = $("ddayBox");
+  var box = $("ddayBox"), when = EXAM_ISO.replace(/-/g, ".");
+  $("examTitle").textContent = SUNEUNG + "학년도 대학수학능력시험";
+  $("examWhen").textContent = when + " THU 08:40 KST" + (EXAM_FIXED ? "" : " · 예상");
+  $("tachRange").innerHTML = "Start " + isoOfDay(START_DAY).replace(/-/g, ".") + " &nbsp;—&nbsp; Redline " + when;
+
   if(daysLeft <= REDZONE) box.classList.add("redzone");
-  $("zoneChip").textContent = daysLeft <= REDZONE ? "REDLINE · 마지막 100일"
+  $("zoneChip").textContent = dayNo > EXAM_DAY      ? "시험 종료"
+                            : daysLeft <= REDZONE ? "REDLINE · 마지막 100일"
                             : daysLeft <= 300     ? "가속 구간"
                             : "장거리 구간";
 
@@ -1112,18 +1166,22 @@ renderHours();
 /* ============ RENDER : tachometer ============ */
 (function renderTach(){
   var pct = elapsed/TOTAL*100;
-  $("redzone").style.width = (REDZONE/TOTAL*100) + "%";
+  $("redzone").style.width = (Math.min(REDZONE, TOTAL)/TOTAL*100) + "%";   // 고3은 전체 구간이 100일보다 짧다
   var ticks = $("mticks"), html = "";
-  var y = 2026, m = 8; // Sep 2026
-  while(y < 2027 || (y === 2027 && m <= 10)){
+  var s = isoOfDay(START_DAY).split("-"), z = EXAM_ISO.split("-");
+  var y = +s[0], m = +s[1];            // 시작 다음 달 (0-based)
+  var zy = +z[0], zm = +z[1] - 1;
+  var span = (zy - y)*12 + (zm - m) + 1;
+  var step = span <= 18 ? 1 : span <= 36 ? 3 : 6;   // 중학생은 몇 년치라 매달 숫자를 달면 겹친다
+  while(y < zy || (y === zy && m <= zm)){
     var dn = Math.floor(Date.UTC(y,m,1)/86400000);
     var pos = (dn - START_DAY)/TOTAL*100;
     if(pos >= 0 && pos <= 100){
       var isYear = (m === 0);
-      var label = isYear ? "'27" : (m+1);
+      var label = isYear ? "'" + String(y).slice(2) : (m % step === 0 ? m+1 : "");
       var shift = pos < 1.5 ? "0%" : (pos > 98.5 ? "-100%" : "-50%");
       html += '<div class="mtick'+(isYear?" yr":"")+'" style="left:'+pos.toFixed(3)+'%">'
-            + '<i></i><b style="transform:translateX('+shift+')">'+label+'</b></div>';
+            + '<i></i>'+(label === "" ? "" : '<b style="transform:translateX('+shift+')">'+label+'</b>')+'</div>';
     }
     m++; if(m > 11){ m = 0; y++; }
   }
@@ -1254,10 +1312,6 @@ renderTodo();
   var P = 14, S = 11, GUT = 22, TOP = 20;   // 칸 간격 / 칸 크기 / 왼쪽 요일 여백 / 위 월 라벨
   var DOWL = ["","월","","수","","금",""];
 
-  function isoOfDay(dn){
-    var d = new Date(dn*86400000);
-    return d.getUTCFullYear() + "-" + pad(d.getUTCMonth()+1) + "-" + pad(d.getUTCDate());
-  }
   function getLog(){ try{ var r = JSON.parse(pstore("hlog")); if(r && typeof r === "object") return r; }catch(e){} return {}; }
   function setLog(l){ pstore("hlog", JSON.stringify(l)); }
   function target(){ return parseFloat(hoursIn.value) || 0; }
@@ -1378,6 +1432,7 @@ renderTodo();
   $("hmDate").addEventListener("change", function(){ selectDate($("hmDate").value); });
   hoursIn.addEventListener("input", render);               // 목표가 바뀌면 격자도 다시 칠한다
 
+  $("stTitle").textContent = "순공 기록 · " + TOTAL + "일";
   $("hmDate").min = isoOfDay(START_DAY);
   $("hmDate").max = isoOfDay(dayNo);
   selectDate(isoOfDay(dayNo));
@@ -1851,7 +1906,7 @@ renderTodo();
 /* ============ 백업 / 기기 간 옮기기 ============ */
 (function backup(){
   // 프로필 하나가 들고 있는 전부
-  var KEYS = ["tasks","check","done","goal","hours","hlog","exams","subjOrder2"];
+  var KEYS = ["tasks","check","done","goal","hours","hlog","exams","subjOrder2","suneung"];
   var pending = null;
 
   function say(msg, cls){ var e = $("bkMsg"); e.textContent = msg; e.className = cls || ""; }
