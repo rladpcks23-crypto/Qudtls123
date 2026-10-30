@@ -1,0 +1,13 @@
+{
+  "name": "suneung-prayer-ccm",
+  "version": "1.0.0",
+  "private": true,
+  "description": "수능 기도회 찬양 추천판 — 선교부 CCM 추천 모으기",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

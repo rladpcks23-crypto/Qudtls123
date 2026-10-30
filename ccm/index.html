@@ -1,0 +1,813 @@
+<title>수능 기도회 찬양 추천판</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+/* Layout: OMR 답안지 느낌 — 왼쪽(모바일은 위) 추천 카드 작성, 오른쪽 추천 목록. 순서는 OMR 마킹 동그라미, 확정은 칠한 동그라미. */
+:root {
+  --bg: #f2f3f8;
+  --surface: #ffffff;
+  --ink: #1b2140;
+  --muted: #5f6783;
+  --line: #dde0eb;
+  --accent: #c42d48;
+  --accent-ink: #ffffff;
+  --accent-soft: #fbe8ec;
+  --chip: #eceef6;
+  --font-display: "Gowun Batang", "Nanum Myeongjo", "AppleMyungjo", serif;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1228; --surface: #181c38; --ink: #eceef8; --muted: #9ba2c2; --line: #2a2f53;
+    --accent: #ff6f86; --accent-ink: #1a0d14; --accent-soft: #3a1d31; --chip: #232849;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1228; --surface: #181c38; --ink: #eceef8; --muted: #9ba2c2; --line: #2a2f53;
+  --accent: #ff6f86; --accent-ink: #1a0d14; --accent-soft: #3a1d31; --chip: #232849;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap {
+  max-width: 1120px; margin: 0 auto;
+  padding-block: 28px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 24px;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+a { color: inherit; }
+
+/* header */
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+.eyebrow { font-size: 12px; letter-spacing: .12em; color: var(--muted); font-weight: 600; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 5vw, 38px); line-height: 1.2; margin: 4px 0 0; text-wrap: balance; }
+.dday { display: flex; align-items: center; gap: 12px; border: 1.5px solid var(--accent); border-radius: var(--r); padding: 8px 14px; background: var(--surface); }
+.dday b { font-family: var(--font-mono); font-size: 26px; color: var(--accent); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.dday span { font-size: 13px; color: var(--muted); line-height: 1.35; }
+.stats { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); }
+.stats strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+.notice { font-size: 13px; color: var(--muted); background: var(--chip); border-radius: 8px; padding: 8px 12px; }
+.notice[data-tone="warn"] { background: var(--accent-soft); color: var(--ink); }
+
+.grid { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* form card */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+form.add { padding: 18px; display: grid; gap: 14px; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); }
+@media (max-width: 860px) { form.add { position: static; } }
+form.add h2 { font-family: var(--font-display); font-size: 19px; margin: 0; }
+.field { display: grid; gap: 5px; }
+.field label, .field .lab { font-size: 13px; font-weight: 600; }
+.field .hint { font-size: 12px; color: var(--muted); }
+.req { color: var(--accent); }
+input[type="text"], input[type="url"], input[type="search"], textarea, select {
+  width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px;
+  background: var(--bg);
+}
+textarea { resize: vertical; min-height: 64px; }
+.dup { font-size: 12.5px; background: var(--accent-soft); border-radius: 6px; padding: 6px 9px; }
+
+/* OMR bubbles */
+.bubbles { display: flex; flex-wrap: wrap; gap: 6px; }
+.bubbles input { position: absolute; opacity: 0; pointer-events: none; }
+.bubbles label {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px;
+  border: 1px solid var(--line); border-radius: 999px; font-size: 13px; font-weight: 500; cursor: pointer; background: var(--bg);
+}
+.bubbles input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bub {
+  display: inline-grid; place-items: center; flex: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  border: 1.5px solid var(--accent); color: var(--accent);
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 1;
+  background: transparent;
+}
+.bub.none { border-style: dashed; color: var(--muted); border-color: var(--muted); }
+.bubbles input:checked + label { border-color: var(--accent); }
+.bubbles input:checked + label .bub { background: var(--accent); color: var(--accent-ink); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: 1px solid var(--line); background: var(--surface); border-radius: 8px;
+  padding: 7px 12px; font-size: 13.5px; font-weight: 500; text-decoration: none; white-space: nowrap;
+}
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; padding: 10px 14px; font-size: 15px; }
+.btn.primary:hover { filter: brightness(1.05); }
+.btn.yt { border-color: var(--accent); color: var(--accent); }
+.btn.ghost { border-color: transparent; background: transparent; color: var(--muted); padding-inline: 8px; }
+.btn.ghost:hover { color: var(--ink); }
+.btn.danger { color: var(--accent); }
+.btn[disabled] { opacity: .5; cursor: default; }
+.yt-ico { width: 15px; height: 11px; flex: none; }
+
+/* toolbar */
+.toolbar { display: grid; gap: 12px; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tabs button {
+  border: 0; background: none; padding: 10px 12px; font-size: 14.5px; font-weight: 600; color: var(--muted);
+  border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap;
+}
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .n { font-family: var(--font-mono); font-size: 12px; margin-left: 4px; color: var(--muted); }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.filters input[type="search"] { flex: 1 1 200px; min-width: 0; background: var(--surface); }
+.chiprow { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); background: var(--surface);
+  border-radius: 999px; padding: 3px 10px 3px 4px; font-size: 12.5px; font-weight: 500;
+}
+.chip.plain { padding: 3px 10px; }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.chip .bub { width: 18px; height: 18px; font-size: 10px; }
+select.sort { width: auto; background: var(--surface); padding: 6px 10px; font-size: 13px; }
+
+/* song list */
+.list { display: grid; gap: 12px; }
+.song { padding: 14px 16px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; }
+.song.picked { border-color: var(--accent); }
+.thumb {
+  grid-row: span 3; width: 112px; aspect-ratio: 16 / 9; max-width: 100%; border-radius: 6px; overflow: hidden;
+  background: var(--chip); display: grid; place-items: center; text-decoration: none; position: relative;
+}
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb .play { width: 34px; height: 24px; }
+.thumb.nolink { color: var(--muted); font-size: 11px; text-align: center; padding: 4px; }
+@media (max-width: 520px) {
+  .song { grid-template-columns: minmax(0, 1fr); }
+  .thumb { grid-row: auto; width: 100%; }
+}
+.song-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-width: 0; }
+.song-title { font-family: var(--font-display); font-weight: 700; font-size: 19px; line-height: 1.3; overflow-wrap: anywhere; }
+.song-artist { color: var(--muted); font-size: 14px; }
+.count { font-family: var(--font-mono); font-size: 12px; color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 0 8px; white-space: nowrap; }
+.who { display: grid; gap: 4px; font-size: 13.5px; min-width: 0; }
+.who-row { display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; }
+.who-name { font-weight: 600; }
+.who-part { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+.who-part .bub { width: 16px; height: 16px; font-size: 9.5px; border-width: 1.2px; }
+.who-note { color: var(--muted); overflow-wrap: anywhere; }
+.who-row .btn { padding: 0 6px; font-size: 12.5px; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
+.pick { display: inline-flex; align-items: center; gap: 6px; }
+.pick .bub { width: 18px; height: 18px; }
+.pick[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.pick[aria-pressed="true"] .bub { background: var(--accent); }
+
+/* by person */
+.person { padding: 14px 16px; display: grid; gap: 8px; }
+.person h3 { margin: 0; font-family: var(--font-display); font-size: 18px; display: flex; gap: 8px; align-items: baseline; }
+.person h3 small { font-family: var(--font-mono); font-size: 12px; color: var(--muted); font-weight: 500; }
+.prow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding-top: 8px; border-top: 1px dashed var(--line); }
+.prow .t { min-width: 0; }
+.prow .t b { font-weight: 600; overflow-wrap: anywhere; }
+.prow .t span { color: var(--muted); font-size: 13px; }
+.prow .t .who-note { font-size: 12.5px; }
+.prow .links { display: flex; gap: 6px; flex-wrap: wrap; justify-content: end; }
+@media (max-width: 520px) { .prow { grid-template-columns: auto minmax(0, 1fr); } .prow .links { grid-column: 2; justify-content: start; } }
+
+/* setlist */
+.setlist { padding: 16px 18px; display: grid; gap: 16px; }
+.setlist-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; align-items: center; }
+.setlist-head h3 { margin: 0; font-family: var(--font-display); font-size: 20px; }
+.sec { display: grid; gap: 6px; }
+.sec-h { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+.sec-h .bub { background: var(--accent); color: var(--accent-ink); }
+.sec ol { margin: 0; padding-left: 38px; display: grid; gap: 4px; }
+.sec li { overflow-wrap: anywhere; }
+.sec li span { color: var(--muted); font-size: 13.5px; }
+.sec li a { font-size: 13px; color: var(--accent); margin-left: 6px; }
+.sec .empty-line { padding-left: 38px; color: var(--muted); font-size: 13px; }
+
+.empty { padding: 32px 20px; text-align: center; color: var(--muted); display: grid; gap: 6px; justify-items: center; }
+.empty b { color: var(--ink); font-family: var(--font-display); font-size: 18px; }
+
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink); color: var(--bg); border-radius: 999px; padding: 9px 18px; font-size: 14px;
+  box-shadow: 0 6px 24px rgb(0 0 0 / .18); z-index: 20; max-width: calc(100% - 32px);
+}
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: no-preference) {
+  .toast { animation: rise .2s ease-out; }
+  @keyframes rise { from { transform: translate(-50%, 8px); opacity: 0; } }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">선교부 · 수능 기도회</div>
+      <h1>수능 기도회 찬양 추천판</h1>
+    </div>
+    <div class="dday" id="dday" hidden>
+      <b id="dday-n"></b>
+      <span id="dday-t"></span>
+    </div>
+  </header>
+
+  <div class="stats" id="stats" aria-live="polite">
+    <span>추천 곡 <strong id="st-songs">0</strong></span>
+    <span>추천한 사람 <strong id="st-people">0</strong></span>
+    <span>확정 <strong id="st-picked">0</strong></span>
+  </div>
+  <div class="notice" id="notice" hidden></div>
+
+  <div class="grid">
+    <form class="add card" id="add-form" novalidate>
+      <h2>찬양 추천하기</h2>
+      <div class="field">
+        <label for="f-name">추천하는 사람 <span class="req">*</span></label>
+        <input type="text" id="f-name" maxlength="20" placeholder="예: 2학년 김OO" autocomplete="name" required>
+      </div>
+      <div class="field">
+        <label for="f-title">곡 제목 <span class="req">*</span></label>
+        <input type="text" id="f-title" maxlength="80" placeholder="예: 오직 주의 사랑에 매여" required>
+        <div class="dup" id="dup" hidden></div>
+      </div>
+      <div class="field">
+        <label for="f-artist">부른 사람 / 팀</label>
+        <input type="text" id="f-artist" maxlength="60" placeholder="예: 마커스워십">
+      </div>
+      <div class="field">
+        <label for="f-url">링크</label>
+        <input type="url" id="f-url" maxlength="500" placeholder="유튜브 주소를 붙여넣으세요" inputmode="url">
+        <span class="hint">비워 두면 제목으로 유튜브 검색 버튼이 생겨요.</span>
+      </div>
+      <div class="field">
+        <span class="lab" id="f-part-lab">기도회 순서</span>
+        <div class="bubbles" id="f-part" role="radiogroup" aria-labelledby="f-part-lab"></div>
+      </div>
+      <div class="field">
+        <label for="f-note">추천 이유</label>
+        <textarea id="f-note" maxlength="200" placeholder="예: 후렴 가사가 수험생들한테 위로가 될 것 같아요"></textarea>
+      </div>
+      <button class="btn primary" type="submit" id="f-submit">추천 올리기</button>
+    </form>
+
+    <section class="toolbar" aria-label="추천 목록">
+      <div class="tabs" role="tablist" id="tabs">
+        <button role="tab" id="tab-songs" data-view="songs" aria-selected="true">곡별<span class="n" id="n-songs"></span></button>
+        <button role="tab" id="tab-people" data-view="people" aria-selected="false">추천인별<span class="n" id="n-people"></span></button>
+        <button role="tab" id="tab-set" data-view="set" aria-selected="false">확정 콘티<span class="n" id="n-set"></span></button>
+      </div>
+      <div class="filters" id="filters">
+        <label class="sr" for="q">검색</label>
+        <input type="search" id="q" placeholder="곡 제목, 가수, 추천인 검색">
+        <label class="sr" for="sort">정렬</label>
+        <select class="sort" id="sort">
+          <option value="count">추천 많은 순</option>
+          <option value="recent">최근 추천 순</option>
+          <option value="title">제목 가나다순</option>
+        </select>
+      </div>
+      <div class="chiprow" id="partfilter" aria-label="순서로 거르기"></div>
+      <div class="list" id="list">
+        <div class="card empty"><b>불러오는 중…</b></div>
+      </div>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // 2027학년도 수능: 2026-11-19(목) 08:40 KST
+  var EXAM = new Date("2026-11-19T08:40:00+09:00");
+  var PARTS = [
+    { k: 1, n: "여는 찬양" },
+    { k: 2, n: "경배" },
+    { k: 3, n: "기도" },
+    { k: 4, n: "위로·축복" },
+    { k: 5, n: "마무리" }
+  ];
+  var PART_NAME = {}; PARTS.forEach(function (p) { PART_NAME[p.k] = p.n; });
+  var LIMITS = { by: 20, title: 80, artist: 60, url: 500, note: 200 };
+
+  var $ = function (id) { return document.getElementById(id); };
+  function h(tag, attrs) {
+    var el = document.createElement(tag);
+    if (attrs) for (var k in attrs) {
+      var v = attrs[k];
+      if (v == null || v === false) continue;
+      if (k === "text") el.textContent = v;
+      else if (k === "class") el.className = v;
+      else if (k.slice(0, 2) === "on") el.addEventListener(k.slice(2), v);
+      else el.setAttribute(k, v === true ? "" : v);
+    }
+    for (var i = 2; i < arguments.length; i++) {
+      var c = arguments[i];
+      if (c == null || c === false) continue;
+      if (Array.isArray(c)) c.forEach(function (x) { if (x != null && x !== false) el.append(x); });
+      else el.append(c);
+    }
+    return el;
+  }
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+  var toastTimer;
+  function toast(msg) {
+    var t = $("toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.hidden = true; }, 2600);
+  }
+  function notice(msg, tone) {
+    var n = $("notice"); n.textContent = msg || ""; n.hidden = !msg;
+    if (tone) n.setAttribute("data-tone", tone); else n.removeAttribute("data-tone");
+  }
+
+  /* ---------- links ---------- */
+  function cleanUrl(s) {
+    s = String(s || "").trim();
+    if (!s) return "";
+    if (!/^https?:\/\//i.test(s)) s = "https://" + s;
+    try { var u = new URL(s); return /^https?:$/.test(u.protocol) ? u.href : ""; } catch (e) { return ""; }
+  }
+  function ytId(url) {
+    if (!url) return null;
+    try {
+      var u = new URL(url), host = u.hostname.replace(/^www\.|^m\.|^music\./, ""), m;
+      if (host === "youtu.be") m = u.pathname.slice(1).split("/")[0];
+      else if (host === "youtube.com" || host === "youtube-nocookie.com") {
+        m = u.searchParams.get("v");
+        if (!m) { var p = u.pathname.match(/^\/(?:shorts|embed|live|v)\/([^/?#]+)/); m = p && p[1]; }
+      }
+      return m && /^[\w-]{11}$/.test(m) ? m : null;
+    } catch (e) { return null; }
+  }
+  function ytSearch(s) {
+    return "https://www.youtube.com/results?search_query=" + encodeURIComponent((s.title + " " + (s.artist || "")).trim());
+  }
+  function hostOf(url) { try { return new URL(url).hostname.replace(/^www\./, ""); } catch (e) { return "링크"; } }
+  var YT_SVG = '<svg class="yt-ico" viewBox="0 0 30 21" aria-hidden="true"><rect width="30" height="21" rx="5" fill="currentColor"/><path d="M12 6v9l8-4.5z" fill="var(--surface)"/></svg>';
+  function ytIcon() { var s = h("span"); s.innerHTML = YT_SVG; return s.firstChild; }
+
+  function linkButtons(s) {
+    var out = [];
+    var id = ytId(s.url);
+    if (id) out.push(h("a", { class: "btn yt", href: "https://www.youtube.com/watch?v=" + id, target: "_blank", rel: "noopener" }, ytIcon(), "유튜브에서 듣기"));
+    else if (s.url) {
+      out.push(h("a", { class: "btn", href: s.url, target: "_blank", rel: "noopener", text: hostOf(s.url) + " 열기 ↗" }));
+      out.push(h("a", { class: "btn ghost", href: ytSearch(s), target: "_blank", rel: "noopener" }, ytIcon(), "검색"));
+    } else out.push(h("a", { class: "btn yt", href: ytSearch(s), target: "_blank", rel: "noopener" }, ytIcon(), "유튜브 검색"));
+    return out;
+  }
+
+  /* ---------- stores ---------- */
+  // 같은 페이지가 세 곳에서 돌아갑니다:
+  //  1) claude.ai 아티팩트 — 공유 db
+  //  2) server.js 로 띄운 서버 — /api/songs
+  //  3) 그 외(파일로 열기 등) — 이 브라우저에만 저장
+  function clientId() {
+    var id = lsGet("ccm-client-id");
+    if (!id) { id = "c" + Math.random().toString(36).slice(2, 12); lsSet("ccm-client-id", id); }
+    return id;
+  }
+
+  function dbStore(db, user) {
+    var col = db.collection("songs");
+    return {
+      mode: "db",
+      init: function () {
+        var self = this;
+        if (!user) { self.me = null; self.canWrite = true; self.isAdmin = false; return Promise.resolve(); }
+        return Promise.all([user.id(), user.can("data.write"), user.canEdit()]).then(function (r) {
+          self.me = r[0]; self.canWrite = r[1] !== false; self.isAdmin = !!r[2];
+        });
+      },
+      subscribe: function (cb, err) {
+        return col.onSnapshot(function (snap) {
+          cb(snap.docs.map(function (d) { var o = Object.assign({}, d.data()); o.id = d.id; return o; }));
+        }, err);
+      },
+      add: function (d) { return col.add(d); },
+      update: function (id, p) { return col.doc(id).update(p); },
+      remove: function (id) { return col.doc(id).delete(); }
+    };
+  }
+
+  function serverStore() {
+    var timer, rev = null, cb;
+    function pull() {
+      return fetch("api/songs", { cache: "no-store" }).then(function (r) {
+        if (!r.ok) throw new Error(r.status);
+        return r.json();
+      }).then(function (j) {
+        if (j.rev !== rev) { rev = j.rev; cb(j.songs); }
+      });
+    }
+    function send(method, path, body) {
+      return fetch(path, {
+        method: method, headers: { "content-type": "application/json" },
+        body: body ? JSON.stringify(body) : undefined
+      }).then(function (r) {
+        if (!r.ok) return r.json().catch(function () { return {}; }).then(function (j) { throw new Error(j.error || ("오류 " + r.status)); });
+        return pull();
+      });
+    }
+    return {
+      mode: "server", me: clientId(), canWrite: true, isAdmin: false,
+      init: function () { return Promise.resolve(); },
+      subscribe: function (fn, err) {
+        cb = fn;
+        var tick = function () { pull().catch(err); };
+        tick(); timer = setInterval(tick, 4000);
+        document.addEventListener("visibilitychange", function () { if (!document.hidden) tick(); });
+        return function () { clearInterval(timer); };
+      },
+      add: function (d) { return send("POST", "api/songs", d); },
+      update: function (id, p) { return send("PATCH", "api/songs/" + encodeURIComponent(id), p); },
+      remove: function (id) { return send("DELETE", "api/songs/" + encodeURIComponent(id)); }
+    };
+  }
+
+  function localStore() {
+    var KEY = "ccm-local-songs", mem = [], cb;
+    try { mem = JSON.parse(lsGet(KEY) || "[]") || []; } catch (e) { mem = []; }
+    function save() { lsSet(KEY, JSON.stringify(mem)); cb && cb(mem.slice()); return Promise.resolve(); }
+    return {
+      mode: "local", me: clientId(), canWrite: true, isAdmin: true,
+      init: function () { return Promise.resolve(); },
+      subscribe: function (fn) { cb = fn; fn(mem.slice()); return function () {}; },
+      add: function (d) { d.id = "l" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); mem.push(d); return save(); },
+      update: function (id, p) { mem = mem.map(function (s) { return s.id === id ? Object.assign({}, s, p) : s; }); return save(); },
+      remove: function (id) { mem = mem.filter(function (s) { return s.id !== id; }); return save(); }
+    };
+  }
+
+  function pickStore() {
+    if (window.claude && typeof window.claude.use === "function") {
+      return Promise.all([window.claude.use("db"), window.claude.use("user")]).then(function (r) {
+        if (r[0]) return dbStore(r[0], r[1]);
+        var s = localStore(); s.why = "signedout"; return s;
+      });
+    }
+    return fetch("api/songs", { cache: "no-store" }).then(function (r) {
+      if (r.ok && (r.headers.get("content-type") || "").indexOf("json") >= 0) return serverStore();
+      throw 0;
+    }).catch(function () { var s = localStore(); s.why = "file"; return s; });
+  }
+
+  /* ---------- state ---------- */
+  var store = null;
+  var songs = [];
+  var ui = { view: "songs", q: "", part: "all", sort: lsGet("ccm-sort") || "count" };
+
+  function norm(s) { return String(s || "").toLowerCase().replace(/[\s~!@#$%^&*()_+\-=\[\]{};:'",.<>/?\\|`·…]/g, ""); }
+  function groupSongs(list) {
+    var map = new Map();
+    list.forEach(function (s) {
+      var k = norm(s.title);
+      if (!k) return;
+      if (!map.has(k)) map.set(k, { key: k, entries: [] });
+      map.get(k).entries.push(s);
+    });
+    var groups = Array.from(map.values());
+    groups.forEach(function (g) {
+      g.entries.sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
+      var first = g.entries[0];
+      g.title = first.title;
+      g.artist = (g.entries.find(function (e) { return e.artist; }) || {}).artist || "";
+      g.url = (g.entries.find(function (e) { return ytId(e.url); }) || g.entries.find(function (e) { return e.url; }) || {}).url || "";
+      g.picked = g.entries.some(function (e) { return e.picked; });
+      g.latest = Math.max.apply(null, g.entries.map(function (e) { return e.createdAt || 0; }));
+      g.people = Array.from(new Set(g.entries.map(function (e) { return e.by; })));
+      var counts = {};
+      g.entries.forEach(function (e) { if (e.part) counts[e.part] = (counts[e.part] || 0) + 1; });
+      g.part = Number(Object.keys(counts).sort(function (a, b) { return counts[b] - counts[a] || a - b; })[0]) || 0;
+    });
+    return groups;
+  }
+  function matches(s, q) {
+    return !q || norm(s.title).indexOf(q) >= 0 || norm(s.artist).indexOf(q) >= 0 || norm(s.by).indexOf(q) >= 0;
+  }
+
+  function bub(k, extra) {
+    return h("span", { class: "bub" + (k ? "" : " none") + (extra ? " " + extra : ""), "aria-hidden": "true", text: k ? String(k) : "–" });
+  }
+  function partTag(k) {
+    return h("span", { class: "who-part" }, bub(k), k ? PART_NAME[k] : "순서 미정");
+  }
+  function canDelete(s) { return store && (store.isAdmin || (s.createdBy && s.createdBy === store.me)); }
+
+  function deleteButton(s) {
+    if (!store || !store.canWrite || !canDelete(s)) return null;
+    var armed = false, t;
+    var b = h("button", { class: "btn ghost danger", type: "button", text: "삭제" });
+    b.addEventListener("click", function () {
+      if (!armed) {
+        armed = true; b.textContent = "한 번 더 누르면 삭제"; clearTimeout(t);
+        t = setTimeout(function () { armed = false; b.textContent = "삭제"; }, 3000);
+        return;
+      }
+      b.disabled = true;
+      store.remove(s.id).then(function () { toast("삭제했어요"); }).catch(function (e) { b.disabled = false; toast(errMsg(e)); });
+    });
+    return b;
+  }
+
+  function pickButton(g) {
+    if (!store || !store.canWrite) return g.picked ? h("span", { class: "chip plain", text: "확정됨" }) : null;
+    var b = h("button", { class: "btn pick", type: "button", "aria-pressed": g.picked ? "true" : "false", title: "확정 콘티에 넣기/빼기" },
+      h("span", { class: "bub", "aria-hidden": "true" }), g.picked ? "콘티 확정" : "콘티에 넣기");
+    b.addEventListener("click", function () {
+      b.disabled = true;
+      var val = !g.picked, chain = Promise.resolve();
+      g.entries.forEach(function (e) { chain = chain.then(function () { return store.update(e.id, { picked: val }); }); });
+      chain.then(function () { toast(val ? "‘" + g.title + "’ 콘티에 넣었어요" : "콘티에서 뺐어요"); })
+        .catch(function (e) { b.disabled = false; toast(errMsg(e)); });
+    });
+    return b;
+  }
+
+  function thumb(g) {
+    var id = ytId(g.url);
+    var href = id ? "https://www.youtube.com/watch?v=" + id : (g.url || ytSearch(g));
+    var a = h("a", { class: "thumb" + (id ? "" : " nolink"), href: href, target: "_blank", rel: "noopener", "aria-label": g.title + " 듣기" });
+    if (id && store && store.mode !== "db") {
+      // 아티팩트 안에서는 외부 이미지가 막혀 있어 서버/파일 모드에서만 썸네일을 씁니다
+      var img = h("img", { src: "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg", alt: "", loading: "lazy" });
+      img.addEventListener("error", function () { img.replaceWith(playGlyph()); });
+      a.append(img);
+    } else if (id) a.append(playGlyph());
+    else a.append(g.url ? hostOf(g.url) : "유튜브에서 찾기");
+    return a;
+  }
+  function playGlyph() { var s = h("span"); s.innerHTML = YT_SVG.replace('class="yt-ico"', 'class="play" style="color:var(--accent)"'); return s.firstChild; }
+
+  /* ---------- views ---------- */
+  function renderSongs(list) {
+    var q = norm(ui.q);
+    var groups = groupSongs(songs).filter(function (g) {
+      if (ui.part !== "all" && g.part !== Number(ui.part) && !g.entries.some(function (e) { return (e.part || 0) === Number(ui.part); })) return false;
+      return !q || g.entries.some(function (e) { return matches(e, q); });
+    });
+    groups.sort(function (a, b) {
+      if (ui.sort === "title") return a.title.localeCompare(b.title, "ko");
+      if (ui.sort === "recent") return b.latest - a.latest;
+      return b.people.length - a.people.length || b.latest - a.latest;
+    });
+    if (!groups.length) return list.append(emptyCard());
+    groups.forEach(function (g) {
+      var who = h("div", { class: "who" }, g.entries.map(function (e) {
+        return h("div", { class: "who-row" },
+          h("span", { class: "who-name", text: e.by }),
+          partTag(e.part || 0),
+          e.note ? h("span", { class: "who-note", text: "“" + e.note + "”" }) : null,
+          deleteButton(e));
+      }));
+      list.append(h("article", { class: "card song" + (g.picked ? " picked" : "") },
+        thumb(g),
+        h("div", { class: "song-head" },
+          h("span", { class: "song-title", text: g.title }),
+          g.artist ? h("span", { class: "song-artist", text: g.artist }) : null,
+          h("span", { class: "count", text: g.people.length + "명 추천" })),
+        who,
+        h("div", { class: "actions" }, linkButtons(g), pickButton(g))
+      ));
+    });
+  }
+
+  function renderPeople(list) {
+    var q = norm(ui.q);
+    var byName = new Map();
+    songs.forEach(function (s) {
+      if (ui.part !== "all" && (s.part || 0) !== Number(ui.part)) return;
+      if (!matches(s, q)) return;
+      var k = s.by || "이름 없음";
+      if (!byName.has(k)) byName.set(k, []);
+      byName.get(k).push(s);
+    });
+    var people = Array.from(byName.entries());
+    people.sort(function (a, b) { return b[1].length - a[1].length || a[0].localeCompare(b[0], "ko"); });
+    if (!people.length) return list.append(emptyCard());
+    people.forEach(function (p) {
+      p[1].sort(function (a, b) { return (a.part || 9) - (b.part || 9) || (a.createdAt || 0) - (b.createdAt || 0); });
+      list.append(h("article", { class: "card person" },
+        h("h3", null, p[0], h("small", { text: p[1].length + "곡" })),
+        p[1].map(function (s) {
+          return h("div", { class: "prow" },
+            bub(s.part || 0),
+            h("div", { class: "t" },
+              h("b", { text: s.title }), s.artist ? h("span", { text: " · " + s.artist }) : null,
+              s.note ? h("div", { class: "who-note", text: "“" + s.note + "”" }) : null),
+            h("div", { class: "links" }, linkButtons(s), deleteButton(s)));
+        })));
+    });
+  }
+
+  function setlistGroups() {
+    var picked = groupSongs(songs).filter(function (g) { return g.picked; });
+    picked.sort(function (a, b) { return (a.part || 9) - (b.part || 9) || a.title.localeCompare(b.title, "ko"); });
+    return picked;
+  }
+  function setlistText(picked) {
+    var lines = ["[수능 기도회 찬양 콘티]"];
+    PARTS.concat([{ k: 0, n: "순서 미정" }]).forEach(function (p) {
+      var items = picked.filter(function (g) { return (g.part || 0) === p.k; });
+      if (!items.length) return;
+      lines.push("", (p.k ? p.k + ". " : "") + p.n);
+      items.forEach(function (g) {
+        var id = ytId(g.url);
+        lines.push("- " + g.title + (g.artist ? " / " + g.artist : "") + (id ? "  https://youtu.be/" + id : g.url ? "  " + g.url : ""));
+      });
+    });
+    return lines.join("\n");
+  }
+  function renderSet(list) {
+    var picked = setlistGroups();
+    if (!picked.length) {
+      list.append(h("div", { class: "card empty" },
+        h("b", { text: "아직 확정된 곡이 없어요" }),
+        h("span", { text: "곡별 목록에서 ‘콘티에 넣기’를 누르면 기도회 순서대로 여기에 정리돼요." })));
+      return;
+    }
+    var copyBtn = h("button", { class: "btn", type: "button", text: "카톡용 텍스트 복사" });
+    var txt = setlistText(picked);
+    var pre = h("textarea", { id: "set-text", class: "sr", readonly: true, "aria-label": "콘티 텍스트" }); pre.value = txt;
+    copyBtn.addEventListener("click", function () {
+      var done = function () { toast("콘티를 복사했어요"); };
+      var fallback = function () { pre.classList.remove("sr"); pre.rows = 8; pre.focus(); pre.select(); toast("선택된 텍스트를 복사하세요"); };
+      try { navigator.clipboard.writeText(txt).then(done, fallback); } catch (e) { fallback(); }
+    });
+    var card = h("article", { class: "card setlist" },
+      h("div", { class: "setlist-head" }, h("h3", { text: "확정 콘티 · " + picked.length + "곡" }), copyBtn));
+    PARTS.concat([{ k: 0, n: "순서 미정" }]).forEach(function (p) {
+      var items = picked.filter(function (g) { return (g.part || 0) === p.k; });
+      if (!items.length && p.k === 0) return;
+      card.append(h("div", { class: "sec" },
+        h("div", { class: "sec-h" }, bub(p.k), p.n),
+        items.length ? h("ol", null, items.map(function (g) {
+          var id = ytId(g.url);
+          return h("li", null, g.title, g.artist ? h("span", { text: " · " + g.artist }) : null,
+            h("a", { href: id ? "https://www.youtube.com/watch?v=" + id : (g.url || ytSearch(g)), target: "_blank", rel: "noopener", text: id ? "유튜브 ↗" : g.url ? "링크 ↗" : "검색 ↗" }));
+        })) : h("div", { class: "empty-line", text: "비어 있음" })));
+    });
+    card.append(pre);
+    list.append(card);
+  }
+
+  function emptyCard() {
+    if (!songs.length) return h("div", { class: "card empty" },
+      h("b", { text: "아직 추천된 찬양이 없어요" }),
+      h("span", { text: "왼쪽(모바일은 위) 칸에 이름과 곡 제목을 적어 첫 추천을 올려 주세요." }));
+    return h("div", { class: "card empty" }, h("b", { text: "조건에 맞는 곡이 없어요" }), h("span", { text: "검색어나 순서 필터를 바꿔 보세요." }));
+  }
+
+  function render() {
+    var groups = groupSongs(songs);
+    var people = new Set(songs.map(function (s) { return s.by; }));
+    var picked = groups.filter(function (g) { return g.picked; }).length;
+    $("st-songs").textContent = groups.length;
+    $("st-people").textContent = people.size;
+    $("st-picked").textContent = picked;
+    $("n-songs").textContent = groups.length;
+    $("n-people").textContent = people.size;
+    $("n-set").textContent = picked;
+    document.querySelectorAll("#tabs button").forEach(function (b) { b.setAttribute("aria-selected", b.dataset.view === ui.view ? "true" : "false"); });
+    $("filters").hidden = ui.view === "set";
+    $("partfilter").hidden = ui.view === "set";
+    $("sort").hidden = ui.view !== "songs";
+    document.querySelectorAll("#partfilter .chip").forEach(function (c) { c.setAttribute("aria-pressed", c.dataset.part === String(ui.part) ? "true" : "false"); });
+
+    var list = $("list");
+    list.replaceChildren();
+    if (ui.view === "songs") renderSongs(list);
+    else if (ui.view === "people") renderPeople(list);
+    else renderSet(list);
+    checkDup();
+  }
+
+  /* ---------- form ---------- */
+  function buildPartPickers() {
+    var box = $("f-part");
+    PARTS.concat([{ k: 0, n: "미정" }]).forEach(function (p) {
+      var id = "f-part-" + p.k;
+      var input = h("input", { type: "radio", name: "part", id: id, value: String(p.k) });
+      if (p.k === 0) input.checked = true;
+      box.append(input, h("label", { for: id }, bub(p.k), p.n));
+    });
+    var pf = $("partfilter");
+    [{ k: "all", n: "전체" }].concat(PARTS, [{ k: 0, n: "미정" }]).forEach(function (p) {
+      var c = h("button", { type: "button", class: "chip" + (p.k === "all" ? " plain" : ""), "data-part": String(p.k), "aria-pressed": "false" },
+        p.k === "all" ? null : bub(p.k), p.n);
+      c.addEventListener("click", function () { ui.part = String(p.k); render(); });
+      pf.append(c);
+    });
+  }
+
+  function checkDup() {
+    var t = norm($("f-title").value), d = $("dup");
+    if (!t) { d.hidden = true; return; }
+    var g = groupSongs(songs).find(function (x) { return x.key === t; });
+    if (!g) { d.hidden = true; return; }
+    d.textContent = "이미 " + g.people.join(", ") + "님이 추천한 곡이에요. 올리면 같은 곡에 추천이 하나 더 붙어요.";
+    d.hidden = false;
+  }
+
+  function errMsg(e) {
+    var c = e && e.code;
+    if (c === "quota_exceeded") return "저장 공간이 가득 찼어요. 오래된 추천을 지워 주세요.";
+    if (c === "invalid_argument") return "저장할 권한이 없어요. 공유한 사람에게 편집 권한을 요청하세요.";
+    if (c === "revoked") return "접근 권한이 바뀌었어요. 새로고침해 주세요.";
+    return (e && e.message) ? "저장하지 못했어요: " + e.message : "저장하지 못했어요. 잠시 후 다시 시도해 주세요.";
+  }
+
+  $("f-name").value = lsGet("ccm-name") || "";
+  $("f-title").addEventListener("input", checkDup);
+  $("add-form").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    if (!store) return;
+    var by = $("f-name").value.trim(), title = $("f-title").value.trim();
+    if (!by) { $("f-name").focus(); toast("추천하는 사람 이름을 적어 주세요"); return; }
+    if (!title) { $("f-title").focus(); toast("곡 제목을 적어 주세요"); return; }
+    var rawUrl = $("f-url").value.trim(), url = cleanUrl(rawUrl);
+    if (rawUrl && !url) { $("f-url").focus(); toast("링크 주소가 올바르지 않아요"); return; }
+    var partEl = document.querySelector('#f-part input:checked');
+    var doc = {
+      by: by.slice(0, LIMITS.by), title: title.slice(0, LIMITS.title),
+      artist: $("f-artist").value.trim().slice(0, LIMITS.artist),
+      url: url.slice(0, LIMITS.url),
+      part: partEl ? Number(partEl.value) : 0,
+      note: $("f-note").value.trim().slice(0, LIMITS.note),
+      picked: false, createdAt: Date.now(), createdBy: store.me || null
+    };
+    // 이미 확정된 곡에 추천을 더하면 같이 확정 상태로
+    var g = groupSongs(songs).find(function (x) { return x.key === norm(title); });
+    if (g && g.picked) doc.picked = true;
+    var btn = $("f-submit"); btn.disabled = true;
+    lsSet("ccm-name", by);
+    store.add(doc).then(function () {
+      ["f-title", "f-artist", "f-url", "f-note"].forEach(function (id) { $(id).value = ""; });
+      $("f-part-0").checked = true;
+      $("dup").hidden = true;
+      toast("‘" + doc.title + "’ 추천을 올렸어요");
+    }).catch(function (e) { toast(errMsg(e)); if (e && e.code === "invalid_argument") setReadOnly(); })
+      .then(function () { btn.disabled = false; });
+  });
+
+  function setReadOnly() {
+    store.canWrite = false;
+    $("add-form").querySelectorAll("input, textarea, button").forEach(function (el) { el.disabled = true; });
+    notice("이 링크는 보기 전용이에요. 추천을 올리려면 공유한 사람에게 편집 권한을 받아야 해요.", "warn");
+    render();
+  }
+
+  $("tabs").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-view]"); if (!b) return;
+    ui.view = b.dataset.view; render();
+  });
+  $("q").addEventListener("input", function () { ui.q = this.value; render(); });
+  $("sort").value = ui.sort;
+  $("sort").addEventListener("change", function () { ui.sort = this.value; lsSet("ccm-sort", ui.sort); render(); });
+
+  /* ---------- D-day ---------- */
+  (function dday() {
+    var now = new Date();
+    var kst = function (d) { return new Date(d.getTime() + 9 * 3600e3).toISOString().slice(0, 10); };
+    var days = Math.round((Date.parse(kst(EXAM)) - Date.parse(kst(now))) / 86400e3);
+    var box = $("dday");
+    if (days > 0) { $("dday-n").textContent = "D-" + days; $("dday-t").textContent = "2027학년도 수능\n11월 19일(목)"; }
+    else if (days === 0) { $("dday-n").textContent = "D-DAY"; $("dday-t").textContent = "오늘 수능이에요.\n모두 응원해요!"; }
+    else return;
+    $("dday-t").style.whiteSpace = "pre-line";
+    box.hidden = false;
+  })();
+
+  /* ---------- boot ---------- */
+  buildPartPickers();
+  render();
+  pickStore().then(function (s) {
+    store = s;
+    return s.init().then(function () {
+      if (s.mode === "local") {
+        notice(s.why === "signedout"
+          ? "로그인하지 않아 추천이 이 기기에만 저장돼요. 다른 사람과 같이 보려면 claude.ai에 로그인해서 열어 주세요."
+          : "서버 없이 열려서 추천이 이 브라우저에만 저장돼요. 같이 쓰려면 server.js 로 서버를 띄워 주세요.", "warn");
+      }
+      if (!s.canWrite) setReadOnly();
+      s.subscribe(function (list) {
+        songs = list.filter(function (x) { return x && x.title && x.by; });
+        render();
+      }, function (e) { notice(errMsg(e), "warn"); });
+    });
+  }).catch(function (e) { notice(errMsg(e), "warn"); });
+})();
+</script>
