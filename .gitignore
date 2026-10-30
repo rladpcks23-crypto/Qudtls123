@@ -1,3 +1,4 @@
 android/.release.keystore
 android/dist/app-unsigned.apk
 ccm/data/
+ccm/dist/

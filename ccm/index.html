@@ -438,6 +438,65 @@ select.sort { width: auto; background: var(--surface); padding: 6px 10px; font-s
     };
   }
 
+  // 인터넷 배포판: build-web.sh 가 window.CCM_SUPABASE = {url, key} 를 넣어 줍니다.
+  function supabaseStore(cfg) {
+    var base = cfg.url.replace(/\/+$/, "") + "/rest/v1/";
+    var hdr = { apikey: cfg.key, "content-type": "application/json" };
+    if (!/^sb_publishable_/.test(cfg.key)) hdr.authorization = "Bearer " + cfg.key;
+    var COLS = "id,recommender,title,artist,url,part,note,picked,created_by,created_at";
+    var secret = lsGet("ccm-secret");
+    if (!secret) {
+      var a = new Uint8Array(24); crypto.getRandomValues(a);
+      secret = Array.from(a, function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+      lsSet("ccm-secret", secret);
+    }
+    var cb, last = "", timer;
+    function req(path, opts) {
+      return fetch(base + path, Object.assign({ headers: hdr, cache: "no-store" }, opts)).then(function (r) {
+        if (!r.ok) return r.json().catch(function () { return {}; }).then(function (j) { throw new Error(j.message || ("오류 " + r.status)); });
+        return r.status === 204 ? null : r.json();
+      });
+    }
+    function rpc(name, args) { return req("rpc/" + name, { method: "POST", body: JSON.stringify(args) }); }
+    function pull() {
+      return req("ccm_songs?select=" + COLS + "&order=created_at.asc").then(function (rows) {
+        var s = JSON.stringify(rows);
+        if (s === last) return;
+        last = s;
+        cb(rows.map(function (r) {
+          return {
+            id: r.id, by: r.recommender, title: r.title, artist: r.artist, url: r.url, part: r.part,
+            note: r.note, picked: r.picked, createdBy: r.created_by, createdAt: Date.parse(r.created_at)
+          };
+        }));
+      });
+    }
+    return {
+      mode: "supabase", me: clientId(), canWrite: true, isAdmin: false,
+      init: function () { return Promise.resolve(); },
+      subscribe: function (fn, err) {
+        cb = fn;
+        var tick = function () { pull().catch(err); };
+        tick(); timer = setInterval(tick, 4000);
+        document.addEventListener("visibilitychange", function () { if (!document.hidden) tick(); });
+        return function () { clearInterval(timer); };
+      },
+      add: function (d) {
+        return rpc("ccm_add_song", {
+          p_recommender: d.by, p_title: d.title, p_artist: d.artist, p_url: d.url, p_part: d.part,
+          p_note: d.note, p_picked: d.picked, p_client: d.createdBy, p_token: secret
+        }).then(pull);
+      },
+      update: function (id, p) { return rpc("ccm_set_picked", { p_ids: [id], p_picked: !!p.picked }).then(pull); },
+      remove: function (id) {
+        return rpc("ccm_delete_song", { p_id: id, p_token: secret }).then(function (ok) {
+          if (!ok) throw new Error("내가 올린 추천만 지울 수 있어요");
+          return pull();
+        });
+      }
+    };
+  }
+
   function localStore() {
     var KEY = "ccm-local-songs", mem = [], cb;
     try { mem = JSON.parse(lsGet(KEY) || "[]") || []; } catch (e) { mem = []; }
@@ -459,6 +518,8 @@ select.sort { width: auto; background: var(--surface); padding: 6px 10px; font-s
         var s = localStore(); s.why = "signedout"; return s;
       });
     }
+    var sb = window.CCM_SUPABASE;
+    if (sb && sb.url && sb.key) return Promise.resolve(supabaseStore(sb));
     return fetch("api/songs", { cache: "no-store" }).then(function (r) {
       if (r.ok && (r.headers.get("content-type") || "").indexOf("json") >= 0) return serverStore();
       throw 0;
