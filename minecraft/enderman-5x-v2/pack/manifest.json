@@ -1,0 +1,29 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "엔더맨 스폰 5배 v2 (몹 제한 확장)",
+    "description": "무리 5배 + 엔더맨을 몬스터 제한(엔드 10마리) 대신 수중동물 제한(36마리)으로 계산. 실험용",
+    "uuid": "5924e67b-2afc-4adf-a602-0f974738ac5a",
+    "version": [
+      1,
+      0,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      21,
+      0
+    ]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "095778ae-62d7-49b1-b673-cfca6a12759a",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    }
+  ]
+}
