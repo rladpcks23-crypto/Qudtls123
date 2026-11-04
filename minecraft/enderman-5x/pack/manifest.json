@@ -1,0 +1,29 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "엔더맨 스폰 5배",
+    "description": "엔더맨 무리 크기와 생성 가중치를 5배로 (바닐라 1.26.60 기준)",
+    "uuid": "82fdb606-c39b-4a57-84ba-728275dc4c0a",
+    "version": [
+      1,
+      0,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      21,
+      0
+    ]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "223f5fe6-7cb0-4438-beaf-703189307ceb",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    }
+  ]
+}
