@@ -1,0 +1,29 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "엔더맨 스폰 30배",
+    "description": "무리 크기·가중치 30배 + 수중동물 제한(36마리)으로 계산. 실험용",
+    "uuid": "228311d2-774a-48e0-b225-cc4a7b6e4188",
+    "version": [
+      1,
+      0,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      21,
+      0
+    ]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "c1cde68d-7d00-4437-a63f-8e7a05187139",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    }
+  ]
+}
