@@ -1,4 +1,5 @@
-// 홈라인 15초 시연 영상 (1920×1080, 남색 무대 + 폰 화면 + QR)
+// 홈라인 15초 시연 영상 (1920×1080, 남색 무대 + QR)
+// WIDE=1 이면 앱을 PC(가로) 화면으로, 아니면 폰 화면으로 보여준다
 // 사용: 이 폴더에서 `python3 -m http.server 8765` 를 띄운 뒤 `node record.js`
 //       site/ 에는 홈라인 웹 버전(index.html + 이미지 + qrcode.min.js)이 있어야 한다.
 const { chromium } = require('playwright');
@@ -8,6 +9,7 @@ const path = require('path');
 const BASE = 'http://127.0.0.1:8765/';
 const OUT = path.join(__dirname, 'raw');
 const W = 1920, H = 1080;
+const WIDE = process.env.WIDE === '1';
 
 (async () => {
   fs.rmSync(OUT, { recursive: true, force: true });
@@ -21,7 +23,7 @@ const W = 1920, H = 1080;
 
   const page = await ctx.newPage();
   page.on('pageerror', e => console.log('pageerror', e.message));
-  await page.goto(BASE + 'stage.html');
+  await page.goto(BASE + (WIDE ? 'stage-wide.html' : 'stage.html'));
   await page.waitForTimeout(800);
 
   const app = () => page.frames().find(f => f.url().includes('/site/index.html'));
@@ -30,7 +32,7 @@ const W = 1920, H = 1080;
   await page.waitForTimeout(1800);
   const f = app();
   await f.addStyleTag({ content: `
-    #demoChip{display:none!important}
+    #demoChip,.devtag{display:none!important}
     .grid>*{min-width:0}
     .tapfx{position:fixed;z-index:99999;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;
       background:rgba(255,184,108,.35);border:2px solid rgba(255,184,108,.95);pointer-events:none;animation:tapfx .6s ease-out forwards}
@@ -68,13 +70,14 @@ const W = 1920, H = 1080;
   // 01 첫 화면 : D-day → 4단계
   await scene(1);
   await wait(1700);
-  await scrollTo('.metrics-band', 40);
+  await scrollTo(WIDE ? '#steps' : '.metrics-band', WIDE ? 330 : 40);
   await wait(1900);
 
   // 02 하루를 마치며
   await scene(2);
-  await scrollTo('#sonCard', 20);
-  await wait(1300);
+  await scrollTo(WIDE ? '.grid' : '#sonCard', WIDE ? 56 : 20);
+  await wait(WIDE ? 700 : 1300);
+  if (WIDE) { await scrollTo('.son-opts', 330); await wait(700); }
   await tap('.son-o[data-k="home"]');
   await wait(2400);
 
@@ -82,7 +85,7 @@ const W = 1920, H = 1080;
   await scene(3);
   await tab('record');
   await wait(300);
-  await scrollTo('.study', 14);
+  await scrollTo('.study', WIDE ? 70 : 14);
   await f.evaluate(() => {
     const s = document.querySelector('.hm-scroll');
     const r = document.querySelector('#hm rect[data-d="' + document.getElementById('hmDate').value + '"]');

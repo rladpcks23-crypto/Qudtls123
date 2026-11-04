@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>홈라인 시연</title>
+<style>
+:root{--navy:#0B1530;--navy2:#13224A;--ink:#EEF0F4;--muted:#A9B4CC;--accent:#FFB86C;--paper:#F7F2E9}
+*{box-sizing:border-box;margin:0}
+html,body{width:1920px;height:1080px;overflow:hidden}
+body{font-family:'IBM Plex Sans KR',sans-serif;color:var(--ink);
+  background:radial-gradient(1200px 700px at 50% 115%,rgba(255,184,108,.16),transparent 60%),
+             radial-gradient(900px 600px at 10% -10%,#1C2E5E 0%,transparent 70%),
+             linear-gradient(160deg,#0E1B3D 0%,var(--navy) 55%,#08102A 100%)}
+.stars{position:absolute;inset:0;background-image:
+  radial-gradient(1.4px 1.4px at 12% 18%,rgba(255,255,255,.5),transparent),radial-gradient(1px 1px at 28% 9%,rgba(255,255,255,.4),transparent),
+  radial-gradient(1.2px 1.2px at 71% 14%,rgba(255,255,255,.45),transparent),radial-gradient(1px 1px at 86% 26%,rgba(255,255,255,.35),transparent),
+  radial-gradient(1.3px 1.3px at 58% 6%,rgba(255,255,255,.4),transparent),radial-gradient(1px 1px at 40% 22%,rgba(255,255,255,.3),transparent)}
+
+/* 왼쪽 : 브라우저 창 */
+.win{position:absolute;left:72px;top:50%;transform:translateY(-50%);width:1288px;border-radius:18px;overflow:hidden;
+  background:#05070C;box-shadow:0 0 0 2px #2A3555,0 40px 90px rgba(0,0,0,.55),0 0 140px rgba(255,184,108,.08)}
+.bar{height:44px;display:flex;align-items:center;gap:9px;padding:0 18px;background:#141C33;border-bottom:1px solid #26314F}
+.bar i{width:13px;height:13px;border-radius:50%;background:#3A4566}
+.bar .url{margin-left:18px;flex:1;max-width:520px;height:28px;border-radius:14px;background:#0B1226;color:#8F9AB8;
+  font-size:15px;display:flex;align-items:center;gap:8px;padding:0 14px}
+.bar .url img{width:16px;height:16px;border-radius:4px}
+.screen{width:1288px;height:800px;overflow:hidden;background:#070A10}
+.screen iframe{width:1288px;height:800px;border:0;display:block}
+
+/* 오른쪽 : 브랜드 · 장면 · QR */
+.right{position:absolute;left:1420px;top:0;bottom:0;width:430px;display:flex;flex-direction:column;justify-content:center;gap:0}
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:46px}
+.brand img{width:52px;height:52px;border-radius:12px}
+.brand b{font-size:34px;font-weight:700;letter-spacing:-.02em}
+.brand span{font-size:20px;color:var(--muted)}
+.scene{position:relative;height:300px}
+.sc{position:absolute;inset:0;opacity:0;transform:translateY(20px);transition:opacity .5s,transform .5s cubic-bezier(.2,.8,.2,1)}
+.sc.on{opacity:1;transform:none}
+.sc .n{font-size:24px;font-weight:700;color:var(--accent);letter-spacing:.12em}
+.sc h2{font-size:62px;font-weight:700;line-height:1.15;letter-spacing:-.035em;margin-top:10px}
+.sc p{font-size:27px;line-height:1.5;color:var(--muted);margin-top:18px;font-weight:500}
+.sc p em{font-style:normal;color:var(--ink)}
+.dots{display:flex;gap:12px;margin:6px 0 40px}
+.dots i{width:48px;height:6px;border-radius:3px;background:rgba(255,255,255,.18);transition:background .4s}
+.dots i.on{background:var(--accent)}
+.qrrow{display:flex;align-items:center;gap:24px}
+.qrcard{background:var(--paper);border-radius:22px;padding:18px;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+#qr{width:200px;height:200px}
+#qr img,#qr canvas{width:100%!important;height:100%!important}
+.qrrow h3{font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.3}
+.qrrow p{font-size:20px;color:var(--muted);margin-top:10px;line-height:1.5}
+
+/* 마무리 */
+#end{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:120px;opacity:0;
+  transition:opacity .6s;background:radial-gradient(1000px 600px at 50% 120%,rgba(255,184,108,.18),transparent 60%),linear-gradient(160deg,#0E1B3D,#0B1530 55%,#08102A)}
+#end.on{opacity:1}
+#end .t img{width:120px;height:120px;border-radius:26px}
+#end .t .k{font-size:30px;color:var(--accent);font-weight:700;letter-spacing:.08em;margin-top:34px}
+#end .t h1{font-size:84px;font-weight:700;letter-spacing:-.035em;line-height:1.2;margin-top:16px}
+#end .t h1 em{font-style:normal;color:var(--accent)}
+#end .t p{font-size:32px;color:var(--muted);margin-top:24px}
+#end .q{text-align:center}
+#end .q .qrcard{padding:36px}
+#end #qr2{width:400px;height:400px}
+#end #qr2 img,#end #qr2 canvas{width:100%!important;height:100%!important}
+#end .q h3{font-size:38px;margin-top:34px}
+</style></head><body>
+<div class="stars"></div>
+
+<div class="win">
+  <div class="bar"><i></i><i></i><i></i><div class="url"><img src="site/logo-64.png" alt="">홈라인 · 집으로 가는 60일</div></div>
+  <div class="screen"><iframe id="app" src="site/index.html"></iframe></div>
+</div>
+
+<div class="right">
+  <div class="brand"><img src="site/logo-64.png" alt=""><div><b>홈라인</b><br><span>집으로 가는 60일</span></div></div>
+  <div class="scene">
+    <div class="sc" data-s="1"><div class="n">01</div><h2>매일 여는<br>첫 화면</h2><p>수능 D-day와 남은 시간,<br><em>오늘 할 일 4단계</em></p></div>
+    <div class="sc" data-s="2"><div class="n">02</div><h2>하루를<br>마치며</h2><p>“오늘 나는 어떤 아들이었나?”<br><em>말씀으로 하루를 돌아봐요</em></p></div>
+    <div class="sc" data-s="3"><div class="n">03</div><h2>순공 기록</h2><p>매일 공부한 시간이<br><em>446일 격자</em>에 쌓여요</p></div>
+    <div class="sc" data-s="4"><div class="n">04</div><h2>성적 추이</h2><p>모의고사·내신을<br><em>과목별 그래프</em>로 한눈에</p></div>
+  </div>
+  <div class="dots"><i data-s="1"></i><i data-s="2"></i><i data-s="3"></i><i data-s="4"></i></div>
+  <div class="qrrow"><div class="qrcard"><div id="qr"></div></div><div><h3>휴대폰으로<br>바로 열기</h3><p>카메라로 비추면<br>설치 없이 열려요</p></div></div>
+</div>
+
+<div id="end">
+  <div class="t">
+    <img src="site/logo-512.png" alt="">
+    <div class="k">홈라인 · 집으로 가는 60일</div>
+    <h1>증명하려는 공부가 아니라,<br><em>사랑받는 사람의 성실.</em></h1>
+    <p>지금 휴대폰으로 열어 보세요</p>
+  </div>
+  <div class="q"><div class="qrcard"><div id="qr2"></div></div><h3>QR로 바로 열기</h3></div>
+</div>
+
+<script src="site/qrcode.min.js"></script>
+<script>
+var URL_ = new URLSearchParams(location.search).get("u") || "https://claude.ai/artifact/JfncXvtZdLJ3QkTTcD6Y29";
+[["qr",200],["qr2",400]].forEach(function(a){
+  new QRCode(document.getElementById(a[0]), { text:URL_, width:a[1]*2, height:a[1]*2, colorDark:"#0B1530", colorLight:"#F7F2E9", correctLevel:QRCode.CorrectLevel.M });
+});
+window.scene = function(n){
+  document.querySelectorAll(".sc").forEach(function(e){ e.classList.toggle("on", +e.dataset.s === n); });
+  document.querySelectorAll(".dots i").forEach(function(e){ e.classList.toggle("on", +e.dataset.s <= n); });
+};
+window.ending = function(){ document.getElementById("end").classList.add("on"); };
+</script>
+</body></html>
