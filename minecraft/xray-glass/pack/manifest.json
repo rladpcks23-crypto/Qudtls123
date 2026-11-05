@@ -2,11 +2,11 @@
   "format_version": 2,
   "header": {
     "name": "X-ray 유리 (실험)",
-    "description": "돌·심층암·흙·네더랙 등 자연 블록을 투명하게. 광석·동굴·상자가 보임",
+    "description": "돌·심층암·흙·네더랙 등 자연 블록을 유리처럼. 광석·동굴·상자가 비쳐 보임",
     "uuid": "c04a9c92-5895-4c21-8746-912373c543d4",
     "version": [
       1,
-      0,
+      1,
       0
     ],
     "min_engine_version": [
@@ -21,7 +21,7 @@
       "uuid": "5b498aba-a04d-4226-85c2-5846bd035eca",
       "version": [
         1,
-        0,
+        1,
         0
       ]
     }

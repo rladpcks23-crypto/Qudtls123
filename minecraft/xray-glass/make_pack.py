@@ -1,8 +1,9 @@
 """Build the X-ray (glass) resource pack.
 
 Usage: python3 make_pack.py <vanilla resource_pack/textures/blocks dir>
-Replaces natural filler blocks with fully transparent textures of the
-same size, so ores, caves, spawners and chests show through.
+Replaces natural filler blocks with the vanilla glass texture (clear
+centre, thin frame), so you see through rock while exposed faces still
+show an outline.
 """
 import json, os, sys, uuid
 from PIL import Image, ImageDraw
@@ -36,16 +37,17 @@ os.makedirs(OUT, exist_ok=True)
 h, mo = ids or (str(uuid.uuid4()), str(uuid.uuid4()))
 json.dump({
     "format_version": 2,
-    "header": {"name": "X-ray 유리 (실험)", "description": "돌·심층암·흙·네더랙 등 자연 블록을 투명하게. 광석·동굴·상자가 보임",
-               "uuid": h, "version": [1, 0, 0], "min_engine_version": [1, 21, 0]},
-    "modules": [{"type": "resources", "uuid": mo, "version": [1, 0, 0]}],
+    "header": {"name": "X-ray 유리 (실험)", "description": "돌·심층암·흙·네더랙 등 자연 블록을 유리처럼. 광석·동굴·상자가 비쳐 보임",
+               "uuid": h, "version": [1, 1, 0], "min_engine_version": [1, 21, 0]},
+    "modules": [{"type": "resources", "uuid": mo, "version": [1, 1, 0]}],
 }, open(manifest, "w"), indent=2, ensure_ascii=False)
 
+glass = Image.open(os.path.join(SRC, "glass.png")).convert("RGBA")
 for name in FILLER:
     src = Image.open(os.path.join(SRC, name + ".png"))
     dst_png = os.path.join(OUT, "textures", "blocks", name + ".png")
     os.makedirs(os.path.dirname(dst_png), exist_ok=True)
-    Image.new("RGBA", src.size, (0, 0, 0, 0)).save(dst_png)
+    glass.resize(src.size, Image.NEAREST).save(dst_png)
     # Vibrant Visuals reads <name>.texture_set.json; point it at the clear texture only.
     if os.path.exists(os.path.join(SRC, name + ".texture_set.json")):
         json.dump({"format_version": "1.21.30",
