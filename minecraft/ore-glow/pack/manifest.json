@@ -1,0 +1,29 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "광석 강조 + 빛나기",
+    "description": "광석을 형광색·테두리로 강조. 선명한 비주얼을 켜면 어둠 속에서 빛남",
+    "uuid": "0e37e231-d06e-4767-80ca-c7ff1cb6e497",
+    "version": [
+      1,
+      0,
+      0
+    ],
+    "min_engine_version": [
+      1,
+      21,
+      0
+    ]
+  },
+  "modules": [
+    {
+      "type": "resources",
+      "uuid": "ddeeee4b-f361-473a-a8cd-0629c6182114",
+      "version": [
+        1,
+        0,
+        0
+      ]
+    }
+  ]
+}
