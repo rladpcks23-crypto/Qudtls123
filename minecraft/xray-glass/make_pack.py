@@ -37,7 +37,7 @@ os.makedirs(OUT, exist_ok=True)
 h, mo = ids or (str(uuid.uuid4()), str(uuid.uuid4()))
 json.dump({
     "format_version": 2,
-    "header": {"name": "X-ray 유리 (실험)", "description": "돌·심층암·흙·네더랙 등 자연 블록을 유리처럼. 광석·동굴·상자가 비쳐 보임",
+    "header": {"name": "X-ray 유리 v1.1", "description": "돌·심층암·흙·네더랙 등 자연 블록을 유리처럼. 광석·동굴·상자가 비쳐 보임",
                "uuid": h, "version": [1, 1, 0], "min_engine_version": [1, 21, 0]},
     "modules": [{"type": "resources", "uuid": mo, "version": [1, 1, 0]}],
 }, open(manifest, "w"), indent=2, ensure_ascii=False)
