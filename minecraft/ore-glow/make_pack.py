@@ -2,10 +2,9 @@
 
 Usage: python3 make_pack.py <vanilla resource_pack/textures/blocks dir> [preview.png]
 
-Ore specks are found by colour (stone/deepslate are grey, netherrack is red),
-recoloured to a vivid colour per ore, outlined in black, and every ore block
-gets a 1-px frame in its colour. With Vibrant Visuals on, a MERS texture makes
-the specks and frame emissive so they glow in the dark.
+Keeps the vanilla ore textures and only adds a 1-px frame in a colour per
+ore. With Vibrant Visuals on, a MERS texture makes the frame emissive so it
+glows in the dark. (RECOLOR = True restores the earlier vivid-speck style.)
 """
 import colorsys, json, os, sys, uuid
 import numpy as np
@@ -16,6 +15,7 @@ PREVIEW = sys.argv[2] if len(sys.argv) > 2 else None
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "pack")
 BLK = os.path.join(OUT, "textures", "blocks")
+RECOLOR = False
 
 # name -> (vivid colour, outline colour, base kind)
 ORES = {
@@ -74,9 +74,9 @@ os.makedirs(BLK, exist_ok=True)
 h, mo = ids or (str(uuid.uuid4()), str(uuid.uuid4()))
 json.dump({
     "format_version": 2,
-    "header": {"name": "광석 강조 + 빛나기", "description": "광석을 형광색·테두리로 강조. 선명한 비주얼을 켜면 어둠 속에서 빛남",
-               "uuid": h, "version": [1, 0, 0], "min_engine_version": [1, 21, 0]},
-    "modules": [{"type": "resources", "uuid": mo, "version": [1, 0, 0]}],
+    "header": {"name": "광석 테두리 v1.1", "description": "원래 광석 모양 그대로 + 광석별 색 테두리. 선명한 비주얼을 켜면 테두리가 빛남",
+               "uuid": h, "version": [1, 1, 0], "min_engine_version": [1, 21, 0]},
+    "modules": [{"type": "resources", "uuid": mo, "version": [1, 1, 0]}],
 }, open(manifest, "w"), indent=2, ensure_ascii=False)
 
 previews = []
@@ -87,9 +87,9 @@ for name, (col, ol, kind) in ORES.items():
     out = src.copy()
     lum = (0.3 * src[..., 0] + 0.59 * src[..., 1] + 0.11 * src[..., 2]) / 255.0
     shade = 0.65 + 0.35 * lum
-    for i in range(3):
+    for i in range(3 if RECOLOR else 0):
         out[..., i] = np.where(mask, np.clip(col[i] * shade, 0, 255), out[..., i])
-        if ol is not None:
+        if ol is not None and RECOLOR:
             out[..., i] = np.where(edge, ol[i], out[..., i])
     frame = np.zeros(mask.shape, bool)
     frame[0, :] = frame[-1, :] = frame[:, 0] = frame[:, -1] = True
@@ -102,7 +102,7 @@ for name, (col, ol, kind) in ORES.items():
     img.save(dst)
 
     # MERS: R metalness, G emissive, B roughness, A subsurface
-    glow = mask | frame
+    glow = (mask | frame) if RECOLOR else frame
     mers = np.zeros(src.shape, np.uint8)
     mers[..., 1] = np.where(glow, 255, 0)
     mers[..., 2] = 230
